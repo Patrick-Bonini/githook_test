@@ -1,0 +1,1 @@
+define({'Appliance':{c:'Appliance', cm:'Appliance related documentation', o:0},'Software':{c:'Software', cm:'Software broker related documentation', o:2},'Cloud':{c:'Cloud', cm:'Cloud broker related documentation', o:1},})

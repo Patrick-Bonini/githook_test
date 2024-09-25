@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Threading When Publishing Messages</h1>
+    <p>When the event broker successfully receives Guaranteed messages, it returns acknowledgments to the API. It does not return acknowledgments for Direct messages. (The exception to this is publishing Direct messages using JCSMP’s non-streaming publishing mode.)</p>
+    <p>The Context uses a processing thread to read the acknowledgment from the event broker. It then parses the windowed acknowledgment, enqueues separate acknowledgments for each message (identified by a message ID), then dispatches them to an application callback.</p>
+    <p style="font-weight: bold;">JCSMP</p>
+    <p>When publishing messages using the streaming publishing mode, a Context uses one thread to read the windowed acknowledgment that the event broker sends for a group of consecutive Guaranteed messages, parse it and then enqueue separate acknowledgments on the producer notification dispatcher queue for each message. This queue is also used for message publishing exceptions. There is one queue for each Context.</p>
+    <p>The Context uses another thread for notification and dispatching the queued acknowledgments to an application callback.</p>
+    <p>Note that if there is not enough space on the queue when the thread attempts to append notifications to it, the thread can block until there is sufficient space. The queue size can be modified through <code>JCSMPGlobalProperties. setProducerDispatcherQueueSize()</code>.</p>
+    <p>The following figure shows the application thread used to send Guaranteed messages and the Context threads that are used handle a windowed message acknowledgment from the event broker.</p>
+    <p class="GraphicCaption"><a name="api_threading_1096948177_608542"/>Publishing Guaranteed Messages Through JCSMP Using a Streaming Mode </p>
+    <p class="GraphicCaption">
+      <img src="Images/java_publish_threading.png" alt="Publishing Guaranteed Message in Streaming Mode"/>
+    </p>
+    <p style="font-weight: bold;">Java RTO, C, and .NET APIs</p>
+    <p>In the Java RTO, C, and .NET APIs, a Context uses a single thread to read the windowed acknowledgment that the event broker sends for the received Guaranteed messages and parse them. Unlike JCSMP, acknowledgments from the event broker are not placed in a notification queue; rather, the same thread is used for notification and dispatching the queued acknowledgments to an application callback.</p>
+    <p>The following figure shows the application thread used to send Guaranteed messages and the Context thread used to handle windowed message acknowledgments from the event broker.</p>
+    <p class="GraphicCaption"><a name="api_threading_1096948177_603417"/>Publishing Guaranteed Messages Using the C and .NET APIs</p>
+    <p class="GraphicCaption">
+      <img src="Images/c_publish_threading.jpg" alt="Publishing Message in RTO, C, .Net"/>
+    </p>
+    <p style="font-weight: bold;">JavaScript and Node.js APIs</p>
+    <p>The JavaScript and Node.js APIs are single-threaded including notification and dispatching the acknowledgments to application event listeners.</p>
+  </body>
+</html>

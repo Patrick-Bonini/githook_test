@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:searchable="False">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+    <meta name="robots" content="noindex, nofollow"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Software"/>Initializing a Machine Image using <code>cloud-init</code></h1>
+    <div class="Caution">
+      <p>Distribution of PubSub+ packaged as a virtual machine broker image will cease as of release 10.8.1 (June 2024). For more details, see the <a href="https://solace.com/support/deprecated-features/">Deprecated Features</a> list.</p>
+      <p>Solace recommends that you transition to an alternate method of deploying PubSub+ prior to June 2024.  Containers offer a flexible way to deploy PubSub+ in a number of environments, virtual machines,  and other container platforms. For information about:</p>
+      <ul>
+        <li>
+          <p>Setting up containers, see <MadCap:xref href="../SW-Broker-Set-Up/Containers/Set-Up-Container-Image.htm">Setting Up Container Images</MadCap:xref>.</p>
+        </li>
+        <li>
+          <p>Deploying PubSub+ container images in production environments, see <MadCap:xref href="../SW-Broker-Set-Up/Containers/Deploying-Container-in-Production.htm">Deploying PubSub+ Software Event Brokers in a Production Environment</MadCap:xref>.</p>
+        </li>
+      </ul>
+    </div>
+    <p>You can initialize a software event broker cloud or machine image  with the <a href="https://cloudinit.readthedocs.io/en/latest/" target="_blank" class="link-offsite">cloud-init</a> utility. At start-up, <code>cloud-init</code> iterates through a list of provisioned datasources looking for valid <code>meta-data</code> and <code>user-data</code>.</p>
+    <ul>
+      <li><code>meta-data</code> is supplied as key value pairs, and can be used to configure instance specific parameters such as <code>instance-id</code>, <code>hostname</code>, and local IP addresses.</li>
+      <li><code>user-data</code> can be provided in many forms including files, scripts, and <code>#cloud-config</code>, which provides YAML-formatted <code>cloud-init</code> specific instructions. It can be used to update instance software packages, execute first-boot scripts, install certificates and configure users, groups, and authentication keys.</li>
+    </ul>
+    <p class="Note">The software event broker doesn't prevent the processing of any <code>user-data</code> (including <code>#cloud-config</code> commands) that are not applicable, or possibly harmful to system stability. Also, the software event broker neither prevents <code>user-data</code> from including scripts, nor does it selectively execute script content.</p>
+    <p>The following table lists the valid datasources for the various software event brokers.</p>
+    <table style="width: 65%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Solace PubSub+ software event broker </th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Datasources</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Standard, all VM Images</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">NoCloud</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Standard, AMI for Amazon Web Services</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">EC2</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Standard, OpenStack</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">OpenStack</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">Enterprise, all VM Images</td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">NoCloud</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Enterprise, AMI for Amazon Web Services</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">EC2</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">Enterprise, Open Stack</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">OpenStack</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="Note">The <code>NoCloud</code> datasource can load user provided initial configuration in <code>user-data</code> and <code>meta-data</code> from an ISO loaded in the Virtual Machine Guest CDROM drive.
+For instructions on how to create the ISO, see <MadCap:xref href="#Create_Nocloud_Datasource">Creating NoCloud Datasources</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="set-config-keys"/>Setting Configuration Keys</h2>
+    <p>You can use a <code>cloud-init</code> module called <code>solace</code> to define configuration keys as environment variables for the software event broker's  container. Configuration via environment variables is supported where the variable name consists of the configuration key hierarchy concatenated with the underscore character. Environment variables are specified in <code>/etc/solace/solace-container.env.conf</code>, and configuration keys set by the <code>solace</code> moduleʼs <code>configuration_keys</code> directive are written to <code>/etc/solace/solace-container.env.conf</code>.</p>
+    <p>The <code>solace</code> module, shown with its associated <code>configuration_keys</code> directive, has the following syntax within <code>#cloud-config</code>.</p>
+    <pre xml:space="preserve">#cloud-config
+solace:
+  configuration_keys:
+    &lt;CONFIGURATION_KEY&gt;: &lt;VALUE&gt;
+    &lt;CONFIGURATION_KEY&gt;: &lt;VALUE&gt;
+</pre>
+    <h4>Configuration Keys for the Software Event Broker</h4>
+    <p>To learn more about the configuration keys that you can use with the software event broker, see <MadCap:xref href="../Configuration-Keys-Reference.htm">List of Configuration Keys</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="assign-volumes"/>Assigning Volumes to External Storage Devices</h2>
+    <MadCap:snippetBlock src="../../Resources/Snippets/cloud-init-Map-Volume-to-Block-Device.flsnp"/>
+    <p>An example of the use of the <code>storage</code> directive is shown in <MadCap:xref href="#Config_AWS">AWS PubSub+ Initialization</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Config_Auth"/>Initializing User Authentication </h2>
+    <p>By default, the <code>sysadmin</code> user account is unlocked with an undefined password.  Remote login is explicitly blocked until the <code>sysadmin</code> user password has been defined.</p>
+    <p>In cloud environments, the provider typically configures <code>sysadmin</code> users with a qualified <code>cloud-init</code> datasource, and usually <code>sysadmin</code> users are also assigned public/private SSH keys from <code>cloud-init user-data</code>. However, it is also possible for you to define the <code>sysadmin</code> password with <code>cloud-init user-data</code>, and you may also define additional host user accounts using <code>cloud-init user-data</code>.</p>
+    <p>In enterprise environments, the system administrator is responsible for creating and configuring software event broker instances.  Typically, the <code>sysadmin</code> user is assigned a password on first login attempt at the Virtual Machine console. It is also possible to assign the password, or supply a public/private SSH key with <code>cloud-init user-data</code>, provided by an ISO image installed in the virtual machine CD-ROM drive. For example, text similar to the following <code>#cloud-config</code> snippet can be used to set the <code>sysadmin</code> password.</p>
+    <pre xml:space="preserve">#cloud-config
+
+password: sysadmin
+chpasswd: {expire: False}
+</pre>
+    <h2 class="with-rule"><a name="Timezone"/>Initializing the Timezone </h2>
+    <p>For software event broker 9.4.0 release onwards, you can set the timezone by adding the <code>timezone: &lt;timezone&gt;</code> in the <code>#cloud-config</code>. As shown in the example below, the following <code>#cloud-config</code> snippet sets the <code>timezone</code> to Canada/Eastern.</p>
+    <pre xml:space="preserve">#cloud-config
+
+password: sysadmin
+chpasswd: {expire: False}
+timezone: Canada/Eastern
+</pre>
+    <h2 class="with-rule"><a name="config-max-connections"/>Configuring the Maximum Number of Connections</h2>
+    <p>You can configure the maximum number of client connections with the <code>system/scaling/maxconnectioncount</code> configuration key. For more information, see <MadCap:xref href="../System-Scaling-Parameters.htm">Modifying System Limits using System Scaling Parameters</MadCap:xref>.</p>
+    <p>The following shows an example of a <code>user-data</code> text snippet that sets the maximum client connection value to 10,000.</p>
+    <pre xml:space="preserve">#cloud-config
+solace:
+  configuration_keys:
+    system_scaling_maxconnectioncount: 10000</pre>
+    <h2 class="with-rule"><a name="Create_Nocloud_Datasource"/>Creating NoCloud Datasources</h2>
+    <p>PubSub+ software event brokers that are configured to accept the NoCloud <code>cloud-init</code> datasource can load an initial configuration from an ISO loaded in the Virtual Machine Guest CDROM drive.</p>
+    <p>To create an ISO, perform the following steps:</p>
+    <ol>
+      <li>Create a text file named <code>meta-data</code>. This file may be empty with a length of 0 bytes, or may contain any valid YAML for <code>cloud-init meta-data</code>.</li>
+      <li>Create a text file named <code>user-data</code>. This file may be empty with a length 0 bytes, or may contain any valid YAML for <code>cloud-init user-data</code>.</li>
+      <li>Generate the ISO using <code>genisoimage</code> or <code>mkisofs</code> on the Linux host.<pre>genisoimage -output docker_subnet.iso -volid cidata -joliet -rock user-data meta-data</pre><p>or</p><pre>mkisofs -output docker_subnet.iso -volid cidata -joliet -rock user-data meta-data</pre></li>
+    </ol>
+    <h2 class="with-rule"><a name="Config_AWS"/>Initializing the Configuration for AWS</h2>
+    <p>The <MadCap:xref href="../SW-Broker-Set-Up/Machine-Images/Set-Up-in-AWS.htm">AWS</MadCap:xref> setup guide provides the steps required to get a software event broker cloud image running and ready for messaging in Amazon Web Services (AWS).  <MadCap:xref href="../SW-Broker-Set-Up/Machine-Images/Set-Up-in-AWS.htm#access-cli">Step 3: Access the Solace CLI</MadCap:xref> , used for setting the admin userʼs password, can be simplified through the use of the configuration keys <code>username/&lt;name&gt;/globalaccesslevel</code> and <code>username/&lt;name&gt;/password</code>. Setting up the admin user using configuration keys allows you to go directly to SolAdmin to manage the Solace PubSub+ software event broker, skipping additional configuration steps in Solace CLI.</p>
+    <h3><a name="Admin"/>Configuring the Admin User</h3>
+    <p>To configure the admin user and assign a password during the initial setup of an PubSub+ software event broker image in AWS, you can enter configuration keys as <code>user-data</code> text, where the user-data consists of the configuration key hierarchy concatenated with the underscore character. Configuration keys as user-data text can be entered into the <code>User data</code> block in the <code>Advanced Details</code> section of the <code>Configure Instance Details</code> screen. In the example below, the password is <code>adminpwd</code>.</p>
+    <pre>#cloud-config
+
+solace:
+  configuration_keys:
+     username_admin_globalaccesslevel: admin
+     username_admin_password: adminpwd</pre>
+    <h3><a name="provision-storage"/>Provisioning Storage for the Software Event Broker </h3>
+    <p>You can also provision the software event broker <code>storage-group</code> at initial setup. You can perform the initialization with a two-step process. In this example the volume <code>storage-group</code> is assigned to a block device, and the <code>admin</code> user is configured and assigned a password. </p>
+    <ol>
+      <li>On the <code>Configure Instance Details</code> screen, in the <code>Advanced Details</code> section, enter the following <code>user-data</code> text into the <code>User data</code> block:
+<pre>#cloud-config
+solace:
+  configuration_keys:
+     username_admin_globalaccesslevel: admin
+     username_admin_password: adminpwd
+     service_ssh_port: 22
+     service_semp_port: 8080
+  storage:
+     storage-group:
+         device: xvdb
+</pre><p>The storage device appears in the software event broker host as <code>xvdb</code>.</p></li>
+      <li>On AWS's <code>Add Storage</code> screen in the configuration process for the software event broker Cloud Image, add a new volume on which the <code>storage-group</code> will reside. In this example, a 30 GB device called <code>/dev/sdb</code> has been added.<p><img src="../../Resources/Images/SW-Broker-Setup/Machine/addExternalStorage.png" MadCap:mediastyle="@media print { max-width: 600px; }" style="border-left-style: solid;border-left-width: 1px;border-right-style: solid;border-right-width: 1px;border-top-style: solid;border-top-width: 1px;border-bottom-style: solid;border-bottom-width: 1px; width:100%;" alt=""/></p></li>
+      <li>After you log into the software event broker's host, you can run the <code>solacectl storage</code> command  to view the new storage assignment.	
+ <pre xml:space="preserve">&gt;sudo solacectl storage ls
+Block Devices:
+Name                                              Size      Note
+xvda                                              30.0G     Main device
+└─xvda1                                           0.2G
+└─xvda2                                           29.8G
+xvdb                                              30.0G
+└─xvdb1                                           30.0G
+Storage Volumes:
+Name                                              Size      Used      Available Path
+/dev/mapper/vg01-root                             9.8G      1.1G      8.8G      /
+/dev/mapper/vg01-solace                           9.8G      67M       9.7G      /var/lib/docker/volumes
+
+/dev/xvdb1                                        30G       1.3G      29G       /mnt/vmr
+├─storage-group                                   30G       1.0G      29G       /mnt/vmr/storage-group/_data
+Image Pool:
+Name                                              Size      Used      Available
+Image pool                                        8.905 GB  1.033 GB  7.872 GB</pre></li>
+    </ol>
+    <h3><a name="enable-cloudwatch"/>Enabling CloudWatch</h3>
+    <p>The <code>docker-create-opt</code> directive is used to configure the Amazon CloudWatch Docker logging driver. For more information about that driver, refer to <a href="https://docs.docker.com/config/containers/logging/awslogs/" target="_blank" class="link-offsite">Amazon CloudWatch Logs logging driver</a> on Docker's documentation site.</p>
+    <pre>solace:
+  docker-create-opt:
+    log-driver:  awslogs
+    log-opt:
+      - awslogs-region=&lt;region&gt;
+      - awslogs-group=&lt;LogGroup&gt;
+      - awslogs-create-group=true</pre>
+    <p>When configuring the Amazon CloudWatch log driver, you may want to use the logging configuration keys to output additional logs to <code>stdout</code> because anything sent to <code>stdout</code> will be sent to CloudWatch.</p>
+  </body>
+</html>

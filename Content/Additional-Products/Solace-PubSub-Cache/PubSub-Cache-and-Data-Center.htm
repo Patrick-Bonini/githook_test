@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>PubSub+ Cache and Data Center Redundancy</h1>
+    <p>To protect against the failure of an entire data center, an administrator may choose to deploy additional event brokers and PubSub+ Cache Instances in an in‑region backup data center, which connects to the primary data center over the WAN. This deployment model (as shown below) builds on the previously discussed redundant router deployment model.</p>
+    <p class="GraphicCaption">PubSub+ Cache And Data Center Redundancy</p>
+    <p class="GraphicCaption">
+      <img src="Images/SolCache_and_Data_Center_Redundancy.png" alt=""/>
+    </p>
+    <p>The dashed Multiple-Node Routing links shown above are optional, and not needed in most deployments—they are there to guard against network bifurcation in the unlikely event of a double router failure (for example, without those links, <code>Region1-PDC-Primary</code> and <code>Region1-BDC-Backup</code> would not be able to communicate with each other if there is a simultaneous loss of both <code>Region1-PDC-Backup</code> and <code>Region1-BDC-Primary</code>). Full-mesh connectivity is not strictly needed because:</p>
+    <ol>
+      <li>Alternate routing paths are only in place to route around failures of routers. Network connectivity issues are expected to be “routed around” by the underlying IP network.</li>
+      <li>The cost of hopping across an additional event broker to reach another node is minimal, especially over the LAN inside a data center. There is no wasted traffic reaching a router simply to transit to another router because the published messages already must be sent to all four routers in the Cache Cluster to keep all PubSub+ Cache Instances up to date.</li>
+    </ol>
+    <p>The link costs assigned to the Multiple-Node Routing neighbor links have been carefully chosen to ensure that a message will only traverse the WAN between data centers once and then be distributed locally between routers in the other data center over the LAN in that data center.</p>
+    <p>An administrator may also choose to only deploy a single router in the backup data center, as shown in the figure below.</p>
+    <p class="GraphicCaption">PubSub+ Cache And Data Center Redundancy–Non-Redundant Backup Site</p>
+    <p class="GraphicCaption">
+      <img src="Images/SolCache_and_Data_Center_Redundancy_non_redund.png" alt=""/>
+    </p>
+    <h2 class="with-rule"><a name="Config-Summary"/>Configuration Summary</h2>
+    <ul>
+      <li>The routers in each data center must be configured as non-revertive Redundant pairs.</li>
+      <li>The routers in the primary and backup data center should be configured to be Replication mates.</li>
+      <li>Config-Sync should be enabled on the routers, and Replication should be enabled on the Message VPN used by the Distributed Cache. This will ensure that PubSub+ Cache configuration and client configuration is kept in sync between all the routers in the two data centers. For information on configuring Replication and Config-Sync between routers, see <MadCap:xref MadCap:unresolvedLink="import-link:data_center__replication_3158882106_38232" href="../../Features/DR-Replication/Data-Center-Replication-Overview.htm">Replication Overview</MadCap:xref>.</li>
+      <li>Replicated topics are intended only for Guaranteed Messaging. Therefore, be sure not to configure any of the topics used by Direct messaging and PubSub+ Cache as Replicated topics in a deployment that uses Multiple‑Node Routing. Using a cached topic also as a Replicated topic will cause duplicate message delivery in the network to occur.</li>
+      <li>The Replication allow-clients-when-standby property must be enabled in the client-profiles associated with the client usernames used by the PubSub+ Cache Instances. When enabled, this property allows the PubSub+ Cache Instances to send and receive data even when the Message VPNs that the PubSub+ Cache Instances connect to are configured to be Replication standby. For information, see <MadCap:xref MadCap:unresolvedLink="import-link:managing_client_authentication_and_authorization_3377806447_27845" href="../../Security/Configuring-Client-Profiles.htm#Allow-Bridge-Connect-Standby">Allowing Client Connects to Replication Standby VPNs</MadCap:xref>.</li>
+      <li>The Replication state on the Message VPN used by the Distributed Cache should be set to active on the routers in the primary data center and to standby on the routers in the backup data center.</li>
+      <li>Multiple-Node Routing neighbor connections must be configured between the routers in the primary and backup data centers. To ensure that messages only cross the inter-data-center WAN link once, link costs should be configured as shown in both of the figures above.</li>
+      <li>Export-subscriptions must be enabled on the Message VPN hosting the Distributed Cache.</li>
+      <li>The eight PubSub+ Cache Instances and the Cache Cluster must be configured to be part of a single Distributed Cache.</li>
+      <li>Two PubSub+ Cache Instances per Cache Cluster should be set up to connect to each router.</li>
+      <li>The PubSub+ Cache Instances should be configured to use stop-on-lost-message behavior (see <MadCap:xref href="Configuring-PubSub-Cache-Ins.htm#Stop-On-Loss">Configuring Stop On Lost Message Behavior</MadCap:xref>).</li>
+      <li>Publishing and consuming applications can be deployed in either an active‑active or active‑standby configuration within a data center. However, for ease of management and debugging, Solace recommends the active‑standby deployment model for applications.</li>
+      <li>Publishing and consuming applications may optionally connect to the routers in the backup data center if the client profiles they use have the allow-clients-when-standby property enabled. However, it is suggested, for ease of management and debugging, that client applications only connect to the primary data center, and fail over to the backup data center (using host lists in the application) when the primary data center is offline. For information on enabling clients to connect to routers in a backup data center, see <MadCap:xref MadCap:unresolvedLink="import-link:data_center__replication_3158882106_67220" href="../../Features/DR-Replication/Replication-Deployment-Options.htm#Allowing">Allowing Clients to Connect to Standby Sites</MadCap:xref>.</li>
+      <li MadCap:conditions="Default.HideFromAllOutput">For release prior to 10.0.1, <code>distributed-cache-management</code> must be enabled on the Message VPN hosting the Distributed Cache on only one of the routers. Solace recommends enabling the distributed-cache-management service on the primary router at the primary site (<code>Region1-PDC-Primary</code>) and disabling distributed-cache-management on the other three routers.</li>
+    </ul>
+    <h2 class="with-rule"><a name="After-Redundancy-Failovers"/>After Redundancy Failovers Within Data Centers</h2>
+    <p>If the primary router (<code>Region1-PDC-Primary</code>) fails or is taken offline, the backup router in the data center (<code>Region1-PDC-Backup</code>) will take activity. Publishers and subscribers will reconnect to that backup router and then have access to PubSub+ Cache and all cached data that was published prior to the failover through the PubSub+ Cache Instances connected to the backup router.</p>
+    <p class="Note">Any published data that was in the process of being sent over the multiple‑node routing link at the time of the failure may have been lost, and therefore unavailable in the PubSub+ Cache Instances on the backup router.</p>
+    <p>The operational procedures that should be followed after a redundancy failover as described in <MadCap:xref href="PubSub-Cache-and-Msg-Broker-Redu.htm">PubSub+ Cache and Router Redundancy</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="After-Primary-Data-Center-Failure"/>After Primary Data Center Failures</h2>
+    <p>To bring the backup data center online if the primary datacenter fails, set the Replication state to active on the Message VPNs of the primary router in the backup data center (<code>Region1-BDC-Primary</code>). This allows the publishers and consumers to connect to the routers in the backup datacenter.</p>
+    <p>Once the failed data center comes back online, the administrator should perform the following steps as soon as possible on the Message VPN hosting the Distributed Cache:</p>
+    <ol>
+      <li>Set the Replication state to standby on the primary router in the primary data center (<code>Region1-PDC-Primary</code>).</li>
+      <li>Restart the stopped PubSub+ Cache Instances in the primary data center (<code>Cache Instance 1</code> through <code>4</code>) following the procedures described earlier in this section, causing them to resynchronize with the “up” PubSub+ Cache Instances (<code>Cache Instance 5</code> through <code>8</code>).</li>
+    </ol>
+    <p>Then later during a maintenance window, an administrator should perform the following steps on the Message VPN hosting the Distributed Cache:</p>
+    <ol>
+      <li>Set the Replication state to standby on the primary router in the backup data center (<code>Region1-BDC-Primary</code>).
+        <p class="Note">There will be a service interruption to publishers and consumers when this step is performed because the applications are disconnected from the backup data center.</p></li>
+      <li>Set the Replication state to active on the primary router in the primary data center (<code>Region1-PDC-Primary</code>). Service will be restored to publishers and consumers following this step because the applications reconnect to routers in the primary data center.</li>
+    </ol>
+    <h4 MadCap:conditions="Default.HideFromAllOutput">For releases prior to 10.0.1  </h4>
+    <p MadCap:conditions="Default.HideFromAllOutput">If the primary data center fails, use the following procedures on the Message VPN hosting the Distributed Cache to bring the backup data center online:</p>
+    <ol>
+      <li MadCap:conditions="Default.HideFromAllOutput">Set the Replication state to active on the Message VPNs of the primary router in the backup data center (<code>Region1-BDC-Primary</code>). This allows the publishers and consumers to connect to the routers in the backup data center.</li>
+      <li MadCap:conditions="Default.HideFromAllOutput">Enable distributed-cache-management on the primary router in the backup data center (<code>Region1-BDC-Primary</code>).</li>
+    </ol>
+    <p MadCap:conditions="Default.HideFromAllOutput">Then later during a maintenance window, an administrator should perform the following steps on the Message VPN hosting the Distributed Cache:</p>
+    <ol MadCap:conditions="Default.HideFromAllOutput">
+      <li>Set the Replication state to standby on the primary router in the backup data center (<code>Region1-BDC-Primary</code>).
+			<p class="Note">There will be a service interruption to publishers and consumers when this step is performed because the applications are disconnected from the backup data center.</p></li>
+      <li>On the primary router in the backup data center (<code>Region1-BDC-Primary</code>), disable distributed-cache-management on the Message VPN hosting the Distributed Cache to avoid dueling distributed‑cache‑management services.</li>
+      <li>Set the Replication state to active on the primary router in the primary data center (<code>Region1-PDC-Primary</code>). Service will be restored to publishers and consumers following this step because the applications reconnect to routers in the primary data center.</li>
+      <li>Enable distributed-cache-management on the primary router in the primary data center (<code>Region1-PDC-Primary</code>).</li>
+    </ol>
+  </body>
+</html>

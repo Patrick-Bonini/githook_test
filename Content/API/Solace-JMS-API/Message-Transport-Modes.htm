@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Message Transport Modes</h1>
+    <p>The Solace JMS implementation allows clients to use either a Guaranteed Transport or Direct Transport mode to send and receive JMS messages. These transport modes allow JMS clients to utilize either the Guaranteed Messaging or Direct Messaging capabilities of the event broker, and they offer different message qualities of service for Non‑Persistent messages.</p>
+    <p>The transport mode to use is determined by whether the Direct Transport message delivery property in the JNDI Connection Factory (refer to <MadCap:xref href="Message-Delivery-Propert.htm#jms_properties_39190069_303461">Direct Transport</MadCap:xref>) is enabled or not. By default, the Direct Transport mode is enabled. To use Guaranteed Transport mode, the Direct Transport property must be set to false in the JNDI Connection Factory.</p>
+    <h2 class="with-rule"><a name="Guaranteed"/>Guaranteed Transport Mode</h2>
+    <p>The Guaranteed Transport mode uses the Guaranteed Messaging capabilities of the event broker. This transport mode can be used with an event broker that has an ADB installed with Guaranteed Messaging and message spooling enabled. </p>
+    <p>Guaranteed Transport uses the following means to prevent Non‑Persistent or Persistent messages from being lost:</p>
+    <ul>
+      <li>Queues or topic endpoints (which are used to support durable subscription names) from which messages can be delivered to and consumed from are provisioned on the event broker. These endpoints are durable; that is, they have life spans independent of any particular client Session, and messages can accumulate on a durable endpoint even when no Session is connected.
+        <p>Durable endpoints can be provisioned using SolAdmin or the CLI (refer to <MadCap:xref MadCap:unresolvedLink="import-link:managing_solace_jndi_objects_75995180_92633" href="Managing-Solace-JNDI-Objects.htm">Managing Solace JNDI Objects</MadCap:xref>). In addition, if the Dynamic Durables API property is enabled, when the <code>Session.createDurableSubscriber()</code> or <code>Session.createQueue()</code> methods are called, corresponding durable topic endpoints or queues are automatically provisioned on the event broker (refer to <MadCap:xref href="API-Properties.htm#jms_properties_39190069_304368">Dynamic Durables</MadCap:xref>).</p></li>
+      <li>The delivery of messages from Producers to durable queues or subscriptions on the event broker is guaranteed by a message acknowledgment process. (For detailed information on this process, refer to <MadCap:xref MadCap:unresolvedLink="import-link:working_with_guaranteed_messages_3625246657_38232" href="../../Messaging/Guaranteed-Msg/Guaranteed-Messages.htm">Working With Guaranteed Messages</MadCap:xref>.)</li>
+      <li>When JMS messages are received by the event broker, they are maintained in a non‑volatile store until the messages are consumed or for the lifespan of the durable queue or subscription. If a consuming client disconnects, stored messages can be consumed when the client reconnects. This ensures that messages are not lost if the consumer briefly disconnects from the event broker or an activity switch occurs between redundant event brokers in a failover scenario.
+        <p>As a result of the message acknowledgment and spooling, Guaranteed Transport provides increased reliability, but the performance of handling Non-Persistent messages is not as high as when Direct Transport is used to handle Non-Persistent messages.</p><p>Guaranteed Transport must be used for the delivery of Persistent messages to the event broker and from durable subscriptions and queues to consumers. </p></li>
+    </ul>
+    <h2 class="with-rule"><a name="Direct"/>Direct Transport Mode</h2>
+    <p>Clients that connect to an event broker can use Direct Transport mode to publish Non-Persistent messages and to consume Non‑Persistent messages.</p>
+    <p>The Direct Transport mode uses the Direct Messaging capabilities of the event broker, so it provides the highest possible message delivery performance because the Non‑Persistent messages are not guaranteed. That is, when Direct Transport is used, the Non‑Persistent messages that are received are not acknowledged, and the event broker does not spool those messages for consumers. These messages can be discarded when congestion or system failures are encountered or when a consuming client is not connected.</p>
+    <p>When clients use Direct Transport to publish Non‑Persistent messages, the event broker does not have to have an ADB installed and Guaranteed Messaging and message spooling enabled. However, when using this mode to publish Persistent messages, the event broker does have to have an ADB installed and Guaranteed Messaging and message spooling enabled, otherwise any Persistent messages that are published will be rejected. </p>
+    <p class="Note">When Direct Transport is used, Persistent messages that are published or consumed are still handled in the same manner as if Guaranteed Transport was used (that is, the event broker still performs message acknowledgment and spooling). All guaranteed consumers receive Persistent messages if published as Persistent. They'll receive Non-persistent messages, if published as Non-persistent or if it's Direct and gets promoted to Non-persistent.  Conversely, all Direct consumers always receive Direct messages.</p>
+    <p>For more information on Direct Transport mode and some feature interactions that should be considered when designing applications, refer to <MadCap:xref href="Direct-Transport-Behavior.htm">Direct Transport Behavior</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Supported-Types"/>Supported Message Types and Transport Modes</h2>
+    <p>The message types and transport modes that are supported by an event broker depends on whether it has an ADB installed and Guaranteed Messaging and message spooling enabled.</p>
+    <table class="TableStyle-Table_Num" style="margin-left: 0;margin-right: auto;caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption"> Supported Message Types and Transport Modes </p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">
+                       Is ADB installed, Guaranteed Messaging and message spooling enabled?
+                    </th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">
+                        Supported Message Type and Transport Modes
+                    </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Yes</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li>Persistent with Guaranteed Transport</li>
+              <li>Non‑Persistent with Guaranteed Transport</li>
+              <li>Non-Persistent with Direct Transport</li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">No</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <ul>
+              <li>Non-Persistent with Direct Transport</li>
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

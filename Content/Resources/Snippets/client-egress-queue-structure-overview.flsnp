@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <body>
+    <p>For a published message to be delivered to a client, it passes through the queuing structure shown in the <MadCap:xref href="#Egress">Egress Client Queue Hierarchy</MadCap:xref> figure below.</p>
+    <p>The message first passes through one of the five per-client priority data queues. A scheduler then selects it and places it into a single, per-client Transmission Control Protocol (TCP) transmit queue.</p>
+    <p>For Direct messages, the Class of Service (COS) value the publishing client application sets for the message  determines which per-client priority queue each message is enqueued to:</p>
+    <ul>
+      <li>COS 1 (C-1)—the message goes to the Direct 1 (D-1) queue (the lowest priority)</li>
+      <li>COS 2 (C-2)—the message goes to the Direct 2 (D-2) queue (medium priority)</li>
+      <li>COS 3 (C-3)—the message goes to the Direct 3 (D-3) queue (the high priority)</li>
+    </ul>
+    <p>All Guaranteed messages are enqueued to the Guaranteed 1 (G-1) queue. A Guaranteed message also has an assigned COS value, however, this value determines the message’s discard eligibility when its destination endpoint is congested. COS 1 indicates that the message is low priority; COS 3  indicates that the message is high priority. (COS 2 is a reserved <MadCap:variable name="Variables.CompanyName"/> value; currently a message with a COS of 2 is treated as low priority.)</p>
+    <p>The act of enqueuing the message triggers the TCP stack to evaluate if the connection can send more data from that queue. If the TCP stack determines that it is acceptable to send data on the TCP connection, then data from the message is copied to a per-port transmit queue. After the message is delivered, the data remains on the TCP transmit queue until it is acknowledged by the client through a TCP ACK message.</p>
+    <p class="GraphicCaption"><a name="Egress"/>Egress Client Queue Hierarchy</p>
+    <p class="GraphicCaption">
+      <img src="../Images/Guaranteed-Msg/Queues_Clients.png" style="width: 508px;height: 343px;" alt=""/>
+    </p>
+    <p>The per-client priority queues have a configurable maximum depth that is measured in work units of 2,048 bytes. When these queues become full, the older messages currently queued are discarded (oldest first), replaced by the newer incoming messages. </p>
+    <p>Once a message discard occurs due to the queue being full, the receiving client is notified of it through a discard indication published with the message immediately following the discarded messages. The data plane statistic for Egress Congestion Discards is also incremented.</p>
+    <p>The per-client TCP transmit queues hold messages that are either waiting for delivery out of the event broker, or that have already been sent, but are waiting for TCP acknowledgment.</p>
+  </body>
+</html>

@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Using <MadCap:variable name="Product-Names.pubsub_cache"/> With the JavaScript API</h1>
+    <p>Client applications can use the Solace Web messaging application programming interface (API) for JavaScript, also known a SolclientJS, to perform cache requests over an event broker network.</p>
+    <p>The basic steps for a connected client to send and receive cache requests in a session are:</p>
+    <ol>
+      <li>Create a cache session. Refer to <MadCap:xref href="#Creating">Creating Cache Sessions</MadCap:xref>.</li>
+      <li>Send a cache request. Refer to <MadCap:xref href="#Sending">Sending Cache Requests</MadCap:xref>.</li>
+      <li>Receive a cache response and any matching cached messages. Refer to <MadCap:xref href="#Receivin">Receiving Cache Request Messages</MadCap:xref>.</li>
+    </ol>
+    <p class="Note">For information on how to create a session for a client using the JavaScript API, see <MadCap:xref href="../Creating-Client-Sessions.htm">Creating Client Sessions</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Creating"/>Creating Cache Sessions</h2>
+    <p>When using the JavaScript API, a CacheSession instance must be created with an existing connected Session.</p>
+    <p>A CacheSession allows multiple outstanding asynchronous cache requests and correlates each response with those requests. Multiple CacheSession objects can be created in a single Session.</p>
+    <p>To create a CacheSession, call the <code>solace.Session.createCacheSession(...)</code> method with a <code>solace.CacheSessionProperties</code> object. The cache session properties listed in the table below can be set during construction of the properties object or through property accessor methods.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption"><a name="working_with_javascript_api_368614449_192271"/>Cache Session Property Parameters</p>
+      </caption>
+      <col width="25%" class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 75%;"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Parameter</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_BodyCode">cacheName</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">The identifying name of the Distributed Cache, Cache Cluster, or PubSub+ Cache Instance to send the cache requests to.</p>
+            <p class="Note">Specifying a PubSub+ Cache Instance bypasses redundancy and load balancing of cache requests. Specifying the Distributed Cache is the preferred method.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_BodyCode">maxAgeSec</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">The maximum allowable message age (in seconds) to deliver in response to cache requests. A value of 0 means there is no age restriction. The default value is 0.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_BodyCode">maxMessages</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">The maximum number of messages to retrieve for any one topic. If more messages are cached on a topic than the maximum value, the newest messages are returned.</p>
+            <p class="Note">A value of 0 retrieves all cached messages.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_BodyCode">timeoutMsec</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">The amount of time (in milliseconds) to wait for a response to the cache request from the cache. This is a per-request timeout where each request sent by the application could result in multiple underlying requests.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="Sending"/>Sending Cache Requests</h2>
+    <p>Cache requests for messages cached for a given topic are sent in CacheSession instances.</p>
+    <p>When creating a cache request, the client can specify whether it wants to add a subscription to the event broker for the same topic that the cache request is made for. The client can then also begin to receive live data for the topic that it requested cached messages for. The topic subscription is made before the cache request is sent. </p>
+    <p>The result of a cache request is indicated by return codes that are handled by the specified listener (<code>solace.CacheCBInfo)</code>. Any cached messages that are returned for the request are handled through message receive callback (<code>solace.MessageRxCBInfo</code>) associated with the Session that the CacheSession is created in. For more information, see <MadCap:xref href="../Creating-Client-Sessions.htm">Creating Client Sessions</MadCap:xref>.</p>
+    <p class="Note">It is up to the client application to deal with request timeouts as it is possible that Cache Clusters, event brokers, or individual PubSub+ Cache Instances could fail or disconnect in the middle of cache request processing. The cache response indicates whether the PubSub+ Cache Instance is in a lost message state. Refer to <MadCap:xref href="../../../Additional-Products/Solace-PubSub-Cache/Monitoring-PubSub-Cache-Conf.htm#Lost-Msg-State">Lost Message State</MadCap:xref> for details.</p>
+    <p>To send an asynchronous cache request for messages published to a specific topic, call <code>solace.CacheSession.sendCacheRequest(...)</code> and pass in the parameters listed below.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">Cache Request Message Parameters</p>
+      </caption>
+      <col style="width: 25%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <col style="width: 75%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Parameter</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_BodyCode">requestID</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">A number provided by the application that is returned to the application in the cache request response. The request ID is also available in every cached message returned.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_BodyCode">topic</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">The topic for which messages are requested from the cache, and, if the <code>subscribe</code> parameter is set to <code>true</code>, the topic for which a subscription is added to the event broker. Use of <code>#noexport</code> is not supported in the topic.</p>
+            <p class="Note">Wildcard cache requests are only supported for <code>FLOW_THRU</code> cache requests. When a wildcard request matches multiple cached subjects, there is no temporal ordering guarantee between the individual topics returned (although temporal ordering is preserved amongst the messages for a specific topic).</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_BodyCode">subscribe</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">If this parameter is set to <code>true</code>, add a subscription to the event broker for the topic before sending the cache request.</p>
+            <p class="Tbl_Body">The topic subscription enables the client to receive live data messages that are published to matching topics, after the initial cache request is fulfilled.</p>
+            <p class="Note">If the subscription does not succeed for any reason (for example, the subscription already exists and the <code>ignoreDuplicateSubscriptionError SessionProperty</code> is set to <code>false</code>), the request callback reports <code>FAIL</code>, and the request does not proceed.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_BodyCode">liveDataAction</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body">Specifies the actions to perform on live data messages received during an outstanding cache request:</p>
+            <ul>
+              <li><code>FLOW_THRU</code>—Immediately deliver live data messages matching the cache request topic to the application. Subsequent matching cache messages are also delivered to the application.</li>
+              <li><code>FULFILL</code>—Immediately deliver live data messages matching the cache request topic to the application. If a live data message matching the cache request topic is received before the cache response, the cache response is discarded.</li>
+              <li><code>QUEUE</code>—Queue live data messages matching the cache request topic until the cache response is received, and deliver the live data to the application after the cache response data.</li>
+            </ul>
+            <p class="Note">To perform wildcard cache requests, <code>FLOW_THRU</code> must be set for the <code>liveDataAction</code> parameter.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_BodyCode">cbInfo</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">The <code>solace.CacheCBInfo</code> object that encapsulates the cache session’s request listener callback function and optional application-specified context object.</p>
+            <p class="Tbl_Body">When the cache request completes, the listener is invoked to indicate the completion of the cache request. The returned <code>solace.CacheRequestResult</code> provides the methods <code>getReturnCode()</code>, <code>getReturnSubcode()</code>, and <code>getTopic()</code>, which are used to get the return code, possible accompanying subcode, and subscription topic that the request was submitted for.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="Cache"/>Cache Return Codes</h3>
+    <p>After the cache request completes, the <code>solace.CacheCBInfo</code> object can return any of the codes listed below. Each return code can have an associated subcode that provides more information.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">Cache Request Return Codes and Associated Subcodes</p>
+      </caption>
+      <col style="width: 25%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <col style="width: 75%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Cache Return Code</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Possible Accompanying Subcodes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_BodyCode">OK</p>
+            <p class="Tbl_Body">Indicates that:</p>
+            <ul>
+              <li>the cache replies were all received before the timer expired</li>
+              <li>cached data was returned in a reply or the request was fulfilled by live data</li>
+              <li>none of the received cached messages were suspect</li>
+              <li>at least one cache had data</li>
+            </ul>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Applicable subcodes are:</p>
+            <ul>
+              <li><code>solace.CacheReturnSubcode.REQUEST_COMPLETE</code>—The cache request completed successfully.</li>
+              <li><code>solace.CacheReturnSubcode.LIVE_DATA_FULFILL</code>—The cache request completed when live data arrived on the topic requested.</li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_BodyCode">FAIL</p>
+            <p class="Tbl_Body">Indicates that an error occurred during the initial cache request.</p>
+            <p class="Note">When a failure occurs, the API does not automatically retry any outstanding requests. In addition, if there is a loss of connection with the event broker, any outstanding requests are canceled.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Applicable subcodes are:</p>
+            <ul>
+              <li><code>solace.CacheReturnSubcode.ERROR_RESPONSE</code>—The PubSub+ Cache Instance or session returned an error response to the cache request.</li>
+              <li><code>solace.CacheReturnSubcode.INVALID_SESSION</code>—The cache request failed because the <code>solace.Sessio</code>n used to construct it has been destroyed.</li>
+              <li><code>solace.CacheReturnSubcode.REQUEST_ALREADY_IN_PROGRESS</code>—The cache request was made on the same topic as an existing request, and <code>solace.CacheLiveDataAction.FLOW_THRU</code> was not set.</li>
+              <li><code>solace.CacheReturnSubcode.CACHE_SESSION_DISPOSED</code>—The cache request was terminated because the cache session was disposed.</li>
+              <li><code>solace.CacheReturnSubcode.SUBSCRIPTION_ERROR</code>—The cache request was terminated because the subscription request for the given topic failed.</li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_BodyCode">INCOMPLETE</p>
+            <p class="Tbl_Body">Indicates that no data or incomplete data has been returned.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <ul>
+              <li><code>solace.CacheReturnSubcode.NO_DATA</code>—The returned cache reply did not contain any data.</li>
+              <li><code>solace.CacheReturnSubcode.REQUEST_TIMEOUT</code>—The cache request failed because the request timeout expired.</li>
+              <li><code>solace.CacheReturnSubcode.SUSPECT_DATA</code>—The returned cache data was suspect. The returned cache data is suspect if the cache is in the lost message state.</li>
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="Receivin"/>Receiving Cache Request Messages</h2>
+    <p>Any messages that are returned for the request are handled through message receive callback (<code>solace.MessageRxCBInfo</code>) associated with the session that the cache session is created in. For more information, see <MadCap:xref href="../Creating-Client-Sessions.htm">Creating Client Sessions</MadCap:xref>.</p>
+    <p>To determine the status of a cached message that is returned to the callback, call <code>message.getCacheRequestStatus()</code>. The method can return one of the following:</p>
+    <ul>
+      <li><code>solace.MessageCacheStatus.LIVE</code>—Indicates that the message is live.</li>
+      <li><code>solace.MessageCacheStatus.CACHED</code>—Indicates that the message is cached.</li>
+      <li><code>solace.MessageCacheStatus.SUSPECT</code>—Indicates that the message is cached, and it is deemed suspect.</li>
+    </ul>
+    <p>If the returned message is <code>CACHED</code> or <code>SUSPECT</code>, the client application can call <code>message.getCacheRequestId()</code> to return the requestID of the cache request associated with this message. For live data, the cache request ID is never set.</p>
+    <p>The JavaScript API does not attempt to reorder cached messages received across different Cache Clusters. In addition, the API does not attempt to drop duplicate messages received from Cache Clusters or live publishers.</p>
+    <p class="Note">Messages in cache responses may be bundled together by the cache, but they are delivered to applications individually by the messaging API.</p>
+  </body>
+</html>

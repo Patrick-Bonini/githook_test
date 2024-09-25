@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Appliance Interfaces</h1>
+    <p>A Solace PubSub+ appliance relies on several interfaces and internal routing components to enable the transfer of data between the appliance and either management applications that connect to the appliance’s management interfaces or client applications that connect to the appliance's Network Acceleration Blade (NAB) interfaces. These components include: </p>
+    <ul>
+      <li><u>Management and network physical interfaces, which can be</u>:<ul><li>configured and used directly as independent physical interfaces;</li><li>grouped into virtual interfaces, using link aggregation groups (LAGs);</li><li>or used in a combination of independent physical interfaces and LAGs</li></ul></li>
+      <li><u>IP interfaces</u>: One or more IP interfaces are created for each independent physical interface and for each LAG. Each IP interface must be assigned a unique IP address.</li>
+      <li><u>Message Backbone VRF</u>: This Virtual Routing and Forwarding (VRF) object contains all the NAB interfaces (physical, LAG, and IP), and transports message and topic subscription traffic between client applications and the virtual routers on the appliance.</li>
+      <li><u>Management VRF</u>: This VRF object contains all the management interfaces (physical, LAG, and IP), and transports management traffic between management applications and the event broker.</li>
+      <li><u>IP routes</u>: IP routes are defined independently for the Management and Message Backbone VRFs, associating destination CIDR addresses in the VRF with next-hop gateway addresses. Default routes may also be defined.</li>
+    </ul>
+    <p>The following figure shows the relationship of these components.</p>
+    <p class="GraphicCaption">Default Solace Interface Configuration After Running the Setup</p>
+    <p>
+      <img src="../../Resources/Images/Admin/IP Inteface Model_LAG.jpg" alt="" style="width: 663px;height: 387px;"/>
+    </p>
+    <p class="Note">The configuration shown above is that which is created after running the initial appliance set up through the <code>setup</code> privileged EXEC CLI command using default configuration parameters. By default, the physical interfaces on the NAB are grouped into a single LAG named <code>lag1</code> upon completing the initial software configuration procedure. This provides a single IP address associated with the NAB interfaces through <code>lag1</code>. </p>
+    <p>As further discussed in this section, the configuration of the Solace interfaces can be modified as required to best suit your deployment requirements.</p>
+    <h2 class="with-rule"><a name="Physical-Interfaces"/>Physical Interfaces</h2>
+    <p>A Solace PubSub+ appliance uses two types of physical Ethernet interfaces:</p>
+    <ul>
+      <li><u>Management interfaces</u>: These interfaces handle traffic from management applications such as SolAdmin, Secure Shell (SSH), and Simple Network Management Protocol (SNMP). There are two management interfaces on the appliance motherboard, and their physical Ethernet ports can be found at the rear panel of a appliance. The management interfaces are identified as <code>eth0</code> and <code>eth1</code> for a Solace PubSub+ 3230 appliance and <code>eth1</code> and <code>eth2</code> for a Solace PubSub+ 3260, 3530, or 3560 appliance. </li>
+      <li><u>NAB interfaces</u>: These interfaces handle message and topic subscription traffic from client applications. The NAB interfaces are physically located on the NAB, which is installed in one of the fabric expansion slots at the rear panel of an appliance. The number of physical Ethernet ports on a NAB depends on the model of NAB installed in the appliance. The network interfaces are identified as <code>&lt;cartridge&gt;/&lt;slot&gt;/&lt;port&gt;</code> (for example, 1/1/1 through 1/1/8).</li>
+    </ul>
+    <p class="Note">Physical interfaces are configured through the Interface CONFIG CLI commands, and their system configuration can be viewed through the <code>show interface</code> User EXEC command. </p>
+    <h2 class="with-rule"><a name="LAGs"/>LAGs</h2>
+    <p>Solace PubSub+ appliances support LAGs, as defined in IEEE standard 802.3ad, so that multiple physical Ethernet interfaces can be grouped together to form a single, virtual, link layer interface.</p>
+    <p>A maximum of one LAG (identified as chassis/lag1) is supported for the management interfaces, while multiple LAGs are supported for the network interfaces on the NAB. The number of LAGs possible for the network interfaces is limited by the number of Ethernet ports present (due to the fact that LAGs reuse MAC addresses allocated for Ethernet ports). LAGs on the NAB are identified as <code>&lt;cartridge&gt;/&lt;slot&gt;/lag&lt;N&gt;</code>.</p>
+    <p>To client and management applications connecting to the appliance, a LAG appears as a single IP interface, but inside the LAG, packets are transmitted and received on the bundled physical ports. Link Aggregation Control Protocol (LACP) actively monitors the status of those grouped physical interfaces. </p>
+    <p>Some of the advantages of using LAGs are:</p>
+    <ul>
+      <li><u>Simplified application integration</u>: For appliances and applications connecting to them, the group of aggregated Ethernet interfaces in a LAG appear as a single IP address. </li>
+      <li><u>Increased network bandwidth</u>: The capacity of multiple links is combined into one logical link. </li>
+      <li><u>Increased availability</u>: Traffic on a failed link can be redirected to one of the other links in the LAG (that is, the logical port transparently continues to function over the remaining physical ports). This allows for larger client loads per appliance with a longer meantime between service outages.</li>
+      <li><u>More efficient bandwidth utilization</u>: All traffic to or from the logical port is transparently load shared among all of the available physical ports.</li>
+    </ul>
+    <p>You can create independent LACP LAGs and LAGs that act in an active/backup mode, whereby two interfaces or two LACP LAGs are bonded together so that one member acts as the active member, the other as the backup. For more information on active/backup LAGs, refer to <MadCap:xref href="#Active-Backup-LAGs">Active/Backup LAGs</MadCap:xref>.</p>
+    <p class="Note">The 802.3ad specification defines two modes of LACP–Active mode and Passive mode. LAGs on the appliance always operate in Active mode. Thus, the third-party Layer 2 switches and appliances that support 802.3ad link aggregation can be configured as either Active or Passive mode when connected to the appliances.</p>
+    <h2 class="with-rule"><a name="Active-Backup-LAGs"/>Active/Backup LAGs</h2>
+    <p>A LAG can optionally be configured in an active/backup mode whereby two interfaces are bonded together to provide link redundancy protection: one interface in the pair is active, while the other sits idle waiting to become active should a failure be detected on the active link. Typically, these two links terminate on different Layer 2 devices in the network to add protection should one of those devices fail.</p>
+    <p>The bonded interfaces can be separate physical interfaces (either management or network interfaces). In addition, if you are using a NAB with more than two Ethernet ports (for example, 4x1GE, 8x1GE, or 6x10GE NAB models), the network interfaces on the NAB can also be grouped into an even number of LACP LAGs, and then those LACP LAG pairs can be given an active/backup bonding. That is, the LACP LAGs can be bonded together in an active/backup LAG.</p>
+    <p class="Note">The MAC address for the LAG in active/backup mode is the MAC address of its first member (that is, the first member added to the LAG).</p>
+    <p>When using the active/backup mode, there are two LAG members: primary and backup. Only one LAG member can be designated active at a time, and the primary LAG member is always designated active unless the backup LAG has more available bandwidth (that is, unless the backup LAG member has more active ports than the primary LAG member), or if it is a NAB port LAG, the <b>switch-active</b> Interface Admin EXEC command is run.</p>
+    <p class="Note">The switch-active command is not persistent, so when used on an LACP LAG pair, subsequent changes in the operational status of one or more physical interfaces in the LACP LAGs may cause activity to revert to the previously active LAG member. If you want to force the backup LAG to remain active under these circumstances, you must shut down the physical ports in the previously active LAG member.</p>
+    <p>All traffic is sent out or received on the active LAG member only. All incoming messages on the non-active port are dropped.</p>
+    <ul>
+      <li>For a NAB port LAG, once the backup LAG member becomes active, that switch from the primary to backup LAG member will not be reverted until one of the following events occurs:<ul><li>the primary LAG member has more available bandwidth than the backup LAG member (that is, the primary LAG member has more active ports than the backup LAG member)</li><li>the appliance restarts, and the primary LAG member has equal or more available bandwidth than the backup LAG member (that is, at least as many active ports as the backup LAG member)</li><li>the <code>switch-active</code> Interface Admin EXEC command is run</li></ul></li>
+      <li>For a management interface LAG, the switch from the backup LAG member back to the primary automatically occurs as soon as the primary LAG member becomes available again (thus, the <code>switch-active</code> Interface Admin EXEC command is not supported by management interface LAGs).</li>
+    </ul>
+    <p class="Note">An event log is generated for every switch from primary to backup link or vice versa, regardless of its causes (that is, for example, whether it is a link failure or an execution of the <code>switch-active</code> Interface Admin EXEC command).</p>
+    <h3><a name="Poss-Active-Backup-Config"/>Possible Active/Backup LAG Configurations</h3>
+    <p>LAGs can be used in active/backup mode for both management and network interfaces:</p>
+    <ul>
+      <li>For the management interfaces, a single LAG can be created with the two physical management network interface ports, where one interface is active and the other is the backup. See <MadCap:xref href="#Active-Backup-Pairing-Mgmt">Active/Backup LAG Pairing for Management Interfaces</MadCap:xref>.</li>
+      <li>For the network interfaces, a LAG can be created with:<ul><li>Two physical network interfaces on a NAB, where one interface is active and the other is the backup. See <MadCap:xref href="#Active-Backup-for-NAB">Active/Backup LAGs for NAB Network Interfaces</MadCap:xref>.</li><li>Two LACP LAGs that are then bonded together as an active/backup pair. See <MadCap:xref href="#LACP">LACP LAGs in Active/Backup Pairs</MadCap:xref>.</li></ul></li>
+    </ul>
+    <h3><a name="Active-Backup-Pairing-Mgmt"/>Active/Backup LAG Pairing for Management Interfaces</h3>
+    <p>The figure immediately below shows an example of how the two physical management network interface ports can be given an active/backup bonding and be connected to separate Layer 2 switches in a data center. This active/backup configuration provides Ethernet port, cable, and Layer 2 switch redundancy for the management access to the appliance.</p>
+    <p class="Note">When a LAG active/backup mode is not being used, it is possible to configure the management network interface ports as two separate management IP interfaces to the same appliance. This allows for manual redundancy between the Management Ethernet interfaces, which allows an administrator to connect to the IP address of the backup interface if the primary interface is unreachable for any reason.</p>
+    <p class="GraphicCaption">LAG in Active/Backup Mode on Appliance Management Ports</p>
+    <p class="GraphicCaption">
+      <br/>
+      <img src="../../Resources/Images/Admin/LAG Active Backup Mode_Mgmt_Port.jpg" alt="LAG in Active/Backup Mode on Appliance Management Ports" style="width: 537px;height: 307px;"/>
+    </p>
+    <h3><a name="Active-Backup-for-NAB"/>Active/Backup LAGs for NAB Network Interfaces</h3>
+    <p>The figure immediately below shows an example of two physical network interfaces on a NAB, where one interface is active and the other is the backup. In this example, Port 2 of Switch A and B are both connected to the outside world, while Port 1 of both switches are connected to the NAB. In the event that Switch A fails, physical interface 1/1/2 becomes active and one or more gratuitous Address Resolution Protocol (ARP) announcements are sent out to Switch B.</p>
+    <p class="GraphicCaption">LAG in Active/Backup Mode<br/><img src="../../Resources/Images/Admin/LAG Active Backup Mode.jpg" style="margin-left: 5.03712px;margin-top: 6.00336px;margin-right: 7.481526px;margin-bottom: 6.364789px;width: 531px;height: 302px;" alt="LAG in Active/Backup Mode"/></p>
+    <h3><a name="LACP"/>LACP LAGs in Active/Backup Pairs</h3>
+    <p>The figure immediately below shows how two LACP LAGs can bonded together in a single LAG as an active/backup pair. In this example, 1/1/lag1 contains 1/1/lag2 as the primary member and 1/1/lag3 as the backup member. </p>
+    <p class="GraphicCaption">LACP LAGs in Active/Backup Pairing</p>
+    <p>
+      <img src="../../Resources/Images/Admin/Active-backup-LACP-ModeNetworkTopology.jpg" alt="LACP LAGs in Active/Backup Pairing" style="width: 583px;height: 375px;"/>
+    </p>
+    <h2 class="with-rule"><a name="IP-Interfaces"/>IP Interfaces</h2>
+    <p>Each Active/Backup LAG, each LACP LAG that is not part of an Active/Backup LAG, and each physical interface that is not part of a LAG, must have one or more of the following IP interfaces configured for it:</p>
+    <ul>
+      <li><u>Static</u>: a static IP interface that can be used to verify that the interface is physically connected and functional (once configured and enabled, a static IP interface is always reachable provided link layer connectivity is intact). This interface type is available in both the Message Backbone VRF and the Management VRF. The static IP interface in the Message Backbone VRF is also used by Solace routing protocols. Client applications can only connect using this address in the Message Backbone VRF if the system is not configured for redundancy. </li>
+      <li><u>Primary</u>: an interface for the primary virtual router. This interface type is only available for interfaces contained in the Message Backbone VRF, it is not supported in the Management VRF.</li>
+      <li><u>Backup</u>: an interface for the secondary virtual router. This interface type is only available for interfaces contained in the Message Backbone VRF, it is not supported in the Management VRF.</li>
+    </ul>
+    <p>An IP interface is identified by the physical interface or LAG it is associated with, and is given an interface index number of 1, 2, or 3. For example, for physical interface 1/1/5, 1/1/5:1 could identify the primary IP interface, while 1/1/5:2 could identify the backup IP interface on that same physical interface. A given index can be assigned any of the interface types, that is, primary, backup, or static.</p>
+    <p class="Note">Interface indices "2" and "3" are only supported for interfaces contained in the Message Backbone VRF, they are not available for interfaces in the Management VRF.</p>
+    <p>Primary interfaces are activated when the primary virtual router is locally active. Similarly, secondary interfaces are activated when the backup virtual router is locally active. Therefore, from an IP routing standpoint, the primary and backup IP interface states can go in and out of activity depending on the configuration and state of the virtual routers. </p>
+    <div class="Note">
+      <ul>
+        <li>IP interfaces contained within a VRF are configured through the VRF IP CONFIG CLI commands, and their system configuration can be viewed through the <code>show interface</code> User EXEC command. </li>
+        <li>Shutting down the physical interface also disables any associated IP interfaces. However, the IP interfaces can be individually configured to be shutdown separate from their associated physical interface. </li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="VRFs"/>VRFs</h2>
+    <p>Virtual Routing and Forwarding (VRF) is a network technology that allows multiple instances of a routing table to coexist within the same event broker at the same time. Because the routing instances are independent, the same or overlapping IP addresses can be used in the VRFs without conflicting with each other.</p>
+    <p>Each IP interface on an appliance is contained within either the Management VRF and Message Backbone VRF objects. These default VRF objects keep management and message traffic and routing tables separate.</p>
+    <p>The Management VRF and Message Backbone VRFs are preconfigured on an appliance through the <code>setup</code> Privileged EXEC CLI command. The Management VRF is assigned to interface <code>eth1</code>, and the Message Backbone VRF is assigned to <code>&lt;cartridge&gt;/&lt;slot&gt;/lag1</code>.</p>
+    <h3><a name="Management-VRFs"/>Management VRF</h3>
+    <p>The Management VRF handles the following types of traffic for a Solace PubSub+ event broker:</p>
+    <ul>
+      <li>CLI or SSH sessions</li>
+      <li>Secure File Transfer Protocol (SFTP) </li>
+      <li>Secure Copy (SCP)</li>
+      <li>SNMP</li>
+      <li>Solace Element Management Protocol (SEMP)</li>
+      <li>LDAP</li>
+      <li>Syslog</li>
+      <li>NTP/PTP</li>
+    </ul>
+    <p>This management traffic is handled through the following physical interfaces:</p>
+    <ul>
+      <li><u>For Solace PubSub+ 3260s, 3530s, or 3560s</u>: eth1 and eth2 (and associated static IP interfaces eth1:1 and eth2:1, or LAG interface chassis/lag1:1)</li>
+      <li><u>For Solace PubSub+ 3230s</u>: eth1 and eth0 (and associated static IP interfaces eth1:1 and eth0:1, or LAG interface chassis/lag1:1) </li>
+    </ul>
+    <h3><a name="Msg-Backbone-VRF"/>Message Backbone VRF</h3>
+    <p>The Message Backbone VRF handles the client messaging and topic subscription traffic that is exchanged between the network interfaces on the NAB and the virtual routers on the appliance. To support high-availability (HA), redundant Solace PubSub+ event broker pairs, a primary and backup virtual router can be configured on each physical appliance.</p>
+    <p class="Note">The primary and backup virtual routers always exist on an appliance—they cannot be created nor deleted. However, if you are using a non‑redundant Solace PubSub+ event broker, configuring a backup virtual router is optional because the primary virtual router is always active, and the backup virtual router would be idle.</p>
+    <p>Primary IP interfaces are created in the Message Backbone VRF to support the primary virtual router, and these primary IP interfaces are only activated when the primary virtual router is locally active. Likewise, secondary IP interfaces are used to support the backup virtual router, and these secondary IP interfaces are only activated when the backup virtual router is locally active.</p>
+    <h2 class="with-rule"><a name="IP-Routes"/>IP Routes</h2>
+    <p>When a client or management application connects to the event broker, the event broker will always send traffic to that application over the same IP interface that initially received the application’s incoming TCP connection (that is, the interface that the application is “connected to” at the TCP layer). If the application’s IP address is part of the same IP subnet as the selected egress interface, the outbound traffic can be sent directly to the application over that interface, and no additional routing is needed.</p>
+    <p>However, if the application’s IP address is in a different IP subnet than the egress interface’s subnet, than the outbound traffic must be forwarded to a next-hop IP event broker or gateway. IP routes are used to determine the IP address of that next-hop gateway.</p>
+    <p>When messages need to be forwarded to a next-hop gateway, the Message Backbone and Management VRFs use the following types of routes to choose the correct next-hop gateway:</p>
+    <ul>
+      <li>
+        <u>Global specific routes</u>
+      </li>
+      <p>You configure the CIDR address used by the applications, and the associated next-hop IP address. This next-hop address must be reachable over the interface that the client is connected to.</p>
+      <li>
+        <u>Per-interface default routes</u>
+      </li>
+      <p>Per-interface default routes may be used for any traffic addressed to an IP address for which a global specific route has not been defined within the VRF. You configure the default next-hop IP address, and the interface within the VRF that the default route is associated with. For the Message Backbone VRF, the interface specified must be a physical or LAG interface, for the Management VRF, the interface specified must be an IP interface. Per-interface default routes are recommended in situations where the individual physical or LAG interfaces in the VRF are connected to different subnets.</p>
+      <li>
+        <u>Global default routes</u>
+      </li>
+      <p>Global default routes may be used for any traffic addressed to an IP address for which a global specific route has not been configured within the VRF and a per-interface default route has not been configured on the interface that the application is connected to. You configure the default next-hop IP address. This next-hop address must be reachable over the interface that the client is connected to. Global default routes are recommended in situations where the individual physical or LAG interfaces in the VRF are all connected to the same subnet.</p>
+    </ul>
+    <p class="Note">The routing information can be configured through the <code>route</code> VRF IP CONFIG command.</p>
+    <p>As shown in below, the Solace PubSub+ event broker uses these different types of IP routes in the order listed above. That is, during a routing table lookup, the event broker first attempts to use global routes that use a specific CIDR address. If these routes are not found, then it attempts to use the per-interface default route for the interface that the destination is connected to, and if those routes are not found, it attempts to use the global default route.</p>
+    <p class="GraphicCaption">Routing Table Lookup Flowchart<br/><img src="../../Resources/Images/Admin/Routing Table Lookup Flowchart.jpg" style="margin-left: 3.02544px;margin-top: 12.0024px;margin-right: 1.981426px;margin-bottom: 7.18632px;width: 531px;height: 394px;" alt="Routing Table Lookup Flowchart"/></p>
+    <h2 class="with-rule"><a name="Phy-Interface-Configs"/>Physical Interface Configurations</h2>
+    <p>This section lists the configuration options supported for both the management interfaces and the network interfaces on the NAB.</p>
+    <div class="Note">
+      <ul>
+        <li>	The configuration that is possible for the network interface depends on the model of NAB used by the event broker and the number of Ethernet ports it offers. 
+			For each of the following configuration examples, an eight-port NAB is used.</li>
+        <li> Speed and Duplex are auto-negotiated on copper ethernet interfaces.</li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="Mgmt-Interface-Cfgs"/>Management Interface Configurations</h2>
+    <p>The two following configuration options are supported for the two management network interfaces: </p>
+    <ul>
+      <li>Assign independent IP interfaces to each Management port (that is, no LAG configured)</li>
+      <li>Group the Management ports into a single LAG in active/backup mode
+                <p>Grouping the two ports together provides link redundancy protection. Only one link in the pair is active, while the other port sits idle waiting to become active should a failure be detected on the active link.</p></li>
+    </ul>
+    <p class="GraphicCaption">Possible Management Interface Configurations<br/><img src="../../Resources/Images/Admin/management_interface_configs.jpg" style="margin-left: 5.99976px;margin-top: 6.75px;margin-right: 6.274075px;margin-bottom: 6.409439px;width: 546px;height: 274px;" alt=""/><br/></p>
+    <h2 class="with-rule"><a name="NAB-Inteface-Cfgs"/>NAB Interface Configurations</h2>
+    <p>The following configuration options are supported for the network interfaces on the NAB:</p>
+    <ul>
+      <li>Group the NAB ports into one or more LAGs. The number of LAGs possible for the network interfaces is limited by the number of Ethernet ports present (due to the fact that LAGs reuse MAC addresses allocated for Ethernet ports).</li>
+      <li>Assign independent IP addresses to each NAB port (that is, no LAG configured).</li>
+      <li>A mixture of both, that is, have some of the Ethernet ports grouped into a single LAG, and the remaining ports independently addressed. </li>
+    </ul>
+    <p>Also, as described in <MadCap:xref href="#Poss-Active-Backup-Config">Possible Active/Backup LAG Configurations</MadCap:xref>, the network interface ports on the NAB support the concept of a LAG in active/backup mode that allows you to group two ports or two LACP LAGs together to provide link redundancy protection. Only one port/LAG in the pair is active, while the other port/LAG sits idle, waiting to become active should a failure be detected on the active port/LAG.</p>
+    <p>The following figures show the types of configuration that can be applied to the Solace physical interfaces.</p>
+    <p class="GraphicCaption">All Network Interfaces Grouped Into a Single LAG<br/><img src="../../Resources/Images/Admin/network_interface_one_lag.jpg" style="margin-left: 30px;margin-top: 5.99976px;margin-right: 13.92553px;margin-bottom: 7.336803px;width: 552px;height: 331px;" alt="All Network Interfaces Grouped Into a Single LAG"/></p>
+    <p class="GraphicCaption">All Network Interfaces Assigned Independent IP Addresses (No LAGs)<br/><img src="../../Resources/Images/Admin/network_interface_all_independent.jpg" style="margin-left: 34px;margin-top: 6.99984px;margin-right: 0.4838424px;margin-bottom: 3.727455px;width: 552px;height: 291px;" alt="All Network Interfaces Assigned Independent IP Addresses (No LAGs"/></p>
+    <p class="GraphicCaption">Network Interfaces with Independent IP Addresses and Grouped Into a LAG<br/><img src="../../Resources/Images/Admin/IP_interface_mix_of_indep_and_lags.jpg" alt="Network Interfaces with Independent IP Addresses and Grouped Into a LAG" style="width: 574px; height: 311px; margin-left: 12px;"/></p>
+    <p class="GraphicCaption">Network Interfaces Grouped Into Active/Backup LAGs<br/><img src="../../Resources/Images/Admin/network_interface_nested_lags.jpg" alt="Network Interfaces Grouped Into Active/Backup LAGs" style="width: 583px;height: 360px;"/></p>
+    <h3><a name="Egress"/>Egress Traffic Shaping</h3>
+    <p>Some Solace NABs implement egress traffic shaping that can be used to delay the output data at rates for its physical interfaces. Although using a NAB’s maximum egress data rate is suitable for a well-designed IP network, such an egress data rate may not be appropriate for an IP network that many contain a mix of high-speed and low-speed interfaces, switches and event brokers with limited buffering, lossy links, and/or background traffic levels that are reach the capacity of the network. If these conditions exist, large numbers of packets may be discarded in the network when the NAB outputs data at the full line rate, resulting very poor goodput from the event broker.</p>
+    <p>The NAB egress traffic shaping is available on the following NABs:</p>
+    <ul>
+      <li>NAB-0610EM (all variants)</li>
+      <li>NAB-0210EM-04 and later</li>
+      <li>NAB-0401ET-04 and later</li>
+      <li>NAB-0801ET-04 and later</li>
+      <li MadCap:conditions="Default.ADB_NAB_4">NAB-0810EM-01</li>
+    </ul>
+    <p>When egress traffic shaping is offered for a NAB, you can individually configure maximum sustained egress bit rates (in Mbps) for each of its given physical interfaces.</p>
+  </body>
+</html>

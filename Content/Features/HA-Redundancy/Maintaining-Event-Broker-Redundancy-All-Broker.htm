@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Maintaining Event Broker Redundancy</h1>
+    <p class="Note" MadCap:conditions="Default.vmr_ha" MadCap:autonum="&lt;b&gt;:  &lt;/b&gt;">Unless otherwise noted, the procedures provided in this section apply to both Solace PubSub+ appliances and  software event brokers.</p>
+    <p>This section describes common practices related to maintaining  high-availability (HA) event broker redundancy. It also provides topics on how to change the VRID of an active/standby HA appliances, and how to change the IP address used for the message backbone of HA appliances.</p>
+    <h2 class="with-rule"><a name="start-stop-redundancy">
+            </a>Starting/Stopping Event Broker Redundancy</h2>
+    <ul>
+      <li>To stop the redundancy facility on an event broker, enter the following commands:
+                <p class="Code">solace# configure<br/>solace(configure)# redundancy<br/>solace(configure/redundancy)# shutdown</p></li>
+      <li>To start the redundancy facility on an event broker, enter the following commands:
+                <p class="Code">solace# configure<br/>solace(configure)# redundancy<br/>solace(configure/redundancy)# no shutdown</p></li>
+    </ul>
+    <h2 class="with-rule"><a name="Releasing-Activity">
+            </a>Releasing Event Broker Activity</h2>
+    <p>You can release activity on an event broker in an HA pair so that you can perform maintenance operations, such as running privileged admin CLI commands like reload, boot or power-down, on the event broker.</p>
+    <ul>
+      <li>To make an event broker surrender its activity, enter the following  command:
+                <p class="Code">solace1(configure/redundancy)# release-activity</p><p>If the command is executed successfully, the configuration status of the event broker becomes “Released”.</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p class="Code">solace1(configure/redundancy)# show redundancy<br/>Configuration Status     : Enabled-Released<br/>. . .</p></MadCap:dropDownBody></MadCap:dropDown></li>
+    </ul>
+    <ul>
+      <li>To allow an event broker take activity back, enter the no version of this command:
+                <p class="Code">solace1(configure/redundancy)# no release-activity</p><p>If the command is executed successfully, the configuration status of the event broker becomes the same as was before releasing activity.</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p class="Code">solace1(configure/redundancy)# show redundancy<br/>Configuration Status     : Enabled<br/>                 . . .</p></MadCap:dropDownBody></MadCap:dropDown></li>
+    </ul>
+    <h2 class="with-rule"><a name="Give-Up-Activity">
+            </a>Forcing Backups to Give Up Activity to Primaries</h2>
+    <p>If a backup event broker has taken activity over from its primary mate (for example, if the primary mate went down, or you were performing maintenance on the primary), and then you want to switch activity to the primary after it is back up, you must do the following:</p>
+    <ol>
+      <li>On the recovered event broker, take activity back through  the “no” version of the release-activity command (see <MadCap:xref href="#Releasing-Activity">Releasing Router Activity</MadCap:xref> above).</li>
+      <li>On the backup event broker that took activity over,  administratively force that event broker to give up activity to its recovered mate (the primary). 
+                <p>To administratively force an event broker to give up service to its mate, enter the following commands:</p><p class="Code">solace2# admin<br/>solace2(admin)# redundancy revert-activity</p></li>
+    </ol>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <p>In a scenario where <code>solace1</code> failed, and <code>solace2</code> took over, after <code>solace1</code> has recovered it can then take activity back from <code>solace2</code>, For <code>solace1</code>to take activity back from <code>solace2</code>, you must enter the following commands:</p>
+        <p>First, on <code>solace1</code>:</p>
+        <p class="Code">solace1(configure/redundancy)# no release-activity</p>
+        <p>Second, on <code>solace2</code>:</p>
+        <p class="Code">solace2# admin<br/>solace2(admin)# redundancy<br/>solace2(admin/redundancy)#<br/>solace2(admin/redundancy)# revert-activity</p>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <h2 class="with-rule"><a name="Set-Auto-Revert">
+            </a>Setting Auto-Revert States</h2>
+    <p class="Note" MadCap:autonum="&lt;b&gt;:  &lt;/b&gt;">Auto-revert is supported for appliances only.</p>
+    <p>The auto-revert option controls what happens when the primary appliance comes back online after a failover has occurred.</p>
+    <p>When auto-revert is not enabled (the default and recommended state), the primary appliance stays as a standby after it comes back online, allowing the backup appliance to remain active. In this case, the primary appliance becomes active only if the backup appliance fails or gives up activity (see <MadCap:xref href="#Give-Up-Activity">Forcing Backups to Give Up Activity to Primaries</MadCap:xref>).</p>
+    <p>If auto-revert is enabled, as soon as the primary appliance comes back online, it becomes active and the backup appliance becomes standby.</p>
+    <div class="Caution">
+      <p class="Tbl_Body">We recommend that you do not enable auto-revert. Use a manual switch over instead so that you can determine why the failure occurred and take any required action before the primary appliance takes over activity again.</p>
+    </div>
+    <ul>
+      <li>To enable the auto-revert, enter the following commands:
+                <p class="Code">solace1(configure)# redundancy<br/>solace1(configure/redundancy)# auto-revert</p></li>
+      <li>To disable the auto-revert, enter the following commands:
+                <p class="Code">solace1(configure)# redundancy<br/>solace1(configure/redundancy)# no auto-revert</p></li>
+    </ul>
+    <p class="Note" MadCap:autonum="&lt;b&gt;:  &lt;/b&gt;">We recommend that you set the same auto-revert state for both event brokers in an HA pair.</p>
+    <h2 class="with-rule"><a name="Configur">
+            </a>Configuring Mate SMF Ports</h2>
+    <p>By default, the local and mate event brokers listen for SMF traffic on the same ports. If the local and mate event brokers listen on different SMF ports, you must configure each  mate SMF port (the ports that the local router's HA mate is listening to for SMF traffic)  to match the SMF listen-ports set on the mate event broker.</p>
+    <p>Configuring  mate SMF ports is supported only on PubSub+ software event brokers. On appliances, the local and mate event brokers always listen on the same SMF ports.</p>
+    <p>To configure each mate SMF port, enter the following commands:</p>
+    <p class="Code">solace(configure)# redundancy<br/>solace(configure/redundancy)# mate-smf-port &lt;port&gt; [compressed | ssl]</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;port&gt;</code> is the SMF listen-port configured on the mate event broker. The default is 0, which means  the local and mate event broker both use the same SMF listen-port. This setting is required only when each HA mate listens on a different port.</p>
+    <p><code>compressed</code> specifies the compressed SMF listen-port configured on the mate event broker. </p>
+    <p><code>ssl</code> specifies the TLS/SSL SMF listen-port configured on the mate event broker.</p>
+    <p>The no version of this command, <code>no mate-smf-port</code>, resets this value to the default.</p>
+  </body>
+</html>

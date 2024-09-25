@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" xml:lang="en-us" MadCap:conditions="Default.ConnectorSpecific">
+  <head>
+    <title/>
+  </head>
+  <body>
+    <h1><a name="_bookmark8"/>Configuring Connection Details </h1>
+    <h2><MadCap:variable name="Variables.CompanyName"/><MadCap:variable name="Product-Names.pubsub_brand_only"/> Connection Details</h2>
+    <MadCap:snippetBlock src="../../../../Resources/Snippets/API/Connectors/common/configure-connection-details-part1.flsnp"/>
+    <h2 MadCap:conditions="Default.ConnectorSpecific"><MadCap:variable name="Manifest-Products-Connectors.connector-mqtt-product-name"/> Connection Details</h2>
+    <p>The Spring Cloud Stream Binder for <MadCap:variable name="Manifest-Products-Connectors.connector-mqtt-product-name"/> uses the following configuration to configure<MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector_for_mqtt"/> connection.</p>
+    <pre xml:space="preserve">spring:
+  cloud:
+    stream:
+      bindings:
+        input-0:
+          destination: # configure MQTT subscribe topic
+          binder: mqtt
+        output-0:
+          destination: # configure solace topic where MQTT events are published   
+          binder: solace
+mqtt:
+  java:
+    url: # MQTT Host
+    version: # v3 or v5(default is set to v3)
+    username: # username to connect to MQTT broker
+    password: # password to connect to MQTT broker
+    cleanSession: # default is set to true
+    connectionTimeout: # default is set to 30
+    keepAliveInterval: # default is set to 60
+    persistence: # default is memory
+    persistenceDirectory: # default is /tmp/mqtt
+    automaticReconnect: # default is false
+    automaticReconnectDelay: # default is 0
+    sessionExpiryInterval: # default is null
+    receiveMaximum: # default is null
+    maximumPacketSize: # default is null
+    topicAliasMaximum: # default is null
+    requestResponse: # default is false
+    requestProblemInfo: # default is false
+    userProperties: # key-value pair
+      property-1 : # value
+      property-2 : # value
+    ssl:
+      caFile: # absolute path to file. default is empty
+      clientCertificateFile: # absolute path to file. default is empty
+      clientKeyFile: # absolute path to file. default is empty
+      password: # client key file password if set. default is empty
+      sslHostNameVerification: # default is false
+    willAndTestament:
+      lastWillTopic: # default is null
+      lastWillQos: #d efault is 0
+      lastWillRetain: # default is false
+      payload: # default is null
+      payloadFormatIndicator: # default is false
+      willDelayInterval: # default is null
+      messageExpiryInterval: # default is null
+      contentType: # default is empty
+      responseTopic: # default is empty
+      correlationData: # default is empty</pre>
+    <h2>Connecting to Multiple Systems</h2>
+    <p>To connect to multiple systems of a same type, use the <a href="https://docs.spring.io/spring-cloud-stream/docs/current/reference/html/spring-cloud-stream.html#multiple-systems" target="_blank" class="link-offsite">multiple binder syntax</a>.    </p>
+    <p>For example:</p>
+    <pre xml:space="preserve">spring:
+  cloud:
+    stream:
+      binders:
+      
+      # 1st solace binder in this example
+      solace1:
+        type: solace
+        environment: 
+          solace: 
+            java:
+              host: tcp://localhost:55555
+
+      # 2nd solace binder in this example
+      solace2: 
+        type: solace
+        environment: 
+          solace:
+            java:
+              host: tcp://other-host:55555
+
+        # The only mqtt binder
+        mqtt1:  
+          type: mqtt
+          # Add `environment` property map here if you need to customize this binder.
+          # But for this example, we'll assume that defaults are used.
+
+        # Required for internal use
+        undefined:
+          type: undefined
+      bindings: 
+        input-0:
+          destination: &lt;input-destination&gt;
+          binder: mqtt1
+        output-0:
+          destination: &lt;output-destination&gt; 
+          binder: solace1 # Reference 1st solace binder
+        input-1:
+          destination: &lt;input-destination&gt;
+          binder: mqtt1 
+        output-1:
+          destination: &lt;output-destination&gt;
+          binder: solace2 # Reference 2st solace binder
+</pre>
+    <p MadCap:conditions="Default.ConnectorSpecific">The configuration above defines two binders of type <code>solace</code> and one binder of type <code>mqtt</code>, which are then referenced within the bindings. </p>
+    <p>Each binder above is configured independently under <code>spring.cloud.stream.binders.&lt;bindername&gt;.environment.</code>.</p>
+    <div class="note">
+      <ul>
+        <li>
+          <p>When connecting to multiple systems, all binder configuration must be specified using the multiple binder syntax for all binders. For example, under the <code>spring.cloud.stream.binders.&lt;binder-name&gt;.environment</code>.</p>
+        </li>
+        <li>
+          <p>Do not use single-binder configuration (for example, <code>solace.java.*</code> at the root of your <code>application.yml</code>) while using the multiple binder syntax.</p>
+        </li>
+      </ul>
+    </div>
+  </body>
+</html>

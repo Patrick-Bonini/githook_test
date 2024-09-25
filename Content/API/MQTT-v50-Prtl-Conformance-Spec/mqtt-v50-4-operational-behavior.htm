@@ -1,0 +1,1617 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/Stylesheets/mqtt_311_prtcl.css" rel="stylesheet" type="text/css"/>
+  </head>
+  <body>
+    <h1>4 Operational behavior</h1>
+    <h2><a name="4.1-session-state"/>4.1 Session State</h2>
+    <p class="MsoNormal">In order to implement QoS 1 and QoS 2 protocol flows the
+Client and Server need to associate state with the Client Identifier, this is
+referred to as the Session State. The Server also stores the subscriptions as
+part of the Session State.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">The session can continue across a sequence of Network
+Connections. It lasts as long as the latest Network Connection plus the Session
+Expiry Interval.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">The Session State in the Client consists of:</p>
+    <ul>
+      <li>QoS 1 and QoS 2 messages which have been sent to the Server, but
+have not been completely acknowledged.</li>
+      <li>QoS 2 messages which have been received from the Server, but have
+not been completely acknowledged.</li>
+    </ul>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">The Session State in the Server consists of:</p>
+    <ul>
+      <li>The existence of a Session, even if the rest of the Session State
+is empty.</li>
+      <li>The Clients subscriptions, including any Subscription
+Identifiers.</li>
+      <li>QoS 1 and QoS 2 messages which have been sent to the Client, but
+have not been completely acknowledged.</li>
+      <li>QoS 1 and QoS 2 messages pending transmission to the Client and
+OPTIONALLY QoS 0 messages pending transmission to the Client.</li>
+      <li>QoS 2 messages which have been received from the Client, but have
+not been completely acknowledged.The Will Message and the Will Delay Interval</li>
+      <li>If the Session is currently not connected, the time at which the Session
+will end and Session State will be discarded.</li>
+    </ul>
+    <p class="MsoNormal">Retained messages do not form part of the Session State in
+the Server, they are not deleted as a result of a Session ending.</p>
+    <div class="div_2">
+      <p>
+        <span class="span_3">Solace Implementation Note</span>
+      </p>
+      <p class="p_1">When a session is disconnected:</p>
+      <ul>
+        <li>The Solace server continues to store any currently queued and newly arriving QoS 1 and QoS 2 messages that match QoS 1 subscriptions.</li>
+        <li>The Solace server discards any currently queued QoS 0 messages and does not enqueue any QoS 0 messages that arrive while the session is disconnected.</li>
+      </ul>
+    </div>
+    <h3><a name="4.1.1-storing-session-state"/>4.1.1 Storing Session State</h3>
+    <p class="MsoNormal"><span style="background: yellow;">The Client and Server MUST NOT
+discard the Session State while the Network Connection is open</span><span style="color: red;">[MQTT-4.1.0-1]</span>. <span style="background: yellow;">The
+Server MUST discard the Session State when the Network Connection is closed and
+the Session Expiry Interval has passed</span><span style="color: red;">[MQTT-4.1.0-2]</span>.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal" style="margin-left: .5in;">
+      <b>Non-normative
+comment</b>
+    </p>
+    <p class="MsoNormal" style="margin-left: .5in;">The storage capabilities of Client
+and Server implementations will of course have limits in terms of capacity and
+may be subject to administrative policies. Stored Session State can be
+discarded as a result of an administrator action, including an automated
+response to defined conditions. This has the effect of terminating the Session.
+These actions might be prompted by resource constraints or for other
+operational reasons. It is possible that hardware or software failures may
+result in loss or corruption of Session State stored by the Client or Server. It
+is prudent to evaluate the storage capabilities of the Client and Server to
+ensure that they are sufficient.</p>
+    <h3><a name="4.1.2-session-state-nonnormative-examples"/>4.1.2 Session State non-normative
+examples</h3>
+    <p class="MsoNormal">For example, an electricity meter reading solution might use
+QoS 1 messages to protect the readings against loss over the network. The
+solution developer might have determined that the power supply is sufficiently
+reliable that, in this case, the data in the Client and Server can be stored in
+volatile memory without too much risk of its loss.</p>
+    <p class="MsoNormal">Conversely a parking meter payment application provider
+might decide that the payment messages should never be lost due to a network or
+Client failure. Thus, they require that all data be written to non-volatile
+memory before it is transmitted across the network.</p>
+    <h2><a name="4.2-network-connections"/>4.2 Network Connections</h2>
+    <p class="MsoNormal">The MQTT protocol requires an underlying transport that
+provides an ordered, lossless, stream of bytes from the Client to Server and
+Server to Client. This specification does not require the support of any
+specific transport protocol. A Client or Server MAY support any of the
+transport protocols listed here, or any other transport protocol that meets the
+requirements of this section.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal"><span style="background: yellow;">A Client or Server MUST
+support the use of one or more underlying transport protocols that provide an
+ordered, lossless, stream of bytes from the Client to Server and Server to
+Client</span><span style="color: red;">[MQTT-4.2-1]</span>.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal" style="margin-left: .5in;">
+      <b>Non-normative
+comment</b>
+    </p>
+    <p class="MsoNormal" style="margin-left: .5in;">TCP/IP as defined in <a href="mqtt-v50-1-introduction.htm#RFC793" class="link-internal">[RFC0793]</a> can be used for MQTT v5.0. The following transport
+protocols are also suitable:</p>
+    <ul style="margin-left: 0.5in;">
+      <li>TLS <a href="mqtt-v50-1-introduction.htm#RFC5246" class="link-internal">[RFC5246]</a></li>
+      <li>WebSocket <a href="mqtt-v50-1-introduction.htm#RFC6455" class="link-internal">[RFC6455]</a></li>
+    </ul>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal" style="margin-left: .5in;">
+      <b>Non-normative comment</b>
+    </p>
+    <p class="MsoNormal" style="margin-left: .5in;">TCP ports 8883 and 1883 are
+registered with IANA for MQTT TLS and non-TLS communication respectively.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal" style="margin-left: .5in;">
+      <b>Non-normative comment</b>
+    </p>
+    <p class="MsoNormal" style="margin-left: .5in;">Connectionless network transports
+such as <a href="https://en.wikipedia.org/wiki/User_Datagram_Protocol"><span style="color: windowtext;">User Datagram Protocol</span></a> (UDP) are not
+suitable on their own because they might lose or reorder data. </p>
+    <div class="div_2">
+      <p>
+        <span class="span_3">Solace Implementation Note</span>
+      </p>
+      <ul>
+        <li>The Solace server supports TCP/IP transport of MQTT.</li>
+        <li>The Solace server supports TLS transport of MQTT.</li>
+        <li>The Solace server supports WebSocket transport of MQTT.</li>
+        <li>The Solace server supports WebSocket Secure transport of MQTT.</li>
+      </ul>
+    </div>
+    <h2><a name="4.3-quality-of-service"/>4.3 Quality of Service levels and protocol flows</h2>
+    <p class="MsoNormal">MQTT delivers Application Messages according to the Quality
+of Service (QoS) levels defined in the following sections. The delivery
+protocol is symmetric, in the description below the Client and Server can each
+take the role of either sender or receiver. The delivery protocol is concerned
+solely with the delivery of an application message from a single sender to a
+single receiver. When the Server is delivering an Application Message to more
+than one Client, each Client is treated independently. The QoS level used to
+deliver an Application Message outbound to the Client could differ from that of
+the inbound Application Message.</p>
+    <div class="div_2">
+      <p>
+        <span class="span_3">Solace Implementation Note</span>
+      </p>
+      <p>The following table summarizes Solace PubSub+ software behavior for all combinations of a message published with one QoS matching a subscription with a second QoS. The behavior shown in the table adheres to the MQTT specification.</p>
+      <p class="TblCaption">Resulting QoS Level of Messages to be Consumed</p>
+      <table class="table_1">
+        <col style="width: 95pt;"/>
+        <col style="width: 95pt;"/>
+        <col style="width: 95pt;"/>
+        <col style="width: 95pt;"/>
+        <tr>
+          <td class="td_8">
+            <p class="p_22"> </p>
+          </td>
+          <td colspan="3" class="td_2">
+            <p class="p_23">Subscribe QoS</p>
+          </td>
+        </tr>
+        <tr>
+          <td class="td_3">
+            <p class="p_6">
+              <span class="span_3">Publish QoS</span>
+            </p>
+          </td>
+          <td class="td_4">
+            <p class="p_23">0</p>
+          </td>
+          <td class="td_4">
+            <p class="p_23">1</p>
+          </td>
+          <td class="td_4">
+            <p class="p_23">2</p>
+          </td>
+        </tr>
+        <tr>
+          <td class="td_3">
+            <p class="p_23">0</p>
+          </td>
+          <td class="td_4">
+            <p class="p_24">0</p>
+          </td>
+          <td class="td_4">
+            <p class="p_24">0</p>
+          </td>
+          <td class="td_4">
+            <p class="p_24">0</p>
+          </td>
+        </tr>
+        <tr>
+          <td class="td_3">
+            <p class="p_23">1</p>
+          </td>
+          <td class="td_4">
+            <p class="p_24">0</p>
+          </td>
+          <td class="td_4">
+            <p class="p_24">1</p>
+          </td>
+          <td class="td_4">
+            <p class="p_24">1</p>
+          </td>
+        </tr>
+        <tr>
+          <td class="td_3">
+            <p class="p_23">2</p>
+          </td>
+          <td class="td_4">
+            <p class="p_24">0</p>
+          </td>
+          <td class="td_4">
+            <p class="p_24">1</p>
+          </td>
+          <td class="td_4">
+            <p class="p_24">1</p>
+          </td>
+        </tr>
+      </table>
+      <ul>
+        <li>Messages published with QoS 0 are not queued on the Solace PubSub+ event broker if not subscribing.</li>
+        <li>Messages published with QoS 1 are queued on the Solace PubSub+ event broker  <span class="span_4">even when </span>subscribing clients are not connected. QoS 2 subscriptions are downgraded to QoS 1, and are therefore treated in the same manner.</li>
+      </ul>
+    </div>
+    <h3><a name="4.3.1-qos0-at-most-once"/>4.3.1 QoS 0: At most once
+delivery</h3>
+    <p class="MsoNormal">The message is delivered according to the capabilities of
+the underlying network. No response is sent by the receiver and no retry is
+performed by the sender. The message arrives at the receiver either once or not
+at all. </p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">
+      <span style="background: yellow;">In
+the QoS 0 delivery protocol, the sender</span>
+    </p>
+    <ul>
+      <li><span style="background: yellow;">MUST send a PUBLISH packet with
+QoS 0 and DUP flag set to 0</span><span style="color: red;">[MQTT-4.3.1-1]</span>.</li>
+    </ul>
+    <p class="MsoNormal">In the QoS 0 delivery protocol, the receiver</p>
+    <ul>
+      <li>Accepts ownership of the message when it receives the PUBLISH
+packet.</li>
+    </ul>
+    <p class="TblCaption"><a name="_Figure_4.1_–"/>Figure 4.1 – QoS 0 protocol flow diagram, non-normative
+example</p>
+    <table class="MsoNormalTable" border="1" cellspacing="0" cellpadding="0" width="583" style="width: 437.4pt;margin-left: .5in;border-collapse: collapse;border: none;">
+      <tr style="page-break-inside: avoid;">
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;">
+            <b>Sender Action</b>
+          </p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border: solid windowtext 1.0pt;border-left: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;">
+            <b>Control Packet</b>
+          </p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border: solid windowtext 1.0pt;border-left: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;">
+            <b>Receiver Action</b>
+          </p>
+        </td>
+      </tr>
+      <tr style="page-break-inside: avoid;">
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;border-top: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;">PUBLISH QoS 0,
+ DUP=0</p>
+          <p class="MsoNormal"> </p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;"> </p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal"> </p>
+        </td>
+      </tr>
+      <tr style="page-break-inside: avoid;">
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;border-top: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;"> </p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;">----------&gt;</p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;">
+            <b> </b>
+          </p>
+        </td>
+      </tr>
+      <tr style="page-break-inside: avoid;">
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;border-top: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;"> </p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;"> </p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;">Deliver Application
+ Message to appropriate onward recipient(s) </p>
+        </td>
+      </tr>
+    </table>
+    <h3><a name="4.3.2-qos1-at-least-once"/>4.3.2 QoS 1: At least once
+delivery</h3>
+    <p class="MsoNormal" style="text-align: justify;">This Quality of Service level ensures
+that the message arrives at the receiver at least once. A QoS 1 PUBLISH packet
+has a Packet Identifier in its Variable Header and is acknowledged by a PUBACK packet.
+<a href="mqtt-v50-2-control-packet-format.htm#2.2.1-packet-identifier" class="link-internal">Section 2.2.1</a> provides more information about Packet
+Identifiers.</p>
+    <p class="MsoNormal" style="text-align: justify;"> </p>
+    <p class="MsoNormal">
+      <span style="background: yellow;">In
+the QoS 1 delivery protocol, the sender</span>
+    </p>
+    <ul>
+      <li><span style="background: yellow;">MUST assign an unused Packet
+Identifier each time it has a new Application Message to publish</span><span style="color: red;">[MQTT-4.3.2-1]</span>. </li>
+      <li><span style="background: yellow;">MUST send a PUBLISH packet
+containing this Packet Identifier with QoS 1 and DUP flag set to 0</span><span style="color: red;">[MQTT-4.3.2-2]</span>.</li>
+      <li><span style="background: yellow;">MUST treat the PUBLISH packet as
+“unacknowledged” until it has received the corresponding PUBACK packet from the
+receiver</span>. Refer to <a href="#4.4-message-retry" class="link-internal">section 4.4</a>
+for a discussion of unacknowledged messages <span style="color: red;">[MQTT-4.3.2-3]</span>.</li>
+    </ul>
+    <p class="MsoNormal">The Packet Identifier becomes
+available for reuse once the sender has received the PUBACK packet.</p>
+    <p class="MsoNormal" style="text-align: justify;">Note that a sender is permitted to
+send further PUBLISH packets with different Packet Identifiers while it is
+waiting to receive acknowledgements.</p>
+    <p class="MsoNormal" style="text-align: justify;"> </p>
+    <p class="MsoNormal">
+      <span style="background: yellow;">In
+the QoS 1 delivery protocol, the receiver</span>
+    </p>
+    <ul style="margin-top: 0in;" type="disc">
+      <li class="MsoNormal"><span style="background: yellow;">MUST respond with a PUBACK
+ packet containing the Packet Identifier from the incoming PUBLISH packet,
+ having accepted ownership of the Application Message</span><span style="color: red;">[MQTT-4.3.2-4]</span>. </li>
+      <li class="MsoNormal"><span style="background: yellow;">After it has sent a PUBACK
+ packet the receiver MUST treat any incoming PUBLISH packet that contains
+ the same Packet Identifier as being a new Application Message,
+ irrespective of the setting of its DUP flag</span><span style="color: red;">[MQTT-4.3.2-5]</span>.</li>
+    </ul>
+    <p class="MsoNormal" style="text-align: justify;"> </p>
+    <p class="TblCaption"><a name="_Figure_4.2_–"/>Figure 4.2 – QoS 1 protocol flow diagram, non-normative
+example</p>
+    <table class="MsoNormalTable" border="1" cellspacing="0" cellpadding="0" width="583" style="width: 437.4pt;margin-left: .5in;border-collapse: collapse;border: none;">
+      <tr>
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;">
+            <b>Sender Action</b>
+          </p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border: solid windowtext 1.0pt;border-left: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;">
+            <b>MQTT Control
+ Packet</b>
+          </p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border: solid windowtext 1.0pt;border-left: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;">
+            <b>Receiver action</b>
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;border-top: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal">Store message</p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;"> </p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal"> </p>
+        </td>
+      </tr>
+      <tr>
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;border-top: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal">Send PUBLISH QoS 1, DUP=0, &lt;Packet Identifier&gt;</p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;">----------&gt;</p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;"> </td>
+      </tr>
+      <tr>
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;border-top: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal"> </p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal"> </p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal">Initiate onward delivery of the Application Message<sup>1</sup></p>
+        </td>
+      </tr>
+      <tr>
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;border-top: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal"> </p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;">&lt;----------</p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;">Send PUBACK
+ &lt;Packet Identifier&gt;</p>
+        </td>
+      </tr>
+      <tr>
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;border-top: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal">Discard message</p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;"> </p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;"> </td>
+      </tr>
+    </table>
+    <p class="MsoNormal" style="margin-left: .5in;"><sup>1</sup>The receiver does not
+need to complete delivery of the Application Message before sending the PUBACK.
+When its original sender receives the PUBACK packet, ownership of the Application
+Message is transferred to the receiver.</p>
+    <h3><a name="4.3.3-qos2-exactly-once"/>4.3.3
+QoS 2: Exactly once delivery</h3>
+    <p class="MsoNormal">This is the highest Quality of Service level, for use when
+neither loss nor duplication of messages are acceptable. There is an increased
+overhead associated with QoS 2.</p>
+    <div class="div_2">
+      <p>
+        <span class="span_3">Solace Implementation Note</span>
+      </p>
+      <p>
+        <span class="span_4">QoS 2 messages from clients are accepted but are treated as QoS 1 messages. QoS 2 subscriptions from clients are accepted but are downgraded to QoS 1. Both of these behaviors are allowed by the specification.</span>
+      </p>
+    </div>
+    <p class="MsoNormal">A QoS 2 message has a Packet Identifier in its Variable
+Header. <a href="mqtt-v50-2-control-packet-format.htm#2.2.1-packet-identifier" class="link-internal">Section 2.2.1</a> provides more information
+about Packet Identifiers. The receiver of a QoS 2 PUBLISH packet acknowledges
+receipt with a two-step acknowledgement process.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal"><span style="background: yellow;">In
+the QoS 2 delivery protocol, the sender</span>:</p>
+    <ul style="margin-top: 0in;" type="disc">
+      <li><span style="background: yellow;">MUST assign an unused
+ Packet Identifier when it has a new Application Message to publish</span><span style="color: red;"> [MQTT-4.3.3-1]</span>.</li>
+      <li><span style="background: yellow;">MUST send a PUBLISH packet
+ containing this Packet Identifier with QoS 2 and DUP flag set to 0</span><span style="color: red;">[MQTT-4.3.3-2]</span>.</li>
+      <li><span style="background: yellow;">MUST treat the PUBLISH
+ packet as “unacknowledged” until it has received the corresponding PUBREC
+ packet from the receiver</span><span style="color: red;">[MQTT-4.3.3-3]</span>.
+ Refer to <a href="#4.4-message-retry" class="link-internal">section 4.4</a> for a discussion of
+ unacknowledged messages.</li>
+      <li><span style="background: yellow;">MUST send a PUBREL packet
+ when it receives a PUBREC packet from the receiver with a Reason Code
+ value less than 0x80. This PUBREL packet MUST contain the same Packet
+ Identifier as the original PUBLISH packet</span><span style="color: red;">[MQTT-4.3.3-4]</span>.</li>
+      <li><span style="background: yellow;">MUST treat the PUBREL
+ packet as “unacknowledged” until it has received the corresponding PUBCOMP
+ packet from the receiver</span><span style="color: red;">[MQTT-4.3.3-5]</span>.</li>
+      <li><span style="background: yellow;">MUST NOT re-send the
+ PUBLISH once it has sent the corresponding PUBREL packet</span><span style="color: red;">[MQTT-4.3.3-6]</span>.</li>
+      <li><span style="background: yellow;">MUST NOT apply Message
+ expiry if a PUBLISH packet has been sent</span><span style="color: red;">[MQTT-4.3.3-7]</span>.</li>
+    </ul>
+    <p class="MsoNormal" style="margin-left: .5in;"> </p>
+    <p class="MsoNormal" style="text-align: justify;">The Packet Identifier becomes
+available for reuse once the sender has received the PUBCOMP packet or a PUBREC
+with a Reason Code of 0x80 or greater. </p>
+    <p class="MsoNormal" style="text-align: justify;"> </p>
+    <p class="MsoNormal" style="text-align: justify;">Note that a sender is permitted
+to send further PUBLISH packets with different Packet Identifiers while it is
+waiting to receive acknowledgements, subject to flow control as described in <a href="#4.9-flow-control" class="link-internal">section 4.9</a>.</p>
+    <p class="MsoNormal" style="text-align: justify;"> </p>
+    <p class="MsoNormal"><span style="background: yellow;">In
+the QoS 2 delivery protocol, the receiver</span>:</p>
+    <ul style="margin-top: 0in;" type="disc">
+      <li><span style="background: yellow;">MUST respond with a PUBREC
+ containing the Packet Identifier from the incoming PUBLISH packet, having
+ accepted ownership of the Application Message</span><span style="color: red;">[MQTT-4.3.3-8]</span>.</li>
+      <li><span style="background: yellow;">If it has sent a PUBREC
+ with a Reason Code of 0x80 or greater, the receiver MUST treat any
+ subsequent PUBLISH packet that contains that Packet Identifier as being a
+ new Application Message</span><span style="color: red;">[MQTT-4.3.3-9]</span>.</li>
+      <li><span style="background: yellow;">Until it has received the
+ corresponding PUBREL packet, the receiver MUST acknowledge any subsequent
+ PUBLISH packet with the same Packet Identifier by sending a PUBREC. It
+ MUST NOT cause duplicate messages to be delivered to any onward recipients
+ in this case</span><span style="color: red;">[MQTT-4.3.3-10]</span>. <div class="div_2"><p><span class="span_3">Solace Implementation Note</span></p><p>In this case the Solace server MAY cause duplicate messages to be delivered onward to QoS 1 subscribers.</p></div></li>
+      <li><span style="background: yellow;">MUST respond to a PUBREL
+ packet by sending a PUBCOMP packet containing the same Packet Identifier
+ as the PUBREL</span><span style="color: red;">[MQTT-4.3.3-11]</span>.</li>
+      <li><span style="background: yellow;">After it has sent a
+ PUBCOMP, the receiver MUST treat any subsequent PUBLISH packet that
+ contains that Packet Identifier as being a new Application Message</span><span style="color: red;">[MQTT-4.3.3-12]</span>.</li>
+      <li><span style="background: yellow;">MUST continue the QoS 2
+ acknowledgement sequence even if it has applied message expiry </span><span style="color: red;">[MQTT-4.3.3-13]</span>.</li>
+    </ul>
+    <h2><a name="4.4-message-retry"/>4.4 Message delivery retry</h2>
+    <p class="MsoNormal"><span style="background: yellow;">When a Client reconnects
+with Clean Start set to 0 and a session is present, both the Client and Server
+MUST resend any unacknowledged PUBLISH packets (where QoS &gt; 0) and PUBREL
+packets using their original Packet Identifiers. This is the only circumstance where a Client or Server
+is REQUIRED to resend messages. Clients and Servers MUST NOT resend messages at
+any other time</span><span style="color: red;">[MQTT-4.4.0-1]</span>.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal"><span style="background: yellow;">If PUBACK or PUBREC is
+received containing a Reason Code of 0x80 or greater the corresponding PUBLISH
+packet is treated as acknowledged, and MUST NOT be retransmitted</span><span style="color: red;">[MQTT-4.4.0-2]</span>. </p>
+    <p class="MsoNormal" style="margin-left: .4in;"> </p>
+    <p class="TblCaption">Figure 4.3 – QoS 2 protocol flow
+diagram, non-normative example</p>
+    <table class="MsoNormalTable" border="1" cellspacing="0" cellpadding="0" width="583" style="width: 437.4pt;border-collapse: collapse;border: none;">
+      <tr>
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;">
+            <b>Sender Action</b>
+          </p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border: solid windowtext 1.0pt;border-left: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;">
+            <b>MQTT Control
+ Packet</b>
+          </p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border: solid windowtext 1.0pt;border-left: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;">
+            <b>Receiver Action</b>
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;border-top: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal">Store message</p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal"> </p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal"> </p>
+        </td>
+      </tr>
+      <tr>
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;border-top: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal">PUBLISH QoS 2, DUP=0<br/>   &lt;Packet Identifier&gt;</p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal"> </p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal">
+            <b> </b>
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;border-top: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal"> </p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;">----------&gt;</p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal">
+            <b> </b>
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;border-top: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal"> </p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal"> </p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal">Store &lt;Packet Identifier&gt; then Initiate onward
+ delivery of the Application Message<sup>1</sup></p>
+        </td>
+      </tr>
+      <tr>
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;border-top: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal"> </p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;"> </p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal">PUBREC &lt;Packet Identifier&gt;&lt;Reason Code&gt;</p>
+        </td>
+      </tr>
+      <tr>
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;border-top: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal"> </p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;">&lt;----------</p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal"> </p>
+        </td>
+      </tr>
+      <tr>
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;border-top: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal">Discard message, Store PUBREC received &lt;Packet Identifier&gt;</p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;"> </p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal"> </p>
+        </td>
+      </tr>
+      <tr>
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;border-top: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal">PUBREL &lt;Packet Identifier&gt;</p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;"> </p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal">
+            <b> </b>
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;border-top: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal"> </p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;">----------&gt;</p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal">
+            <b> </b>
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;border-top: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal"> </p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;"> </p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal">Discard &lt;Packet Identifier&gt;</p>
+        </td>
+      </tr>
+      <tr>
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;border-top: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal">
+            <b> </b>
+          </p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;"> </p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal">Send PUBCOMP &lt;Packet Identifier&gt;</p>
+        </td>
+      </tr>
+      <tr>
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;border-top: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal">
+            <b> </b>
+          </p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;">&lt;----------</p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal"> </p>
+        </td>
+      </tr>
+      <tr>
+        <td width="199" valign="top" style="width: 149.4pt;border: solid windowtext 1.0pt;border-top: none;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal">Discard stored state</p>
+        </td>
+        <td width="180" valign="top" style="width: 135.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal" align="center" style="text-align: center;"> </p>
+        </td>
+        <td width="204" valign="top" style="width: 153.0pt;border-top: none;border-left: none;border-bottom: solid windowtext 1.0pt;border-right: solid windowtext 1.0pt;padding: 0in 5.4pt 0in 5.4pt;">
+          <p class="MsoNormal"> </p>
+        </td>
+      </tr>
+    </table>
+    <p class="MsoNormal" style="margin-left: 0;"><sup>1</sup>The receiver does not
+need to complete delivery of the Application Message before sending the PUBREC
+or PUBCOMP. When its original sender receives the PUBREC packet, ownership of
+the Application Message is transferred to the receiver. However, the receiver
+needs to perform all checks for conditions which might result in a forwarding
+failure (e.g. quota exceeded, authorization, etc.) before accepting ownership.
+The receiver indicates success or failure using the appropriate Reason Code in
+the PUBREC.</p>
+    <h2><a name="4.5-message-receipt"/>4.5 Message receipt</h2>
+    <p class="MsoNormal"><span style="background: yellow;">When a Server takes
+ownership of an incoming Application Message it MUST add it to the Session
+State for those Clients that have matching Subscriptions</span><span style="color: red;">[MQTT-4.5.0-1]</span>. Matching rules are defined in <a href="#4.7-topic-names-topic-filters" class="link-internal">section 4.7</a>.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">Under normal circumstances Clients receive messages in
+response to Subscriptions they have created. A Client could also receive
+messages that do not match any of its explicit Subscriptions. This can happen
+if the Server automatically assigned a subscription to the Client. A Client
+could also receive messages while an UNSUBSCRIBE operation is in progress. <span style="background: yellow;">The Client MUST acknowledge any Publish packet it
+receives according to the applicable QoS rules regardless of whether it elects
+to process the Application Message that it contains</span><span style="color: red;">[MQTT-4.5.0-2]</span>.</p>
+    <h2><a name="4.6-message-ordering"/>4.6 Message ordering</h2>
+    <p class="MsoNormal">The following these rules apply to the Client when
+implementing the protocol flows defined in <a href="#4.3-quality-of-service" class="link-internal">section
+4.3.</a></p>
+    <ul style="margin-top: 0in;" type="disc">
+      <li class="MsoNormal">
+        <span style="background: yellow;">When the Client re-sends
+ any PUBLISH packets, it MUST re-send them in the order in which the
+ original PUBLISH packets were sent (this applies to QoS 1 and QoS 2
+ messages)</span>
+        <span style="color: red;">[MQTT-4.6.0-1]</span>
+      </li>
+      <li class="MsoNormal">
+        <span style="background: yellow;">The Client MUST send
+ PUBACK packets in the order in which the corresponding PUBLISH packets
+ were received (QoS 1 messages)</span>
+        <span style="color: red;">[MQTT-4.6.0-2]</span>
+      </li>
+      <li class="MsoNormal">
+        <span style="background: yellow;">The Client MUST send
+ PUBREC packets in the order in which the corresponding PUBLISH packets
+ were received (QoS 2 messages)</span>
+        <span style="color: red;">[MQTT-4.6.0-3]</span>
+      </li>
+      <li class="MsoNormal">
+        <span style="background: yellow;">The Client MUST send
+ PUBREL packets in the order in which the corresponding PUBREC packets were
+ received (QoS 2 messages)</span>
+        <span style="color: red;">[MQTT-4.6.0-4]</span>
+      </li>
+    </ul>
+    <p class="MsoNormal" style="margin-left: .25in;"> </p>
+    <p class="MsoNormal">An Ordered Topic is a Topic where the Client can be certain
+that the Application Messages in that Topic from the same Client and at the
+same QoS are received are in the order they were published. <span style="background: yellow;">When a Server processes a message that has been
+published to an Ordered Topic, it MUST send PUBLISH packets to consumers (for
+the same Topic and QoS) in the order that they were received from any given
+Client </span><span style="color: red;">[MQTT-4.6.0-5]</span>. This is addition
+to the rules listed above.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal"><span style="background: yellow;">By default, a Server MUST treat
+every Topic as an Ordered Topic when it is forwarding messages on Non‑shared
+Subscriptions.</span><span style="color: red;"> [MQTT-4.6.0-6]</span>. A Server MAY
+provide an administrative or other mechanism to allow one or more Topics to not
+be treated as an Ordered Topic.</p>
+    <p class="MsoNormal" style="margin-left: .5in;"> </p>
+    <p class="MsoNormal" style="margin-left: .5in;">
+      <a name="_Toc473620286"/>
+      <b>Non-normative
+comment</b>
+    </p>
+    <p class="MsoNormal" style="margin-left: .5in;">The rules listed above ensure that
+when a stream of messages is published and subscribed to an Ordered Topic with
+QoS 1, the final copy of each message received by the subscribers will be in
+the order that they were published. If the message is re-sent the duplicate
+message can be received after one of the earlier messages is received. For
+example, a publisher might send messages in the order 1,2,3,4 but the
+subscriber might receive them in the order 1,2,3,2,3,4 if there is a network
+disconnection after message 3 has been sent.</p>
+    <p class="MsoNormal" style="margin-left: .5in;">If both
+Client and Server set Receive Maximum to 1, they make sure that no more than
+one message is “in-flight” at any one time. In this case no QoS 1 message will
+be received after any later one even on re-connection. For example a subscriber
+might receive them in the order 1,2,3,3,4 but not 1,2,3,2,3,4. Refer to <a href="#4.9-flow-control" class="link-internal">section 4.9</a> Flow Control for details of how the
+Receive Maximum is used.</p>
+    <h2><a name="4.7-topic-names-topic-filters"/>4.7 Topic Names and Topic Filters</h2>
+    <h3><a name="4.7.1-topic-wildcards"/>4.7.1 Topic wildcards</h3>
+    <p class="MsoNormal">The topic level separator is used to introduce structure
+into the Topic Name. If present, it divides the Topic Name into multiple “topic
+levels”.</p>
+    <p class="MsoNormal">A subscription’s Topic Filter can contain special wildcard
+characters, which allow a Client to subscribe to multiple topics at once.</p>
+    <p class="MsoNormal"><span style="background: yellow;">The wildcard characters can
+be used in Topic Filters, but MUST NOT be used within a Topic Name</span><span style="color: red;">[MQTT-4.7.0-1]</span>.</p>
+    <p class="MsoNormal"> </p>
+    <div class="div_2">
+      <p>
+        <span class="span_3">Solace Implementation Note</span>
+      </p>
+      <p class="p_1">The Solace server allows wildcard characters to be used in Topic Names. However, it treats them as literal characters with no special meaning.</p>
+    </div>
+    <h4><a name="4.7.1.1-topic-level-separator"/>4.7.1.1 Topic level separator</h4>
+    <p class="MsoNormal">The forward slash (‘/’ U+002F) is used to separate each
+level within a topic tree and provide a hierarchical structure to the Topic
+Names. The use of the topic level separator is significant when either of the
+two wildcard characters is encountered in Topic Filters specified by
+subscribing Clients. Topic level separators can appear anywhere in a Topic
+Filter or Topic Name. Adjacent Topic level separators indicate a zero-length
+topic level. </p>
+    <h4><a name="4.7.1.2-multi-level-wildcard"/>4.7.1.2 Multi-level wildcard</h4>
+    <p class="MsoNormal">The number sign (‘#’ U+0023) is a wildcard character that
+matches any number of levels within a topic. The multi-level wildcard
+represents the parent and any number of child levels. <span style="background: yellow;">The multi-level wildcard character MUST be specified either on its own
+or following a topic level separator. In either case it MUST be the last
+character specified in the Topic Filter</span><span style="color: red;">[MQTT-4.7.1-1]</span>.</p>
+    <p class="MsoNormal" style="margin-left: .5in;">
+      <b>Non-normative
+comment</b>
+    </p>
+    <p class="MsoNormal" style="margin-left: .5in;">For example, if a Client subscribes
+to “sport/tennis/player1/#”, it would receive messages published using these Topic
+Names:</p>
+    <ul style="margin-left: .5in;">
+      <li>“sport/tennis/player1”</li>
+      <li>“sport/tennis/player1”</li>
+      <li>“sport/tennis/player1/ranking</li>
+      <li>“sport/tennis/player1/score/wimbledon”</li>
+    </ul>
+    <p class="MsoNormal" style="margin-left: .5in;"> </p>
+    <p class="MsoNormal" style="margin-left: .5in;">
+      <b>Non-normative
+comment</b>
+    </p>
+    <ul style="margin-left: .5in;">
+      <li>“sport/#” also matches the singular “sport”, since # includes the
+parent level</li>
+      <li>“#” is valid and will receive every Application Message</li>
+      <li>“sport/tennis/#” is valid </li>
+      <li>“sport/tennis#” is not valid</li>
+      <li>“sport/tennis/#/ranking” is not valid</li>
+    </ul>
+    <h4><a name="4.7.1.3-single-level-wildcard"/>4.7.1.3 Single-level wildcard</h4>
+    <p class="MsoNormal">The plus sign (‘+’ U+002B) is a wildcard character that
+matches only one topic level. </p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal"><span style="background: yellow;">The single-level wildcard
+can be used at any level in the Topic Filter, including first and last levels.
+Where it is used, it MUST occupy an entire level of the filter</span><span style="color: red;">[MQTT-4.7.1-2]</span>. It can be used at more than one level
+in the Topic Filter and can be used in conjunction with the multi-level
+wildcard.</p>
+    <div class="div_2">
+      <p>
+        <span class="span_3">Solace Implementation Note</span>
+      </p>
+      <p>
+        <span class="span_4">A Solace server allows the single-level wildcard to be used to do prefix matching within a level in a Topic Filter. For example, “sport/bas+” matches both “sport/basketball” and “sport/baseball”, but not “sport/badminton”. If any string follows the single-level wildcard it is treated as a literal ‘+’ character.</span>
+      </p>
+    </div>
+    <p class="MsoNormal" style="margin-left: .5in;">
+      <a name="_Toc473620294"/>
+      <b>Non-normative
+comment</b>
+    </p>
+    <p class="MsoNormal" style="margin-left: .5in;">For example, “sport/tennis/+”
+matches “sport/tennis/player1” and “sport/tennis/player2”, but not
+“sport/tennis/player1/ranking”. Also, because the single-level wildcard matches
+only a single level, “sport/+” does not match “sport” but it does match
+“sport/”.</p>
+    <ul>
+      <li style="margin-left: .5in;"> “+” is valid</li>
+      <li style="margin-left: .5in;">“+/tennis/#” is valid</li>
+      <li style="margin-left: .5in;">“sport+” is not valid</li>
+      <li style="margin-left: .5in;">“sport/+/player1” is valid</li>
+      <li style="margin-left: .5in;">“/finance” matches “+/+” and “/+”, but not “+”</li>
+    </ul>
+    <h3><a name="4.7.2-topics-beginning-dollar"/>4.7.2 Topics beginning with $</h3>
+    <p class="MsoNormal"><span style="background: yellow;">The Server MUST NOT match
+Topic Filters starting with a wildcard character (# or +) with Topic Names
+beginning with a $ character</span><span style="color: red;">[MQTT-4.7.2-1]</span>.
+The Server SHOULD prevent Clients from using such Topic Names to exchange
+messages with other Clients. Server implementations MAY use Topic Names that
+start with a leading $ character for other purposes.</p>
+    <p>
+      <div class="div_2">
+        <p>
+          <span class="span_3">Solace Implementation Note</span>
+        </p>
+        <p>A Solace server rejects subscriptions beginning with $ unless the server has a defined meaning for the subscription. Refer to <MadCap:xref href="../MQTT/MQTT-Topics.htm#Special">Special Solace MQTT Topics</MadCap:xref> for a list of subscriptions beginning with $ that are understood by the Solace server.</p>
+      </div>
+    </p>
+    <p class="MsoNormal" style="margin-left: .5in;">
+      <a name="_Toc473620297"/>
+      <b>Non-normative
+comment</b>
+    </p>
+    <ul style="margin-left: .5in;">
+      <li>$SYS/ has been widely adopted as a prefix to topics that contain
+Server-specific information or control APIs</li>
+      <li>Applications cannot use a topic with a leading $ character for
+their own purposes</li>
+    </ul>
+    <p class="MsoNormal" style="margin-left: .5in;"> </p>
+    <p class="MsoNormal" style="margin-left: .5in;">
+      <a name="_Toc473620298"/>
+      <b>Non-normative
+comment</b>
+    </p>
+    <ul style="margin-left: 0.5in;">
+      <li>A subscription to “#” will not receive any messages published to
+a topic beginning with a $</li>
+      <li>A subscription to “+/monitor/Clients” will not receive any
+messages published to “$SYS/monitor/Clients”</li>
+      <li>A subscription to “$SYS/#” will receive messages published to
+topics beginning with “$SYS/”</li>
+      <li>A subscription to “$SYS/monitor/+” will receive messages
+published to “$SYS/monitor/Clients”</li>
+      <li>For a Client to receive messages from topics that begin with
+$SYS/ and from topics that don’t begin with a $, it has to subscribe to both “#”
+and “$SYS/#”</li>
+    </ul>
+    <h3><a name="4.7.3-topic-semantic-usage"/>4.7.3 Topic semantic and usage</h3>
+    <p class="MsoNormal">The following rules apply to Topic Names and Topic Filters:</p>
+    <ul>
+      <li>
+        <span style="background: yellow;">All Topic Names and Topic Filters
+MUST be at least one character long</span>
+        <span style="color: red;">[MQTT-4.7.3-1]</span>
+      </li>
+      <li>Topic Names and Topic Filters are case sensitive </li>
+      <li>Topic Names and Topic Filters can include the space character</li>
+      <li>A leading or trailing ‘/’ creates a distinct Topic Name or Topic
+Filter</li>
+      <li>A Topic Name or Topic Filter consisting only of the ‘/’ character
+is valid</li>
+      <li>
+        <span style="background: yellow;">Topic Names and Topic Filters
+MUST NOT include the null character (Unicode U+0000)</span>
+        <a href="mqtt-v50-1-introduction.htm#Unicode" class="link-internal">[Unicode]</a>
+        <span style="color: red;">[MQTT-4.7.3-2]</span>
+      </li>
+      <li><span style="background: yellow;">Topic Names and Topic Filters are
+UTF-8 Encoded Strings; they MUST NOT encode to more than 65,535 bytes</span><span style="color: red;">[MQTT-4.7.3-3]</span>. Refer to <a href="mqtt-v50-1-introduction.htm#1.5.4-utf-8-encoded-string" class="link-internal">section 1.5.4</a>.</li>
+    </ul>
+    <p class="MsoNormal">There is no limit to the number of levels in a Topic Name or
+Topic Filter, other than that imposed by the overall length of a UTF-8 Encoded
+String.</p>
+    <p class="MsoNormal"> </p>
+    <div class="div_2">
+      <p>
+        <span class="span_3">Solace Implementation Note</span>
+      </p>
+      <p>The Solace event broker has limits for the length and number of levels of topics. See <a href="../MQTT/MQTT-Topics.htm" class="link-internal">MQTT Topics</a> for more information.</p>
+    </div>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal"><span style="background: yellow;">When it performs
+subscription matching the Server MUST NOT perform any normalization of Topic
+Names or Topic Filters, or any modification or substitution of unrecognized
+characters</span><span style="color: red;">[MQTT-4.7.3-4]</span>. Each
+non-wildcarded level in the Topic Filter has to match the corresponding level
+in the Topic Name character for character for the match to succeed.</p>
+    <p> </p>
+    <p class="MsoNormal" style="margin-left: .5in;">
+      <b>Non-normative
+comment</b>
+    </p>
+    <p class="MsoNormal" style="margin-left: .5in;">The UTF-8 encoding rules mean that
+the comparison of Topic Filter and Topic Name could be performed either by
+comparing the encoded UTF-8 bytes, or by comparing decoded Unicode characters</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal" style="margin-left: .5in;">
+      <b>Non-normative
+comment</b>
+    </p>
+    <ul style="margin-left: 0.5in;">
+      <li>“ACCOUNTS” and “Accounts” are two different Topic Names</li>
+      <li>“Accounts payable” is a valid Topic Name</li>
+      <li>“/finance” is different from “finance”</li>
+    </ul>
+    <p class="MsoNormal">An Application Message is sent to each Client Subscription
+whose Topic Filter matches the Topic Name attached to an Application Message.
+The topic resource MAY be either predefined in the Server by an administrator
+or it MAY be dynamically created by the Server when it receives the first
+subscription or an Application Message with that Topic Name. The Server MAY
+also use a security component to authorize particular actions on the topic
+resource for a given Client.</p>
+    <h2><a name="4.8-subscriptions"/>4.8 Subscriptions</h2>
+    <p class="MsoNormal">MQTT provides two kinds of Subscription, Shared and Non‑shared.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal" style="margin-left: .5in;">
+      <b>Non-normative comment</b>
+    </p>
+    <p class="MsoNormal" style="margin-left: .5in;">In earlier versions of MQTT all
+Subscriptions are Non‑shared.</p>
+    <h3><a name="4.8.1-non-shared-subscriptions"/>4.8.1
+Non‑shared Subscriptions</h3>
+    <p class="MsoNormal">A Non‑shared Subscription is associated only with the
+MQTT Session that created it. Each Subscription includes a Topic Filter,
+indicating the topic(s) for which messages are to be delivered on that Session,
+and Subscription Options. The Server is responsible for collecting messages
+that match the filter and transmitting them on the Session's MQTT connection if
+and when that connection is active.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">A Session cannot have more than one Non‑shared
+Subscription with the same Topic Filter, so the Topic Filter can be used as a key
+to identify the subscription within that Session.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">If there are multiple Clients, each with its own Non‑shared
+Subscription to the same Topic, each Client gets its own copy of the
+Application Messages that are published on that Topic. This means that the Non‑shared
+Subscriptions cannot be used to load-balance Application Messages across
+multiple consuming Clients as in such cases every message is delivered to every
+subscribing Client.</p>
+    <p class="MsoNormal"> </p>
+    <h3><a name="4.8.2-shared-subscriptions"/>4.8.2 Shared Subscriptions</h3>
+    <p class="MsoNormal">A Shared Subscription can be associated with multiple
+subscribing MQTT Sessions. Like a Non‑shared Subscription, it has a Topic
+Filter and Subscription Options; however, a publication that matches its Topic
+Filter is only sent to one of its subscribing Sessions. Shared Subscriptions
+are useful where several consuming Clients share the processing of the
+publications in parallel.</p>
+    <p class="MsoNormal"> </p>
+    <div class="div_2">
+      <p>
+        <span class="span_3">Solace Implementation Note</span>
+      </p>
+      <p> Solace implements shared subscriptions with the following caveats:</p>
+      <ul>
+        <li>Shared Subscriptions are not supported on sessions with a non-zero Expiry Interval. These will receive a CONNACK with Shared Subscriptions Available of 0.</li>
+        <li>All Shared Subscriptions are added as QoS 0 subscriptions.  A SUBSCRIBE at QoS 1 or QoS 2 will be granted only QoS 0 in the SUBACK.</li>
+      </ul>
+    </div>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">A Shared Subscription is identified using a special style of
+Topic Filter. The format of this filter is:</p>
+    <p class="MsoNormal">
+      <code>$share/{ShareName}/{filter}</code>
+    </p>
+    <ul>
+      <li><code>$share</code> is a literal string that marks the Topic Filter as being
+a Shared Subscription Topic Filter.</li>
+      <li><code>{ShareName}</code> is a character string that does not include
+"/", "+" or "#"</li>
+      <li><code>{filter}</code> The remainder of the string has the same syntax and
+semantics as a Topic Filter in a non-shared subscription. Refer to <a href="#4.7-topic-names-topic-filters" class="link-internal">section 4.7</a>.</li>
+    </ul>
+    <p class="MsoListParagraphCxSpMiddle" style="text-indent: -.25in;"> </p>
+    <p class="MsoNormal"><span style="background: yellow;">A Shared Subscription's
+Topic Filter MUST start with $share/ and MUST contain a ShareName that is at
+least one character long</span><span style="color: red;">[MQTT-4.8.2-1]</span>. <span style="background: yellow;">The ShareName
+MUST NOT contain the characters "/", "+" or "#", but MUST be followed by a "/" character. This "/" character MUST be followed
+by a Topic Filter</span><span style="color: red;">[MQTT-4.8.2-2]</span> as described in <a href="#4.7-topic-names-topic-filters" class="link-internal">section 4.7</a>.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal" style="margin-left: .5in;">
+      <b>Non-normative
+comment</b>
+    </p>
+    <p class="MsoNormal" style="margin-left: .5in;">Shared Subscriptions are defined at
+the scope of the MQTT Server, rather than of a Session. A ShareName is included
+in the Shared Subscription's Topic Filter so that there can be more than one
+Shared Subscription on a Server that has the same {filter} component. Typically,
+applications use the ShareName to represent the group of subscribing Sessions
+that are sharing the subscription.</p>
+    <p class="MsoNormal" style="margin-left: .5in;">Examples:</p>
+    <ul style="margin-left: 0.5in;">
+      <li>Shared subscriptions "$share/consumer1/sport/tennis/+"
+and "$share/consumer2/sport/tennis/+" are distinct shared
+subscriptions and so can be associated with different groups of Sessions. Both
+of them match the same topics as a non-shared subscription to sport/tennis/+ .<p>If a message were
+to be published that matches sport/tennis/+ then a copy would be sent to
+exactly one of the Sessions subscribed to $share/consumer1/sport/tennis/+ , a
+separate copy of the message would be sent to exactly one of the Sessions
+subscribed to $share/consumer2/sport/tennis/+ and further copies would be sent
+to any Clients with non-shared subscriptions to sport/tennis/+</p></li>
+      <li>Shared subscription "$share/consumer1//finance" matches
+the same topics as a non-shared subscription to /finance.<p>Note that "$share/consumer1//finance" and "$share/consumer1/sport/tennis/+"
+are distinct shared subscriptions, even though they have the same ShareName.
+While they might be related in some way, no specific relationship between them
+is implied by them having the same ShareName.</p></li>
+    </ul>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">A Shared Subscription is created by using a Shared
+Subscription Topic Filter in a SUBSCRIBE request. So long as only one Session
+subscribes to a particular Shared Subscription, the shared subscription behaves
+like a non-shared subscription, except that:</p>
+    <ul>
+      <li>The $share and {ShareName} portions of the Topic Filter are not
+taken into account when matching against publications.</li>
+      <li>No Retained Messages are sent to the Session when it first
+subscribes. It will be sent other matching messages as they are published.</li>
+    </ul>
+    <p class="MsoNormal">Once a Shared Subscription exists, it is possible for other
+Sessions to subscribe with the same Shared Subscription Topic Filter. The new Session
+is associated with the Shared Subscription as an additional subscriber.
+Retained messages are not sent to this new subscriber. Each subsequent
+Application Message that matches the Shared Subscription is now sent to one and
+only one of the Sessions that are subscribed to the Shared Subscription.</p>
+    <p class="MsoNormal">A Session can explicitly detach itself from a Shared
+Subscription by sending an UNSUBSCRIBE Packet that contains the full Shared
+Subscription Topic Filter. Sessions are also detached from the Shared Subscription
+when they terminate.</p>
+    <p class="MsoNormal">A Shared Subscription lasts for as long as it is associated
+with at least one Session (i.e. a Session that has issued a successful
+SUBSCRIBE request to its Topic Filter and that has not completed a
+corresponding UNSUBSCRIBE). A Shared Subscription survives when the Session
+that originally created it unsubscribes, unless there are no other Sessions
+left when this happens. A Shared Subscription ends, and any undelivered
+messages associated with it are deleted, when there are no longer any Sessions
+subscribed to it.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">Notes on Shared Subscriptions</p>
+    <ul>
+      <li>If there's more than one Session subscribed to the Shared
+Subscription, the Server implementation is free to choose, on a message by
+message basis, which Session to use and what criteria it uses to make this
+selection.<br/><br/></li>
+      <li>Different subscribing Clients are permitted to ask for different
+Requested QoS levels in their SUBSCRIBE packets. The Server decides which
+Maximum QoS to grant to each Client, and it is permitted to grant different
+Maximum QoS levels to different subscribers. When sending an Application
+Message to a Client, <span style="background: yellow;">the Server MUST respect
+the granted QoS for the Client's subscription</span><span style="color: red;">[MQTT-4.8.2-3]</span>,
+in the same that it does when sending a message to a ‑Subscriber.<br/><br/></li>
+      <li>If the Server is in the process of sending a QoS 2 message to its
+chosen subscribing Client and the connection to the Client breaks before
+delivery is complete<span style="background: yellow;">, the Server MUST complete
+the delivery of the message to that Client when it reconnects</span><span style="color: red;">[MQTT-4.8.2-4] </span>as described in <a href="#4.3.3-qos2-exactly-once" class="link-internal">section 4.3.3</a>. <span style="background: yellow;">If
+the Client's Session terminates before the Client reconnects, the Server MUST
+NOT send the Application Message to any other subscribed Client</span><span style="color: red;">[MQTT-4.8.2-5]</span>.<br/><br/></li>
+      <li>If the Server is in the process of sending a QoS 1 message to its
+chosen subscribing Client and the connection to that Client breaks before the Server
+has received an acknowledgement from the Client, the Server MAY wait for the
+Client to reconnect and retransmit the message to that Client. If the Client'sSession
+terminates before the Client reconnects, the Server SHOULD send the Application
+Message to another Client that is subscribed to the same Shared Subscription.
+It MAY attempt to send the message to another Client as soon as it loses its
+connection to the first Client.<br/><br/></li>
+      <li><span style="background: yellow;">If a Client responds with a PUBACK
+or PUBREC containing a Reason Code of 0x80 or greater to a PUBLISH packet from
+the Server, the Server MUST discard the Application Message and not attempt to
+send it to any other Subscriber</span><span style="color: red;">[MQTT-4.8.2-6]</span>.<br/><br/></li>
+      <li>A Client is permitted to submit a second SUBSCRIBE request to a
+Shared Subscription on a Session that's already subscribed to that Shared
+Subscription. For example, it might do this to change the Requested QoS for its
+subscription or because it was uncertain that the previous subscribe completed
+before the previous connection was closed. This does not increase the number of
+times that the Session is associated with the Shared Subscription, so the Session
+will leave the Shared Subscription on its first UNSUBSCRIBE.<br/><br/></li>
+      <li>Each Shared Subscription is independent from any other. It is possible
+to have two Shared Subscriptions with overlapping filters. In such cases a
+message that matches both Shared Subscriptions will be processed separately by
+both of them. If a Client has a Shared Subscription and a Non‑shared Subscription
+and a message matches both of them, the Client will receive a copy of the
+message by virtue of it having the Non‑shared Subscription. A second copy
+of the message will be delivered to one of the subscribers to the Shared
+Subscription, and this could result in a second copy being sent to this Client.</li>
+    </ul>
+    <h2><a name="4.9-flow-control"/>4.9 Flow Control</h2>
+    <p class="MsoNormal"><a name="_Hlk484158938"/>Clients and Servers control the
+number of unacknowledged PUBLISH packets they receive by using a Receive
+Maximum value as described in <a href="mqtt-v50-3-control-packets.htm#3.1.2.11.4-maximum-packet-size" class="link-internal">section
+3.1.2.11.4</a> and <a href="mqtt-v50-3-control-packets.htm#3.2.2.3.2-session-expiry-interval" class="link-internal">section 3.2.2.3.2</a>. The Receive
+Maximum establishes a send quota which is used to limit the number of PUBLISH
+QOS &gt; 0 packets which can be sent without receiving an PUBACK (for QoS 1) or
+PUBCOMP (for QoS 2). The PUBACK and PUBCOMP replenish the quota in the manner
+described below. </p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal"><span style="background: yellow;">The Client or Server MUST
+set its initial send quota to a non-zero value not exceeding the Receive
+Maximum</span><span style="color: red;">[MQTT-4.9.0-1]</span>. </p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal"><span style="background: yellow;">Each time the Client or
+Server sends a PUBLISH packet at QoS &gt; 0, it decrements the send quota. If
+the send quota reaches zero, the Client or Server MUST NOT send any more
+PUBLISH packets with QoS &gt; 0</span><span style="color: red;">[MQTT-4.9.0-2]</span>.
+It MAY continue to send PUBLISH packets with QoS 0, or it MAY choose to suspend
+sending these as well. <span style="background: yellow;">The Client and Server
+MUST continue to process and respond to all other MQTT Control Packets even if
+the quota is zero</span><span style="color: red;">[MQTT-4.9.0-3]</span>. </p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">The send quota is incremented by 1: </p>
+    <ul>
+      <li>Each time a PUBACK or PUBCOMP packet is received, regardless of
+whether the PUBACK or PUBCOMP carried an error code. </li>
+      <li>Each time a PUBREC packet is received with a Return Code of 0x80
+or greater. </li>
+    </ul>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">The send quota is not incremented if it is already equal to
+the initial send quota. The attempt to increment above the initial send quota
+might be caused by the re-transmission of a PUBREL packet after a new Network
+Connection is established. </p>
+    <p class="MsoNormal">Refer to <a href="mqtt-v50-3-control-packets.htm#3.3.4-publish-actions" class="link-internal">section 3.3.4</a> for a
+description of how Clients and Servers react if they are sent more PUBLISH
+packets than the Receive Maximum allows. </p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">The send quota and Receive Maximum value are not preserved
+across Network Connections, and are re-initialized with each new Network
+Connection as described above. They are not part of the session state.</p>
+    <h2><a name="4.10-request-response"/>4.10 Request / Response</h2>
+    <p class="MsoNormal">Some applications or standards
+might wish to run a Request/Response interaction over MQTT. This version of
+MQTT includes three properties that can be used for this purpose:</p>
+    <ul>
+      <li>Response Topic, described in <a href="mqtt-v50-3-control-packets.htm#3.3.2.3.5-response-topic" class="link-internal">section
+3.3.2.3.5</a></li>
+      <li>Correlation Data, described in <a href="mqtt-v50-3-control-packets.htm#3.3.2.3.6-correlation-data" class="link-internal">section
+3.3.2.3.6</a></li>
+      <li>Request Response Information, described in <a href="mqtt-v50-3-control-packets.htm#3.1.2.11.6-request-response-information" class="link-internal">section 3.1.2.11.6</a></li>
+      <li>Response Information, described in <a href="mqtt-v50-3-control-packets.htm#3.2.2.3.15-response-information" class="link-internal">section 3.2.2.3.15</a></li>
+    </ul>
+    <p class="MsoNormal">The following non-normative sections describe how these
+properties can be used. </p>
+    <p class="MsoNormal">A Client sends a Request Message by publishing an
+Application Message which has a Response Topic set as described in <a href="mqtt-v50-3-control-packets.htm#3.3.2.3.5-response-topic" class="link-internal">section 3.3.2.3.5</a>. The Request can include a
+Correlation Data property as described in <a href="mqtt-v50-3-control-packets.htm#3.3.2.3.6-correlation-data" class="link-internal">section
+ 3.3.2.3.6</a>.</p>
+    <h3><a name="4.10.1-basic-request-response"/>4.10.1 Basic Request Response (non-normative)</h3>
+    <p class="MsoNormal"> Request/Response interaction proceeds as follows:</p>
+    <ol>
+      <li>An MQTT
+Client (the Requester) publishes a Request Message to a topic. A Request
+Message is an Application Message with a Response Topic.</li>
+      <li>Another
+MQTT Client (the Responder) has subscribed to a Topic Filter which matches the
+Topic Name used when the Request Message was published. As a result, it receives
+the Request Message. There could be multiple Responders subscribed to this
+Topic Name or there could be none.</li>
+      <li>The
+Responder takes the appropriate action based on the Request Message, and then
+publishes a Response Message to the Topic Name in the Response Topic property
+that was carried in the Request Message.</li>
+      <li>In typical
+usage the Requester has subscribed to the Response Topic and thereby receives
+the Response Message. However, some other Client might be subscribed to the
+Response Topic in which case the Response Message will also be received and
+processed by that Client. As with the Request Message, the topic on which the
+Response Message is sent could be subscribed to by multiple Clients, or by
+none.</li>
+    </ol>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">If the Request Message contains a Correlation Data property,
+the Responder copies this property into the Response Message and this is used
+by the receiver of the Response Message to associate the Response Message with
+the original request. The Response Message does not include a Response Topic
+property.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">The MQTT Server forwards the Response Topic and Correlation
+Data Property in the Request Message and the Correlation Data in the Response
+Message. The Server treats the Request Message and the Response Message like
+any other Application Message.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">The Requester normally subscribes to the Response Topic
+before publishing a Request Message. If there are no subscribers to the
+Response Topic when the Response Message is sent, the Response Message will not
+be delivered to any Client.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">The Request Message and Response Message can be of any QoS,
+and the Responder can be using a Session with a non-zero Session Expiry
+Interval. It is common to send Request Messages at QoS 0 and only when the
+Responder is expected to be connected. However, this is not necessary.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">The Responder can use a Shared Subscription to allow for a
+pool of responding Clients. Note however that when using Shared Subscriptions
+that the order of message delivery is not guaranteed between multiple Clients.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">It is the responsibility of the Requester to make sure it
+has the necessary authority to publish to the request topic, and to subscribe
+to the Topic Name that it sets in the Response Topic property. It is the
+responsibility of the Responder to make sure it has the authority to subscribe
+to the request topic and publish to the Response Topic. While topic
+authorization is outside of this specification, it is recommended that Servers
+implement such authorization. </p>
+    <h3><a name="4.10.2-determining-response-topic-value"/>4.10.2 Determining a Response Topic value (non-normative)</h3>
+    <p class="MsoNormal">Requesters can determine a Topic Name to use as their
+Response Topic in any manner they choose including via local configuration. To
+avoid clashes between different Requesters, it is desirable that the Response
+Topic used by a Requester Client be unique to that Client. As the Requester and
+Responder commonly need to be authorized to these topics, it can be an
+authorization challenge to use a random Topic Name.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">To help with this problem, this specification defines a
+property in the CONNACK packet called Response Information. The Server can use
+this property to guide the Client in its choice for the Response Topic to use.
+This mechanism is optional for both the Client and the Server. At connect time,
+the Client requests that the Server send a Response Information by setting the
+Request Response Information property in the CONNECT packet. This causes the
+Server to insert a Response Information property (a UTF-8 Encoded String) sent
+in the CONNACK packet. </p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">This specification does not define the contents of the
+Response Information but it could be used to pass a globally unique portion of
+the topic tree which is reserved for that Client for at least the lifetime of
+its Session. Using this mechanism allows this configuration to be done once in
+the Server rather than in each Client.</p>
+    <div class="div_2">
+      <p>
+        <span class="span_3">Solace Implementation Note</span>
+      </p>
+      <p>Solace uses the Response Information in the CONNACK to return a topic prefix which SHOULD be used by the client for request/response message exchange. It is chosen such that it is unique for the client, and is authorized for the client to be able to SUBSCRIBE to.</p>
+    </div>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">Refer to <a href="mqtt-v50-3-control-packets.htm#3.1.2.11.6-request-response-information" class="link-internal">section 3.1.2.11.6</a> for the definition of the Response Information.</p>
+    <h2><a name="4.11-server-redirection"/>4.11 Server redirection</h2>
+    <p class="MsoNormal">A Server can request that the Client uses another Server by
+sending CONNACK or DISCONNECT with Reason Codes 0x9C (Use another server), or
+0x9D (Server moved) as described in <a href="#4.13-handling-errors" class="link-internal">section 4.13</a>.
+When sending one of these Reason Codes, the Server MAY also include a Server
+Reference property to indicate the location of the Server or Servers the Client
+SHOULD use.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">The Reason Code 0x9C (Use another server) specifies that the
+Client SHOULD temporarily switch to using another Server. The other Server is
+either already known to the Client, or is specified using a Server Reference.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">The Reason Code 0x9D (Server moved) specifies that the
+Client SHOULD permanently switch to using another Server. The other Server is
+either already known to the Client, or is specified using a Server Reference.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">The Server Reference is a UTF-8 Encoded String. The value of
+this string is a space separated list of references. The format of references
+is not specified here. </p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal" style="margin-left: .5in;">
+      <b>Non-normative
+comment</b>
+    </p>
+    <p class="MsoNormal" style="margin-left: .5in;">It is recommended that each
+reference consists of a name optionally followed by a colon and a port number.
+If the name contains a colon the name string can be enclosed within square
+brackets (“[“ and ‘]”). A name enclosed by square brackets cannot contain the
+right square bracket (“]”) character. This is used to represent an IPv6 literal
+address which uses colon separators. This is a
+simplified version of an URI authority as described in <a href="mqtt-v50-1-introduction.htm#RFC3986" class="link-internal">[RFC3986]</a>.</p>
+    <p class="MsoNormal" style="margin-left: .5in;"> </p>
+    <p class="MsoNormal" style="margin-left: .5in;">
+      <b>Non-normative comment</b>
+    </p>
+    <p class="MsoNormal" style="margin-left: .5in;">The name within a Server Reference
+commonly represents a host name, DNS name <a href="mqtt-v50-1-introduction.htm#RFC1035" class="link-internal">[RFC1035]</a>, SRV
+name <a href="mqtt-v50-1-introduction.htm#RFC2782" class="link-internal">[RFC2782]</a> , or literal IP address. The value
+following the colon separator is commonly a port number in decimal. This is not
+needed where the port information comes from the name resolution (such as with
+SRV) or is defaulted.</p>
+    <p class="MsoNormal" style="margin-left: .5in;"> </p>
+    <p class="MsoNormal" style="margin-left: .5in;">
+      <b>Non-normative comment</b>
+    </p>
+    <p class="MsoNormal" style="margin-left: .5in;">If multiple references are given,
+the expectation is that that Client will choose one of them.</p>
+    <p class="MsoNormal" style="margin-left: .5in;"> </p>
+    <p class="MsoNormal" style="margin-left: .5in;">
+      <b>Non-normative
+comment</b>
+    </p>
+    <p class="MsoNormal" style="margin-left: .5in;">Examples of the Server Reference
+are:</p>
+    <p style="margin-left: 0.5in;">
+      <code>myserver.xyz.org</code>
+    </p>
+    <p style="margin-left: 0.5in;">
+      <code>myserver.xyz.org:8883</code>
+    </p>
+    <p style="margin-left: 0.5in;">
+      <code>10.10.151.22:8883[fe80::9610:3eff:fe1c]:1883</code>
+    </p>
+    <p class="MsoNormal" style="margin-left: .5in;"> </p>
+    <p class="MsoNormal">The Server is allowed to not ever send a Server Reference,
+and the Client is allowed to ignore a Server Reference. This feature can be
+used to allow for load balancing, Server relocation, and Client provisioning to
+a Server.</p>
+    <h2><a name="4.12-enhanced-authentication"/>4.12 Enhanced
+authentication</h2>
+    <p class="MsoNormal">The MQTT CONNECT packet supports basic authentication of a
+Network Connection using the User Name and Password fields. While these fields
+are named for a simple password authentication, they can be used to carry other
+forms of authentication such as passing a token as the Password.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">Enhanced authentication extends this basic authentication to
+include challenge / response style authentication. It might involve the
+exchange of AUTH packets between the Client and the Server after the CONNECT
+and before the CONNACK packets.</p>
+    <p class="MsoNormal"> </p>
+    <div class="div_2">
+      <p>
+        <span class="span_3">Solace Implementation Note</span>
+      </p>
+      <p>Solace does not support enhanced authentication, and as such does not support the the Authentication Method property or AUTH packet.</p>
+    </div>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">To begin an enhanced authentication, the Client includes an
+Authentication Method in the CONNECT packet. This specifies the authentication
+method to use. <span style="background: yellow;">If the Server does not support
+the Authentication Method supplied by the Client, it MAY send a CONNACK with a
+Reason Code of 0x8C (Bad authentication method) or 0x87 (Not Authorized) as
+described in </span><a href="#4.13-handling-errors" class="link-internal">section
+4.13</a><span style="background: yellow;"> and MUST close the Network
+Connection </span><span style="color: red;">[MQTT-4.12.0-1]</span>.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">The Authentication Method is an agreement between the Client
+and Server about the meaning of the data sent in the Authentication Data and
+any of the other fields in CONNECT, and the exchanges and processing needed by
+the Client and Server to complete the authentication.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal" style="margin-left: .5in;">
+      <b>Non-normative
+comment</b>
+    </p>
+    <p class="MsoNormal" style="margin-left: .5in;">The Authentication Method is commonly
+a SASL mechanism, and using such a registered name aids interchange. However,
+the Authentication Method is not constrained to using registered SASL
+mechanisms.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">If the Authentication Method selected by the Client
+specifies that the Client sends data first, the Client SHOULD include an
+Authentication Data property in the CONNECT packet. This property can be used
+to provide data as specified by the Authentication Method. The contents of the
+Authentication Data are defined by the authentication method.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal"><span style="background: yellow;">If the Server requires
+additional information to complete the authentication, it can send an AUTH
+packet to the Client. This packet MUST contain a Reason Code of 0x18 (Continue
+authentication)</span><span style="color: red;">[MQTT-4.12.0-2]</span>. If the
+authentication method requires the Server to send authentication data to the
+Client, it is sent in the Authentication Data.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal"><span style="background: yellow;">The Client responds to an
+AUTH packet from the Server by sending a further AUTH packet. This packet MUST
+contain a Reason Code of 0x18 (Continue authentication)</span><span style="color: red;">[MQTT-4.12.0-3]</span>. If the authentication method requires
+the Client to send authentication data for the Server, it is sent in the Authentication
+Data. </p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">The Client and Server exchange AUTH packets as needed until
+the Server accepts the authentication by sending a CONNACK with a Reason Code
+of 0. If the acceptance of the authentication requires data to be sent to the
+Client, it is sent in the Authentication Data. </p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">The Client can close the connection at any point in this
+process. It MAY send a DISCONNECT packet before doing so. <span style="background: yellow;">The Server can reject the authentication at any point
+in this process. It MAY send a CONNACK with a Reason Code of 0x80 or above as
+described in </span><a href="#4.13-handling-errors" class="link-internal">section
+4.13</a><span style="background: yellow;">, and MUST close the Network
+Connection</span><span style="color: red;">[MQTT-4.12.0-4]</span>.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal"><span style="background: yellow;">If the initial CONNECT
+packet included an Authentication Method property then all AUTH packets, and
+any successful CONNACK packet MUST include an Authentication Method Property
+with the same value as in the CONNECT packet</span><span style="color: red;">[MQTT-4.12.0-5]</span>.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">The implementation of enhanced authentication is OPTIONAL
+for both Clients and Servers. <span style="background: yellow;">If the Client
+does not include an Authentication Method in the CONNECT, the Server MUST NOT send
+an AUTH packet, and it MUST NOT send an Authentication Method in the CONNACK
+packet</span><span style="color: red;">[MQTT-4.12.0-6]</span>. <span style="background: yellow;">If the Client does not include an Authentication
+Method in the CONNECT, the Client MUST NOT send an AUTH packet to the Server</span> <span style="color: red;">[MQTT-4.12.0-7]</span>. </p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">If the Client does not include an Authentication Method in
+the CONNECT packet, the Server SHOULD authenticate using some or all of the
+information in the CONNECT packet, TLS session, and Network Connection.</p>
+    <p> </p>
+    <p class="MsoNormal" style="margin-left: 0.5in;">
+      <b>Non-normative example showing
+a SCRAM challenge</b>
+    </p>
+    <ul style="margin-left: 0.5in;">
+      <li>Client to Server: CONNECT Authentication
+Method="SCRAM-SHA-1" Authentication Data=client-first-data </li>
+      <li>Server to Client: AUTH rc=0x18 Authentication
+Method="SCRAM-SHA-1" Authentication Data=server-first-data</li>
+      <li>Client to Server AUTH rc=0x18 Authentication Method="SCRAM-SHA-1"
+Authentication Data=client-final-data</li>
+      <li>Server to Client CONNACK rc=0 Authentication
+Method="SCRAM-SHA-1" Authentication Data=server-final-data</li>
+    </ul>
+    <p class="MsoNormal" style="margin-left: 0.5in;"> </p>
+    <p class="MsoNormal" style="margin-left: 0.5in;">
+      <b>Non-normative example
+showing a Kerberos challenge</b>
+    </p>
+    <ul style="margin-left: 0.5in;">
+      <li>Client to Server CONNECT Authentication Method="GS2-KRB5"
+</li>
+      <li>Server to Client AUTH rc=0x18 Authentication Method="GS2-KRB5"
+</li>
+      <li>Client to Server AUTH rc=0x18 Authentication Method="GS2-KRB5"
+Authentication Data=initial context token</li>
+      <li>Server to Client AUTH rc=0x18 Authentication Method="GS2-KRB5"
+Authentication Data=reply context token</li>
+      <li>Client to Server AUTH rc=0x18 Authentication
+Method="GS2-KRB5" </li>
+      <li>Server to Client CONNACK rc=0 Authentication Method="GS2-KRB5"
+Authentication Data=outcome of authentication</li>
+    </ul>
+    <h3><a name="4.12.1-re-authentication"/>4.12.1 Re-authentication</h3>
+    <p class="MsoNormal"><span style="background: yellow;">If the Client supplied an
+Authentication Method in the CONNECT packet it can initiate a re-authentication
+at any time after receiving a CONNACK. It does this by sending an AUTH packet
+with a Reason Code of 0x19 (Re-authentication). The Client MUST set the Authentication
+Method to the same value as the Authentication Method originally used to
+authenticate the Network Connection</span><span style="color: red;">[MQTT-4.12.1-1]</span>.
+If the authentication method requires Client data first, this AUTH packet
+contains the first piece of authentication data as the Authentication Data. </p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">The Server responds to this re-authentication request by
+sending an AUTH packet to the Client with a Reason Code of 0x00 (Success) to
+indicate that the re-authentication is complete, or a Reason Code of 0x18
+(Continue authentication) to indicate that more authentication data is needed.
+The Client can respond with additional authentication data by sending an AUTH
+packet with a Reason Code of 0x18 (Continue authentication). This flow
+continues as with the original authentication until the re-authentication is complete
+or the re-authentication fails.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal"><span style="background: yellow;">If the re-authentication
+fails, the Client or Server SHOULD send DISCONNECT with an appropriate Reason
+Code as described in </span><a href="#4.13-handling-errors" class="link-internal">section 4.13</a><span style="background: yellow;">, and MUST close
+the Network Connection</span><span style="color: red;">[MQTT-4.12.1-2]</span>. </p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">During this re-authentication sequence, the flow of other
+packets between the Client and Server can continue using the previous
+authentication.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal" style="margin-left: .5in;">
+      <b>Non-normative
+comment</b>
+    </p>
+    <p class="MsoNormal" style="margin-left: .5in;">The Server might limit the scope of
+the changes the Client can attempt in a re-authentication by rejecting the
+re-authentication. For instance, if the Server does not allow the User Name to
+be changed it can fail any re-authentication attempt which changes the User
+Name.</p>
+    <h2><a name="4.13-handling-errors"/>4.13 Handling errors</h2>
+    <h3><a name="4.13.1-malformed-packet-protocol-errors"/>4.13.1 Malformed Packet and
+Protocol Errors</h3>
+    <p class="MsoNormal">Definitions of Malformed Packet and Protocol Errors are
+contained in section <MadCap:xref href="mqtt-v50-1-introduction.htm#1.2-terminology">1.2
+Terminology</MadCap:xref>, some but not
+all, of these error cases are noted throughout the specification. The rigor with
+which a Client or Server checks an MQTT Control Packet it has received will be
+a compromise between: </p>
+    <ul>
+      <li>The size of the Client or Server implementation. </li>
+      <li>The capabilities that the implementation supports.</li>
+      <li>The degree to which the receiver trusts the sender to send
+correct MQTT Control Packets.</li>
+      <li>The degree to which the receiver trusts the network to deliver
+MQTT Control Packets correctly.</li>
+      <li>The consequences of continuing to process a packet that is
+incorrect. </li>
+    </ul>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">If the sender is compliant with this specification it will
+not send Malformed Packets or cause Protocol Errors. However, if a Client sends
+MQTT Control Packets before it receives CONNACK, it might cause a Protocol
+Error because it made an incorrect assumption about the Server capabilities. Refer
+to section <MadCap:xref href="mqtt-v50-3-control-packets.htm#3.1.4-connect-actions">3.1.4 CONNECT Actions</MadCap:xref>.</p>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">The Reason Codes used for Malformed Packet and Protocol
+Errors are: </p>
+    <ul>
+      <li>0x81           Malformed Packet</li>
+      <li>0x82           Protocol Error</li>
+      <li>0x93           Receive Maximum exceeded</li>
+      <li>0x95           Packet too large</li>
+      <li>0x9A           Retain not supported</li>
+      <li>0x9B           QoS not supported</li>
+      <li>0x9E           Shared Subscriptions not supported</li>
+      <li>0xA1           Subscription Identifiers not supported</li>
+      <li>0xA2           Wildcard Subscriptions not supported</li>
+    </ul>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">When a Client detects a Malformed Packet or Protocol Error, and
+a Reason Code is given in the specification, it SHOULD close the Network
+Connection. In the case of an error in a AUTH packet it MAY send a DISCONNECT packet
+containing the reason code, before closing the Network Connection. In the case
+of an error in any other packet it SHOULD send a DISCONNECT packet containing
+the reason code before closing the Network Connection. Use Reason Code 0x81
+(Malformed Packet) or 0x82 (Protocol Error) unless a more specific Reason Code
+has been defined in section <MadCap:xref href="mqtt-v50-3-control-packets.htm#3.14.2.1-disconnect-reason-code">3.14.2.1 Disconnect Reason Code</MadCap:xref>.</p>
+    <p class="MsoNormal"> </p>
+    <div class="div_2">
+      <p>
+        <span class="span_3">Solace Implementation Note</span>
+      </p>
+      <p>Solace server never sends a DISCONNECT packet before closing the network connection.</p>
+    </div>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal"><span style="background: yellow;">When a Server detects a
+Malformed Packet or Protocol Error, and a Reason Code is given in the
+specification, it MUST close the Network Connection</span><span style="color: red;">[MQTT-4.13.1-1]</span>. In the case of an error in a CONNECT
+packet it MAY send a CONNACK packet containing the Reason Code, before closing
+the Network Connection. In the case of an error in any other packet it SHOULD
+send a DISCONNECT packet containing the Reason Code before closing the Network
+Connection. Use Reason Code 0x81 (Malformed Packet) or 0x82 (Protocol Error)
+unless a more specific Reason Code has been defined in section  <MadCap:xref href="mqtt-v50-3-control-packets.htm#3.2.2.2-connect-reason-code">3.2.2.2 Connect Reason Code</MadCap:xref> or in
+section <MadCap:xref href="mqtt-v50-3-control-packets.htm#3.14.2.1-disconnect-reason-code">3.14.2.1 Disconnect Reason Code</MadCap:xref>.
+There are no consequences for other Sessions.</p>
+    <p class="MsoNormal"> </p>
+    <div class="div_2">
+      <p>
+        <span class="span_3">Solace Implementation Note</span>
+      </p>
+      <p>In the case of shared subscriptions not being supported, Solace returns a SUBACK with the reason code 0x9E rather than closing the network connection.</p>
+    </div>
+    <p class="MsoNormal"> </p>
+    <p class="MsoNormal">If either the Server or Client omits to check some feature
+of an MQTT Control Packet, it might fail to detect an error, consequently it
+might allow data to be damaged.</p>
+    <h3><a name="4.13.2-other-errors"/>4.13.2 Other errors</h3>
+    <p class="MsoNormal">Errors other than Malformed Packet and Protocol Errors
+cannot be anticipated by the sender because the receiver might have constraints
+which it has not communicated to the sender. A receiving Client or Server might
+encounter a transient error, such as a shortage of memory, that prevents
+successful processing of an individual MQTT Control Packet.</p>
+    <p class="MsoNormal">Acknowledgment packets PUBACK, PUBREC, PUBREL, PUBCOMP,
+SUBACK, UNSUBACK with a Reason Code of 0x80 or greater indicate that the
+received packet, identified by a Packet Identifier, was in error. There are no
+consequences for other Sessions or other Packets flowing on the same Session.</p>
+    <p class="MsoNormal"><span style="background: yellow;">The CONNACK and DISCONNECT
+packets allow a Reason Code of 0x80 or greater to indicate that the Network
+Connection will be closed. If a Reason Code of 0x80 or greater is specified,
+then the Network Connection MUST be closed whether or not the CONNACK or
+DISCONNECT is sent</span><span style="color: red;">[MQTT-4.13.2-1]</span>.
+Sending of one of these Reason Codes does not have consequence for any other
+Session.</p>
+    <p class="MsoNormal">If the Control Packet contains multiple errors the receiver
+of the Packet can validate the Packet in any order and take the appropriate
+action for any of the errors found.</p>
+    <p class="MsoNormal">Refer to <a href="mqtt-v50-5-security.htm#5.4.9-handlind-disallowed-unicode-codepoints" class="link-internal">section 5.4.9</a> for information about
+handling Disallowed Unicode code points.</p>
+  </body>
+</html>

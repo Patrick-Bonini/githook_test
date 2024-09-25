@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <title/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Software"/>Scaling Up an Existing HA Group</h1>
+    <p>This section shows you the steps to increase the scaling parameters for the primary and backup software event brokers in a high-availability (HA) group using the <MadCap:variable name="Product-Names.solace_cli"/> .</p>
+    <p> This procedure changes system-wide scaling parameters. Upon completion, you may need to modify other parameters for individual Message VPNs. For example, you may need to modify the maximum number of client connections permitted for a specific Message VPN (<MadCap:xref href="../Features/VPN/Configuring-VPNs.htm#Max-Connections">Configuring Maximum Connections</MadCap:xref>) or for a specific client profile (see <MadCap:xref href="../Security/Configuring-Client-Profiles.htm#Config-Max-Connects-Username">Configuring Max Connections Per Username</MadCap:xref>). For more information, see <MadCap:xref href="../Features/VPN/Configuring-VPNs.htm">Configuring Message VPNs</MadCap:xref>.</p>
+    <p class="Note">System scaling parameters can only be increased. </p>
+    <p class="Caution">This procedure is service affecting. To change system scaling parameters other than <code>max-subscriptions</code> or the Kafka scaling parameters (Kafka bridges or Kafka broker connections), you must shut down the <code>message backbone</code> and <code>message spool</code>.</p>
+    <p>The following steps show you how to increase the scaling parameters for event brokers for both the primary and backup: </p>
+    <p>
+      <MadCap:xref href="#Review">Step 1: Review System Resource Requirements and HA Status</MadCap:xref>
+    </p>
+    <p>
+      <MadCap:xref href="#Increasi">Step 2: Increase the Value of the Scaling Parameter(s)</MadCap:xref>
+    </p>
+    <h2 class="with-rule"><a name="Review"/>Step 1: Review System Resource Requirements and HA Status</h2>
+    <p>Before you increase the value of any scaling parameters of your brokers:</p>
+    <ul>
+      <li> Ensure that you can adequately provision your system for the new scaling parameter values. See <MadCap:xref href="System-Resource-Requirements.htm">System Resource Requirements</MadCap:xref> for details about the available tiers and  the required resources for each one. </li>
+      <li>Verify that HA is operationally up on all event brokers in the HA group and that the Activity Status for each event broker is correct. You can use the <code>show redundancy</code> command to check operational states.</li>
+    </ul>
+    <p>For example, if you have two brokers in an HA pair, where <code>solace-primary</code> is the primary and <code>solace-backup</code> is the backup, the output of the <code>show redundancy</code> command looks similar to the following for the primary broker:</p>
+    <pre class="Code" xml:space="preserve">solace-primary# show redundancy 
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Message Routing Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : Primary
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router
+                               ----------------------  ----------------------
+Activity Status                Local Active            Shutdown
+Routing Interface              intf0:1                 intf0:1
+Routing Interface Status       Up                      
+VRRP Status                    Initialize              
+VRRP Priority                  250                     
+Message Spool Status           AD-Active               
+Priority Reported By Mate      Standby</pre>
+    <p>The output of the <code>show redundancy</code> command looks similar to the following for the backup broker:</p>
+    <pre class="Code" xml:space="preserve">solace-backup# show redundancy 
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Message Routing Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : Backup
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router
+                               ----------------------  ----------------------
+Activity Status                Shutdown                Mate Active
+Routing Interface              intf0:1                 intf0:1
+Routing Interface Status                               Up
+VRRP Status                                            Initialize
+VRRP Priority                                          100
+Message Spool Status                                   AD-Standby
+Priority Reported By Mate                              Active</pre>
+    <h2 class="with-rule"><a name="Increasi"/>Step 2: Increase the Value of the Scaling Parameters</h2>
+    <p>The primary and backup event brokers within an HA group must be configured to use the same system scaling parameters. If this is misconfigured, the HA group will not work properly. You can use the <code>show redundancy</code> command to check operational states.</p>
+    <p>For replicated sites, the primary and replication event broker sites should have the same resources and  maximum number of client connections.</p>
+    <div class="Note">
+      <ul>
+        <li>Scaling parameters are not automatically synchronized. For further information, refer to <MadCap:xref href="../Features/Config-Sync/Configuring-Config-Sync.htm">Using Config-Sync</MadCap:xref>.</li>
+        <li>This procedure changes system-wide scaling parameters. After completing this procedure, you can then modify other parameters for specific Message VPNs (for example, <MadCap:xref href="../Features/VPN/Configuring-VPNs.htm#Max-Connections">Configuring Maximum Connections</MadCap:xref>) or for clients using a specific client profile (see <MadCap:xref href="../Security/Configuring-Client-Profiles.htm#Config-Services">Configuring Services</MadCap:xref>).</li>
+      </ul>
+    </div>
+    <p>In the steps that follow, <code>solace-primary</code> is the primary event broker, and <code>solace-backup</code> is the backup event broker.</p>
+    <p>To increase the value of a system scaling parameter for an HA group, perform the following steps:</p>
+    <ol>
+      <li>On the primary event broker, in the <a href="Access-Solace-CLI.htm" class="link-internal"><MadCap:variable name="Product-Names.solace_cli"/></a>, enter the <code>show system detail</code> command to review the current scaling values. You can also review the memory, cores, and storage requirements that correspond to the requirements output from the system resource calculator (see <MadCap:xref href="System-Resource-Calculator.htm">System Resource Calculator</MadCap:xref>). This command helps you evaluate if additional resources must be added:            <pre xml:space="preserve">solace-primary&gt; show system detail
+
+System Uptime: 1d 0h 45m 21s
+Last Restart Reason: User request
+
+<span style="color: #ff0000;">Scaling:
+   Max Bridges: 25
+   Max Connections: 100
+   Max Queue Messages: 100M
+   Max Kafka Bridges: 0
+   Max Kafka Broker Connections: 0
+   Max Subscriptions: 500000</span>
+
+Topic Routing:
+   Subscription Exceptions: Enabled
+   Subscription Exceptions Defer: Enabled
+
+System Resources for Virtual Machine
+
+System Resource                   Available    Required     Units
+--------------------------------- ------------ ------------ ----------
+CPU
+  Cores                           2            2
+Memory
+---Press any key to continue, or `q' to quit---
+  RAM                             5.0          4.0          GiB
+Storage Devices
+  /dev/dm-0                       9.8 Mi       12.9 Mi      1K-Blocks
+    contains: spool-cache
+    contains: spool-cache-backup
+    contains: config
+    contains: diagnostics
+    contains: jail
+    contains: spool
+    contains: var
+  /dev/dm-6                       6.0 Mi       1.4 Mi       1K-Blocks
+    contains: root
+</pre></li>
+      <li>On the backup event broker, shut down the message backbone service and message
+spool:
+			<p class="Note">If you are increasing <code>max-subscriptions</code> or the Kafka scaling parameters (Kafka bridges or Kafka broker connections), you do not need to shut down the <code>msg-backbone</code> or <code>message-spool</code>.</p><pre>solace-backup(configure)# service msg-backbone shutdown
+All clients will be disconnected.
+Do you want to continue (y/n)? y
+solace-backup(configure)# hardware message-spool shutdown
+All message spooling will be stopped.
+Do you want to continue (y/n)? y
+</pre></li>
+      <li>On the primary event broker, shut down the message backbone service and message spool:
+            <p class="Note">If you are increasing <code>max-subscriptions</code> or the Kafka scaling parameters (Kafka bridges or Kafka broker connections), you do not need to shut down the <code>msg-backbone</code> or <code>message-spool</code>.</p><pre xml:space="preserve">solace-primary(configure)# service msg-backbone shutdown
+All clients will be disconnected.
+Do you want to continue (y/n)? y
+solace-primary(configure)# hardware message-spool shutdown
+All message spooling will be stopped.
+Do you want to continue (y/n)? y
+</pre></li>
+      <li>On the primary event broker, update the required system scaling parameter.
+            <MadCap:snippetBlock src="../Resources/Snippets/system-scaling-commands.flsnp"/><p>For example, Step 1 shows that the initial value of the client connection limit is 100. To increase the connection limit to 1,000, enter the following commands:</p><pre xml:space="preserve">solace-primary(configure)# system
+solace-primary(configure/system)# scaling
+solace-primary(configure/system/scaling)# max-connections 1000</pre><MadCap:snippetBlock src="../Resources/Snippets/chg-scaling-pararms-reload-note.flsnp"/></li>
+      <li>Restart the container if required, then enter the <MadCap:variable name="Product-Names.solace_cli"/> again and run the <code>show system</code> command to confirm the new parameter has been applied.
+In this example, the maximum number of client connections has been increased to 1,000.<pre xml:space="preserve">solace-primary&gt; show system
+
+System Uptime: 1d 0h 49m 13s
+Last Restart Reason: User request
+
+Scaling:
+   Max Bridges: 25
+   <span style="color: #ff0000;">Max Connections: 1000</span>
+   Max Queue Messages: 100M
+   Max Kafka Bridges: 0
+   Max Kafka Broker Connections: 0
+   Max Subscriptions: 500000
+
+Topic Routing:
+   Subscription Exceptions: Enabled
+   Subscription Exceptions Defer: Enabled</pre></li>
+      <li>Optionally, repeat the preceding two steps to increase another scaling parameter.</li>
+      <li>In the <MadCap:variable name="Product-Names.solace_cli"/>, enable the message spool and message backbone for the primary event broker:
+			<p class="Note">If you are increasing <code>max-subscriptions</code> or the Kafka scaling parameters (Kafka bridges or Kafka broker connections), you do not need to shut down the <code>msg-backbone</code> or <code>message-spool</code>.</p><pre class="Code">solace-primary(configure)# no hardware message-spool shutdown
+solace-primary(configure)# no service msg-backbone shutdown</pre></li>
+      <li>On the primary event broker, verify that the message spool’s <code>Operational Status</code> is <code>AD-Active</code>:
+             <pre>solace-primary(configure/service/msg-backbone) show message-spool</pre><p class="Note">The primary message spool status must be <code>AD-Active</code> before continuing with this procedure or message loss will occur.</p><p class="Note">If you are increasing <code>max-subscriptions</code> or the Kafka scaling parameters (Kafka bridges or Kafka broker connections), verify that the status on the primary event broker is <code>AD-Standby</code> and on the backup it is <code>AD-Active</code>. When you upscale the backup, the status will change to  <code>AD-Standby</code>.</p></li>
+      <li>On the backup event broker, update the system scaling parameter to match the settings on the primary broker.
+            <MadCap:snippetBlock src="../Resources/Snippets/chg-scaling-pararms-reload-note.flsnp"/></li>
+      <li>Restart the container if required, then enter the <MadCap:variable name="Product-Names.solace_cli"/> again and confirm the new parameter has been applied by running the <code>show system</code> command.</li>
+      <li>Optionally, repeat the preceding two steps to increase another scaling parameter to match the settings on the primary event broker.</li>
+      <li>In the <MadCap:variable name="Product-Names.solace_cli"/>, enable the message spool and message backbone service for the backup event broker:
+			<p class="Note">If you are increasing <code>max-subscriptions</code> or the Kafka scaling parameters (Kafka bridges or Kafka broker connections), you do not need to shut down the <code>msg-backbone</code> or <code>message-spool</code>.</p><pre class="Code" xml:space="preserve">solace-backup(configure)# no hardware message-spool shutdown
+solace-backup(configure)# no service msg-backbone shutdown</pre></li>
+      <li>On the backup event broker, verify that the message spool’s <code>Operational Status</code> is <code>AD-Standby</code>:
+            <pre>solace-backup(configure/service/msg-backbone)# show message-spool</pre></li>
+      <li>Verify that the <code>Redundancy Status</code> is <code>Up</code> on all nodes in the HA group:
+            <p>On the primary event broker:</p><pre class="Code">solace-primary&gt; show redundancy</pre><p>On the backup event broker:</p><pre class="Code">solace-backup&gt; show redundancy</pre><p>On the monitoring node:</p><pre class="Code">solace-monitoring&gt; show redundancy</pre></li>
+    </ol>
+  </body>
+</html>

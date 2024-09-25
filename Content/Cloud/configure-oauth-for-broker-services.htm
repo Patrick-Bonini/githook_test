@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="SAP.SapHideFromOutput,Default.ContentProductLink">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Configuring Single Sign-On for <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</h1>
+    <p>You can configure management access to <MadCap:variable name="Product-Names.broker_cloud_short"/>s to use the same <a href="cloud-sso.htm" class="link-internal">single sign-on</a> (SSO) via OpenID Connect (OIDC) as the  <MadCap:variable name="Product-Names.console_ui_long"/>. Using SSO allows users to  authenticate with the same credentials they use to access the <MadCap:variable name="Product-Names.console_ui_short"/>. Authorization for management access is handled with claims configured for your identity provider (IdP).</p>
+    <p class="Note"><MadCap:variable name="Product-Names.broker_cloud_short_title"/> SSO configures management access through <MadCap:variable name="Product-Names.pubsubmanager_long"/> to  <MadCap:variable name="Product-Names.broker_cloud_short"/>s. Access to the messages and events (or machine-to-machine authentication) uses a different authentication mechanism (for example, basic authentication, LDAP, client certification, or OAuth provider) that is configured separately for client applications. For more information, see  <MadCap:xref href="ght_authentication.htm">Configuring Authentication</MadCap:xref>.</p>
+    <p>To enable SSO for an <MadCap:variable name="Product-Names.broker_cloud_short"/>, complete the following tasks:</p>
+    <ol>
+      <li><a href="cloud-sso.htm" class="link-internal">Enable SSO</a> for <MadCap:variable name="Product-Names.cloud_product_short"/>.</li>
+      <li><a href="cloud-group-management.htm" class="link-internal">Enable group management</a>, and just-in-time provisioning for the account. For more information, see <MadCap:xref href="#considerations-for-broker-sso">Considerations for using Broker SSO</MadCap:xref>.</li>
+      <li>Navigate to the <MadCap:variable name="Product-Names.broker_cloud_short_title"/> SSO page to view the list of <MadCap:variable name="Product-Names.broker_cloud_short"/>s in your account and the status. For more information, see <MadCap:xref href="#overview-event-broker-service-oauth-manage">Understanding the SSO Status for [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref>.</li>
+      <li>Enable  SSO on the selected <MadCap:variable name="Product-Names.broker_cloud_short"/>. For more information, see <MadCap:xref href="#enable-sso-oidc-accountlevel">Enabling  SSO for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</li>
+      <li>Copy the <MadCap:variable name="Product-Names.broker_cloud_short"/> URI and add it as a redirect URI in your  IdP. For more information, see <MadCap:xref href="#retrieve-uri-event-broker-service">Retrieving the URI for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</li>
+    </ol>
+    <p>After you have completed the tasks above, you can:</p>
+    <ul>
+      <li>Check the SSO status of the <MadCap:variable name="Product-Names.broker_cloud_short"/> in multiple ways that include:<ul><li>Log in to <MadCap:variable name="Product-Names.pubsubmanager_long"/> and verify that the SSO credentials are used to authenticate. For more information, see <MadCap:xref href="#test-oidc-sso">Testing SSO Access for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</li><li>Verify the SSO status of the <MadCap:variable name="Product-Names.broker_cloud_short"/> in <MadCap:variable name="Product-Names.cluster_mgr" style="font-weight: normal;"/>. For more information, see <MadCap:xref href="cloud-configure-messaging-services.htm#service-details-information">Detailed Service Information</MadCap:xref>.</li><li>Check the status in <b>Account Settings</b>.</li></ul></li>
+      <li>If you no longer want an <MadCap:variable name="Product-Names.broker_cloud_short"/> to use  SSO, you can disable it. For more information, see <MadCap:xref href="#disable-sso-oidc-accountlevel">Disabling SSO for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</li>
+      <li>If you make SSO configuration changes,  such as adding new claim mappings, you can update each <MadCap:variable name="Product-Names.broker_cloud_short"/> with the updated SSO configuration. If an <MadCap:variable name="Product-Names.broker_cloud_short"/> needs a configuration update, it shows a status of <b>Enabled</b> with a message of <i>SSO configuration requires an update</i>. For more information, see <MadCap:xref href="#overview-event-broker-service-oauth-manage">Understanding the SSO Status for [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref>.</li>
+    </ul>
+    <h2><a name="considerations-for-broker-sso"/>Considerations for Using <MadCap:variable name="Product-Names.broker_cloud_short_title"/> SSO</h2>
+    <p>Before you configure SSO using OIDC, your account must meet the following requirements:</p>
+    <ul>
+      <li>You must have an Enterprise Account for <MadCap:variable name="Product-Names.cloud_product_short"/>. <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">Trial accounts do not support SSO configuration via OpenID Connect (OIDC).</MadCap:conditionalText></li>
+      <li>The Administrator role must be assigned to the user in the account to enable <MadCap:variable name="Product-Names.broker_cloud_short_title"/> SSO. Users with <MadCap:variable name="Product-Names.cm_editor"/> role cannot enable SSO on  an <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li>
+      <li>The roles in your Enterprise Account must be mapped appropriately to the roles in your identity provider:<ul><li>the Administrator and <MadCap:variable name="Product-Names.cm_editor"/> roles give edit permissions to the Message VPN on the <MadCap:variable name="Product-Names.broker_cloud_short"/></li><li>the <MadCap:variable name="Product-Names.cm_viewer"/> role give read access to  Message VPN on the <MadCap:variable name="Product-Names.broker_cloud_short"/></li></ul></li>
+      <li>If you have  <a href="create-service.htm#Configure-Custom-Ports" class="link-internal">private and public endpoints</a> configured for the <MadCap:variable name="Product-Names.broker_cloud_short"/>, the redirect URIs need to be configured on the IdP.<a href="cloud-sso.htm" class="link-internal"> SSO via OIDC</a> must be enabled on the account.</li>
+      <li><a href="cloud-group-management.htm" class="link-internal">Group management</a> must be set up on the account.</li>
+      <li><a href="configure-cloud-user-management.htm#Configur" class="link-internal">Just-in-time provisioning</a> must be  configured on the account.</li>
+    </ul>
+    <p>After the SSO configuration is enabled on the <MadCap:variable name="Product-Names.broker_cloud_short"/>, users have management access (for example <MadCap:variable name="Product-Names.pubsubmanager_long"/>) via SSO to the <MadCap:variable name="Product-Names.broker_cloud_short"/>. You can also check the <b>Management Access</b> on the <MadCap:variable name="Product-Names.broker_cloud_short"/> on Status page for the service. For more information, see <MadCap:xref href="cloud-configure-messaging-services.htm#service-details-information">Detailed Information About [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref>. </p>
+    <p>SSO access is only for management access for users. Access to the messages and events (or machine-to-machine authentication) use a different authentication mechanism (for example, basic authentication, LDAP, client certification, or OAuth provider) that is configured separately for client applications. For more information, see  <MadCap:xref href="ght_authentication.htm">Configuring Authentication</MadCap:xref>.</p>
+    <p>You can also configure SSO using the REST API for <MadCap:variable name="Product-Names.cloud_product_short"/>. For more information, see <MadCap:xref href="ght_use_rest_api_configure-oauth-rest-api.htm">Managing Single Sign-On for  [%=Product-Names.broker_cloud_short_title%]s using OpenID Connect with the [%=Product-Names.cloud_product_titlecase%] REST API</MadCap:xref>.</p>
+    <h2><a name="overview-event-broker-service-oauth-manage"/>Viewing the SSO Status for <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</h2>
+    <p>You can view the SSO status for all <MadCap:variable name="Product-Names.broker_cloud_short"/>s  on the <b>Manage Brokers</b> screen. To view the <b>Manage Brokers</b> screen, perform these steps:</p>
+    <ol>
+      <li><MadCap:snippetText src="../Resources/Snippets/Cloud/Task_UI_Snippets/login_console.flsnp"/><![CDATA[
+               ]]></li>
+      <li>On the navigation bar, select <b>User &amp; Account</b><img src="../Resources/Images/Cloud/reusable-icons/useraccount_green_navbar.png" class="img.img-inline" alt=""/> , and then select <b>Account Details</b>.</li>
+      <li>On the <b>Account Details</b> page, select the <b>Broker SSO Settings</b> tab.</li>
+      <li>In the <b>Event Broker Service SSO</b> tile, click <b>Manage Brokers</b>.</li>
+    </ol>
+    <p>
+      <div class="thumbnail-container">
+        <img class="solacethumbnail" src="../Resources/Images/Cloud/sso-oidc-manage-dialog.png" alt="Screenshot depicting the settings described in the surrounding text."/>
+      </div>
+    </p>
+    <p> The list of <MadCap:variable name="Product-Names.broker_cloud_short"/>s contains the following information:</p>
+    <dl>
+      <dt>Broker Name</dt>
+      <dd>The name of the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</dd>
+      <dt>Broker SSO Status</dt>
+      <dd> The status of SSO configuration on the <MadCap:variable name="Product-Names.broker_cloud_short"/>. The statuses are as follows:<ul><li><b>Disabled</b>—No SSO configuration is available on the <MadCap:variable name="Product-Names.broker_cloud_short"/> and SSO has been disabled. <MadCap:variable name="Product-Names.broker_cloud_short_intitalcap"/>s that have this state support SSO. To see how to access <MadCap:variable name="Product-Names.pubsubmanager_short"/>, see the <b>Status</b> tab for the <MadCap:variable name="Product-Names.broker_cloud_short"/> in <MadCap:variable name="Product-Names.cluster_mgr"/>.</li><li><b>Enabled</b>— The SSO configuration was successfully updated on the <MadCap:variable name="Product-Names.broker_cloud_short"/> and SSO has been enabled. If the URI has been updated on your identity provider, you can use SSO credentials to access <MadCap:variable name="Product-Names.pubsubmanager_short"/>. If the SSO configuration requires an update, it shows the message <i>SSO configuration requires an update</i>. To update the configuration, see <MadCap:xref href="#update-sso-oidc-accountlevel">Updating the SSO configuration for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</li><li><b>Does not support SSO</b>—The <MadCap:variable name="Product-Names.broker_cloud_short"/> doesn't support SSO. This can be because you using a legacy broker version. For information about upgrading your <MadCap:variable name="Product-Names.broker_cloud_short"/>, see <MadCap:xref href="upgrade-event-broker.htm">Upgrading [%=Product-Names.broker_cloud_short_title%]s in [%=Product-Names.cloud_product_titlecase%]</MadCap:xref>.</li><li><b>In Progress</b>—An operation to enable, update, or remove the SSO configuration from the  <MadCap:variable name="Product-Names.broker_cloud_short"/> is in progress.</li><li><b>Failed</b>—Enabling, disabling, or updating the SSO configuration failed. A recommendation for an action appears.</li></ul></dd>
+      <dt>Datacenter</dt>
+      <dd>The location where the <MadCap:variable name="Product-Names.broker_cloud_short"/> resides and corresponds to the region name that was selected when you create the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</dd>
+      <dt>Broker URI</dt>
+      <dd>The URI to add as a redirect URI in your identity provider (IdP). If you have configured <a href="create-service.htm#configure-port-9.13later" class="link-internal">multiple connection endpoints</a>, multiple redirect URIs are shown as a comma-separated entry. You can copy the  redirect URIs to your IdP. For more information, see <MadCap:xref href="#retrieve-uri-event-broker-service">Retrieving the URI for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>. </dd>
+    </dl>
+    <h2><a name="retrieve-uri-event-broker-service"/>Retrieving the URI for an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h2>
+    <p>To complete the configuration so that a user can access an <MadCap:variable name="Product-Names.broker_cloud_short"/> using SSO, the identity provider you've chosen must be configured with the correct redirect URIs of each <MadCap:variable name="Product-Names.broker_cloud_short"/>s. </p>
+    <MadCap:snippetBlock src="../Resources/Snippets/Cloud/oauth-format-uri.flsnp"/>
+    <p class="Note">If you have private and public endpoints configured  your <MadCap:variable name="Product-Names.broker_cloud_short"/>, there is a separate URI for each endpoint that must be added to your identity provider. This may mean that you have multiple URIs to add as redirects for an <MadCap:variable name="Product-Names.broker_cloud_short"/>. For more information, see <MadCap:xref href="configure-hostnames.htm">Configuring Hostnames for [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref>.</p>
+    <p>To retrieve the required redirect URI for an <MadCap:variable name="Product-Names.broker_cloud_short"/>  and copy it to your clipboard, use the following actions:</p>
+    <ol>
+      <li>In the <MadCap:variable name="Product-Names.console_ui_long"/>, select <b>User &amp; Account</b><img src="../Resources/Images/Cloud/reusable-icons/useraccount_green_navbar.png" class="img.img-inline" alt=""/> from the navigation bar, and then select <b>Account Details</b>.</li>
+      <li>On the <b>Account Details</b> page, select the <b>Broker SSO Settings</b> tab.</li>
+      <li>In the <b>Event Broker Services SSO</b> tile, click <b>Manage Brokers</b>.</li>
+      <li>In the <b>Manage Brokers</b> dialog window, select the <MadCap:variable name="Product-Names.broker_cloud_short"/> from the list that supports SSO (has the status of <b>Enabled</b>, <b>Disabled</b>, or <b>In Progress</b>). For information about the status, see <MadCap:xref href="#overview-event-broker-service-oauth-manage">Understanding the [%=Product-Names.broker_cloud_short_title%]s SSO Status</MadCap:xref>.</li>
+      <li> For the selected <MadCap:variable name="Product-Names.broker_cloud_short"/>, click <b>Actions</b> and select <b>Copy Broker URIs</b>.</li>
+    </ol>
+    <p>The URIs of the selected <MadCap:variable name="Product-Names.broker_cloud_short"/> are copied to your clipboard. They can be pasted as redirect URIs in your identity provider.</p>
+    <p class="Note ">Multiple URIs are copied as a comma-separated listed. If your IdP doesn't support this format, manually enter each URI.</p>
+    <h2><a name="enable-sso-oidc-accountlevel"/>Enabling  SSO for an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h2>
+    <p>You can enable SSO on an <MadCap:variable name="Product-Names.broker_cloud_short"/>. Each <MadCap:variable name="Product-Names.broker_cloud_short"/> that is enabled is sent the most recent SSO configuration from your <MadCap:variable name="Product-Names.cloud_product_firstuse"/> account. </p>
+    <p>To enable SSOfor an <MadCap:variable name="Product-Names.broker_cloud_short"/>, perform these steps:</p>
+    <ol>
+      <li>In the <MadCap:variable name="Product-Names.console_ui_long"/>, select <b>User &amp; Account</b><img src="../Resources/Images/Cloud/reusable-icons/useraccount_green_navbar.png" class="img.img-inline" alt=""/> from the navigation bar, and then select <b>Account Details</b>.</li>
+      <li>On the <b>Account Details</b> page, select the <b>Broker SSO Settings</b>.</li>
+      <li>In the <b>Event Broker Services SSO</b> tile, click <b>Manage Brokers</b>.</li>
+      <li>On the <b>Manage Brokers</b> dialog window, select an <MadCap:variable name="Product-Names.broker_cloud_short"/> from the list of <MadCap:variable name="Product-Names.broker_cloud_short"/>s.</li>
+      <li>Click <b>Actions</b> and select <b>Enable SSO</b>.</li>
+    </ol>
+    <p>After you enable SSO on the <MadCap:variable name="Product-Names.broker_cloud_short"/>, ensure that the URI has been added to your identity provider. For more information, see <MadCap:xref href="#retrieve-uri-event-broker-service">Retrieving the URI for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>. You can verify that you connect to the <MadCap:variable name="Product-Names.broker_cloud_short"/> by connecting to it using <MadCap:variable name="Product-Names.pubsubmanager_long"/>. For more information, see <MadCap:xref href="#test-oidc-sso">Testing SSO Access for an [%=Product-Names.broker_cloud_short_title%] with SSO Enabled via OIDC</MadCap:xref>.</p>
+    <h3 MadCap:conditions="Default.HideFromAllOutput">Enabling SSO in <MadCap:variable name="Product-Names.cluster_mgr"/></h3>
+    <p MadCap:conditions="Default.HideFromAllOutput">&lt;future&gt;</p>
+    <ol MadCap:conditions="Default.HideFromAllOutput">
+      <li><MadCap:snippetText src="../Resources/Snippets/Cloud/Task_UI_Snippets/login_console.flsnp"/><![CDATA[
+]]></li>
+      <li>
+               Select <MadCap:variable name="Product-Names.cluster_mgr" style="font-weight: bold;"/><img src="../Resources/Images/Cloud/reusable-icons/navbar_cluster_manager.png" class="img.img-inline" alt=""/> from the navigation bar.
+            </li>
+      <li>On the <b>Services</b> page, click the card of the <MadCap:variable name="Product-Names.broker_cloud_short"/> for which you want to enable SSO for management access.</li>
+      <li class="img.img-inline">On the service details page, select the <b>Manage</b> tab and then click <b>Advanced Options</b>.</li>
+      <li class="img.img-inline">On the Broker Authentication tile, beside <MadCap:variable name="Product-Names.pubsub_brand_only"/> <MadCap:variable name="Product-Names.broker_cloud_short_title"/> SSO, click <b>Enable </b>.</li>
+      <li class="img.img-inline">In the Enable <MadCap:variable name="Product-Names.pubsub_brand_only"/> <MadCap:variable name="Product-Names.broker_cloud_short_title"/> SSO dialog window, you an click <b>Enable SSO</b> to confirm that you all other forms of authentication used for management access to the <MadCap:variable name="Product-Names.broker_cloud_short"/> is disabled. If you can click <b>Cancel</b>, SSO is not enabled.</li>
+    </ol>
+    <p MadCap:conditions="Default.HideFromAllOutput">Access to <MadCap:variable name="Product-Names.pubsubmanager_long"/>  now uses the same SSO credentials used to access the <MadCap:variable name="Product-Names.console_ui_long"/>.</p>
+    <h3 MadCap:conditions="Default.HideFromAllOutput">Enabling SSO using SEMP Tokens</h3>
+    <ol MadCap:conditions="Default.HideFromAllOutput">
+      <li MadCap:conditions="Default.HideFromAllOutput"><MadCap:snippetText src="../Resources/Snippets/Cloud/Task_UI_Snippets/login_console.flsnp"/><![CDATA[
+]]></li>
+      <li MadCap:conditions="Default.HideFromAllOutput">
+               Select <MadCap:variable name="Product-Names.cluster_mgr" style="font-weight: bold;"/><img src="../Resources/Images/Cloud/reusable-icons/navbar_cluster_manager.png" class="img.img-inline" alt=""/> from the navigation bar.
+            </li>
+      <li MadCap:conditions="Default.HideFromAllOutput">On the <b>Services</b> page, click the card of the <MadCap:variable name="Product-Names.broker_cloud_short"/> for which you want to  enable SSO for management access.</li>
+      <li MadCap:conditions="Default.HideFromAllOutput">On the service details page, select the <b>Manage</b> tab.</li>
+      <li MadCap:conditions="Default.HideFromAllOutput">Select he <b>Authentication</b> tile.</li>
+      <li MadCap:conditions="Default.HideFromAllOutput">In the SEMP Tokens tile, click Create Token.</li>
+      <li MadCap:conditions="Default.HideFromAllOutput">In the Create SEMP token dialog box:<ul><li MadCap:conditions="Default.HideFromAllOutput">Give a name to the SEMP token</li><li MadCap:conditions="Default.HideFromAllOutput">Under <b>Select Permissions</b><ul><li MadCap:conditions="Default.HideFromAllOutput">select Administrator Access to give permissions for the client to access <MadCap:variable name="Product-Names.pubsubmanager_short"/></li><li MadCap:conditions="Default.HideFromAllOutput">select Client Access to permit clients to access messages and events from the <MadCap:variable name="Product-Names.broker_cloud_short"/></li></ul></li><li MadCap:conditions="Default.HideFromAllOutput">Click <b>Create Token</b></li></ul></li>
+      <li MadCap:conditions="Default.HideFromAllOutput">In the SEMP Token dialog wndow, click <b>Copy Token</b> and store the information securely. You cannot access the token information again. When you've copied the token, click <b>Close</b>. </li>
+    </ol>
+    <p MadCap:conditions="Default.HideFromAllOutput">Note that if you lose the token, you can regenerate it or if you no longer require the token, delete it.</p>
+    <p MadCap:conditions="Default.HideFromAllOutput">To do this, in the SEMP Tokens tile, click the <b>Actions</b> <img src="../Resources/Images/Cloud/reusable-icons/more_actions_ellipsis.png" class="img.img-inline" alt=""/>beside the token and select <b>Regenerate</b> or <b>Delete</b>.</p>
+    <h2><a name="disable-sso-oidc-accountlevel"/>Disabling SSO for an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h2>
+    <p>On <MadCap:variable name="Product-Names.broker_cloud_short"/>s where you previously enabled SSO, you can disable  it. When it is disabled, the SSO configuration is removed from the <MadCap:variable name="Product-Names.broker_cloud_short"/>. To access the <MadCap:variable name="Product-Names.broker_cloud_short"/>, you can use basic authentication. If you want to re-able another type of authentication scheme ( such as LDAP), you can reconfigure that <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+    <p>To disable SSO on an <MadCap:variable name="Product-Names.broker_cloud_short"/>, perform these steps: </p>
+    <ol>
+      <li>In the <MadCap:variable name="Product-Names.console_ui_long"/>, select <b>User &amp; Account</b><img src="../Resources/Images/Cloud/reusable-icons/useraccount_green_navbar.png" class="img.img-inline" alt=""/> from the navigation bar, and then select <b>Account Details</b>.</li>
+      <li>On the <b>Account Details</b> page, select the <b> Broker SSO Settings</b> tab.</li>
+      <li>In the <b>Event Broker Services SSO</b> tile, click <b>Manage Brokers</b>.</li>
+      <li>In the <b>Manage Brokers</b> dialog window and select the <MadCap:variable name="Product-Names.broker_cloud_short"/> from the list. The <MadCap:variable name="Product-Names.broker_cloud_short"/> you choose should be <b>Enabled</b> its  <b>Broker SSO Status</b>. </li>
+      <li> Click <b>Actions</b> and select <b>Disable SSO</b>.</li>
+    </ol>
+    <p>After you disable SSO for an <MadCap:variable name="Product-Names.broker_cloud_short"/>, you can remove the URI from your identity provider. You can also verify that you no longer have management access to the <MadCap:variable name="Product-Names.broker_cloud_short"/> using SSO credentials <a href="#retrieve-uri-event-broker-service" class="link-internal">by looking at the <b>Status</b> of the service</a>. </p>
+    <h3 MadCap:conditions="Default.HideFromAllOutput">Disable SSO in <MadCap:variable name="Product-Names.cluster_mgr"/></h3>
+    <p MadCap:conditions="Default.HideFromAllOutput">&lt;Future&gt;</p>
+    <ol MadCap:conditions="Default.HideFromAllOutput">
+      <li><MadCap:snippetText src="../Resources/Snippets/Cloud/Task_UI_Snippets/login_console.flsnp"/><![CDATA[
+]]></li>
+      <li>
+               Select <MadCap:variable name="Product-Names.cluster_mgr" style="font-weight: bold;"/><img src="../Resources/Images/Cloud/reusable-icons/navbar_cluster_manager.png" class="img.img-inline" alt=""/> from the navigation bar.
+            </li>
+      <li>On the <b>Services</b> page, click the card of the <MadCap:variable name="Product-Names.broker_cloud_short"/> for which you want to change the cluster name.</li>
+      <li class="img.img-inline">On the service details page, select the <b>Manage</b> tab and then click <b>Advanced Options</b>.</li>
+      <li class="img.img-inline">On the Broker Authentication tile, beside <MadCap:variable name="Product-Names.pubsub_brand_only"/> <MadCap:variable name="Product-Names.broker_cloud_short_title"/> SSO, click <b>Disable</b>.</li>
+      <li class="img.img-inline">In the Disalbe <MadCap:variable name="Product-Names.pubsub_brand_only"/> <MadCap:variable name="Product-Names.broker_cloud_short_title"/> SSO dialog window, you an click <b>Disable SSO</b> to confirm. After SSO is disabled, management access to the <MadCap:variable name="Product-Names.broker_cloud_short"/> is available using basic authentication only. If you previously had LDAP configured, you must reconfigure it..</li>
+    </ol>
+    <h2><a name="update-sso-oidc-accountlevel"/>Updating the SSO configuration for an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h2>
+    <p>If you have made user management changes in the <MadCap:variable name="Product-Names.console_ui_short"/>, such as mappings new claims to user roles, you must refresh the SSO configuration on  each <MadCap:variable name="Product-Names.broker_cloud_short"/>. </p>
+    <p>The <MadCap:variable name="Product-Names.broker_cloud_short"/>s that require an update show a status of <b>Enabled</b> with a message that states <i>SSO configuration requires an update</i>.</p>
+    <p>To update the SSO configuration, perform these steps: </p>
+    <ol>
+      <li>In the <MadCap:variable name="Product-Names.console_ui_long"/>, select <b>User &amp; Account</b><img src="../Resources/Images/Cloud/reusable-icons/useraccount_green_navbar.png" class="img.img-inline" alt=""/> from the navigation bar, and then select <b>Account Details</b>.</li>
+      <li>On the <b>Account Details</b> page, select the <b>Broker SSO Settings</b> tab.</li>
+      <li>In the <b>Event Broker Services SSO</b> tile, click <b>Manage Brokers</b>.</li>
+      <li>In the <b>Manage Brokers</b> dialog window, select an <MadCap:variable name="Product-Names.broker_cloud_short"/> from the list of <MadCap:variable name="Product-Names.broker_cloud_short"/>s that shows <b>SSO Enabled</b> as the <b>Broker SSO Status</b>.</li>
+      <li> Click <b>Actions</b> and select <b>Update SSO</b>.</li>
+    </ol>
+    <p>In the <b>Manage Brokers</b> dialog window, verify that the text "SSO  configuration requires an update" no longer appears.</p>
+    <h2><a name="test-oidc-sso"/>Testing SSO for an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h2>
+    <p>You can test SSO for management access after an <MadCap:variable name="Product-Names.broker_cloud_short"/> has enabled  SSO.   The <MadCap:variable name="Product-Names.broker_cloud_short"/> should use the same identity provider and access as the <MadCap:variable name="Product-Names.console_ui_long"/>. To test that management access works using SSO,  use  <MadCap:variable name="Product-Names.pubsubmanager_long"/>:</p>
+    <ol>
+      <li>In the <MadCap:variable name="Product-Names.console_ui_long"/>, select <MadCap:variable name="Product-Names.cluster_mgr" style="font-weight: bold;"/><img src="../Resources/Images/Cloud/reusable-icons/navbar_cluster_manager.png" class="img.img-inline" alt=""/> from the navigation bar.
+</li>
+      <li>On the <b>Services</b> page, click the card of the <MadCap:variable name="Product-Names.broker_cloud_short"/></li>
+      <li>Click <b>Open <MadCap:variable name="Product-Names.pubsubmanager_long"/></b> at the top-right corner of the page. The <MadCap:variable name="Product-Names.pubsubmanager_long"/> web interface opens in another tab.</li>
+    </ol>
+    <p>If the SSO configuration has been enabled on an <MadCap:variable name="Product-Names.broker_cloud_short"/>, a second <b>Login with PubSub+ Cloud</b> button appears below the <b>Login</b> button. When you click <b>Log in with PubSub+ Cloud</b>, it takes you to the identity provider configured with your account to authenticate access to the  <MadCap:variable name="Product-Names.broker_cloud_short"/>. </p>
+  </body>
+</html>

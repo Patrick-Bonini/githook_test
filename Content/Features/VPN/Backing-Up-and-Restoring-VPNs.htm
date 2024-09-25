@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Backing Up and Restoring Message VPNs</h1>
+    <p>In addition to backing up the entire Solace PubSub+ event broker configuration database, you can also backup and restore individual Message Virtual Private Networks (VPNs). This is done by running the <code>show current-config</code> User EXEC command on the Message VPN with the CLI output redirection feature (that is, using "&gt;"). This generates a script in the <code>cliscripts</code> directory of CLI configuration commands needed to create (or remove) the configuration for the specified Message VPN:</p>
+    <p class="Code">solace&gt; show current-config message-vpn &lt;vpn-name&gt; [remove] &gt; cliscripts/&lt;script-name&gt;.txt</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;vpn-name&gt;</code> is the full name of the Message VPN to be backed up, or part of the Message VPN name with the wildcard character ? used to represent one character of the name, or the wildcard character * used to represent zero or more characters of the name, where entering only the wildcard character * for the name displays all Message VPNs.</p>
+    <p><code>[remove]</code> requests to generate the sequence of CLI configuration commands needed to remove (rather than create) the specified Message VPN.</p>
+    <p><code>&lt;script-name&gt;</code> specifies the name of the generated CLI script file.</p>
+    <p>The generated script can then be run from the <code>cliscripts</code> directory using the <code>source script</code> User EXEC command to either restore or remove Message VPN configurations from event brokers.</p>
+    <p class="Note" MadCap:autonum="&lt;b&gt;:  &lt;/b&gt;">For more information on the running of scripts from the Solace CLI, refer to <MadCap:xref MadCap:unresolvedLink="import-link:using_the_solace_router_cli_1415688931_38791" href="../../Admin/Solace-CLI/Using-Solace-CLI.htm#using_the_solace_router_cli_2293357723_233911">Writing and Running Basic CLI Scripts</MadCap:xref>.</p>
+    <p>All managed objects within a Message VPN are included in the output of the <code>show current-config</code> command. This includes:</p>
+    <ul>
+      <li>Message VPNs</li>
+      <li>client usernames</li>
+      <li>Java Naming and Directory Interface (JNDI) objects</li>
+      <li>Guaranteed message spool queues and topic endpoints</li>
+      <li>VPN bridges</li>
+      <li>PubSub+ Cache clusters and instances</li>
+      <li>Access Control List (ACL) profiles</li>
+      <li>client profiles</li>
+    </ul>
+    <p>Ordinary <code>show</code> User EXEC commands can run in parallel to other commands, but configuration commands run in series to other commands to prevent multiple sources of configuration data (for example, multiple CLI sessions) from colliding with one another. Since the <code>show current config</code> User EXEC command generates the commands required to restore the configuration of a Message VPN at a particular point in time, it also runs in series, like configuration commands. Thus, running the <code>show current config</code> User EXEC command may prevent other commands from running until it completes the current configuration operation.</p>
+    <h2 class="with-rule"><a name="Backing"/>Backing Up and Restoring VPN Configs on the Same Event Broker</h2>
+    <p>To backup and restore an individual Message VPN configuration on the same event broker, follow these steps:</p>
+    <ol>
+      <li>Run the  <code>show current-config</code> User EXEC command to generate the sequence of CLI configuration commands needed to backup the specified Message VPN, redirecting the command output to a script file (for example, <code>mvpn1.cli</code>).</li>
+      <li>Run the  <code>show current-config</code> User EXEC command, this time with the <code>remove</code> attribute, to generate the sequence of CLI configuration commands needed to remove the specified Message VPN, redirecting the command output to a script file (for example, <code>tmp.cli</code>).</li>
+      <li>Using the remove script generated in Step 2, run the <code>source script</code> User EXEC command to remove the current Message VPN configuration from the event broker.</li>
+      <li>Using the backup script generated in Step 1, run the <code>source script</code> User EXEC command to restore the Message VPN configuration onto the event broker.
+        <p class="Note" MadCap:autonum="&lt;b&gt;:  &lt;/b&gt;">Always specify the <code>source script</code> User EXEC command attributes <code>stop-on-error</code> and <code>no-prompt</code> so that the script stops running on encountering an error, and that the script also ignores yes/no confirmation prompting.</p></li>
+    </ol>
+    <h2 class="with-rule"><a name="Backing2"/>Backing Up VPN Configs on One Event Broker and Restoring on Another</h2>
+    <p>To backup and restore an individual Message VPN configuration from one Solace PubSub+ appliance to another, follow these steps:</p>
+    <ol>
+      <li>On the first event broker, run the <code>show current-config</code> User EXEC command to generate the sequence of CLI configuration commands needed to backup the specified Message VPN, redirecting the command output to a script file (for example, <code>mvpn1.cli</code>).</li>
+      <li>Transfer the backup script generated from the first event broker to the second using the <code>copy</code> Privileged EXEC command.</li>
+      <li>On the second event broker:<ol style="list-style-type: lower-alpha;"><li>Run the  User EXEC command, this time with the <code>remove</code> attribute, to generate the sequence of CLI configuration commands needed to remove the specified Message VPN, redirecting the command output to a script file (for example, <code>tmp.cli</code>).</li><li>Using the remove script generated in the above substep, run the <code>source script</code> User EXEC command to remove the current Message VPN configuration from the second event broker.</li><li>Using the backup script transferred in Step 2, run the <code>source script</code> User EXEC command to restore the Message VPN configuration onto the second event broker.
+			<p class="Note" MadCap:autonum="&lt;b&gt;:  &lt;/b&gt;">Always specify the <code>source script</code> command attributes <code>stop-on-error</code> and <code>no-prompt</code> so that the script stops running on encountering an error, and that the script also ignores yes/no confirmation prompting.</p></li></ol></li>
+    </ol>
+    <p><u>Example</u>:</p>
+    <p>A sample session to backup the configuration of Message VPN <code>blue</code> on event broker <code>solace1</code> and restore it on event broker <code>solace2</code> is:</p>
+    <ol>
+      <li>Generate the sequence of CLI commands needed to backup the Message VPN <code>blue</code> configuration on event broker <code>solace1</code> by running the following <code>show current-config</code> User EXEC command, redirecting the command output for creating Message VPN <code>blue</code> to script file <code>blue.cli</code>:
+                <p class="Code">solace1&gt; show current-config message-vpn blue &gt; cliscripts/blue.cli</p><p class="Note" MadCap:autonum="&lt;b&gt;:  &lt;/b&gt;">CLI paging is automatically disabled for the duration of a redirected CLI command, but confirmation prompts, error and warning messages are not; they remain displayed on the CLI console.</p></li>
+      <li>Transfer the script file  from event broker <code>solace1</code> to event broker <code>solace2</code> using the <code>copy</code> Privileged EXEC command:
+        <p class="Code">solace1&gt; enable<br/>solace1# copy cliscripts/blue.cli sftp://admin@solace2/cliscripts</p></li>
+      <li>Generate the sequence of CLI commands needed to remove the Message VPN <code>blue</code> configuration on event broker <code>solace2</code> (so that it can be replaced by the configuration from event broker <code>solace1</code>) by running the following <code>show current-config</code> User EXEC command, redirecting the command output for removing Message VPN <code>blue</code> to script file <code>tmp.cli</code>:
+        <p class="Code">solace2&gt; show current-config message-vpn blue remove &gt; cliscripts/tmp.cli</p></li>
+      <li>Run the following <code>source script</code> User EXEC command to remove the current Message VPN <code>blue</code> configuration from event broker <code>solace2</code> using script file <code>tmp.cli</code>, always specifying that the script stop running on encountering an error and also ignore yes/no confirmation prompting:
+        <p class="Code">solace2&gt; source script tmp.cli stop-on-error no-prompt</p></li>
+      <li>Run the following <code>source script</code> User EXEC command to restore the configuration of Message VPN <code>blue</code> from event broker <code>solace1</code> onto event broker <code>solace2</code> using script file <code>blue.cli</code>, always specifying that the script stop running on encountering an error and also ignore yes/no confirmation prompting			<p class="Code">solace2&gt; source script blue.cli stop-on-error no-prompt</p></li>
+    </ol>
+  </body>
+</html>

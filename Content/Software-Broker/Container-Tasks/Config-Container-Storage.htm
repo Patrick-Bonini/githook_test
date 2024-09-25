@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><MadCap:concept term="Software"/>Managing Storage for Container Images</h1>
+    <p>By default all files created inside a container are stored on a writable container layer. This means that:</p>
+    <ul>
+      <li>The data doesn't persist when that container no longer exists, and it can be difficult to get the data out of the container if another process needs it.</li>
+      <li>A container's writable layer is tightly coupled to the host machine where the container is running. You can't easily move the data somewhere else.</li>
+      <li>Writing into a container's writable layer requires a storage driver to manage the filesystem. The storage driver provides a union filesystem, using the Linux kernel. This extra abstraction reduces performance as compared to using data volumes, which write directly to the host filesystem.<p class="Note">Support is provided for any storage driver—<code>overlay2</code> is a good choice.</p></li>
+    </ul>
+    <p>There are two options for containers to store files in the host machine so that the files are persisted even after the container stops: volumes and bind mounts.</p>
+    <p>For more information about storage options for containers, see <a href="https://docs.docker.com/storage/" target="_blank" class="link-offsite">Manage Data in Docker</a> in the Docker documentation.</p>
+    <h2 class="with-rule"><a name="use-volumes"/>Use a Volume for the Storage-Group</h2>
+    <p>The container image has a predefined mount point for an event broker's <a href="../Configuring-Storage.htm#understanding-storage-group" class="link-internal">storage-group</a> (<code>/var/lib/solace</code>). If you leave the <code>storage-group</code> unspecified when you start the container, it will be stored in the container's writable layer. This can cause the container to run out of space in the union filesystem and prevent data from being properly migrated during upgrade. We strongly recommended allocating storage outside the union filesystem for the <code>storage-group</code>.</p>
+    <p>The software event broker requires storage with medium to high bandwidth/IOPs and low latency. For information about getting the best storage performance, consult the best practices documentation for your platform.</p>
+    <p> A <a href="https://docs.docker.com/storage/volumes/" target="_blank" class="link-offsite">volume</a> is storage in a part of the host filesystem that is managed by the container runtime (for example, Docker Engine) and that has been mounted on the container's filesystem outside the writable layer. We recommend using volumes as the means to persist data for a software event broker container.</p>
+    <p class="Note">For the <code>storage-group</code> mounted as a volume, we recommend <code>xfs</code> as the filesystem, because it has better performance than <code>ext4</code>. If you aren't using <code>xfs</code> or <code>ext4</code>, your filesystem must support the fallocate linux command.</p>
+    <h2 class="with-rule"><a name="use-external-storage"/>Use External Storage Devices in Production</h2>
+    <p>For production deployments, we recommend that you assign the event broker's <code>storage-group</code> to an external storage device. In the container filesystem, the <code>storage-group</code> is stored in the directory <code>/var/lib/solace</code>.</p>
+    <p>For information about storage options for Kubernetes, see <a href="https://kubernetes.io/docs/concepts/storage/" target="_blank" class="link-offsite">Storage</a> in the Kubernetes documentation.</p>
+    <p>For information about storage options for OpenShift, see <a href="https://docs.openshift.com/container-platform/4.5/storage/understanding-persistent-storage.html" target="_blank" class="link-offsite">Understanding Persistent Storage</a> in the OpenShift documentation.</p>
+    <h2 class="with-rule"><a name="rootless-podman"/>Directory Ownership with Rootless Containers</h2>
+    <p>As described in <MadCap:xref href="rootless-containers.htm">Rootless Containers</MadCap:xref>, the container runtime makes use of a user namespace  to map the UIDs and GIDs within the containers  to a (potentially different) block of users it is given access to on the host. This means that if you (as a <b>non-root</b> user) mount a directory from the host into a container, it is owned by the root user inside the container. If you create a file in that directory as the container root user, and then look at that file on the host, you'll see it's owned by your non-root host user.</p>
+    <p>This is illustrated in the following example:</p>
+    <pre xml:space="preserve">&gt; whoami
+solly
+
+# Mount an empty folder
+host&gt; ls /home/solly/folder
+host&gt; podman run -u 0 -v /home/solly/folder:/container/volume mycontainer /bin/bash
+
+# Create a file from inside the container
+root@container&gt; whoami
+root
+root@container&gt; touch /container/volume/<span style="color: #ff0000;">test</span>
+
+# Check the file owner from inside the container
+root@container&gt; ls -l /container/volume
+total 0
+-rw-r--r-- 1 <span style="color: #ff0000;">root root</span> 0 May 20 21:47 <span style="color: #ff0000;">test</span>
+root@container&gt; exit
+
+# Check again outside the container
+host&gt; ls -l /home/solly/folder
+total 0
+-rw-r--r-- 1 <span style="color: #ff0000;">solly solly</span> 0 May 20 21:47 <span style="color: #ff0000;">test</span></pre>
+    <p>This isn't a problem if the container is running as root, but from a security standpoint, it's better to run containers as non-root users. However, when the container user is non-root, it can't access volumes that are owned by the root user. Taking the example above, if the container were run as a non-root user, the <code>touch</code> command would fail with a permission denied error.</p>
+    <p>To get around this, you can change the ownership of the directory by running <code>chown</code> in a <code>podman unshare</code> session:</p>
+    <pre xml:space="preserve">podman unshare chown -R &lt;container-user&gt;:&lt;container-group&gt; &lt;path&gt;</pre>
+    <p>The <code>podman unshare</code> command lets you run a command (<code>chown</code> in this case) in the same user namespace as your containers. Because all rootless containers that are run by a given user run inside the same user namespace, you only need to run <code>podman unshare chown</code> once to allow all of a user's containers to access a directory.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/Podman-directory-ownership.flsnp"/>
+    <p>For more information, see <MadCap:xref href="rootless-containers.htm">Rootless Containers</MadCap:xref> and the <a href="https://docs.podman.io/en/latest/markdown/podman-unshare.1.html" target="_blank" class="link-offsite">podman unshare</a> documentation.</p>
+    <h2 class="with-rule"><a name="config-examples"/>Examples of Configuring External Storage</h2>
+    <p>The following are some examples that show how to configure external storage using Docker and Podman, for both volumes and bind mounts.</p>
+    <h3><a name="linux-external-storage"/>Example: Docker for Linux (Using a Volume)</h3>
+    <p>To assign a <code>storage-group</code> to a dedicated external volume, do the following:</p>
+    <ol>
+      <li>Attach a disk, or disks, to the host. Since the specific steps for performing this task vary from one environment to the next, we recommend that you consult your environment’s documentation for instructions.</li>
+      <li>
+        <p>Create the new <code>storage-group</code> volume. For detailed instructions, refer to <a href="https://docs.docker.com/storage/volumes/" target="_blank" class="link-offsite">Use Volumes</a> in the Docker documentation.</p>
+      </li>
+      <li>
+        <p>Create a new container that mounts the new <code>storage-group</code> volume and maps it to <code>/var/lib/solace</code>:</p>
+        <pre xml:space="preserve">docker create --network=host --uts=host --shm-size=1g --ulimit core=-1 --ulimit memlock=-1 --ulimit nofile=2448:42192 \
+--env 'username_admin_globalaccesslevel=admin' --env 'username_admin_password=admin' --name=solace \
+<span style="color: #ff0000;">--mount source=storage-group,target=/var/lib/solace</span>  solace-pubsub-enterprise:&lt;version&gt;</pre>
+      </li>
+    </ol>
+    <MadCap:snippetBlock src="../../Resources/Snippets/docker-selinux-labels.flsnp"/>
+    <h3><a name="windows-external-storage"/>Example: Docker for Windows (Using a Bind Mount)</h3>
+    <p>To expand the default storage capability of software event broker containers in Docker for Windows, you can make use of drives from the  host, but these drives must be shared with the Docker for Windows Linux VM. <a href="https://docs.docker.com/docker-for-windows/#shared-drives" class="link-offsite" target="_blank">Shared drives</a> are configured in the Docker Settings menu.</p>
+    <p>To assign a directory on the host as external storage for the <code>storage-group</code> using a bind mount, add the following to the <code>docker run</code> command when you start a software event broker, replacing <code>&lt;host-path&gt;</code> with the path on the host where you want the <code>storage-group</code> to be mounted:</p>
+    <pre xml:space="preserve">--mount type=bind,source=&lt;host-path&gt;,target=/var/lib/solace</pre>
+    <p>The following example uses <code>C:\storage\data</code> as external storage for the <code>storage-group</code>:</p>
+    <pre xml:space="preserve">&gt; docker run <span style="color: #ff0000;">--mount type=bind,source=C:\storage\data,target=/var/lib/solace</span> -d -p 8080:8080 -p 55555:55555 ^
+--shm-size=1g --env 'username_admin_globalaccesslevel=admin' --env 'username_admin_password=admin' ^
+--name=solace solace-pubsub-standard:&lt;version&gt;</pre>
+    <p xml:space="preserve" class="Note">If a Windows process is using one of the ports you are requesting, the command above fails with a "Ports are not available" error. You can use a different port, or you can reserve ports so that Windows can't use them. For details, see the <a href="https://solace.community/discussion/929/docker-port-55555-not-available-on-windows" target="_blank" class="link-offsite">related article</a> on the Solace community.</p>
+    <h3><a name="mac-external-storage"/>Example: Docker for Mac (Using a Bind Mount)</h3>
+    <p>To expand the default storage capability of software event broker containers in Docker for Mac, you can make use of drives from the  host, but these drives must be shared with the  Docker for Mac Linux VM. <a href="https://docs.docker.com/docker-for-mac/#file-sharing" class="link-offsite" target="_blank">Shared drives</a> are configured in the Docker Settings menu.</p>
+    <p>To assign a directory on the host as external storage for the <code>storage-group</code> using a bind mount, add the following to the <code>docker run</code> command when you start a software event broker:</p>
+    <pre xml:space="preserve">--mount type=bind,source=&lt;host-path&gt;,target=/var/lib/solace</pre>
+    <p>The following example uses <code>/mnt/solace</code> as external storage for the <code>storage-group</code>:</p>
+    <pre xml:space="preserve">&gt; docker run <span style="color: #ff0000;">--mount type=bind,source=/mnt/solace,target=/var/lib/solace</span> -d -p 8080:8080 -p 55556:55555 \
+--shm-size=1g --env 'username_admin_globalaccesslevel=admin' --env 'username_admin_password=admin' \
+--name=solace solace-pubsub-standard:&lt;version&gt;</pre>
+    <MadCap:snippetBlock src="../../Resources/Snippets/SMF-port-Big-Sur.flsnp"/>
+    <h3><a name="podman-bind-mount"/>Example: Rootless Podman for Linux (Using a Bind Mount)</h3>
+    <p>To assign a directory on the host as external storage for the <code>storage-group</code> using a bind mount, do the following:</p>
+    <ol>
+      <li>
+        <p>Create the directory to use as external storage for the <code>storage-group</code>:</p>
+        <pre>&gt; mkdir /home/&lt;user-name&gt;/storage-group</pre>
+      </li>
+      <li>
+        <p>Change the ownership of the directory so that the container user can access it (this command assumes UID 1000 belongs to GID 0, but this does not have to be the case):</p>
+        <pre xml:space="preserve">$ podman unshare chown 1000:0 -R /home/&lt;user-name&gt;/storage-group</pre>
+      </li>
+      <li>
+        <p>Start the container:</p>
+        <pre xml:space="preserve">&gt; podman run -d -u 1000 -p 8080:8080 -p 55555:55555 \
+--shm-size=1g --env 'username_admin_globalaccesslevel=admin' --env 'username_admin_password=admin' \
+<span style="color: #ff0000;">--mount type=bind,source=/home/&lt;user-name&gt;/storage-group,target=/var/lib/solace,relabel=private</span> \
+--name=solace docker.io/solace/solace-pubsub-standard:edge</pre>
+      </li>
+    </ol>
+    <p>As discussed above, when you create an empty directory and bind mount it, Podman  correctly assigns the directory/file ownership when it starts the container.</p>
+    <h3><a name="podman-volume"/>Example: Rootless Podman for Linux (Using a Volume)</h3>
+    <p>To assign a <code>storage-group</code> to a dedicated external volume, do the following:</p>
+    <ol>
+      <li>Attach a disk, or disks, to the host. Since the specific steps  for this task vary from one environment to the next, we recommend that you consult your environment’s documentation for instructions.</li>
+      <li>Ensure that Podman's <a href="https://docs.podman.io/en/latest/markdown/podman.1.html#volumepath-value" target="_blank" class="link-offsite">volume path</a> is correctly set to point to the external disk.</li>
+      <li>Create the new <code>storage-group</code> volume. For detailed instructions, refer to <a href="https://docs.podman.io/en/latest/markdown/podman-volume-create.1.html" target="_blank" class="link-offsite">Podman volume create</a> in the Podman documentation.</li>
+      <li>
+        <p>Create a new container that mounts the new <code>storage-group</code> volume and maps it to <code>/var/lib/solace</code>:</p>
+        <pre xml:space="preserve">podman create -u 1000 --network=host --uts=host --shm-size=1g \
+--ulimit core=-1 --ulimit memlock=-1 --ulimit nofile=2448:42192 \
+--env 'username_admin_globalaccesslevel=admin' --env 'username_admin_password=admin' --name=solace \
+<span style="color: #ff0000;">--mount type=volume,source=storage-group,target=/var/lib/solace,relabel=private</span> docker.io/solace/solace-pubsub-standard:edge</pre>
+      </li>
+    </ol>
+    <p class="Note">The <code>host</code> mode for <code>--network</code> gives the container full access to local system services such as D-bus and is therefore considered insecure.</p>
+  </body>
+</html>

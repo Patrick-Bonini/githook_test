@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><a name="Using_local_trans"/>Using Local Transactions</h1>
+    <p>This section describes how to use transacted sessions to publish and/or receive a series of Guaranteed messages in a single atomic unit known as a local transaction. Local transactions only rely on a single resource (the event broker) to provide messaging clients with service.</p>
+    <p class="Note">Local Transactions can be used by clients using the JCSMP, Java RTO, C, .NET, JMS or Python messaging APIs. This section discusses only the JCSMP, Java RTO, C, and .NET APIs. For information on using Transacted Sessions with the Solace JMS implementation, refer to <MadCap:xref href="../Solace-JMS-API/Using-Transacted-Sessions.htm">Using Transacted Sessions</MadCap:xref>.<br/>For information on using Transacted Sessions with the Solace Python implementation, refer to <MadCap:xref href="../API-Developer-Guide-Python/Python-API-Local-Transactions.htm">Using Local Transactions in the  Python API</MadCap:xref>.<br/></p>
+    <p>A transacted Session enables a client application to group multiple Guaranteed message send and/or receive operations together as a single, atomic unit known as a transaction. Only Guaranteed messages (that is, messages with a Persistent or Non‑Persistent delivery mode) can be published or received through Transactions; Direct messages cannot be used in Transactions.</p>
+    <p>To publish and/or consume messages in a Transaction, a client application must create a transacted Session within a Session. Then in that Transacted Session the client application can establish a producer Flow (that is, a publisher flow) to publish messages in a Transaction, and/or establish a consumer Flow (that is, a subscriber flow) to receive messages in a Transaction. Although an administrator can modify this value, by default, a client can publish and/or consume up to a combined maximum of 256 Guaranteed messages in a single Transaction. For more information, see <MadCap:xref href="../../Security/Configuring-Client-Profiles.htm#Config-Max-Messages-Per-Transaction">Configuring the Max Number of Messages Per Transaction</MadCap:xref>. </p>
+    <p>Messages that are published and received in a Transaction are staged on the event broker. To complete all of the message send and receive operations in a Transaction, the Transaction must be committed. Alternatively, a Transaction can also be rolled back so that all of its publish and receive operations are canceled. Once a Transaction is completed, another Transaction automatically begins.</p>
+    <p>The following figure shows how a client can use both a producer and a consumer in a single Transacted Session. In this case, when the client commits the transaction, spooled message A is received by the consumer from the endpoint and messages B and C are published to that same destination endpoint.</p>
+    <p class="GraphicCaption">Transactions and Commits</p>
+    <p class="GraphicCaption">
+      <img src="Images/local_transactions.jpg" alt=""/>
+    </p>
+    <p>For an example of how to use local transactions, refer to the <code>Transactions</code> sample for the appropriate messaging API.</p>
+    <h2 class="with-rule"><a name="Threadin"/>Threading Considerations</h2>
+    <p>Transacted Sessions are only supported for single thread use (with the exception that any application thread can call close() or destroy() to close the Transacted Session). All producer and consumer flows which are part of a Transacted Session must be accessed serially by the same thread.</p>
+    <h4>Synchronous Consumers</h4>
+    <p>When using synchronous message consumers, send and receive operations are done by a single application thread, and this thread must either commit or rollback the transaction. The application thread serializes access to the producers and consumers of the Transacted Session.</p>
+    <h4>Asynchronous Consumers</h4>
+    <p>When using asynchronous message consumers, an API-owned thread delivers messages to registered message listeners. This thread is used to send messages, and this same thread must either commit or rollback the transaction. The API thread serializes access to the producers and consumers of the Transacted Session.</p>
+  </body>
+</html>

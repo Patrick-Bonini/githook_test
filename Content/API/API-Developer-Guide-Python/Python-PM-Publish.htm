@@ -1,0 +1,338 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><a name="Publishing-Persistent-Messages-Python-API"/>Publishing Persistent Messages Using the Python API</h1>
+    <p>When your applications require confirmation handling and <i>at least once</i> delivery, we recommend that you use persistent messages instead of  direct messages. To publish persistent messages in the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API,  you first set up a message queue on the <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker. </p>
+    <p> For information about creating and configuring queues on an event broker, see <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-Queues.htm">Configuring Queues</MadCap:xref>. </p>
+    <p>To  publish persistent messages using the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python, use the following steps:</p>
+    <ol>
+      <li><a href="#Creating-A-PersistentMessagePublisher-Object" class="link-internal">Create a PersistentMessagePublisher</a>.</li>
+      <li><a href="#Configuring-Messages" class="link-internal">Configure and Create an OutboundMessage</a>.</li>
+      <li><a href="#Configuring-Back-Pressure" class="link-internal">Handling Back-Pressure When Publishing Persistent Messages</a>.</li>
+      <li><a href="#Publishing-A-Persistent-Message" class="link-internal">Publish a Persistent Message</a>.</li>
+      <li><a href="#Message-Receipts-and-Error-Handling" class="link-internal">Acknowledging Messages and Handling Errors</a>.</li>
+      <li><a href="#user-contexts" class="link-internal">User Contexts</a>.</li>
+    </ol>
+    <p>In some use cases, it's possible for your application to send messages faster than the messages can be transported. This may cause messages to accumulate in the API internal buffers causing back-pressure. If this scenario is possible, consider changing the back-pressure settings to meet the requirements of your application. For more information, see <MadCap:xref href="#Configuring-Back-Pressure">Configuring Back-pressure</MadCap:xref>.</p>
+    <p>For examples of applications  that publish persistent messages, see <a href="https://github.com/SolaceSamples/solace-samples-python/blob/main/patterns/guaranteed_publisher.py" class="link-offsite">guaranteed_publisher.py</a> on the <MadCap:variable name="Variables.CompanyName"/> GitHub page.</p>
+    <h2 class="with-rule"><a name="Creating-A-PersistentMessagePublisher-Object"/>Creating a PersistentMessagePublisher</h2>
+    <p>After a <code>MessagingService</code> instance has established a connection to an event broker, use a <code>PersistentMessagePublisher</code> to publish persistent messages.  To create a <code>PersistentMessagePublisher</code> object, do the following:</p>
+    <ol>
+      <li>
+        <p>Call the <code>create_persistent_message_publisher_builder()</code> function on a <code>MessagingService</code> object. This returns a <code>PersistentMessagePublisherBuilder</code> object.</p>
+      </li>
+      <li>
+        <p>You can now use the functions in the <code>PersistentMessagePublisherBuilder</code> interface to configure a <code>PersistentMessagePublisher</code> to use certain features of the API, such as back-pressure strategies.</p>
+      </li>
+      <li>
+        <p>Call the <code>build()</code> function on your <code>PersistentMessagePublisherBuilder</code> to return a <code>PersistentMessagePublisher</code> object.</p>
+      </li>
+      <li>
+        <p>To enable your <code>PersistentMessagePublisher</code> to start publishing messages, call the <code>start()</code> function on it.</p>
+      </li>
+    </ol>
+    <p>For more information, see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a>.</p>
+    <p>The following is an example that shows how to use  a persistent message publisher to enable your application to publish messages to the event broker:</p>
+    <pre xml:space="preserve">
+# Create a PersistentMessagePublisherBuilder which allows you to create a PersistentMessagePublisher and start it
+persistent_publisher = messaging_service.create_persistent_message_publisher_builder() \
+               .on_back_pressure_reject(1000) \
+               .build()
+
+# Starts the configured PersistentMessagePublisher synchronously. Before the start() function is called, the publisher is considered off-duty
+persistent_publisher.start()		</pre>
+    <h3>Asynchronous Publishers</h3>
+    <p>It is also possible to start a persistent message publisher using a callback listener to allow for asynchronous notifications after the start operation is complete.</p>
+    <p>In the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API, you can use the <code>start_async()</code> function to start a <code>PersistentMessagePublisher</code> asynchronously. This allows the publisher object to start in a separate background thread, which means you can start multiple publishers concurrently or your code can continue to execute and you do not have wait for the function to return. </p>
+    <p>The example below shows 1000 publishers being started asynchronously. The <code>wait()</code> function blocks the application until all publishers have been started.</p>
+    <pre xml:space="preserve">
+import concurrent.futures
+# ...
+publishers = [persistent_message_publisher_builder.build() for _ in range(10)]
+futures_to_publisher = { publisher.start_async() : publisher for publisher in publishers}
+
+for future in concurrent.futures.as_completed(futures_to_publisher):
+    publisher = futures_to_publisher[future]
+    try:
+        # start async has no return but will raise an on start failure
+        future.result()
+        print(f'Publisher {id(publisher)} started successfully')
+    except Exception as err:
+        print(f'Publisher {id(publisher)} generated an error: {err}') </pre>
+    <p class="Note">Your publisher application is not operational until you call <code>start()</code> or <code>start_async()</code> on it.</p>
+    <h2 class="with-rule"><a name="Configuring-Messages"/>Configuring and Creating Outbound Messages</h2>
+    <p>Your client applications explicitly create the outbound messages to publish. In the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API, when you publish messages you use <code>OutboundMessage</code> instances. To configure and create <code>OutboundMessage</code> instances, follow these steps: </p>
+    <ol>
+      <li>
+        <p>Call  <code>message_builder()</code> on a messaging service object to return an <code>OutboundMessageBuilder</code> instance. For better performance, we recommend you use a single <code>OutboundMessageBuilder</code> to create multiple <code>OutboundMessage</code> instances. </p>
+        <pre xml:space="preserve">outbound_msg_builder = messaging_service.message_builder()</pre>
+      </li>
+      <li>Configure your message with an <code>OutboundMessageBuilder</code> and then call the <code>build()</code> function to return a message instance. You can configure message properties using either method below.
+			
+				<ul><li>Use the <code>OutboundMessageBuilder</code> interface and the <code>with_property(propertyName,propertyValue)</code> functions. Both <MadCap:variable name="Variables.CompanyName"/> defined <code>message_properties</code> keys as well as arbitrary user-defined property keys are accepted. The following example shows how to set <MadCap:variable name="Variables.CompanyName"/> defined properties for message ID, sender ID and message type, and a custom key-value property on a message:<pre xml:space="preserve">
+message_builder = messaging_service.message_builder()   \
+               .with_application_message_id("myID") \
+               .with_sender_id("senderID") \
+               .with_application_message_type("messageType") \
+               .with_property("key","value") \
+               .build(message_body)</pre></li><li>Use a message properties dictionary with the <code>message_properties.*</code> keys. The following example shows how to create a message property dictionary with values for message ID, sender ID and message type constants, and then configure a message using the <code>from_properties()</code> function:		<pre xml:space="preserve">
+from solace.messaging.config.solace_properties import message_properties
+# ...
+message_props = {
+    message_properties.APPLICATION_MESSAGE_ID: "myID",
+    message_properties.SENDER_ID: "senderID",
+    message_properties.APPLICATION_MESSAGE_TYPE: "messageType"
+    # For a complete list of message_properties constants see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a>.
+    }							
+# ...												
+outbound_msg = outbound_msg_builder \
+               .from_properties(message_props) \
+               .build(message_body)</pre></li></ul></li>
+    </ol>
+    <p>The following code example shows how to create a message builder, set message properties and create a message:</p>
+    <pre xml:space="preserve">
+# Builder for creation of similarly configured messages. 
+message_builder = messaging_service.message_builder()   \
+               .with_application_message_id(message_id) \
+               .from_properties(message_props) \
+               .with_property("key","value") \
+               .build(message_body)</pre>
+    <p>For more information about the functions, see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a></a>.</p>
+    <h3><a name="Setting"/>Setting a Partition Key</h3>
+    <p>You can set a partition key to use partitioned queues. Partitioned Queues is a feature available on the <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker that allows you to easily scale the number of consumer applications bound to a queue. A partition key can be set on each message in the publishing application to ensure that all messages with the same partition key are delivered to the same consumer without additional logic in the consumer application. For more information see <MadCap:xref href="../../Messaging/Guaranteed-Msg/Queues.htm#partitioned-queues">Partitioned Queues</MadCap:xref>.</p>
+    <p>The partition key is a property of a published message, so use the <code>with_property(property,value)</code> to set a property-value pair on a Python API message.</p>
+    <ul>
+      <li>
+        <p><code>property</code>—The constant <code>message_user_property_constants.QUEUE_PARTITION_KEY</code> or the string value <code>JMSXGroupID</code>.</p>
+      </li>
+      <li>
+        <p><code>value</code>—A string representing the value of your partition key. Client applications set the value at publish time. </p>
+      </li>
+    </ul>
+    <p>The following example shows how to create a message and publish it to a queue partition:</p>
+    <pre xml:space="preserve"># Set the queue partition key on the outbound message using the with_property() builder method.
+def set_queue_partition_key_using_with_property(queue_partition_key_value: str):
+    payload = "my_payload"
+    outbound_message = MessagingService \
+        .message_builder() \
+        .with_property(message_user_property_constants.QUEUE_PARTITION_KEY, queue_partition_key_value) \
+        .build(payload)
+
+# You can also set the queue partition key on the outbound message using the from_properties() builder method.
+def set_queue_partition_key_using_from_properties(queue_partition_key_value: str):
+    payload = "my_payload"
+    additional_properties  = {message_user_property_constants.QUEUE_PARTITION_KEY, queue_partition_key_value}
+    outbound_message = MessagingService \
+        .message_builder() \
+        .from_properties(additonal_properties) \
+        .build(my_payload)
+</pre>
+    <h2 class="with-rule"><a name="Configuring-Back-Pressure"/>Handling Back-Pressure When Publishing Persistent Messages</h2>
+    <MadCap:snippetBlock src="../../Resources/Snippets/API-Guide/NG-API/backpressureintro-publisher-persistent-messages.flsnp"/>
+    <p>In the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API, the <code>PersistentMessagePublisher</code> has the following  mechanisms to handle back-pressure:</p>
+    <ul>
+      <li>
+        <a href="#no-limit" class="link-internal">use an unlimited internal publishing buffer (default)</a>
+      </li>
+      <li>
+        <a href="#reject" class="link-internal">reject messages when a specified limit is reached</a>
+      </li>
+      <li>
+        <a href="#throttle" class="link-internal">throttle the application  when a specified limit is reached</a>
+      </li>
+    </ul>
+    <h3><a name="no-limit"/>Configuring an Unlimited Internal Buffer </h3>
+    <p>The default configuration for the API is to use an unlimited sized internal buffer for messages. When you use an unlimited buffer, the Python API continuously  puts messages published by the client application on the internal buffer. This configuration is useful for situations where your publishers need to send a lot of data quickly, even when the network cannot keep up without blocking. This configuration, called <code>on_back_pressure_elastic()</code>, is also useful because you don't have to write code to tell your application how to handle scenarios where the internal buffer reaches capacity.</p>
+    <p>We recommend this configuration when dealing with data sizes that do not overly strain your system resources, whether they are small or large. It's important to note that data size plays an important role in determining transmission bandwidth, affecting how quickly your application can write data to the socket. A large number of small messages, or a small number of large messages can both strain your application's resources. If your application lacks stability when using elastic back-pressure, we recommend you use alternative back-pressure strategies like 'wait' or 'reject' to manage flow control for your application. </p>
+    <p class="Caution">This configuration is not suitable for memory restrictive environments because the buffer is allowed to grow indefinitely, and it can cause out-of-memory errors (or potentially  undefined errors).  This configuration is useful when your infrastructure is made up of several microservices which are short-lived, and can provide publishing redundancy for the unlikely event of an internal queue encountering an out-of-memory scenario.  </p>
+    <p> The following example shows an explicit call to the  <code>on_back_pressure_elastic()</code> function, which is not required because it is the default behavior:</p>
+    <pre xml:space="preserve">
+# Create a PersistentMessagePublisherBuilder which allows you to create a PersistentMessagePublisher and start it
+persistent_publisher = messaging_service.create_persistent_message_publisher_builder() \
+               .on_back_pressure_elastic() \
+               .build()
+
+# Starts the configured PersistentMessagePublisher synchronously. Before the start() function is called, the publisher is considered off-duty
+persistent_publisher.start()		</pre>
+    <h3><a name="reject"/>Rejecting Messages When A Specified Limit is Reached </h3>
+    <p>When back-pressure occurs, you can choose to reject the messages from the client application when a specified limit is reached in the internal buffer. You can use the <code>on_back_pressure_reject(buffer_capacity: int)</code> function to specify a defined buffer capacity for a set number of messages to accumulate. After the specified capacity is reached, it is no longer possible to publish new messages and the API returns <code>PublisherOverflowError</code> until the buffer has capacity again.  If <code>buffer_capacity</code> is set to zero, the Python API does not buffer any outbound messages and rejects immediately when unable to write a message to the native library.</p>
+    <pre xml:space="preserve">
+# Create a PersistentMessagePublisherBuilder which allows you to create a PersistentMessagePublisher and start it
+persistent_publisher = messaging_service.create_persistent_message_publisher_builder() \
+               .on_back_pressure_reject(1000) \
+               .build()
+
+# Starts the configured PersistentMessagePublisher synchronously. Before the start() function is called, the publisher is considered off-duty
+persistent_publisher.start()		</pre>
+    <h4>Using a Publisher Readiness Listener</h4>
+    <p>We recommend that you use a <code>PublisherReadinessListener</code> when you use the <code>on_back_pressure_reject()</code> function because it lets your application known when there is capacity available in the buffer and it can resume publishing messages. </p>
+    <p>The following is an example of  registering an event handler <code>PublisherReadinessListener</code> instance: </p>
+    <pre xml:space="preserve">
+class CanPublishListener(PublisherReadinessListener):
+    def ready(self):
+        # This method is executed when the publisher is ready to publish again
+        # You can use this callback to handle message publishing when backpressure is relieved
+        pass
+# ...
+# ...
+persistent_publisher.set_publisher_readiness_listener(CanPublishListener())    
+			
+# Initiator for the callback
+some_condition_is_true = True
+while some_condition_is_true:
+    # prepare/process some data prior to publishing a message...
+    try:
+        message_publisher.publish("can't send, buffer over capacity", my_topic)
+    except PublisherOverflowError as e:
+        # Handle the overflow exception (backpressure)
+        # You can do some work here or signal to slow down message publishing
+        pass			  	</pre>
+    <h3><a name="throttle"/>Throttling the Publisher When a Specified Limit is Reached</h3>
+    <p>You can choose to throttle the publishing application if a specified limit is reached in the internal buffer.  The use of throttling is useful when applications can block and wait for capacity to appear in the buffer. You can use the <code>on_back_pressure_wait(buffer_capacity: int)</code> function to set the maximum number of messages that can accumulate in the buffer. When this maximum capacity (<code>buffer_capacity</code>) is reached, the publisher routine blocks and waits for  available capacity in the internal buffer before letting the application publish any more messages. The back pressure strategy of <code>on_back_pressure_wait()</code> will <b>not</b> call a <code>PublisherReadinessListener</code>.</p>
+    <p> This function should be used when you want application requests to take longer after the buffer's capacity has been reached. Using this mechanism effectively gives time for the API to empty the internal buffer. </p>
+    <p>The following shows an example of how to configure an internal buffer to accommodate up to one thousand messages:</p>
+    <pre xml:space="preserve">
+# Create a PersistentMessagePublisherBuilder which allows you to create a PersistentMessagePublisher and start it
+persistent_publisher = messaging_service.create_persistent_message_publisher_builder() \
+               .on_back_pressure_wait(1000) \
+               .build()
+
+# Starts the configured PersistentMessagePublisher synchronously. Before the start() function is called, the publisher is considered off-duty
+persistent_publisher.start()		</pre>
+    <h2 class="with-rule"><a name="Publishing-A-Persistent-Message"/>Publishing a Persistent Message</h2>
+    <p>After you have established a connection to the event broker using a <code>MessagingService</code> instance, you can use a <code>PersistentMessagePublisher</code> to publish persistent messages.</p>
+    <p> A persistent message has the following components: </p>
+    <ul>
+      <li>A topic to publish to (required) </li>
+      <li>A message payload (optional) </li>
+    </ul>
+    <p>Persistent message publishing involves the receipt of acknowledgments or <i>publish receipts</i>. Depending on your requirements, your client application can publish as:</p>
+    <ul>
+      <li>   asynchronous, allows your application to perform other functions while the <code>PublishReceiptListener</code> waits for the acknowledgment</li>
+      <li>synchronous,  waits until an acknowledgment has been received; an acknowledge indicates that the message has been received and persisted by the broker</li>
+    </ul>
+    <h3><a name="non-block-methods"/>Asynchronous Publish Function </h3>
+    <p>The following is an asynchronous publish function:</p>
+    <ul>
+      <li>
+        <code>publish(message: bytearray | str | OutboundMessage, destination: Topic, user_context: Any | None = None, additional_message_properties: Dict[str, str | int | float | bool | dict | list | tuple | bytearray | None] | None = None)</code>
+        <ul>
+          <li><code>message</code>—The outbound message that can be an <code>OutboundMessage</code> object, <code>bytearray</code>, or <code>str</code>. If the payload is a <code>bytearray</code> or <code>str</code>, the API creates an <code>OutboundMessage</code> object to send.</li>
+          <li><code>destination</code>—The <code>Topic</code> to publish to.</li>
+          <li><code>user-context</code>—The context associated with an action that is performed when the message delivery to the broker is confirmed using <code>MessagePublishReceiptListener.on_publish_receipt()</code> When the user-context is not supposed to be available, omit the <code>user_context</code> parameter. For more information, see <MadCap:xref href="#user-contexts">User Contexts</MadCap:xref>.</li>
+          <li><code>additional_message_properties</code>—Additional key-value properties to customize a message. Each key can be customer provided, or it can be a key from of type<code> solace.messaging.config.solace_properties.message_properties</code>.</li>
+        </ul>
+      </li>
+    </ul>
+    <pre xml:space="preserve">
+# Sends a persistent message asynchronously
+persistent_publisher.publish(my_message, topic_to_publish_to)             </pre>
+    <p>For more information about these functions, see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API Python reference</a>.</p>
+    <h3><a name="block-methods"/>Synchronous Publish Function</h3>
+    <p>Synchronous publish functions do not return until the message has been received, written to persistent storage, and acknowledged by the event broker. The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API provides the following synchronous function for publishing messages: </p>
+    <ul>
+      <li>
+        <code>publish_await_acknowledgement(message: bytearray | str | OutboundMessage, destination: Topic, time_out: int | None = None, additional_message_properties: Dict[str, str | int | float | bool | dict | list | tuple | bytearray | None] | None = None)</code>
+        <ul>
+          <li><code>message</code>—The outbound message that can be an <code>OutboundMessage</code> object, <code>bytearray</code>, or <code>str</code>. If the payload is a <code>bytearray</code> or <code>str</code>, the API creates an <code>OutboundMessage</code> object to send.</li>
+          <li><code>destination</code>—The <code>Topic</code> to publish to.</li>
+          <li><code>time_out</code>—The maximum time (in milliseconds) to wait for a message acknowledgement. </li>
+          <li><code>additional_message_properties</code>—Additional key-value properties to customize a message. Each key can be customer provided, or it can be a key from of type<code> solace.messaging.config.solace_properties.message_properties</code>.</li>
+        </ul>
+      </li>
+    </ul>
+    <p>The preceding function can be used with a <code>PersistentMessagePublisher</code> to publish an <code>OutboundMessage</code> to the broker using a topic. This function blocks the main routine until either:</p>
+    <ul>
+      <li>the publisher API receives an acknowledgment from the broker </li>
+      <li> the timeout period elapses</li>
+    </ul>
+    <pre xml:space="preserve">
+# Sends a persistent message, blocking until publish acknowledgment is received or timeout occurs.
+persistent_publisher.publish_await_acknowledgement(my_message, topic_to_publish_to, 1000, None)             </pre>
+    <h2 class="with-rule"><a name="Message-Receipts-and-Error-Handling"/>Acknowledging Messages and Handling Errors</h2>
+    <p>A publish receipt is a delivery confirmation that indicates whether or not the event broker successfully processed the message. These publish receipts can indicate success or failure, and are handled by a <code>MessagePublisReceiptListener</code> instance. You can set your <code>MessagePublishReceiptListener</code> with the <code>set_message_publish_receipt_listener()</code> function. </p>
+    <p>The following example shows how to use the  <code>MessagePublishReceiptListener</code> to listen for publish receipts:</p>
+    <pre xml:space="preserve">
+# An example implementation of the Message publish listener interface to process broker message publish notifications.
+class MessageReceiptListener(MessagePublishReceiptListener):
+    def __init__(self):
+        self._receipt_count = 0
+    @property
+    def receipt_count(self):
+        return self._receipt_count
+
+    def on_publish_receipt(self, publish_receipt: 'PublishReceipt'):
+        self._receipt_count += 1
+	     print(f"\tMessage: {publish_receipt.message}\n"
+                f"\tIs persisted: {publish_receipt.is_persisted}\n"
+                f"\tTimestamp: {publish_receipt.time_stamp}\n"
+                f"\tException: {publish_receipt.exception}\n")
+
+# set a message delivery listener to the publisher
+receipt_listener = MessageReceiptListener()
+persistent_publisher.set_message_publish_receipt_listener(receipt_listener) 
+# ...
+persistent_publisher.publish(my_message, topic_to_publish_to) </pre>
+    <h3><a name="strategies"/>Strategies for Handling Publish Receipt Errors</h3>
+    <p>The following are application-specific strategies you can use to handle receipt errors when you publish messages. Depending on your application, you may require some combination of all three strategies:</p>
+    <dl>
+      <dt>Wait and Retry</dt>
+      <dd>Wait a number of seconds before trying to send the message again. For example, if the broker temporarily cannot accept messages, use <code>time.sleep()</code> to pause your message publisher.</dd>
+      <dt>Retry a Predefined number of Times</dt>
+      <dd>      Try to re-publish the message a predefined number of times before dropping it. This is useful to avoid unrecoverable transmission issues that can cause infinite retry loops.</dd>
+      <dt>Discard the Message</dt>
+      <dd>
+        <p>Discard messages with failed publish receipts. This can be useful for messages that can not be delivered to an endpoint for any reason. We don't recommend this strategy if your application cannot tolerate message loss.</p>
+      </dd>
+    </dl>
+    <p class="Note"> To receive a failed publish receipt when there is no matching subscription, this option must be set for the event broker or <MadCap:variable name="Product-Names.broker_cloud_short"/>. For more information, see <MadCap:xref href="../../Security/Configuring-Client-Profiles.htm#Configur">Handling Guaranteed Messages with No Matches</MadCap:xref> (for <MadCap:variable name="Product-Names.broker_appliance_short"/>s and <MadCap:variable name="Product-Names.broker_sw_short"/>s) or the <b><a href="../../Cloud/client-profiles.htm#configuring-client-profile-settings" class="link-internal">Reject Messages to Sender On No Subscription Match Discard</a></b> (for <MadCap:variable name="Product-Names.cloud_product_short"/>).</p>
+    <h2><a name="user-contexts"/>User Contexts</h2>
+    <p>Optionally, you can use <i>user contexts</i> to correlate information for persistent messages to publish receipts in your application. This information is user-specific and is meaningful only to your publishing application and is not sent to the broker.  A user context permits you to attach data to the publish call that can later be retrieved from the publish receipt listener.</p>
+    <p>When you use a user context, it allows you to handle multiple scenarios.   It also allows your application to decide what action to take or how to process the publish receipt based on the context. </p>
+    <p>For example, if a non-blocking application has multiple routines to publish persistent messages, each routine can include its identifier as the user context when it publishes a persistent message. The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API tracks the user context when specified for each message and returns the user context as part of the publish receipt when the message is acknowledged or rejected by the event broker. The publishing application can then send the publish receipt to the correct routine that sent the message based on the user context.</p>
+    <p>You can set the user context when you publish the message. For example, you use the <code>publish(message: bytearray | str | OutboundMessage, destination: Topic, user_context: Any | None = None, additional_message_properties: Dict[str, str | int | float | bool | dict | list | tuple | bytearray | None] | None = None)</code> function, where the user context can be any data type.</p>
+    <p>The following example shows how to get the user context from a publish receipt:</p>
+    <pre xml:space="preserve"># An example of a MessagePublishReceiptListener implementation
+class MessagePublishReceiptListenerImpl(MessagePublishReceiptListener):
+    def on_publish_receipt(self, publish_receipt: 'PublishReceipt'):
+        print(f"\tMessage: {publish_receipt.message}\n"
+              f"\tIs persisted: {publish_receipt.is_persisted}\n"
+              f"\tTimestamp: {publish_receipt.time_stamp}\n"
+              f"\tException: {publish_receipt.exception}\n")
+       if publish_receipt.user_context:
+              print(f'\tUser context received: {publish_receipt.user_context.get_custom_message}')</pre>
+    <p>If your application is non-blocking, you can also use a persistent message publisher with publish receipt in your callback to log information. For example, you can use non-blocking message publishing and then  send alerts to notify the application of the status of published messages, such as:</p>
+    <ul>
+      <li> the event broker successfully receives and processes a message</li>
+      <li>access control violations (ACL)</li>
+      <li> a queue being over quota</li>
+      <li> invalid topics / topics with no subscribers</li>
+    </ul>
+    <p> The following code shows an example of a <code>MessagePublishReceiptListener</code>:</p>
+    <pre xml:space="preserve">
+# An example implementation of the Message publish listener interface to process broker message publish notifications.
+class MessageReceiptListener(MessagePublishReceiptListener):
+    def __init__(self):
+        self._receipt_count = 0
+    @property
+    def receipt_count(self):
+        return self._receipt_count
+
+    def on_publish_receipt(self, publish_receipt: 'PublishReceipt'):
+        self._receipt_count += 1
+	     print(f"\tMessage: {publish_receipt.message}\n"
+                f"\tIs persisted: {publish_receipt.is_persisted}\n"
+                f"\tTimestamp: {publish_receipt.time_stamp}\n"
+                f"\tException: {publish_receipt.exception}\n")
+	     if publish_receipt.user_context:
+                print(f'\tUser context received: {publish_receipt.user_context.get_custom_message}')
+
+# set a message delivery listener to the publisher
+receipt_listener = MessageReceiptListener()
+persistent_publisher.set_message_publish_receipt_listener(receipt_listener) 
+# ...
+persistent_publisher.publish_await_acknowledgement(my_message, topic_to_publish_to, 1000, None) </pre>
+  </body>
+</html>

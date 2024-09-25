@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud;Appliance;Software"/>Queues and Topic Endpoints</h1>
+    <p><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.pubsub_brand_only" MadCap:conditions="SAP.SapHideFromOutput"/> event brokers</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><MadCap:variable name="Product-Names.broker_cloud_short_intitalcap"/>s</MadCap:conditionalText> support the following endpoint typess for receiving, storing, and delivering Guaranteed messages: </p>
+    <ul>
+      <li>
+        <MadCap:xref href="Queues.htm">Queues</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="Topic-Endpoints.htm">Topic Endpoints</MadCap:xref>
+      </li>
+    </ul>
+    <p>Both types of endpoints are visible only on the  event broker. Client applications connect to the event broker that has the endpoint that it wants to consume messages from. There is no propagation of the existence of endpoints from one event broker to another via control or routing protocols, so there is no need for endpoints  to have unique names  throughout a network.</p>
+    <p>Queues are significantly more flexible than topic endpoints and are the recommended approach for most applications. The use of topic endpoints should be restricted to JMS applications.</p>
+    <h2 class="with-rule"><a name="Endpoint_Durability"/>Endpoint Durability</h2>
+    <p>Queues and topic endpoints can be either durable or temporary, except for <MadCap:xref href="Queues.htm#partitioned-queues">Partitioned Queues</MadCap:xref>, which can only be durable.</p>
+    <h3><a name="Durable"/>Durable Endpoints</h3>
+    <p>Durable queues and topic endpoints are provisioned objects on the event broker that have a life span independent of a particular client session. They also survive an event broker restart and are preserved as part of the event broker configuration for backup and restoration purposes. Administrators can provision durable queues and topic endpoints through the Solace CLI, SEMP, or <MadCap:variable name="Product-Names.pubsubmanager_long"/>. Client applications can dynamically provision durable endpoints through the Solace messaging APIs.</p>
+    <p>A durable endpoint has an associated access type which determines how messages are delivered to bound consumer flows. For more information, see <MadCap:xref href="Queues.htm#queue-access-types">Queue Access Types</MadCap:xref> and <MadCap:xref href="Topic-Endpoints.htm">Topic Endpoints</MadCap:xref>.</p>
+    <h3><a name="Temporary"/>Temporary Endpoints</h3>
+    <p>Temporary queues and topic endpoints are dynamically created and destroyed by client applications. Temporary queues and topic endpoints are typically used as temporary destinations for service requests.</p>
+    <p>When a client application has a connected session, it can provision a temporary queue or topic endpoint and create a consumer flow to bind to it. These temporary queues and topic endpoints are non-durable because they only last as long as the client’s session is connected. Only a single consumer can bind to a non-durable endpoint, and there is no support for multiple consumers or non-exclusive access.</p>
+    <p>The naming of the temporary destinations is controlled by the application. On a BIND request from the client, a name is provided. If the destination does not exist, one is created.</p>
+    <p>When a client dynamically creates a queue, it is configured by those endpoint properties and provision flags that the client may provide with a create API function or method. Any other endpoint parameters are then configured with the values used for endpoints provisioned by an administrator through the <MadCap:variable name="Product-Names.solace_cli"/>. By default, the system defaults are used. However, it is also possible to use CLI-provisioned queues and topic endpoints with custom values, and those values will be applied to any new client-created queues and topic endpoints.</p>
+    <p>A non-durable queue or topic endpoint can be dynamically created if:</p>
+    <ul>
+      <li>The client is associated with a profile that permits clients to create endpoints.<MadCap:conditionalText MadCap:conditions="SAP.SAPTempHide"> See <MadCap:xref href="../../Security/Configuring-Client-Profiles.htm#Allow-G-Msg-Creates">Allowing Clients to Create Guaranteed Endpoints</MadCap:xref>.</MadCap:conditionalText></li>
+      <li>The maximum number of endpoints available for the Message VPN that the client is connected has not been reached.<MadCap:conditionalText MadCap:conditions="SAP.SAPTempHide"> See <MadCap:xref href="VPN-Level-Msg-Spool-Config.htm#Configur5">Configuring the Max Number of Endpoints</MadCap:xref>.</MadCap:conditionalText></li>
+      <li>The maximum number of endpoints permitted per client username within a client profile has not been exceeded.<MadCap:conditionalText MadCap:conditions="SAP.SAPTempHide"> See <MadCap:xref href="../../Security/Configuring-Client-Profiles.htm#Config-Max-Endpoints">Configuring the Max Endpoints Permitted Per Client Username</MadCap:xref>.</MadCap:conditionalText></li>
+      <li>The number of endpoints does not exceed the system-wide limit.</li>
+    </ul>
+    <h2 class="with-rule"><a name="add-subs-to-endpoints"/>Topic Subscriptions</h2>
+    <p>You can add one or more topic subscriptions to a durable endpoint so that Guaranteed messages published to matching topics are delivered  to that endpoint.</p>
+    <p>Any Guaranteed messages published to topics that match subscriptions associated with endpoints are delivered to those endpoints. Error indications are returned to the publisher if the message can't be delivered to one or more endpoints for any reason. That is, the feedback to the publisher is identical to that provided when the messages are published directly to the endpoint.</p>
+    <p>As illustrated in the following diagram, topic subscriptions allow a single message published to a topic to be delivered to a combination of topic endpoints, queues, and consuming clients with matching Direct messaging topic subscriptions. For information on how a message’s delivery mode can be changed to deliver a message to a client’s topic subscription, refer to <MadCap:xref href="Topic-Matching-and-Delivery-Modes.htm">Topic Matching and Message Delivery Modes</MadCap:xref>.</p>
+    <p>
+      <img src="../../Resources/Images/Guaranteed-Msg/Possible_Message_Routing.png" alt="Diagram showing the concepts described in the surrounding text."/>
+    </p>
+    <p>The mechanism for adding subscriptions depends on the type of endpoint:</p>
+    <ul>
+      <li>For queues, subscriptions can be configured as a property of the queue itself. Subscription mappings are applicable to both durable and non‑durable queues. If you delete a queue for any reason, all topic subscriptions configured for that queue are also deleted. To add a subscription using <MadCap:variable name="Product-Names.pubsubmanager_long"/>, see <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><MadCap:xref href="../../Cloud/Broker-Manager/configuring-queues-broker-manager.htm#Adding" target="_blank" class="link-internal">Adding a Subscription to a Queue</MadCap:xref>.</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><a href="../../Cloud/Broker-Manager/configuring-queues-broker-manager.htm#Adding" target="_blank" class="link-internal">Adding a Subscription to a Queue in PubSub+ Cloud</a> or <a href="../../Admin/Broker-Manager/configuring-queues-broker-manager.htm#Adding" target="_blank" class="link-internal">Adding a Subscription to a Queue for <MadCap:variable name="Product-Names.broker_sw_short"/>s and <MadCap:variable name="Product-Names.broker_appliance_short"/>s</a>. To add a subscription to a queue using the <MadCap:variable name="Product-Names.solace_cli"/>, see <MadCap:xref href="Configuring-Queues.htm#Adding">Adding Topic Subscriptions to Queues</MadCap:xref>. To see how client applications can add subscriptions, see <MadCap:xref href="../../API/API-Developer-Guide/Adding-Topic-Subscriptio.htm#Adding2" target="_blank" class="link-internal">Adding Subscriptions to Queues</MadCap:xref>.</MadCap:conditionalText></li>
+      <li>For topic endpoints, the client specifies its required subscription as part of a flow bind request.  For more information, see <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:xref href="../../API/API-Developer-Guide/Adding-Topic-Subscriptio.htm#Add-Subs-DTEs">Adding Subscriptions to Topic Endpoints</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><MadCap:xref href="../../Cloud/Broker-Manager/configuring-topic-endpoints.htm#Add-Subs-DTEs">Configuring Topic Endpoints</MadCap:xref></MadCap:conditionalText>.</li>
+    </ul>
+    <h3><a name="add-subexceps-to-endpoints"/>Topic Subscription Exceptions</h3>
+    <p>In addition to topic subscriptions, you can add one or more topic subscription exceptions to a durable queue so that Guaranteed messages published to matching topics are not delivered to the queue. Topic subscription exceptions are not supported for topic endpoints.</p>
+    <p>Using topic subscription exceptions allows you to easily exclude specific topics  from the set of topics delivered to a the queue by adding a leading "!" character to the topic subscription. For example, if you add a topic subscription "animals/f*" and a topic subscription exception "!animals/fox" to a queue, guaranteed messages published to "animals/frog" are delivered to the queue; however, messages published to "animals/fox" are discarded.</p>
+    <p>Topic subscription exceptions are enabled by default, and always take precedence over subscriptions regardless of the order in which the subscriptions and the exceptions are configured. <MadCap:conditionalText MadCap:conditions="SAP.SAPTempHide">To enable or disable this functionality on event brokers, refer to <MadCap:xref href="System-Level-Subscription-Exception-Config.htm">System-Level Subscription Exception Configuration</MadCap:xref>. </MadCap:conditionalText></p>
+    <p MadCap:conditions="SAP.SAPTempHide">To configure subscription exceptions on a queue, see <MadCap:xref href="Configuring-Queues.htm#Adding2">Adding Topic Subscription Exceptions to Queues</MadCap:xref>.</p>
+    <h2 class="with-rule" MadCap:conditions="SAP.SAPTempHide"><a name="Endpoint_Permissions"/>Endpoint Permissions and Access Control</h2>
+    <p MadCap:conditions="SAP.SapHideFromOutput">The flow chart below shows the layers of access control that are used to determine whether clients may bind to and browse or consume messages from endpoints.</p>
+    <p MadCap:conditions="Default.HideFromAllOutput">Event brokers use several layers of access control to determine whether a consumer can bind to an endpoint and browse or consume messages. When the consumer make s a bind request the event broker makes the following checks:</p>
+    <ol MadCap:conditions="Default.HideFromAllOutput">
+      <li>
+        <p>Does the client profile allow Guaranteed messaged to be received? If not, consumer authorization fails.</p>
+      </li>
+      <li MadCap:conditions="Default.HideFromAllOutput">
+        <p>Remove the inaccessible diagram and replace with text.</p>
+      </li>
+    </ol>
+    <p class="GraphicCaption" MadCap:conditions="SAP.SapHideFromOutput">
+      <img src="../../Resources/Images/Guaranteed-Msg/EndpointPermissions-ACL.jpg" alt=""/>
+    </p>
+    <p MadCap:conditions="SAP.SAPTempHide">The first layer is a configuration in the associated client profile that determines whether the client is permitted to receive Guaranteed messages. If this is allowed, then the endpoint permissions are checked.</p>
+    <p MadCap:conditions="SAP.SAPTempHide">The endpoint permission rules are:</p>
+    <ul MadCap:conditions="SAP.SAPTempHide">
+      <li>The owner has full access to an endpoint. The owner of an endpoint is configurable. In the case of dynamically‑created endpoints, the default owner is the client username of the client that created the endpoint.</li>
+      <li>CLI-created queues and topic endpoints can only be deleted through the CLI.</li>
+      <li>Each endpoint has a “Permission All” parameter that determines what access control clients other than the owner of an endpoint have. By default, the “Permission All” parameter has a permission level of <code>none</code>. However, permissions can be explicitly specified when the endpoint is initially created through the CLI or dynamically through a messaging API. The permission level can also be changed through the CLI.</li>
+    </ul>
+    <p MadCap:conditions="SAP.SAPTempHide">The permissions available at the following levels are:</p>
+    <ul MadCap:conditions="SAP.SAPTempHide">
+      <li>none—no access.</li>
+      <li>read-only—allows the messages only to be read; they cannot be removed or consumed from the message spool.</li>
+      <li>consume—allows messages to be browsed and consumed from the message spool.</li>
+      <li>modify-topic—allows the topics assigned to endpoints to be modified. Modify-topic also implicitly includes same permissions as consume.</li>
+      <li>delete—allows deleting queues or topic endpoints. Delete also implicitly includes same permissions as modify-topic.</li>
+    </ul>
+    <h2 class="with-rule" MadCap:conditions="SAP.SapHideFromOutput"><a name="Selectors"/>Selectors</h2>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Selectors are filters that clients can apply when they bind to endpoints. They enable clients to filter which messages they are interested in receiving, as determined by the messages’ header field and property values. A selector is a string with a maximum of 2,000 bytes that uses a conditional expression syntax that is a subset of SQL92.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">As shown in the diagram below, selectors can filter messages from queues and topic endpoints.</p>
+    <ul MadCap:conditions="SAP.SapHideFromOutput">
+      <li>For queues: Any messages that do not match the client’s selector string are not delivered to the requesting client, but remain in the queue. <p class="Note">Selectors are not supported for <MadCap:xref href="Queues.htm#partitioned-queues">Partitioned Queues</MadCap:xref>.</p></li>
+      <li>For topic endpoints: Any messages that do not match the selector are not delivered to the requesting client, but are removed from the topic endpoint.<p>Selectors on topic endpoints run as background processes to avoid slowing down publishing pipelines. It is possible to see the number of messages in a topic endpoint shrink as the selector is applied. For example, if 100 messages are published that match the associated topic of a topic endpoint, then these 100 messages are spooled into the topic endpoint. The associated selector starts testing these 100 new messages, and any messages that the selector rejects are removed from the topic endpoint. If there is a selector associated with a topic endpoint, then the selector must filter the messages prior to delivery to the flow. If either the topic or selector changes, then all messages are removed from the topic endpoint before applying the new topic and selector.</p></li>
+    </ul>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Client applications can also specify a selector string when browsing a queue so that the client only browses messages that match the selector.</p>
+    <p class="GraphicCaption" MadCap:conditions="SAP.SapHideFromOutput">
+      <img src="../../Resources/Images/Messaging/selectors.png" alt="Diagram illustrating the concepts described in the surrounding text."/>
+    </p>
+    <h3 MadCap:conditions="SAP.SapHideFromOutput"><a name="Performa"/>Performance Considerations When Using Selectors</h3>
+    <MadCap:snippetBlock src="../../API/API-Developer-Guide/Snippets/Selector-Considerations.flsnp" MadCap:conditions="SAP.SapHideFromOutput"/>
+  </body>
+</html>

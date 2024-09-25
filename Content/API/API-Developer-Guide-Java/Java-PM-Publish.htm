@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><a name="Publishing-Persistent-Messages-Java-API"/>Publishing Persistent Messages Using the Java API</h1>
+    <p>When your applications require confirmation handling and <i>exactly once</i> delivery, we recommend that you use persistent messages instead of  direct messages. To publish persistent messages in the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Java API,  you first set up a message queue on the <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker. </p>
+    <p> For information about creating and configuring queues on an event broker, see <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-Queues.htm">Configuring Queues</MadCap:xref>. </p>
+    <p>To  handle persistent messages using the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Java API, use the following steps:</p>
+    <ol>
+      <li><a href="#Creating-A-PersistentMessagePublisher-Object" class="link-internal">Create a PersistentMessagePublisher Object</a>.</li>
+      <li><a href="#Configuring-Messages" class="link-internal">Configure and Create an OutboundMessage</a>.</li>
+      <li><a href="#Publishing-A-Persistent-Message" class="link-internal">Publish a Persistent Message</a>.</li>
+      <li><a href="#Message-Receipts-and-Error-Handling" class="link-internal">Acknowledging Messages and Handling Errors</a>.</li>
+    </ol>
+    <p>In some use cases, it's possible for your application to send messages faster than the messages can be transported. This may cause messages to accumulate in the API internal buffers causing back-pressure. If this scenario is possible, consider changing the back-pressure settings to meet the requirements of your application. For more information, see <MadCap:xref href="#Configuring-Back-Pressure">Configuring Back-pressure</MadCap:xref>.</p>
+    <p>For examples of applications  that publish persistent messages, see  the <a href="https://tutorials.solace.dev/java" target="_blank" class="link-offsite"><MadCap:variable name="Variables.CompanyName"/> Developer Hub</a>.</p>
+    <h2 class="with-rule"><a name="Creating-A-PersistentMessagePublisher-Object"/>Creating a PersistentMessagePublisher Object </h2>
+    <p>After a <code>MessagingService</code> object has established a connection to an event broker, you  use a <code>PersistentMessagePublisher</code> object  to publish persistent messages. As with the <code>MessagingService</code> object, the <code>PersistentMessagePublisher</code> object allows you to configure what features to use in the API. You can use the following methods to  set how to handle back-pressure for the  <code>PersistentMessagePublisherBuilder</code> object. These methods include the <code>build()</code> method , which returns a <code>PersistentMessagePublisher</code> object. To enable your <code>PersistentMessagePublisher</code> to start publishing messages, call <code>start()</code> on it.</p>
+    <ul>
+      <li style="font-size: 11pt;">
+        <code>PersistentMessagePublisherBuilder</code>
+      </li>
+      <ul>
+        <li>
+          <code>createPersistentMessagePublisherBuilder()</code>
+        </li>
+        <li>
+          <code>onBackPressureReject()</code>
+        </li>
+        <li>
+          <code>onBackPressureWait()</code>
+        </li>
+        <li>
+          <code>onBackPressureElastic()</code>
+        </li>
+      </ul>
+      <ul>
+        <li>
+          <code>build()</code>
+        </li>
+      </ul>
+      <li>
+        <code>PersistentMessagePublisher</code>
+      </li>
+      <ul>
+        <li>
+          <code>start()</code>
+        </li>
+      </ul>
+    </ul>
+    <p>The following shows an example of how to use <code>PersistentMessagePublisher</code> object to connect to the event broker using a <code>MessagingService</code> object:</p>
+    <pre xml:space="preserve">/* Creates an instance of PersistentMessagePublisherBuilder, which is used to create PersistentMessagePublisher objects. */
+final PersistentMessagePublisher publisher = messagingService.createPersistentMessagePublisherBuilder()
+    .build()             // Builds a PersistentMessagePublisher object based on the provided configuration.
+    .start();            // Causes the service to resume regular duties. Before this method is called, the service is considered off-duty.            
+</pre>
+    <h3>Asynchronous Receivers </h3>
+    <p>It is also possible to start a persistent message publisher using a callback listener to allow for asynchronous notifications after the start operation is complete.</p>
+    <p>The following example shows you how to invoke <code>CompletionListener</code>, which is a callback method for listening for the results of a future computation. This handler also notifies the application when the start operation is complete. </p>
+    <pre xml:space="preserve">final CompletionListener&lt;PersistentMessagePublisher&gt; receiverStartupListener = (receiver, throwable) -&gt; {
+    if (throwable == null) {
+    // Started successfully, can receive messages.
+    } else {
+    // Deal with an exception during start.
+    }
+};
+receiverToBeStarted.startAsync(receiverStartupListener);    </pre>
+    <p class="Note"> Your publisher application is not operational until you call <code>start()</code> or <code>startAsync()</code> on it</p>
+    <h2 class="with-rule"><a name="Configuring-Messages"/>Configuring and Creating Outbound Messages</h2>
+    <p>Your client applications explicitly create the outbound messages to publish. In the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Java API, when you publish messages you use <code>OutboundMessage</code> objects. To configure and create <code>OutboundMessage</code> objects, follow these steps: </p>
+    <ol>
+      <li>
+        <p>Call  <code>messagingService.messageBuilder()</code> to return an <code>OutboundMessageBuilder</code> object. For better performance, we recommend you use a single <code>OutboundMessageBuilder</code> to create multiple <code>OutboundMessage</code> objects. </p>
+        <pre xml:space="preserve">final OutboundMessageBuilder messageBuilder = messagingService.messageBuilder()</pre>
+      </li>
+      <li>Configure your message with an <code>OutboundMessageBuilder</code> and then call the <code>build()</code> method to return a message object. You can configure message properties using either method below.
+			
+				<ul><li>Use the <code>Properties</code> interface and the <code>setProperty(name,value)</code> method. The following example shows how to set a custom name-value property on a <code>Properties</code> object, and then configure a message using the <code>fromProperties()</code> method:		<pre xml:space="preserve">
+final Properties messageProperties = new Properties();
+messageProperties.setProperty("PropertyName", "PropertyValue");
+final OutboundMessage message = messageBuilder
+	.fromProperties(messageProperties)
+	.build(messagePayload);	</pre></li><li>Use the <code>OutboundMessageBuilder</code> interface and the <code>with*()</code> methods. The following example shows how to set Time to Live, Sender ID, and a custom key-value property on a message:<pre xml:space="preserve">
+final OutboundMessage myCustomMessage = messageBuilder
+	.withTimeToLive(1000)
+	.withSenderId("mySenderId")   
+	// For a complete list of with*() methods see the <a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API Java reference</a>
+	.withProperty("PropertyKey", "PropertyValue") 
+	.build(messagePayload);</pre></li></ul></li>
+    </ol>
+    <p>The following code example shows how to create a message builder, set message properties and create a message:</p>
+    <pre xml:space="preserve">
+/* Builder for creation of similarly configured messages */
+final OutboundMessageBuilder messageBuilder = messagingService.messageBuilder();
+final OutboundMessage message = messageBuilder
+    .fromProperties(messageProperties)       // For example TTL, Sender ID, Sequence Number etc.  
+    .withExpiration(Instant.now()            // Sets expiration time using the current system time as starting point.
+    .toEpochMilli() + 10000L)                // Expire the message in 10 seconds.
+    .build("My_Message");                    // Builds the message.</pre>
+    <p>For more information about the methods, see the <a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API Java reference</a>.</p>
+    <h3><a name="Setting"/>Setting a Partition Key</h3>
+    <p>You can set a partition key to use partitioned queues. Partitioned Queues is a feature configured on the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Event Broker that allows you to easily scale the number of consumer applications bound to a queue. A partition key can be set on each message in the publishing application to ensure that all messages with the same partition key are delivered to the same consumer without additional logic in the consumer application. For more information see <MadCap:xref href="../../Messaging/Guaranteed-Msg/Queues.htm#partitioned-queues">Partitioned Queues</MadCap:xref>.</p>
+    <p>You can use <code>setProperty(name,value)</code> or  <code>withProperty(key,value)</code> to set a key-value pair on a message using an <code>OutboundMessageBuilder</code>. </p>
+    <ul>
+      <li>
+        <p><code>name/key</code>—The constant <code>MessageUserPropertyConstants.QUEUE_PARTITION_KEY</code> or the string value "JMSXGroupID".</p>
+      </li>
+      <li>
+        <p><code>value</code>—A string representing the value of your partition key. Client applications set the value at publish time. </p>
+      </li>
+    </ul>
+    <p>The following example sets the partition key <code>value</code> to "Group-0":</p>
+    <pre xml:space="preserve">
+// Using fromProperties() method
+final Properties additionalProperties = new Properties();
+additionalProperties.setProperty(MessageUserPropertyConstants.QUEUE_PARTITION_KEY, "Group-0");
+final OutboundMessage message = messageBuilder
+	.fromProperties(additionalProperties)
+	.build(payload);
+
+// Using withProperty() method
+final OutboundMessage myCustomMessage = messagingService.messageBuilder()
+       .withProperty(MessageUserPropertyConstants.QUEUE_PARTITION_KEY, "Group-0")  
+       .build(payload);</pre>
+    <h2 class="with-rule"><a name="Configuring-Back-Pressure"/>Handling Back-Pressure When Publishing Persistent Messages</h2>
+    <MadCap:snippetBlock src="../../Resources/Snippets/API-Guide/NG-API/backpressureintro-publisher-persistent-messages.flsnp"/>
+    <p>In the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Java API, the <code>PersistentMessagePublisherBuilder</code> has three primary  mechanisms to handle back-pressure which you can use:</p>
+    <ul>
+      <li>
+        <a href="#reject" class="link-internal">reject messages when a specified limit is reached</a>
+      </li>
+      <li>
+        <a href="#throttle" class="link-internal">throttle the publisher  when a specified limit is reached</a>
+      </li>
+      <li>
+        <a href="#no-limit" class="link-internal">use an unlimited internal buffer (default) </a>
+      </li>
+    </ul>
+    <h3><a name="reject"/>Rejecting Messages When a Specified Limit is Reached </h3>
+    <p>When back-pressure occurs, you can choose to reject the messages from the client application when a specified limit is reached in the internal buffer. You can use  <code>onBackPressureReject(int bufferCapacity)</code> method to specify a defined buffer capacity for a set number of messages to accumulate. After the specified capacity is reached, it is no longer possible to publish new messages and exceptions are thrown until the buffer has capacity again. On calls to publish,  <code>bufferCapacity</code> must be greater than zero. </p>
+    <pre xml:space="preserve">/* Creates an instance of PersistentMessagePublisherBuilder, which is used to create PersistentMessagePublisher objects. */
+final PersistentMessagePublisher publisher = messagingService.createPersistentMessagePublisherBuilder()
+    .onBackPressureReject(1000)     // Creates a message buffer with space to accommodate 1000 messages, at which point messages are rejected until there is room.
+    .build()             // Builds a PersistentMessagePublisher object based on the provided configuration.    
+    .start();            // Causes the service to resume regular duties. Before this method is called, the service is considered off-duty.    </pre>
+    <h4><a name="publisher-readiness-listener"/>Using a Publisher Readiness Listener</h4>
+    <p>We recommend that you use the <code>PublisherReadinessListener</code> interface when you use the <code>onBackPressureReject()</code> method because it lets your application know when there is capacity available in the buffer and it can resume publishing messages. </p>
+    <p>The following is an example of registering an event handler using the <code>PublisherReadinessListener</code> interface: </p>
+    <pre xml:space="preserve">/* Object that is used with synchronization to ensure that 'ready' event is issued after exception handling once 'publish' is processed */
+final Object[] lock = new Object[0];
+final PersistentMessagePublisher publisher = messagingService.createPersistentMessagePublisherBuilder()
+    .onBackPressureReject(1000)     // Creates a message buffer with space to accommodate 1000 messages, at which point messages are rejected until there is room.
+    .build()             // Builds a PersistentMessagePublisher object based on the provided configuration.    
+    .start();            // Causes the service to resume regular duties. Before this method is called, the service is considered off-duty.
+
+final PublisherReadinessListener canPublishListener = () -&gt; {
+<b>// This code is executed when the publisher is ready to publish again.</b> 
+};
+publisher.setPublisherReadinessListener(canPublishListener);    // Register listener, usually set once.        
+</pre>
+    <h3><a name="throttle"/>Throttling Publisher When a Specified Limit is Reached</h3>
+    <p>You can choose to throttle the publishing application if a specified limit is reached in the internal buffer. The use of throttling is useful to free capacity to its internal buffers. You can use the  <code>onBackPressureWait(int bufferCapacity)</code> method to set the maximum number of messages that can accumulate in the buffer. When this maximum capacity (<code>bufferCapacity</code>) is reached, the publisher thread pauses and waits for  available capacity in the internal buffer before letting the application publish any more messages.</p>
+    <p> This method should be used when you want the application's publishing requests to take longer if the buffer's capacity has been reached. Using this mechanism gives time for the application to empty the internal buffer. An additional benefit for persistent messaging with this configuration is that the API does not discard any messages. </p>
+    <p>The following shows an example of how to configure the internal buffer to accommodate up to one thousand messages:</p>
+    <pre xml:space="preserve">/* Creates an instance of PersistentMessagePublisherBuilder, which is used to create PersistentMessagePublisher objects. */
+final PersistentMessagePublisher publisher = messagingService.createPersistentMessagePublisherBuilder()
+    .onBackPressureWait(1000)  // Creates a message buffer with space to accommodate 1000 messages, at which point the thread pauses until there is room.
+    .build()             // Builds a PersistentMessagePublisher object based on the provided configuration.    
+    .start();            // Causes the service to resume regular duties. Before this method is called, the service is considered off-duty.    </pre>
+    <h3><a name="no-limit"/>Configuring an Unlimited Internal Buffer </h3>
+    <MadCap:snippetBlock src="../../Resources/Snippets/API-Guide/NG-API/publish-unlimited-buffer.flsnp"/>
+    <p>When you use an unlimited buffer, the Java API continuously  puts messages on the internal buffer published by the client application. The following example shows an explicit call to the  <code>onBackPressureElastic()</code> method, which is not required because it is the default behavior:</p>
+    <pre xml:space="preserve">/* Creates an instance of PersistentMessagePublisherBuilder, which is used to create PersistentMessagePublisher objects. */
+final PersistentMessagePublisher publisher = messagingService.createPersistentMessagePublisherBuilder()
+    .onBackPressureElastic()  // Creates an unlimited capacity message buffer. 
+    .build()             // Builds a PersistentMessagePublisher object based on the provided configuration.    
+    .start();            // Causes the service to resume regular duties. Before this method is called, the service is considered off-duty.                    </pre>
+    <h2 class="with-rule"><a name="Publishing-A-Persistent-Message"/>Publishing a Persistent Message</h2>
+    <p>After you have established a connection to the event broker using a <code>MessagingService</code> object, you can use a <code>PersistentMessagePublisher</code> object to publish persistent messages.</p>
+    <p> A persistent message has the following components: </p>
+    <ul>
+      <li>A topic to publish to (required) </li>
+      <li>A message payload (optional) </li>
+    </ul>
+    <p>Persistent message publishing involves the receipt of acknowledgments or <i>publish receipts</i>. Depending on your requirements, your client application can publish as:</p>
+    <ul>
+      <li>   non-blocking, allows your application to perform other functions while the <code>PublishReceiptListener</code> waits for the acknowledgment</li>
+      <li>blocking,  waits until an acknowledgment has been received; an acknowledge indicates that the message has been received and persisted by the broker</li>
+    </ul>
+    <h3><a name="non-block-methods"/>Non-Blocking Methods </h3>
+    <p>The following are non-blocking methods:</p>
+    <ul>
+      <li>
+        <code>publish(byte[] message, Topic destination)</code>
+      </li>
+      <li>
+        <code>publish(byte[] message, Topic destination, Object userContext)</code>
+      </li>
+      <li>
+        <code>publish(OutboundMessage message, Topic destination)</code>
+      </li>
+      <li>
+        <code>publish(OutboundMessage message, Topic destination, Object userContext)</code>
+      </li>
+      <li>
+        <code>publish(OutboundMessage message, Topic destination, Object userContext, Properties additionalMessageProperties)</code>
+      </li>
+      <li>
+        <code>publish(String message, Topic destination)</code>
+      </li>
+      <li>
+        <code>publish(String message, Topic destination, Object userContext)</code>
+      </li>
+    </ul>
+    <p>For more information about the methods, see the <a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API Java reference</a>.</p>
+    <h3><a name="block-methods"/>Blocking Methods</h3>
+    <p>If you want your publisher to await for an acknowledgment from the broker before returning from the <code>publish()</code> call, you can use the following blocking methods:</p>
+    <ul>
+      <li>
+        <code>publishAwaitAcknowledgement(OutboundMessage message, Topic destination, long timeout)</code>
+      </li>
+      <li>
+        <code>publishAwaitAcknowledgement(OutboundMessage message, Topic destination, long timeout, Properties additionalMessageProperties)</code>
+      </li>
+    </ul>
+    <p>Either of the preceding methods can be used with a <code>PersistentMessagePublisher</code> object to publish an <code>OutboundMessage</code> to the broker using a topic. This method blocks the main thread until either:</p>
+    <ul>
+      <li>the publisher API receives an acknowledgment from the broker </li>
+      <li> the timeout period elapses</li>
+    </ul>
+    <pre xml:space="preserve">/* A simple example of a blocking publish event for a persistent message. */
+final long deliveryConfirmationTimeOutInMilliseconds = 20000L;  // wait at most for 20 seconds before considering that message is not delivered to the broker    
+OutboundMessage message = messageBuilder.build("Hello World!");
+                    
+try {
+    publisher.publishAwaitAcknowledgement(messageBuilder.build("Hello World!"),          // Publishing a message, blocking.
+    toDestination, deliveryConfirmationTimeOutInMilliseconds);                           // Publish to Topic "toDestination" with timeout value.
+        } catch (PubSubPlusClientException.TimeoutException e) {  
+        logger.warn(String.format("Timeout for Message %s - %s", message, e)); // Time-out has occurred.
+        } catch (PubSubPlusClientException e) { 
+        logger.warn(String.format("NACK for Message %s - %s", message, e));    // Message was not spooled on broker queue, a nack is sent.
+        } catch (InterruptedException e) {    
+        logger.info("Got interrupted, probably shutting down",e);              // Interrupted while waiting for publish confirmation.
+        }                </pre>
+    <h3><a name="user-contexts"/>User Contexts</h3>
+    <p>Optionally, you can use <i>user contexts</i> to correlate information for persistent messages to publish receipts in your application. This information is user-specific and is meaningful only to your publishing application and is not sent to the broker. A user context permits you to attach data to the <code>publish()</code> call that can later be retrieved from the publish receipt listener.</p>
+    <p>When you use a user context, it allows you to handle multiple scenarios.   It also allows your application to decide what action to take or how to process the publish receipt based on the context. </p>
+    <p>For example, if a non-blocking application has multiple threads to publish persistent messages, each thread can include its identifier as the user context when it publishes a persistent message. The Java API tracks the user context when specified for each message and returns the user context as part of the publish receipt when the message is acknowledged or rejected by the event broker. The publishing application can then send the publish receipt to the correct thread that sent the message based on the user context.</p>
+    <p>You can set the user context when you publish the message. For example, you use the <code>publish(OutboundMessage message,Topic destination, Object userContext)</code> method, where the user context is specified as type <code>Object</code>.</p>
+    <p>The following example shows how to get the user context from a publish receipt:</p>
+    <pre xml:space="preserve">/* A simple example of a persistent message publishReceipt */
+final OutboundMessage acknowledgedMessage = publishReceipt.getMessage(); // Retrieves message associated with a Receipt.    
+final Object processingContext = publishReceipt.getUserContext();        // Corresponding context can be retrieved this way from a publish receipt when provided during message publishing.
+</pre>
+    <p>If your application is non-blocking, you can also use a persistent message publisher with publish receipt in your callback to log information. For example, you can use non-blocking message publishing and then  send alerts to notify the application of the status of published messages, such as:</p>
+    <ul>
+      <li> the event broker successfully receives and processes a message</li>
+      <li>access control violations (ACL)</li>
+      <li> a queue being over quota</li>
+      <li> invalid topics / topics with no subscribers</li>
+    </ul>
+    <p> The following example shows how the publish receipts are logged using Log4j2 with commands such as <code>logger.warn()</code> and <code>logger.debug()</code>. </p>
+    <pre xml:space="preserve">/* listener that processes all delivery confirmations/timeouts for all messages */
+final MessagePublishReceiptListener deliveryConfirmationListener = (publishReceipt) -&gt; {
+final PubSubPlusClientException e = publishReceipt.getException();
+    if (e == null) {                                          // No exception, broker has confirmed a successful publish receipt.
+    OutboundMessage outboundMessage = publishReceipt.getMessage();
+    logger.debug(String.format("ACK for Message %s", outboundMessage));         // The broker has the message logs an "ack". 
+    } else {                                                                    // Negative acknowledgment, broker has not received the message. 
+    OutboundMessage outboundMessage = publishReceipt.getMessage();              // Which message was not received. 
+    logger.warn(String.format("NACK for Message %s - %s", outboundMessage, e)); // Logs a "nack" or negative acknowledgment. 
+    }                                                                      
+    };
+publisher.setMessagePublishReceiptListener(deliveryConfirmationListener);     // Listen to all delivery confirmations for all messages being sent.
+publisher.publish("Hello world!", topicDestination);                          // Publish a message with a String payload.</pre>
+    <h2 class="with-rule"><a name="Message-Receipts-and-Error-Handling"/>Acknowledging Messages and Handling Errors</h2>
+    <p>A publish receipt is a delivery confirmation that indicates whether or not the event broker has successfully spooled a message on a queue. These publish receipts can indicate success or failure, and are handled by the <code>MessagePublisReceiptListener</code> object. You create a <code>MessagePublishReceiptListener</code> object by calling the <code>setMessagePublishReceiptListener()</code> method. </p>
+    <p>The following example shows how to use the  <code>MessagePublishReceiptListener</code> to listen for publish receipts:</p>
+    <pre xml:space="preserve">
+/* listener that processes delivery confirmations / timeouts for all messages */
+final MessagePublishReceiptListener deliveryConfirmationListener = (publishReceipt) -&gt; {
+final PubSubPlusClientException e = publishReceipt.getException();
+    if (e == null) {  // No exception, broker has confirmed receipt.
+      <b>// Code to log, handle a successful publishReceipt.</b>     
+    } else {         // Negative acknowledgment, broker has not received the message. 
+      <b>// Code to log, handle a failed publishReceipt.</b>
+            }                                                                      
+    };
+publisher.setMessagePublishReceiptListener(deliveryConfirmationListener);          // Listen to delivery confirmations for all messages being sent.
+publisher.publish("Hello world!", topicDestination);                               // Publish a message with a String payload.        </pre>
+    <h3><a name="strategies"/>Strategies for Handling Publish Receipt Errors</h3>
+    <p>The following are application-specific strategies you can use to handle receipt errors when publishing. </p>
+    <dl>
+      <dt>Wait and Retry</dt>
+      <dd>Wait a number of seconds before trying to send the message again. For example, using <code>Thread.sleep(1000)</code> to wait for 1 second before attempting to publish again.</dd>
+      <dt>Retry a Predefined number of Times</dt>
+      <dd>      Try to re-publish the message a predefined number of times before dropping it.</dd>
+      <dt>Discard the Message</dt>
+      <dd>Simply discard messages with failed publish receipts. We don't recommend this strategy if your application cannot tolerate message loss. </dd>
+    </dl>
+    <p class="Note"> To receive a failed publish receipt when there is no matching subscription, this option must be set for the event broker or <MadCap:variable name="Product-Names.broker_cloud_short"/>. For more information, see <MadCap:xref href="../../Security/Configuring-Client-Profiles.htm#Configur">Handling Guaranteed Messages with No Matches</MadCap:xref> (for <MadCap:variable name="Product-Names.broker_appliance_short"/>s and <MadCap:variable name="Product-Names.broker_sw_short"/>s) or the <b><a href="../../Cloud/client-profiles.htm#configuring-client-profile-settings" class="link-internal">Reject Messages to Sender On No Subscription Match Discard</a></b> (for <MadCap:variable name="Product-Names.cloud_product_short"/>).</p>
+  </body>
+</html>

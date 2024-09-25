@@ -1,0 +1,1018 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><MadCap:variable name="Variables.CompanyName"/> REST HTTP Message Encoding</h1>
+    <p>The <MadCap:variable name="Variables.CompanyName"/> REST messaging feature encodes messages using standard HTTP mechanisms. <MadCap:variable name="Variables.CompanyName"/> REST messages contain the following parts:</p>
+    <ul>
+      <li>A POST request-target where the <MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker destination is encoded (refer to <MadCap:xref href="#_Ref399926122" class="ParaTextOnly">POST Request Target</MadCap:xref>)</li>
+      <li>HTTP headers that identify message properties of the REST message (refer to  <MadCap:xref href="#_Ref393979969" class="ParaTextOnly">Solace REST Usage of HTTP Headers</MadCap:xref>)</li>
+      <li>Message payloads that are transported as the HTTP message contents (refer to <MadCap:xref href="#_Ref393979978" class="ParaTextOnly">Message Encoding Considerations</MadCap:xref>)</li>
+    </ul>
+    <h2 class="with-rule"><a name="_Ref399926122"/>HTTP Request-Target</h2>
+    <p>The <MadCap:variable name="Variables.CompanyName"/> event broker REST HTTP interface supports HTTP request-targets in RFC 7230 §5.3.2 origin-form (that is, a path starting with a <code>/</code>) or in RFC 7230 §5.3.2 absolute-form (that is, <code>&lt;scheme&gt;://&lt;authority&gt;/&lt;path&gt;</code>)</p>
+    <p>When the <MadCap:variable name="Variables.CompanyName"/> event broker acts as an HTTP server, it receives REST HTTP requests from message producers. The <MadCap:variable name="Variables.CompanyName"/> event broker converts the received HTTP request-target into a <MadCap:variable name="Variables.CompanyName"/> messaging topic, on which it routes the message.</p>
+    <p>Conversely, when the <MadCap:variable name="Variables.CompanyName"/> event broker acts as an HTTP client, in a REST delivery point (RDP), it constructs the HTTP request-target from an outgoing <MadCap:variable name="Variables.CompanyName"/> message before sending the HTTP request to the message consumer. </p>
+    <p>This conversion between HTTP request-target and <MadCap:variable name="Variables.CompanyName"/> message depends on whether the corresponding Message VPN is configured for REST HTTP messaging mode or Microgateway mode.</p>
+    <h3><a name="Messagin"/>Messaging Mode</h3>
+    <h4><a name="_Ref393980294"/>REST HTTP Client to <MadCap:variable name="Variables.CompanyName"/> Event Broker HTTP Server</h4>
+    <p>When the <MadCap:variable name="Variables.CompanyName"/> event broker receives an HTTP POST request from a REST HTTP producer client, the HTTP POST request-target's path must be one of the following:</p>
+    <ul>
+      <li>
+        <p>
+          <code>/QUEUE/queue-name</code>
+        </p>
+        <p>The <MadCap:variable name="Variables.CompanyName"/> event broker enqueues the message from the HTTP POST request into the message-spool queue named <code>queue-name</code>.</p>
+      </li>
+      <li>
+        <p>
+          <code>/TOPIC/topic-string</code>
+        </p>
+        <p>The <MadCap:variable name="Variables.CompanyName"/> event broker publishes the message from the HTTP POST request to the topic <code>topic-string</code>.</p>
+      </li>
+    </ul>
+    <p class="Note">If both /TOPIC and /QUEUE are omitted from the start of the request-target path, then /TOPIC is assumed and the incoming message is treated as if it came to /TOPIC/&lt;topic-string&gt;.</p>
+    <h4><a name="_Toc426703627"/><MadCap:variable name="Variables.CompanyName"/> Event Broker RDP to a REST HTTP Consumer Server</h4>
+    <p>When the <MadCap:variable name="Variables.CompanyName"/> event broker RDP sends an HTTP POST request to a REST HTTP consumer server, it uses the request-target that is configured for the corresponding queue binding. For more information, refer to <MadCap:xref href="../../Services/Managing-RDPs.htm#configuring-POST-request-targets">Configuring POST Request Targets</MadCap:xref>.</p>
+    <h3><a name="Microgat"/>Microgateway Mode</h3>
+    <h4><a name="REST HTT"/>REST HTTP Client to <MadCap:variable name="Variables.CompanyName"/> Event Broker HTTP Server</h4>
+    <p>When the <MadCap:variable name="Variables.CompanyName"/> event broker receives an HTTP request from a REST HTTP producer client, the <MadCap:variable name="Variables.CompanyName"/> event broker publishes the <MadCap:variable name="Variables.CompanyName"/> message using the topic:</p>
+    <code>method/path</code>
+    <p>Where:</p>
+    <p><code>method</code> is the HTTP request's method (one of <code>DELETE</code>, <code>GET</code>, <code>HEAD</code>, <code>OPTIONS</code>, <code>PATCH</code>, <code>POST</code>, or <code>PUT</code>)</p>
+    <p><code>path</code> is the path from the HTTP request-target, with any leading <code>/</code> characters stripped.</p>
+    <p>A query, if any, in the HTTP request-target does not form part of the topic the <MadCap:variable name="Variables.CompanyName"/> event broker uses to publish the message. </p>
+    <p>The <MadCap:variable name="Variables.CompanyName"/> event broker restrictions on the length and characters in the resultant message topic must be respected.</p>
+    <p>An HTTP request-target may use percent-encoding to represent characters which are meaningful to the application, but which are illegal or otherwise-meaningful in an HTTP request-target (see RFC 3986 §2).</p>
+    <p>If a REST HTTP client sends the <MadCap:variable name="Variables.CompanyName"/> event broker a request with any of the following characters percent-encoded in the request-target's path, they will appear to remain percent-encoded in the <MadCap:variable name="Variables.CompanyName"/> topic:</p>
+    <code>! $ % &amp; ' ( ) * + , / : ; = ? @ [ ]</code>
+    <p>Any other percent-encoded characters in the HTTP request-target from the REST HTTP client will be decoded in the <MadCap:variable name="Variables.CompanyName"/> message topic.</p>
+    <h4><a name="Solace2"/><MadCap:variable name="Variables.CompanyName"/> Event Broker RDP to REST HTTP Consumer Server</h4>
+    <p>When the <MadCap:variable name="Variables.CompanyName"/> event broker RDP sends an HTTP request to a REST HTTP consumer server, it uses the metadata from the message to construct the HTTP request-target. If the <MadCap:variable name="Variables.CompanyName"/> event broker originally received the message from a REST HTTP producer client, then this metadata should serve to reconstruct that original request-target.</p>
+    <p>If the message does not have any metadata describing the request-target for the outgoing HTTP request, the <MadCap:variable name="Variables.CompanyName"/> event broker reconstructs the request-target path from the message's topic. The top-level topic must be a supported HTTP method (one of <code>DELETE</code>, <code>GET</code>, <code>HEAD</code>, <code>OPTIONS</code>, <code>PATCH</code>, <code>POST</code>, or <code>PUT</code>). If not, the outgoing message will be discarded as unformattable. The second and successive subsequent topic levels form the request-target's path.</p>
+    <p>When the HTTP request-target path is reconstructed from the <MadCap:variable name="Variables.CompanyName"/> topic, the following characters in the <MadCap:variable name="Variables.CompanyName"/> topic will not be percent-encoded in the request-target:</p>
+    <p>
+      <code>! $ &amp; ' ( ) * + , - . / 0…9 : ; = ? @ A…Z [ ] _ a…z ~</code>
+    </p>
+    <p>If the RDP queue binding from which the message was dequeued is not provisioned to <code>replace-target authority</code> (see <MadCap:xref href="../../Services/Managing-RDPs.htm#replacing-the-authority-value-in-outbound-URIs">Replacing the Authority Value in Outbound URIs</MadCap:xref>), and the message contains metadata indicating the request-target's authority host, then the outgoing HTTP request-target will be in absolute-form. The scheme will be <code>https</code> or <code>http</code>, depending on whether the connection to the REST HTTP consumer server uses TLS transport. The authority (host and optionally port) will be those from the message's metadata.</p>
+    <p>Otherwise, the outgoing HTTP request-target will be in origin-form, without any scheme or authority. </p>
+    <p>In all cases, if the message contains metadata containing a request-target query, that query will be appended to the outgoing HTTP request-target.</p>
+    <h2 class="with-rule"><a name="_Ref393979969"/><MadCap:variable name="Variables.CompanyName"/> REST Usage of HTTP Headers</h2>
+    <p>Solace REST messaging makes use of standard HTTP headers and introduces some custom headers specifically related to the <MadCap:variable name="Variables.CompanyName"/> REST implementation. The following sections detail the HTTP headers used and provide context around their usage. </p>
+    <ul>
+      <li>In messaging mode, any HTTP header fields not specifically mentioned below are ignored and discarded.</li>
+      <li>In Microgateway mode, any received HTTP header fields not specifically mentioned below will be attached to the <MadCap:variable name="Variables.CompanyName"/> message as metadata. Any <MadCap:variable name="Variables.CompanyName"/> message sent as an HTTP message will have the <MadCap:variable name="Variables.CompanyName"/> message metadata converted back into HTTP header fields.</li>
+    </ul>
+    <p>Where maximum field lengths are noted, the event broker enforces those maximums and discards any messages that violate them. Where applicable, an appropriate HTTP error is returned to the HTTP publisher to indicate the failure.</p>
+    <h3><a name="_Toc426703629"/>Standard HTTP Headers on HTTP Requests to <MadCap:variable name="Variables.CompanyName"/></h3>
+    <p>A <MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker uses the following HTTP standard header fields on HTTP requests from REST HTTP clients:</p>
+    <table style="width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Header Key/Value</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Authorization: Basic base64(username:<br/>password)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Refer to <MadCap:xref href="../../Security/Configuring-Client-Authentication.htm">Client Authentication</MadCap:xref> for details related to client authentication.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Authorization: Bearer </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body"> Refer to <MadCap:xref href="../../Security/Client-Authentication-Overview.htm#OAuth">OAuth Authentication</MadCap:xref> for details related to OAuth client authentication.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Connection: close</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">See RFC 7230 §6.1.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">Content-Encoding</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body">In both messaging and Microgateway modes, the received <code>Content-Encoding</code> is always attached as metadata to the <MadCap:variable name="Variables.CompanyName"/> message.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Content-Length: digits</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">See RFC 7230 §3.3.2.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Content-Type: string</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">This field indicates whether the event broker should treat the REST message contents as Text or Binary when encoding the entity-body from a REST publisher into a <MadCap:variable name="Variables.CompanyName"/> message. <MadCap:xref href="#_Ref393980206" class="ParaTextOnly">HTTP Content Entity Headers and Message Payload Types</MadCap:xref>  outlines how the values of this entity header are mapped to <MadCap:variable name="Variables.CompanyName"/> message types. Note that text message content must be UTF-8 encoded. For more information refer to <MadCap:xref href="#_Ref393979978">Message Encoding Considerations</MadCap:xref>.</p>
+            <p class="Tbl_Body">In both messaging and Microgateway modes, any received <code>Content-Type</code> is always attached as metadata to the <MadCap:variable name="Variables.CompanyName"/> message.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Forwarded: string</p>
+            <p class="Tbl_Body">X-Forwarded-For: string</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">As described in RFC 7239, if there are intermediate agents (for example, proxies or switches) between the originating HTTP client and the event broker, the IP addresses of the originating HTTP client up to the penultimate intermediate agent are listed in the <code>X-Forwarded-For</code> header. A <MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker makes use of this information in its Access Control Lists (ACLs), CLI and management screens to display appropriate extra details relating to the originating client’s IP.</p>
+            <p class="Tbl_Body">In Microgateway mode, if the event broker receives an HTTP request with <code>Forwarded</code> or <code>X-Forwarded-For</code> header(s), and the event broker RDP subsequently sends that message as an HTTP request, the event broker will append another <code>Forwarded: for=</code> header field containing the IP address of the directly-connected HTTP client which sent the HTTP request to the event broker.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">Max-Forwards: integer</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body">In messaging mode, the event broker ignores this header.</p>
+            <p class="Tbl_Body">In Microgateway mode, if the event broker receives an HTTP request with a <code>Max-Forwards</code> header, and the <code>Max-Forwards</code> value is less than or equal to zero, the HTTP request is discarded with a <code>400 Max-Forwards Exceeded</code> error. If the <code>Max-Forwards</code> value isn't exceeded, and the event broker subsequently sends that message as an HTTP request, the HTTP request also has a <code>Max-Forwards</code> header with its value decremented by one. </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Transfer-Encoding: chunked</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">A <MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker supports HTTP POST requests sent using chunked transfer encoding as outlined in RFC 7230. A <MadCap:variable name="Variables.CompanyName"/> event broker ignores and discards any trailing headers.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">User-Agent: string</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">This header is displayed when you issue a <code>show client details</code> CLI command on the event broker.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="_Toc426703630"/>Standard HTTP Headers on HTTP Responses from Solace</h3>
+    <p>A <MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker always provides the following HTTP standard header fields in HTTP responses to REST HTTP clients:</p>
+    <table style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" class="TableStyle-Table_Num" cellspacing="0">
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">
+            <p class="GraphicCaption">Header Key/Value</p>
+          </th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">
+            <p class="GraphicCaption">Description</p>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Cache-Control: no-cache</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">In messaging mode, the <MadCap:variable name="Variables.CompanyName"/> event broker always sends a <code>Cache-Control: no-cache</code> header field.</p>
+            <p class="Tbl_Body">In Microgateway mode, any <code>Cache-Control</code> header field is passed transparently through the <MadCap:variable name="Variables.CompanyName"/> event broker as <MadCap:variable name="Variables.CompanyName"/> message metadata.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Content-Encoding</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">In both messaging and Microgateway modes, the <MadCap:variable name="Variables.CompanyName"/> event broker sends any <code>Content-Encoding</code> metadata attached to the <MadCap:variable name="Variables.CompanyName"/> response message.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Content-Length: digits</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">See RFC 7230 §3.3.2.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">Content-Type: string</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body">In both messaging and Microgateway modes, the <MadCap:variable name="Variables.CompanyName"/> event broker sends any <code>Content-Type</code> metadata attached to the <MadCap:variable name="Variables.CompanyName"/> response message.</p>
+            <p class="Tbl_Body">In messaging mode, if no <code>Content-Type</code> metadata is attached to the <MadCap:variable name="Variables.CompanyName"/> response message, a <MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker sets this header based on the message type of the <MadCap:variable name="Variables.CompanyName"/> message. For more information, refer to <MadCap:xref href="#_Ref393980206">HTTP Content Entity Headers and Message Payload Types</MadCap:xref>. For text messages the value is <code>text/plain</code> or <code>text/xml</code>. For all other messages the value is <code>application/octet-stream</code> to indicate binary.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Server: Solace_&lt;platform&gt;/&lt;version&gt;</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">In messaging mode, the <code>platform</code> component indicates the <MadCap:variable name="Variables.CompanyName"/> platform type (for example, 3230 or 3560). The <code>version</code> is the <MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/> version that the event broker is running (for example, 7.x.x.x).</p>
+            <p class="Tbl_Body">In Microgateway mode, any Server header field is passed transparently passed through the <MadCap:variable name="Variables.CompanyName"/> event broker as <MadCap:variable name="Variables.CompanyName"/> message metadata.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Set-Cookie: string</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">In messaging mode, a string that uniquely identifies the HTTP publisher client. This enables intermediate equipment, such as HTTP proxies or load balancers, to optimize future by keeping all traffic from a single REST publisher on the same HTTP connection.</p>
+            <p class="Tbl_Body">In Microgateway mode, any <code>Set-Cookie</code> headers fields are passed transparently passed through the <MadCap:variable name="Variables.CompanyName"/> event broker as <MadCap:variable name="Variables.CompanyName"/> message metadata.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">Warning: 299 - “string”</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">Optional, as per RFC 7234. If present, indicates that the event broker has transformed a <MadCap:variable name="Variables.CompanyName"/> message into an HTTP response, but some aspects of the <MadCap:variable name="Variables.CompanyName"/> message could not be represented in the HTTP response and were omitted. More information may be conveyed in the <code>Solace-Warning</code> HTTP header.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="_Toc426703631"/>Standard HTTP Headers on HTTP Requests from Solace</h3>
+    <p>On HTTP requests from a <MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker to a RDP consumer HTTP server, the event broker provides the following standard HTTP header fields:</p>
+    <table style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" class="TableStyle-Table_Num" cellspacing="0">
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Header Key/Value</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Authorization: Basic base64(configured_<br/>authentication_string)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">If the event broker is configured to use basic authentication when establishing outgoing connections to RDP consumer HTTP servers, the event broker provides the <code>Authorization</code> header on each HTTP request. If basic authentication is not configured for outgoing connections to RDP consumer HTTP servers, the event broker does not provide the <code>Authorization</code> header field.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Cache-Control: no-cache</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">In messaging mode, the <MadCap:variable name="Variables.CompanyName"/> event broker always sends a <code>Cache-Control: no-cache</code> header field.</p>
+            <p class="Tbl_Body">In Microgateway mode, any <code>Cache-Control</code> header field is passed transparently through the <MadCap:variable name="Variables.CompanyName"/> event broker as <MadCap:variable name="Variables.CompanyName"/> message metadata.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Content-Length: digits</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>See RFC 7230 §3.3.2.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">Content-Type: string</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body">In both messaging and Microgateway modes, the <MadCap:variable name="Variables.CompanyName"/> event broker sends any <code>Content-Type</code> metadata attached to the <MadCap:variable name="Variables.CompanyName"/> message.</p>
+            <p class="Tbl_Body">In messaging mode, if no <code>Content-Type</code> metadata is attached to the <MadCap:variable name="Variables.CompanyName"/> message, a <MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker sets this header based on the message type of the event broker message. For more information, refer to <MadCap:xref href="#_Ref393980206" class="ParaTextOnly">HTTP Content Entity Headers and Message Payload Types</MadCap:xref>. For text messages the value is <code>text/plain</code> or <code>text/xml</code>. For all other messages the value is <code>application/octet-stream</code> to indicate binary.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Host: &lt;host&gt;:&lt;port&gt;</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">See RFC 7230 §5.4.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">User-Agent: Solace_&lt;platform&gt;/&lt;version&gt;</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">In Microgateway mode, any <code>User-Agent</code> header field is passed transparently passed through the <MadCap:variable name="Variables.CompanyName"/> event broker as <MadCap:variable name="Variables.CompanyName"/> message metadata.</p>
+            <p class="Tbl_Body">In messaging mode, the <code>platform</code> component indicates the <MadCap:variable name="Variables.CompanyName"/> platform type (for example, 3230 or 3560). The <code>version</code> is the <MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/> version that the event broker is running (for example, 7.1.x.x).</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">Warning: 299 - “string”</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">Optional, as per RFC 7234. If present, this warning indicates that the event broker has transformed a <MadCap:variable name="Variables.CompanyName"/> message into an HTTP request, but some aspects of the <MadCap:variable name="Variables.CompanyName"/> message could not be represented in the HTTP request and were omitted. More information may be conveyed in the <code>Solace-Warning</code> HTTP header.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="_Toc426703632"/>Standard HTTP Headers on HTTP Responses from RDP Consumer HTTP Servers to Solace</h3>
+    <p>A <MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker interprets the following standard HTTP header fields on HTTP responses from RDP consumer HTTP servers:</p>
+    <table style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" class="TableStyle-Table_Num" cellspacing="0">
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Header Key/Value</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Connection: close</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Any value of the Connection header other than <code>close</code> is ignored.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Content-Encoding</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">In both messaging and Microgateway modes, the <MadCap:variable name="Variables.CompanyName"/> event broker sends any <code>Content-Encoding</code> metadata attached to the <MadCap:variable name="Variables.CompanyName"/> message.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Content-Length: digits</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>See RFC 7230 §3.3.2.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">Content-Type: string</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body">This field indicates whether the event broker should treat the HTTP response message contents as text or binary when encoding the entity-body into a <MadCap:variable name="Variables.CompanyName"/> message. <MadCap:xref href="#_Ref393980206">HTTP Content Entity Headers and Message Payload Types</MadCap:xref> outlines how the values of this entity header are mapped to <MadCap:variable name="Variables.CompanyName"/> message types.</p>
+            <p class="Tbl_Body">In both messaging and Microgateway modes, the <MadCap:variable name="Variables.CompanyName"/> event broker also attaches any <code>Content-Type</code> to the <MadCap:variable name="Variables.CompanyName"/> message metadata.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">Transfer-Encoding: chunked</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">The event broker supports HTTP responses sent using chunked transfer encoding as outlined in RFC 7230. The event broker ignores and discards any trailing headers.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="_Toc426703633"/><MadCap:variable name="Variables.CompanyName"/>-Specific HTTP Headers </h3>
+    <p>All <MadCap:variable name="Variables.CompanyName"/>-Specific HTTP headers are prefixed with <code>Solace</code>. Applications should not use <code>Solace</code> as a prefix for application specific headers to avoid confusion.</p>
+    <p>In both messaging and Microgateway modes, the Solace-specific HTTP headers described below are not attached transparently to the <MadCap:variable name="Variables.CompanyName"/> message's metadata. Instead, the <MadCap:variable name="Variables.CompanyName"/> event broker takes some local action described below when it receives HTTP messages with these headers, Conversely, the <MadCap:variable name="Variables.CompanyName"/> event broker may attach these headers when it transmits HTTP messages, reflecting some local processing it performed on the message.</p>
+    <table style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" class="TableStyle-Table_Num" cellspacing="0">
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Header Key/Value</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Solace-Client-Name: <MadCap:variable name="Variables.CompanyName"/> String</p>
+            <p class="Tbl_Body">(See <MadCap:xref href="#_Ref398550175" class="ParaTextOnly">Header Value Encoding - <MadCap:variable name="Variables.CompanyName"/> String</MadCap:xref>)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Specifies the event broker client name for the HTTP requests from an HTTP client. Client names must be unique within the <MadCap:variable name="Variables.CompanyName"/> Message VPN for the HTTP connection. If this parameter is not provided, the event broker automatically generates a unique <MadCap:variable name="Variables.CompanyName"/> event broker client name.</p>
+            <p class="Tbl_Body">To set the event broker client name, it is only necessary to provide this header once over the lifetime of an HTTP connection. It is acceptable to provide it on every HTTP request if the value remains constant. </p>
+            <p class="Tbl_Body">If an HTTP client sends a new value for <code>Solace-Client-Name</code>, then the event broker creates a new client session with this new client name. You must ensure that this name is unique within the Message VPN, otherwise the event broker follows the global authentication setting for replacing duplicate client connections.</p>
+            <p class="Tbl_Body">The maximum length for a <code>Solace-Client-Name</code> is 160 bytes.</p>
+            <p class="Tbl_Body"><code>Solace-Client-Name</code> is not used for HTTP requests sent from the <MadCap:variable name="Variables.CompanyName"/> event broker to an RDP consumer HTTP server.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Solace-Client-Description: <MadCap:variable name="Variables.CompanyName"/> String</p>
+            <p class="Tbl_Body">(See <MadCap:xref href="#_Ref398550175" class="ParaTextOnly">Header Value Encoding - <MadCap:variable name="Variables.CompanyName"/> String</MadCap:xref>)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Specifies the event broker client description for the HTTP requests from an HTTP client. A <MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker client description field is displayed in <MadCap:variable name="Variables.CompanyName"/> event broker admin screens; it provides extra details about the client.</p>
+            <p class="Tbl_Body">To set the <MadCap:variable name="Variables.CompanyName"/> event broker client description, it is only necessary to initially provide this header once over the lifetime of an HTTP connection. However, it is acceptable to provide it for every HTTP request if the value remains constant. </p>
+            <p class="Tbl_Body">If an HTTP client  sends a new value for <code>Solace-Client-Description</code>, then the <MadCap:variable name="Variables.CompanyName"/> event broker client session is updated with this new description.</p>
+            <p class="Tbl_Body">The maximum length for a <code>Solace-Client-Description</code> is 254 bytes.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Solace-Time-To-Live-In-ms: &lt;milli-seconds&gt;</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Specifies a time-to-live value for the <MadCap:variable name="Variables.CompanyName"/> guaranteed messages created from the received HTTP message. If this header is not present, messages do not have a time-to-live.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">Solace-DMQ-Eligible: [true|false]</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body">Specifies whether <MadCap:variable name="Variables.CompanyName"/> guaranteed messages created from the received HTTP message are flagged as eligible for a Dead Message Queues (DMQ). If this header is not present, messages are not eligible for the dead message queue.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Solace-Correlation-ID: <MadCap:variable name="Variables.CompanyName"/> String</p>
+            <p class="Tbl_Body">(See <MadCap:xref href="#_Ref398550175" class="ParaTextOnly">Header Value Encoding - <MadCap:variable name="Variables.CompanyName"/> String</MadCap:xref>)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Specifies a <MadCap:variable name="Variables.CompanyName"/> message correlation ID string.</p>
+            <p class="Tbl_Body">See <MadCap:xref href="#2.2.6.1">Message Correlation</MadCap:xref> for more information on message correlation.</p>
+            <p class="Tbl_Body">The maximum length for <code>Solace-Correlation-ID</code> is 2023 bytes.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Solace-Delivery-Mode: [Direct | Non-Persistent | Persistent]</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Specifies the <MadCap:variable name="Variables.CompanyName"/> delivery mode for the received HTTP request. If absent on a received HTTP request, the <MadCap:variable name="Variables.CompanyName"/> event broker defaults to a delivery mode of persistent in messaging mode, or direct in Microgateway mode.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Solace-Message-ID: <MadCap:variable name="Variables.CompanyName"/> String</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Specifies a <MadCap:variable name="Variables.CompanyName"/> message ID string.</p>
+            <p class="Tbl_Body">See <MadCap:xref href="#2.2.6.1">Message Correlation</MadCap:xref> for more information.</p>
+            <p class="Tbl_Body">The maximum length for <code>Solace-Message-ID</code> is 2023 bytes.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">Solace-Reply-To-Destination: /(QUEUE |TOPIC)/<br/>&lt;destination_string&gt;</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body">Specifies a reply-to destination for the received HTTP request. The event broker encodes this destination in the <MadCap:variable name="Variables.CompanyName"/> message so that <MadCap:variable name="Variables.CompanyName"/> messaging APIs (including the JMS implementation) recognize the destination as the reply-to.</p>
+            <p class="Tbl_Body">When using the <code>Solace-Reply-To-Destination</code>, the format of this field must follow the convention outlined in <MadCap:xref href="#_Ref393980294" class="ParaTextOnly">POST to Solace</MadCap:xref>. However, the destination type string , <code>/QUEUE/</code> for durable queues and <code>/TOPIC/</code> otherwise, is mandatory in this case.  </p>
+            <p class="Tbl_Body">When <code>Solace-Reply-To-Destination</code> is used, applications can send requests and later receive asynchronous replies to those requests. Applications involved in the message exchange are responsible for correlating the request and async reply.</p>
+            <p class="Tbl_Body">The <code>Solace-Reply-To-Destination</code> header field is useable only in messaging mode. The <code>Solace-Reply-To-Destination</code> header field is mutually exclusive with the <code>Solace-Reply-Wait-Time-In-ms</code> header field.</p>
+            <p class="Tbl_Body">The maximum length for <code>destination_string</code> is 250 bytes.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Solace-Reply-Wait-Time-In-ms: &lt;milli-seconds&gt;</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Specifies that the received HTTP request from the HTTP client is the request of a request-reply message exchange pattern, and that the <MadCap:variable name="Variables.CompanyName"/> event broker must wait up to the specified timeout value for an application reply which the <MadCap:variable name="Variables.CompanyName"/> event broker encodes into the HTTP response to the HTTP client. </p>
+            <p class="Tbl_Body">In Microgateway mode, all received HTTP requests are inherently requests of a request-reply message exchange pattern, and the <code>Solace-Reply-Wait-Time-In-ms</code> serves to change the timeout from the default of 30 seconds. </p>
+            <p class="Tbl_Body">In messaging mode, the presence of the <code>Solace-Reply-Wait-Time-In-ms</code> serves as a flag to indicate that the HTTP request is the request of a request-reply message exchange pattern; if <code>Solace-Reply-Wait-Time-In-ms</code> is not present in messaging mode, the <MadCap:variable name="Variables.CompanyName"/> event broker sends an HTTP response containing no application-level reply payload to the HTTP client.</p>
+            <p class="Tbl_Body">In addition to integer values, the <code>Solace-Reply-Wait-Time-In-ms</code> header may have a value of <code>FOREVER</code>, which means the <MadCap:variable name="Variables.CompanyName"/> event broker is to wait forever for an application reply. The HTTP connection must be closed to unblock in a failure scenario.</p>
+            <p class="Tbl_Body">When the <MadCap:variable name="Variables.CompanyName"/> event broker sends an HTTP request to an RDP consumer HTTP server, the <MadCap:variable name="Variables.CompanyName"/> event broker sets a <code>Solace-Reply-Wait-Time-In-ms</code> header value of <code>FOREVER</code> for those HTTP requests that are requests of a request-reply message exchange pattern.</p>
+            <p class="Tbl_Body">The <code>Solace-Reply-To-Destination</code> header field is mutually exclusive with the <code>Solace-Reply-Wait-Time-In-ms</code> header field.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Solace-Timestamp: &lt;milliseconds since 1970-01-01 00:00 UTC&gt;</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Specifies the time at which the message was originally generated, as a 64-bit decimal integer giving the time in milliseconds since January 1, 1970 00:00 UTC. If absent, no time stamps are set for <MadCap:variable name="Variables.CompanyName"/> messages. If present, the event broker does not perform any verification or enforcement on the value of this time stamp.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Solace-User-Property-&lt;name&gt;: &lt;value&gt; [; type=&lt;type&gt;]</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">This header allows users to specify properties that are carried end-to-end through the event broker. These properties are encoded as user properties in the resulting <MadCap:variable name="Variables.CompanyName"/> message.</p>
+            <p class="Tbl_Body">For details on how add custom headers to REST messages see <MadCap:xref href="#_Ref402449010" class="ParaTextOnly">Solace Message Custom Properties</MadCap:xref>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">Solace-Warning: "string"</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">This string accompanies the standard <code>Warning</code> header, and provides additional information describing the cause of the warning. It is intended for troubleshooting purposes.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h4><a name="2.2.6.1"/>Message Correlation</h4>
+    <p>In the request-reply message exchange pattern, the HTTP client sends the <MadCap:variable name="Variables.CompanyName"/> event broker an HTTP request. The <MadCap:variable name="Variables.CompanyName"/> event broker converts the HTTP request to a <MadCap:variable name="Variables.CompanyName"/> request message, then routes that message to some service provider according to the HTTP message's request-target. The service provider generates and sends a reply message back to the <MadCap:variable name="Variables.CompanyName"/> event broker. The <MadCap:variable name="Variables.CompanyName"/> event broker converts the reply message to an HTTP response, and sends the HTTP response to the HTTP client. This request-reply message exchange pattern is used for all HTTP messages in Microgateway mode, and for HTTP requests with the <code>Solace-Reply-Wait-Time-In-ms</code> header in messaging mode.</p>
+    <p>Solace messages have a pair of metadata fields, message ID and correlation ID, which are used to associate reply messages with their associated requests in a request-reply message exchange. The <MadCap:variable name="Variables.CompanyName"/> message's message ID is accessible through the SMF message header <code>ApplicationMessageID</code> and the JMS header <code>JMSMessageID</code>; the <MadCap:variable name="Variables.CompanyName"/> message's correlation ID is accessible through the SMF message header <code>ApplicationCorrelationID</code> and the JMS header <code>JMSCorrelationID</code>.</p>
+    <p>An HTTP client sending an HTTP request to the <MadCap:variable name="Variables.CompanyName"/> event broker can provide its own message ID and correlation ID using the <code>Solace-Message-ID</code> and <code>Solace-Correlation-ID</code> HTTP headers, respectively. If an HTTP client sends an HTTP request to the <MadCap:variable name="Variables.CompanyName"/> event broker for a request-reply message exchange pattern, and the HTTP client does not provide a <code>Solace-Message-ID</code> header, the <MadCap:variable name="Variables.CompanyName"/> event broker synthesizes a unique message ID for the request message. This synthesized message ID has the form <code>ID:Solace-&lt;unique_val&gt;</code>, where <code>&lt;unique_val&gt;</code> is a unique 64-bit integer expressed in hexadecimal. Similarly, if the HTTP client does not provide a <code>Solace-Correlation-ID</code> header, the <MadCap:variable name="Variables.CompanyName"/> event broker synthesizes a unique correlation ID for the request message. If the <MadCap:variable name="Variables.CompanyName"/> event broker synthesizes both the message ID and correlation ID, the same value is used for both. The <MadCap:variable name="Variables.CompanyName"/> event broker attaches the message ID and correlation ID as metadata to the <MadCap:variable name="Variables.CompanyName"/> request message. The <MadCap:variable name="Variables.CompanyName"/> event broker also attaches reply-to metadata to the <MadCap:variable name="Variables.CompanyName"/> message, allowing the replying service provider to route the reply message back to the HTTP client.</p>
+    <p>When the <MadCap:variable name="Variables.CompanyName"/> event broker receives a possible reply message routed to the HTTP client, it verifies that the reply message's message ID or correlation ID match those of the request message. Specifically,</p>
+    <ul>
+      <li>the reply's message ID must match the request's message ID, or</li>
+      <li>the reply's correlation ID must match the request's message ID, or</li>
+      <li>the reply's correlation ID must match the request's correlation ID.</li>
+    </ul>
+    <p>If any of those matches occur, the <MadCap:variable name="Variables.CompanyName"/> event broker sends the reply message as an HTTP response to the HTTP client. HTTP requires that there be exactly one HTTP response for each HTTP request, so each matching message ID or correlation ID can be used only in a single request-reply message exchange pattern. If the reply message does not have a matching message ID or correlation ID as above, or if the reply message's matching message ID or correlation ID has already been consumed by an earlier reply message, the reply message is discarded.</p>
+    <p>When a <MadCap:variable name="Variables.CompanyName"/> event broker sends a <MadCap:variable name="Variables.CompanyName"/> message as an HTTP request to an RDP consumer HTTP server, the <MadCap:variable name="Variables.CompanyName"/> event broker sets the <code>Solace-Message-ID</code> and <code>Solace-Correlation-ID</code> HTTP headers to those of the <MadCap:variable name="Variables.CompanyName"/> message's message ID and correlation ID metadata, respectively. When the <MadCap:variable name="Variables.CompanyName"/> event broker receives the HTTP response from the RDP consumer HTTP server, it creates a <MadCap:variable name="Variables.CompanyName"/> reply message corresponding to the HTTP response. The <MadCap:variable name="Variables.CompanyName"/> event broker sets the message ID of the <MadCap:variable name="Variables.CompanyName"/> reply message to one of the following, in order of decreasing preference:</p>
+    <ul>
+      <li>
+        <p>the <code>Solace-Message-ID</code> of the received HTTP response;</p>
+      </li>
+      <li>
+        <p>the <code>Solace-Message-ID</code> of the sent HTTP request;</p>
+      </li>
+      <li>
+        <p>nothing</p>
+      </li>
+    </ul>
+    <p>The <MadCap:variable name="Variables.CompanyName"/> event broker sets the correlation ID of the <MadCap:variable name="Variables.CompanyName"/> reply message to one of the following, in order of decreasing preference:</p>
+    <ul>
+      <li>
+        <p>the <code>Solace-Correlation-ID</code> of the received HTTP response;</p>
+      </li>
+      <li>
+        <p>the <code>Solace-Correlation-ID</code> of the sent HTTP request;</p>
+      </li>
+      <li>
+        <p>the <code>Solace-Message-ID</code> of the sent HTTP request;</p>
+      </li>
+      <li>
+        <p>the <code>Solace-Message-ID</code> of the received HTTP response</p>
+      </li>
+      <li>
+        <p>nothing.</p>
+      </li>
+    </ul>
+    <p>Note that the above allow an RDP consumer HTTP server to generate replies in request-reply message exchange patterns, without the RDP consumer HTTP server itself having to be aware of <code>Solace-Message-ID</code> and <code>Solace-Correlation-ID</code> headers. The <MadCap:variable name="Variables.CompanyName"/> event broker will synthesize the message ID and correlation ID necessary to allow the RDP consumer HTTP server's HTTP responses to be used as reply messages.</p>
+    <p>When the <MadCap:variable name="Variables.CompanyName"/> event broker sends the HTTP response to the HTTP client, any message ID and correlation ID metadata in the <MadCap:variable name="Variables.CompanyName"/> message appears in the HTTP response's <code>Solace-Message-ID</code> and <code>Solace-Correlation-ID</code> headers.</p>
+    <h3><a name="_Toc426703635"/>HTTP Header Value Encoding</h3>
+    <p>The following note relates to HTTP header value encoding.</p>
+    <h4><a name="_Ref398550175"/>Header Value Encoding - <MadCap:variable name="Variables.CompanyName"/> String</h4>
+    <p>When the HTTP headers expect a value of <code>Solace String</code>, this indicates a text string meeting the following conditions such that both ASCII visible characters and all other UTF-8 characters are supported.</p>
+    <h3><a name="_Toc426703636"/><MadCap:variable name="Variables.CompanyName"/><MadCap:variable name="Product-Names.pubsub_brand_only"/> Event Broker Message Field Defaults for REST Messages</h3>
+    <p>A <MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker converts messages received from an HTTP client to the internal <MadCap:variable name="Variables.CompanyName"/> message format so that they can be routed to any clients connected to the event broker. In doing this, the event broker assigns default behaviors for the following <MadCap:variable name="Variables.CompanyName"/> message fields that are not configurable through <MadCap:variable name="Variables.CompanyName"/> REST messaging.</p>
+    <p class="GraphicCaption">Solace Message Field Default Values</p>
+    <table style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" class="TableStyle-Table_Num" cellspacing="0">
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Solace Message Field</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">REST Default</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Eliding Eligible</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Messages received from a REST producer are not eligible for eliding. (The message eliding capabilities of <MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/> enable clients to receive only the most current Direct messages published to topics that they subscribe to.) This field has a value of false.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Message COS</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Messages received from a REST producer have a value class of service (COS) value of 1. For Direct messages this is the lowest class of service; for persistent and non-persistent messages this means low priority. For persistent and non-persistent messages (that is, Guaranteed messages), if the destination queue or topic endpoint is enabled to reject low-priority messages when it is overly congested, the assigned COS value determines each message’s discard eligibility. </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Deliver To One</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Messages received from a REST producer are not flagged as deliver-to-one (DTO) (that is, this field has a value of false).</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">Sender ID</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body">Messages received from a REST producer do not have a sender ID field set, and the field is not present in <MadCap:variable name="Variables.CompanyName"/> messages.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JMS Message Priority</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">Messages received from a REST producer do not have a JMS message priority field set, and the field is not present in <MadCap:variable name="Variables.CompanyName"/> messages.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="_Ref393979978"/>Message Encoding Considerations</h2>
+    <p>In general, the message content is encoded as UTF-8 text or binary bytes in the body of the POST. The following sections outline some aspects to consider.</p>
+    <h3><a name="_Ref393980206"/>HTTP Content Entity Headers and Message Payload Types</h3>
+    <p>Solace <MadCap:variable name="Product-Names.pubsub_brand_only"/> supports the following message types:</p>
+    <ul>
+      <li>binary – unstructured bytes</li>
+      <li>text – a structured message containing a string as message content</li>
+      <li>map – a structured message containing key value pairs of <MadCap:variable name="Variables.CompanyName"/> structured data</li>
+      <li>stream – a structured message containing stream of <MadCap:variable name="Variables.CompanyName"/> structured data types (that is, a sequence of data fields without keys) </li>
+    </ul>
+    <p>The REST API supports both binary and text message types.</p>
+    <p>The encoding of the Map and Stream message types are not supported over REST messaging. If a particular message exchange pattern results in the event broker sending a <MadCap:variable name="Variables.CompanyName"/> message of an unsupported type to a REST consumer, or sending a <MadCap:variable name="Variables.CompanyName"/> response of an unsupported type back to a REST producer, the HTTP body is omitted from the HTTP message. Further, the HTTP message contains <code>Warning</code> and <code>Solace-Warning</code> headers indicating that HTTP body has been omitted and why. </p>
+    <p class="Note">By extension, JMS Map, Stream, and Object messages are not supported over REST messaging. </p>
+    <p>The following sections outline details of the HTTP <code>Content-Type</code> and <code>Content-Encoding</code> header and how these headers affect the resulting <MadCap:variable name="Variables.CompanyName"/> message.</p>
+    <h4>HTTP Content-Type Mapping to <MadCap:variable name="Variables.CompanyName"/> Message Types</h4>
+    <p>When a REST producer sends an HTTP request  to the event broker, or a REST consumer sends an HTTP response to the event broker, the event broker uses the HTTP <code>Content-Type</code>, HTTP <code>Charset</code> and HTTP <code>Content-Encoding</code> to determine whether to create a <MadCap:variable name="Variables.CompanyName"/> text or binary message. </p>
+    <p>The event broker creates a <MadCap:variable name="Variables.CompanyName"/> message with a <b>text</b> attachment under the following conditions: </p>
+    <table style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 100%;margin-left: 0;margin-right: auto;" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 20%;">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 7%;">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 20%;">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 7%;">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 20%;">
+            </col>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="border-left-style: solid;border-left-width: 1px;border-right-style: solid;border-right-width: 1px;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;text-align: center;">HTTP Content-Type One of:</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="text-align: center;"> </th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="border-left-style: solid;border-left-width: 1px;border-right-style: solid;border-right-width: 1px;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;text-align: center;">HTTP Charset One of:</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="text-align: center;"> </th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1" style="text-align: center;">HTTP Content-Encoding One of: </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1" style="text-align: center;">
+            <ul style="text-align: left;">
+              <li>
+                <p style="text-align: left;">
+                  <code>text/*</code>
+                </p>
+              </li>
+              <li>
+                <p style="text-align: justify;">
+                  <code>application/json </code>
+                </p>
+              </li>
+              <li>
+                <p style="text-align: justify;">
+                  <code>application/xml</code>
+                </p>
+              </li>
+              <li>
+                <p style="text-align: justify;">
+                  <code>application/xml-dtd</code>
+                </p>
+              </li>
+              <li>
+                <p style="text-align: justify;">
+                  <code>application/javascript</code>
+                </p>
+              </li>
+              <li>
+                <p style="text-align: justify;">
+                  <code>application/ecmascript</code>
+                </p>
+              </li>
+              <li>
+                <p style="text-align: justify;">
+                  <code>application/*+json</code>
+                </p>
+              </li>
+              <li>
+                <p style="text-align: justify;">
+                  <code>application/*+xml</code>
+                </p>
+              </li>
+            </ul>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1" style="text-align: center;">
+            <p> </p>
+            <p> </p>
+            <p> </p>
+            <p style="text-align: center;">
+              <b style="font-size: 14pt;">AND</b>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1" style="text-align: center;">
+            <ul style="text-align: justify;">
+              <li>
+                <p>
+                  <code>UTF-8</code>
+                </p>
+              </li>
+              <li>
+                <p>
+                  <code>US-ASCII</code>
+                </p>
+              </li>
+              <li>
+                <p>parameter is absent</p>
+              </li>
+            </ul>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1" style="text-align: center;">
+            <p> </p>
+            <p> </p>
+            <p> </p>
+            <p style="text-align: center;">
+              <b style="font-size: 14pt;">AND</b>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1" style="text-align: center;">
+            <ul>
+              <li>
+                <p>
+                  <code>identity</code>
+                </p>
+              </li>
+              <li>
+                <p>header is absent</p>
+              </li>
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>Otherwise, the event broker creates a <MadCap:variable name="Variables.CompanyName"/> message with a <b>binary</b> attachment.</p>
+    <p>The HTTP <code>Content-Type</code> and HTTP <code>Content-Encoding</code> are also carried within the <MadCap:variable name="Variables.CompanyName"/> message as a <MadCap:variable name="Variables.CompanyName"/> API property so that end applications can make use of these header field values when processing the message. The following outlines the rules outlining how these headers are encoded in the <MadCap:variable name="Variables.CompanyName"/> message:</p>
+    <ol>
+      <li>The HTTP <code>Content-Encoding</code> header, if any, is converted into an <code>HTTP_Content_Encoding</code> property which is carried as a <MadCap:variable name="Variables.CompanyName"/> API Property in the <MadCap:variable name="Variables.CompanyName"/> message. This property's value is a string containing the HTTP <code>Content-Encoding</code> value verbatim. </li>
+      <li>The HTTP <code>Content-Type</code> header, if any, is converted into an <code>HTTP_Content_Type</code> property which is carried as a <MadCap:variable name="Variables.CompanyName"/> API Property in the <MadCap:variable name="Variables.CompanyName"/> message. This property's value is a string containing the HTTP <code>Content-Type</code> value verbatim.</li>
+      <li>HTTP <code>Content-Encoding</code> and <code>Content-Type</code> may be parameterized (for example, <code>Content-Type: text/plain; charset=utf-8</code>); any such parameters are also captured in value of the user property in the <MadCap:variable name="Variables.CompanyName"/> message. </li>
+      <li>The length of the HTTP <code>Content-Encoding</code> and <code>Content-Type</code> values is limited to 252 bytes each, including parameters. </li>
+    </ol>
+    <p class="Note">For more information on how to set and access these parameters in other <MadCap:variable name="Variables.CompanyName"/> APIs refer to <MadCap:xref href="Solace-Router-Interactions.htm#Interact">Interactions with <MadCap:variable name="Variables.CompanyName"/> Messaging APIs</MadCap:xref>.</p>
+    <h4><MadCap:variable name="Variables.CompanyName"/> Message Type Mapping to HTTP Content-Type</h4>
+    <p>When a <MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker converts a <MadCap:variable name="Variables.CompanyName"/> message to an HTTP message, as either an HTTP POST request to a REST consumer, or an HTTP POST response to a REST producer in a request/reply message exchange, the event broker adheres to the following rules to set an appropriate HTTP <code>Content-Type</code> and <code>Content-Encoding</code> header.</p>
+    <p>The following steps outline how the Content-Encoding HTTP header is set:</p>
+    <ol style="list-style-type: decimal;margin-left: 18pt;" start="1">
+      <li>If an <code>HTTP_Content_Encoding</code> property is present as a <MadCap:variable name="Variables.CompanyName"/> API Property in the <MadCap:variable name="Variables.CompanyName"/> message and this property has a string value, the string value of this property is used as the HTTP message's <code>Content-Encoding</code> header value.</li>
+      <li>Otherwise, the sent HTTP message has no HTTP <code>Content-Encoding</code> header.</li>
+    </ol>
+    <p>The following steps outline how the <code>Content-Type</code> HTTP header is set:</p>
+    <ol style="list-style-type: decimal;margin-left: 18pt;" start="1">
+      <li>
+        <p>If an <code>HTTP_Content_Type</code> property is present as a <MadCap:variable name="Variables.CompanyName"/> API Property in the <MadCap:variable name="Variables.CompanyName"/> message and this property has a string value, the string value of this property is used as the HTTP message's <code>Content-Type</code> header value.</p>
+      </li>
+      <li>
+        <p>Otherwise, if the HTTP <code>Content-Length</code> is zero (that is, no HTTP payload), the HTTP message has no HTTP <code>Content-Type</code> header.</p>
+      </li>
+      <li>
+        <p>Otherwise, the HTTP <code>Content-Type</code> is automatically determined by the event broker based on the type of the <MadCap:variable name="Variables.CompanyName"/> message as outlined in the following  table: </p>
+        <table style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" class="TableStyle-Table_Num" cellspacing="0">
+          <thead>
+            <tr class="TableStyle-Table_Num-Head-Header1">
+              <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Solace Message Type</th>
+              <th class="TableStyle-Table_Num-HeadD-Column1-Header1">HTTP Content-Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p class="Tbl_Body">Solace text message</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p class="Tbl_Body">If the message contents are in the event broker SMF message XML attachment:</p>
+                <ul>
+                  <li>
+                    <code>Content-Type: text/xml</code>
+                  </li>
+                </ul>
+                <p class="Tbl_Body">Otherwise:</p>
+                <ul>
+                  <li>
+                    <code>Content-Type: text/plain</code>
+                  </li>
+                </ul>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p class="Tbl_Body">Solace binary message</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p class="Tbl_Body">
+                  <code>Content-Type: application/octet-stream</code>
+                </p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p class="Tbl_Body">Solace Map message</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p class="Tbl_Body">Unsupported for REST producers. </p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+                <p class="Tbl_Body">Solace Stream message</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+                <p class="Tbl_Body">Unsupported for REST producers. </p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+                <p class="Tbl_Body">All HTTP error responses returned to REST clients</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+                <p class="Tbl_Body">
+                  <code>Content-Type: text/xml</code>
+                </p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </li>
+    </ol>
+    <p class="Note">For more information on how to set and access these parameters in other <MadCap:variable name="Variables.CompanyName"/> APIs refer to <MadCap:xref href="Solace-Router-Interactions.htm#Interact">Interactions with <MadCap:variable name="Variables.CompanyName"/> Messaging APIs</MadCap:xref>.</p>
+    <p>The event broker does not check that <code>HTTP_Content_Encoding</code> or <code>HTTP_Content_Type</code> values result in valid HTTP headers. It is the responsibility of message publishers to set appropriate values for these fields.</p>
+    <div class="Note">
+      <ul>
+        <li>There are not any specific limitations on the length of <code>HTTP_Content_Encoding</code> or <code>HTTP_Content_Type</code> values. These fields are encoded in the <MadCap:variable name="Variables.CompanyName"/> message as custom user properties and must fit within the maximum values of the REST API for custom user properties.</li>
+        <li>A <MadCap:variable name="Variables.CompanyName"/> message that contains both an XML attachment and a binary attachment is unrepresentable in REST. This message format is an abnormal use of the <MadCap:variable name="Variables.CompanyName"/> SMF message format. Applications should send a message with contents in the binary attachment or the XML attachment but not both. The <MadCap:variable name="Variables.CompanyName"/> event broker will transform any <MadCap:variable name="Variables.CompanyName"/> messages with both an XML attachment and a binary attachment to an HTTP message with no body, and <code>Warning</code> and <code>Solace-Warning</code> HTTP headers indicating the specifics of the problem.</li>
+      </ul>
+    </div>
+    <h4>Content Type when Sending Between REST Producers and REST Consumers over Solace</h4>
+    <p>Given the above rules governing how the HTTP headers <code>Content-Type</code> and <code>Content-Encoding</code> are encoded into a <MadCap:variable name="Variables.CompanyName"/> message and decoded from a <MadCap:variable name="Variables.CompanyName"/> message, it is possible to preserve these headers end to end between REST producers and REST consumers over <MadCap:variable name="Variables.CompanyName"/> HTTP REST messaging. When an HTTP message is published to Solace, these values will be encoded as user properties in the resulting <MadCap:variable name="Variables.CompanyName"/> message format. When the event broker converts this message back to an HTTP message, as either an HTTP POST request to a REST consumer or an HTTP POST response to a REST producer in a request/reply message exchange, these <MadCap:variable name="Variables.CompanyName"/> message properties will again be used as the HTTP headers of the POST. </p>
+    <h3><a name="_Ref402449010"/><MadCap:variable name="Variables.CompanyName"/> Message Custom Properties</h3>
+    <p>HTTP headers starting with <code>Solace-User-Property</code> can be used to specify properties that are carried end-to-end through the event broker. These properties are encoded as user properties in the resulting <MadCap:variable name="Variables.CompanyName"/> message.</p>
+    <p>The HTTP headers must adhere to the following format:</p>
+    <p class="Code">
+      <code>Solace-User-Property-&lt;name&gt;: &lt;value&gt; [; type=&lt;type&gt;]</code>
+    </p>
+    <p>Violations of the above rules result in the event broker rejecting the entire HTTP message with the appropriate error indication.</p>
+    <h4><a name="Solace"/><MadCap:variable name="Variables.CompanyName"/> User Property &lt;Name&gt;</h4>
+    <p>The custom properties name is included in the HTTP header name after the <code>Solace-User-Property</code> prefix separated by a <code>-</code> as indicated by the format above.</p>
+    <p>Custom header names must produce valid HTTP header names. The <code>&lt;name&gt;</code> string provided is encoded to the <MadCap:variable name="Variables.CompanyName"/> message exactly as found in the HTTP Request message. That is, character case is maintained. The same is also true for decoding the <code>&lt;name&gt;</code> from a <MadCap:variable name="Variables.CompanyName"/> Message. The custom user property name is used exactly as found in the <MadCap:variable name="Variables.CompanyName"/> message.</p>
+    <p>For special characters, percent encoding can be used to create valid HTTP header names and this percent encoding is interpreted by the event broker when it generates the resulting <MadCap:variable name="Variables.CompanyName"/> message.</p>
+    <p>The event broker always sends percent-encoded header names.</p>
+    <p class="Note">Setting two properties with the same key name (duplicate key names) is unsupported and the behavior is undefined. Do not send HTTP messages with two <MadCap:variable name="Variables.CompanyName"/> User Properties with the same key name.</p>
+    <h4><MadCap:variable name="Variables.CompanyName"/> User Property &lt;Type&gt;</h4>
+    <p>The type parameter is optional. By default all <MadCap:variable name="Variables.CompanyName"/> User Properties in a REST message are assumed to have a type "<code>string</code>". The following is a list of valid types:</p>
+    <ul>
+      <li><code>string</code>, <code>wchar</code>, <code>bool</code>, <code>int8</code>, <code>int16</code>, <code>int32</code>, <code>int64</code>, <code>uint8</code>, <code>uint16</code>, <code>uint32</code>, <code>uint64</code>, <code>float</code>, <code>double</code>, <code>null</code></li>
+    </ul>
+    <p>The following types supported in other <MadCap:variable name="Variables.CompanyName"/> APIs are not supported in <MadCap:variable name="Variables.CompanyName"/> REST messaging:</p>
+    <ul>
+      <li><code>SmfMessage</code>, <code>Destination</code>, <code>Map</code>, <code>Stream</code>, <code>byte[]</code></li>
+    </ul>
+    <p>Type values are case-insensitive. For a type of <code>null</code>, the value is ignored. Any <MadCap:variable name="Variables.CompanyName"/> User Property types other than those above result in the entire HTTP header being ignored.</p>
+    <p class="Note">The event broker omits the type field for all HTTP <MadCap:variable name="Variables.CompanyName"/> User Properties of type string.</p>
+    <h4>Value Field</h4>
+    <p>The Value field is interpreted in the context of the type value. The following rules outline restrictions:</p>
+    <ul>
+      <li>Values of <code>string</code> type can contain any UTF-8-encoded characters to a length limit of 252 bytes.</li>
+      <li>Values of <code>wchar</code> type represent any unicode value.</li>
+      <li>Values of <code>int8</code> type are signed 8 bit values.</li>
+      <li>Values of <code>int16</code> type are signed 16 bit values.</li>
+      <li>Values of <code>int32</code> type are signed 32 bit values.</li>
+      <li>Values of <code>int64</code> type are signed 64 bit values.</li>
+      <li>Values of <code>uint8</code> type are signed 8 bit values.</li>
+      <li>Values of <code>uint16</code> type are unsigned 16 bit values.</li>
+      <li>Values of <code>uint32</code> type are unsigned 32 bit values.</li>
+      <li>Values of <code>uint64</code> type are unsigned 64 bit values.</li>
+      <li>All <code>int*</code> or <code>uint*</code> values can be specified in hexadecimal (prefix <code>0x</code>), octal (prefix <code>0</code>) or decimal (first character <code>1</code> to <code>9</code>.)<MadCap:footnote class="footnote"><p> The event broker computes "int*" values using the standard C library function <code>strtoll()</code>, and "uint*" values using the standard C library function <code>strtoull()</code>.</p></MadCap:footnote></li>
+      <li>Value of <code>float</code> type are a 32-bit floating point number specified as decimal numbers (including optional decimal point or exponent) or hexadecimal numbers (prefix <code>0x</code>).<MadCap:footnote class="footnote"><p> The event broker computes "float" values using the standard C library function <code>strtof()</code>.</p></MadCap:footnote></li>
+      <li>Values of <code>double</code> type are 64-bit floating point numbers specified as decimal numbers (including optional decimal point or exponent) or hexadecimal numbers (prefix <code>0x</code>).<MadCap:footnote class="footnote"><p> The event broker computes "double" values using the standard C library function <code>strtod()</code>.</p></MadCap:footnote></li>
+      <li><code>Float</code> or <code>double</code> values which cannot be exactly represented by IEEE 754 <code>binary32</code> or <code>binary64</code> values, respectively, may be slightly modified due to precision errors when sent by the event broker in an outgoing <code>Solace-User-Property</code> HTTP header.</li>
+      <li>Values of type <code>bool</code> are canonically <code>true</code> or <code>false</code>, but the event broker also accepts numeric values or strings. The case-insensitive token <code>false</code>, the empty string, or any numeric value equal to zero are equivalent to <code>false</code>; anything else is equivalent to <code>true</code>.</li>
+      <li>If a <code>string</code> type value field is omitted, the value defaults to the empty string.</li>
+      <li> If a numeric value field is omitted, the value defaults to 0.</li>
+      <li>The event broker rejects any HTTP message where a numeric <code>Solace-User-Property</code> does not fit within its specified type.</li>
+    </ul>
+    <p>Solace User Property field values must be encoded in one of two ways: </p>
+    <ul>
+      <li>double-quoted strings ("quoted-string" in the ABNF of RFC7320 appendix B)</li>
+      <li>bare (i.e. unquoted) percent-encoded strings.</li>
+    </ul>
+    <p>When sending REST messages, the event broker always sends <MadCap:variable name="Variables.CompanyName"/> User Property headers using percent-encoded strings.</p>
+    <h4>Examples</h4>
+    <p>Some examples of custom user properties are:</p>
+    <p class="Code">Solace-User-Property-UserStringProp1: UserPropVal1
+Solace-User-Property-integer-example: 1234; type=int32
+Solace-User-Property-currency: %e2%82%ac50.40
+Solace-User-Property-spaced: "Inner spaces only"</p>
+    <p>In JMS these properties would be set and retrieved from a message as follows:</p>
+    <p class="Code">// Setting
+TextMessage msg = session.createTextMessage();
+msg.setStringProperty("UserStringProp1", "UserPropVal1");
+msg.setIntProperty("integer-example", 1234);
+msg.setStringProperty("currency", "€50.40");
+msg.setStringProperty("spaced", "Inner spaces only");
+
+// Retrieving
+msg.getStringProperty("UserStringProp1");
+msg.getIntProperty("integer-example");
+msg.getStringProperty("currency");
+msg.getStringProperty("spaced");</p>
+    <h4>Conversion from HTTP to <MadCap:variable name="Variables.CompanyName"/> Messages</h4>
+    <p>When the event broker converts a received HTTP message to a <MadCap:variable name="Variables.CompanyName"/> SMF message, <code>Solace-User-Property</code> tuples are converted to entries in user properties map of the <MadCap:variable name="Variables.CompanyName"/> message. The conversion preserves each HTTP user property name, type, and value.</p>
+    <p>If an HTTP message cannot successfully be encoded as a <MadCap:variable name="Variables.CompanyName"/> message, the event broker discards the message and sends the REST producer an error notification.</p>
+    <h4>Conversion from <MadCap:variable name="Variables.CompanyName"/> Message to HTTP</h4>
+    <p>When converting from a <MadCap:variable name="Variables.CompanyName"/> message to a REST HTTP message, the event broker converts user property fields of the <MadCap:variable name="Variables.CompanyName"/> message to a <code>Solace-User-Properties</code> HTTP header.</p>
+    <p>If a <MadCap:variable name="Variables.CompanyName"/> message cannot be completely encoded into an HTTP message, either because:</p>
+    <ul>
+      <li>there are more than 96 user property fields in the <MadCap:variable name="Variables.CompanyName"/> message</li>
+      <li>some of the user property fields in the <MadCap:variable name="Variables.CompanyName"/> message are of unsupported types</li>
+    </ul>
+    <p>Then the problematic fields are omitted from the HTTP headers, and the event broker includes <code>Warning</code> and <code>Solace-Warning</code> HTTP headers in the HTTP message indicating the nature of the problem.</p>
+    <h3><a name="Other"/>Other HTTP Header Fields</h3>
+    <p>In Microgateway mode, the <MadCap:variable name="Variables.CompanyName"/> event broker attaches any received HTTP header fields not otherwise mentioned to the <MadCap:variable name="Variables.CompanyName"/> message's user properties metadata. The HTTP header field <code>&lt;header_name&gt;</code>: <code>&lt;header_value&gt;</code> is in the user property with key <code>JMS_Solace_HTTP_field_&lt;header_name&gt;</code> and string value <code>&lt;header_value&gt;</code>. There is no particular restriction on the sizes of these HTTP header fields attached to the <MadCap:variable name="Variables.CompanyName"/> message's user properties metadata, but such metadata does count against the overall <MadCap:variable name="Variables.CompanyName"/> message size limits. A maximum of 128 <MadCap:variable name="Variables.CompanyName"/> message's user properties metadata with key <code>JMS_Solace_HTTP_field_&lt;header_name&gt;</code> is converted to HTTP headers with field name <code>&lt;header_name&gt;</code>: in an HTTP message sent by a <MadCap:variable name="Variables.CompanyName"/> event broker.</p>
+    <p>In messaging mode, the <MadCap:variable name="Variables.CompanyName"/> event broker ignores and discards any received HTTP header fields not otherwise mentioned in this document.</p>
+    <h3><a name="Solace3"/><MadCap:variable name="Variables.CompanyName"/> Messaging User Property Metadata</h3>
+    <p>In the Microgateway-mode conversion between HTTP messages and <MadCap:variable name="Variables.CompanyName"/> messages, the following HTTP information is stored in <MadCap:variable name="Variables.CompanyName"/> message user properties. An SMF client or AMQP client exchanging messages with a <MadCap:variable name="Variables.CompanyName"/> event broker could manipulate these user properties.</p>
+    <table style="width: 100%;margin-left: 0;margin-right: auto;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col style="width: 877px;" class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">User Property Key</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">
+              <code>JMS_Solace_HTTP_method</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">When the <MadCap:variable name="Variables.CompanyName"/> event broker sends or receives an HTTP request, this user property contains the HTTP request method.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">
+              <code>JMS_Solace_HTTP_target_scheme</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">When the <MadCap:variable name="Variables.CompanyName"/> event broker receives an HTTP request whose request-target is in absolute form, this user property contains the request-target's scheme (either <code>http</code> or <code>https</code>). This value has no effect on whether the <MadCap:variable name="Variables.CompanyName"/> message is eventually forwarded by the <MadCap:variable name="Variables.CompanyName"/> event broker over a plain-text or TLS connection.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">
+              <code>JMS_Solace_HTTP_target_host</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">When the <MadCap:variable name="Variables.CompanyName"/> event broker receives an HTTP request whose request-target is in absolute form, this user property contains the request-target's host. If the <MadCap:variable name="Variables.CompanyName"/> event broker is sending this message as an HTTP request to an RDP consumer HTTP server through a queue binding whose <code>replace-target-authority</code> is disabled, then the HTTP request-target is in absolute form with this user property value as its host value, and as the value of the HTTP Host: header.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">
+              <code>JMS_Solace_HTTP_target_port</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body">When the <MadCap:variable name="Variables.CompanyName"/> event broker receives an HTTP request whose request-target is in absolute form with an explicitly-specified port, this user property contains the request-target's port. If the <MadCap:variable name="Variables.CompanyName"/> event broker is sending this message as an HTTP request to an RDP consumer HTTP server through a queue binding whose <code>replace-target-authority</code> is disabled, then the HTTP request-target is in absolute form with this user property value as its port value, and as the port value of the HTTP Host: header.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">
+              <code>JMS_Solace_HTTP_target_path_query_verbatim</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">This user property contains the request-target's path and query with the leading '/' stripped. That is, a request-target of "/" is represented in this user property value as the empty string. Any percent-encoding is unchanged between the request-target and this user property. If the <MadCap:variable name="Variables.CompanyName"/> event broker is sending this message as an HTTP request to an RDP consumer, this user property supplies the request-target's path and query.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">
+              <code>JMS_Solace_HTTP_field_&lt;header_name&gt;</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1"> </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">
+              <code>JMS_Solace_HTTP_status_code</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">When the <MadCap:variable name="Variables.CompanyName"/> event broker sends or receives an HTTP response, this user property contains the HTTP status code. If this user property is absent, the status code defaults to <code>200</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">
+              <code>JMS_Solace_HTTP_reason_phrase</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body">When the <MadCap:variable name="Variables.CompanyName"/> event broker sends or receives an HTTP response, this user property contains the HTTP reason phrase. If this user property is absent, the reason phrase defaults to <code>OK</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">
+              <code>JMS_Solace_HTTP_max_forwards</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>When the <MadCap:variable name="Variables.CompanyName"/> event broker receives an HTTP request with an HTTP Max-Forwards header, the message's <code>JMS_Solace_HTTP_max_forwards</code> user property contains the value of that Max-Forwards header minus 1. If the received HTTP request does not contain an HTTP Max-Forwards header, this user property is omitted. When the <MadCap:variable name="Variables.CompanyName"/> event broker sends a message with this user property as an HTTP request, the HTTP request's Max-Forwards header is set to the value of this user property.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

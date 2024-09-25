@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Software"/>Upgrade Procedures</h1>
+    <p>In this section, you'll find the procedures you need to upgrade <MadCap:variable name="Product-Names.pubsub_brand_only"/> <MadCap:variable name="Product-Names.broker_sw_short"/>s to <MadCap:variable name="Manifest-Products-Routers.SolOS VMR"/> or earlier supported versions.</p>
+    <p class="Note">You may upgrade any release that is in full support or technical support to any newer release that is in full support. You may upgrade to a Preview Release until such Preview Release is replaced by its Production Release. For more information, see <a href="https://solace.com/support/" target="_blank" class="link-offsite">solace.com/support</a> .</p>
+    <div class="Caution">
+      <p>The following upgrade paths are currently not supported due to database incompatibility:</p>
+      <ul>
+        <li>
+          <p>From version 10.0.1 to broker versions 10.1.1, 10.2.1, 10.3.1, 10.5.1.</p>
+        </li>
+        <li>
+          <p>From version 10.4.1 to version 10.5.1.</p>
+        </li>
+      </ul>
+    </div>
+    <p class="Caution">Downgrading a <MadCap:variable name="Product-Names.broker_sw_short"/> is not supported.</p>
+    <h2 class="with-rule"><a name="Before"/>Before You Begin</h2>
+    <MadCap:snippetBlock src="../../Resources/Snippets/simplified-container-storage.flsnp"/>
+    <p class="Note">
+      <MadCap:snippetText src="../../Resources/Snippets/Upgrade/telemetry-1020-upgrade.flsnp"/>
+    </p>
+    <p class="Note">If the message-spool is enabled as backup but a mate-router-name cannot be determined from the configured HA redundancy group nodes, the event broker will fail to boot following the upgrade. Prior to upgrading, ensure that either the HA redundancy group nodes are correctly configured, or the message-spool is not enabled as backup.</p>
+    <p class="Note">Before upgrading redundant (HA) systems to version 10.6.1 or later, ensure that you remove all  Kafka bridging configuration from versions earlier than 10.6.1.</p>
+    <h3><a name="image-type"/>What's your image type?</h3>
+    <p>There are different upgrade procedures depending on whether you are upgrading a Machine or Docker Image. To determine which type is running on your host, do the following:</p>
+    <ol>
+      <li>Login to the host.</li>
+      <li>Enter the following command: <code>cat /etc/solace-release</code>.</li>
+      <li>If the file exists, it's a Machine Image; otherwise it's a Docker Image.</li>
+    </ol>
+    <h3><a name="free-space"/>Do you have enough free space?</h3>
+    <p>You need to verify there's enough free space on all event brokers that you're going to upgrade.</p>
+    <div class="Caution">
+      <p>Carefully review the <MadCap:xref href="../System-Resource-Requirements.htm">System Resource Requirements</MadCap:xref> and ensure adequate resources are available before beginning the upgrade procedure.</p>
+    </div>
+    <div class="Caution">
+      <p>During a Docker image upgrade, installing the new PubSub+ software event broker will not succeed if
+				sufficient thin pool minimum free space is not available.  Executing the
+				<code>docker info</code> command in the Docker host will show both <code>Space Available</code> and
+				<code>Thin Pool Minimum Free Space</code>. Refer to the Docker documentation for more information on managing available space in Docker.</p>
+    </div>
+    <p>To free up disk space, consider the following options:</p>
+    <ul>
+      <li>Unspool some spooled messages</li>
+      <li>Delete some spooled messages (messages cannot be recovered once deleted)</li>
+      <li>Migrate to a larger message-spool</li>
+    </ul>
+    <p>To check the amount of free space available, do the following:</p>
+    <ol>
+      <li>Run the <code>show storage-element *</code> CLI command.</li>
+      <li>
+        <p>Verify that the <code>spool</code> storage-element reports at least 2.2 Mi in the available column.</p>
+        <pre xml:space="preserve">solace&gt; show storage-element *
+
+Last Refreshed           : Feb 22 2024 18:41:07
+
+Storage Element      Device             1K-blocks    Used         Available    Use%
+-------------------- ------------------ ------------ ------------ ------------ -----
+root                 /dev/dm-6            6.0 Mi       1.2 Mi       4.8 Mi     20%
+spool-cache          /dev/dm-0            9.8 Mi       1.1 Mi       8.7 Mi     11%
+spool-cache-backup   /dev/dm-0            9.8 Mi       1.1 Mi       8.7 Mi     11%
+config               /dev/dm-0            9.8 Mi       1.1 Mi       8.7 Mi     11%
+diagnostics          /dev/dm-0            9.8 Mi       1.1 Mi       8.7 Mi     11%
+jail                 /dev/dm-0            9.8 Mi       1.1 Mi       8.7 Mi     11%
+spool                /dev/dm-0            9.8 Mi       1.1 Mi       8.7 Mi     11%
+var                  /dev/dm-0            9.8 Mi       1.1 Mi       8.7 Mi     11%
+</pre>
+      </li>
+    </ol>
+  </body>
+</html>

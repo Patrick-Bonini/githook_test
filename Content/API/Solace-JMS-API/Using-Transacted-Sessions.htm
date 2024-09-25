@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Using Transacted Sessions</h1>
+    <p>Transacted Sessions enable client applications to group multiple message send and/or receive operations together in single, atomic units known as local transactions. Each transacted Session can support a single series of transactions.</p>
+    <p>Note:  Only Guaranteed messages (that is, messages with a Persistent or Non‑Persistent delivery mode) can be published or received through transactions; Direct messages cannot be used in transactions. Therefore, transacted Sessions can only be used with the Guaranteed Transport mode (refer to <MadCap:xref href="Message-Transport-Modes.htm">Message Transport Modes</MadCap:xref>). To use the Guaranteed Transport mode, the Direct Transport message delivery property in the JNDI Connection Factory (refer to <MadCap:xref href="Message-Delivery-Propert.htm">Direct Transport</MadCap:xref>) must be set to <code>false</code>. </p>
+    <p>To publish and/or consume messages in a transaction, a client application must first establish a JMS connection to an event broker in which transacted sessions and XA transactions are allowed. The JMS connection must use a client username account provisioned on the event broker that is assigned a client profile that has the <code>allow‑transacted‑sessions</code> property enabled (by default, this property is not enabled). For information on how administrators can configure client usernames and the client profiles that are assigned to them, refer to <MadCap:xref href="../../Security/Configuring-Client-Authentication.htm">Managing Client Authentication and Authorization</MadCap:xref>.</p>
+    <p>After a JMS connection is successfully established, the client must create a transacted Session. Then the client application can acquire a <code>MessageProducer</code> to establish a producer flow to publish messages, and/or acquire a <code>MessageConsumer</code> or <code>TopicSubscriber</code> to establish a consumer flow to receive messages in that transacted Session. Although an administrator can modify this value, by default, a client can publish and/or consume up to a combined maximum of 256 messages in a single transaction. For more information, see <MadCap:xref href="../../Security/Configuring-Client-Profiles.htm#Config-Max-Messages-Per-Transaction">Configuring the Max Number of Messages Per Transaction</MadCap:xref>.</p>
+    <p>Messages that are published and received in a transaction are staged on the event broker. To complete all of the message send and receive operations in a transaction, the transaction must be committed. Alternatively, a transaction can also be rolled back so that all of its publish and receive operations are canceled. Once a transaction is completed, another transaction automatically begins. </p>
+    <p>A transaction can only be used between a single client and the JMS broker; it cannot span multiple clients. For example, as shown in the figure below, client A can use a transaction to publish messages to a queue destination on the JMS broker, and client B can use a transaction to consume messages from the same queue. However, each client uses an independent Session, and each client must use a separate transaction. The JMS broker, as the place where messages are staged before they are published or consumed by a <code>commit()</code>, serves to separate client A’s production and Client B’s consumption of transacted messages. </p>
+    <p class="GraphicCaption">Per Client Transactions</p>
+    <p class="GraphicCaption">
+      <img src="../../Resources/Images/Solace-JMS-API/transactions_basic.jpg" alt=""/>
+    </p>
+    <p>A client can use both a producer and a consumer in a single transacted Session. As shown below, in this case, when the client commits the transaction, spooled message A is received by the consumer from the endpoint, and messages B and C are published to that same destination endpoint.</p>
+    <p class="GraphicCaption">Transactions and Commits</p>
+    <p class="GraphicCaption">
+      <img src="../../Resources/Images/Solace-JMS-API/transactions_reversed.jpg" alt=""/>
+    </p>
+    <h2 class="with-rule"><a name="Threadin"/>Threading Considerations</h2>
+    <p>Transacted Sessions are only supported for single thread use (with the exception that any application thread can call <code>close()</code> to close the transacted Session). All producer and consumer flows which are part of a transacted Session must be accessed serially by the same thread.</p>
+    <h3>Synchronous Consumers</h3>
+    <p>When using synchronous message consumers, a single application thread is responsible for all send and receive operations, and it must either commit or roll back the transaction. The application thread serializes access to the producers and consumers of the transacted Session.</p>
+    <h3>Asynchronous Consumers</h3>
+    <p>When using asynchronous message consumers, an API-owned thread delivers messages to registered message listeners. This thread is used to send messages, and it must either commit or roll back the transaction. The API thread serializes access to the producers and consumers of the transacted Session.</p>
+  </body>
+</html>

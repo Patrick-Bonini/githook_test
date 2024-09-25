@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Managing MQTT Retained Messages</h1>
+    <p>Using MQTT retained messages allows publishing MQTT clients to indicate that a message must be stored for later delivery to subscribing clients when those subscribing clients add subscriptions matching the retained message’s topic. For a given topic, the event broker preserves the last message published on that topic with the retain bit set. On <MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers, retained messages are preserved in special <MadCap:xref href="../Additional-Products/Solace-PubSub-Cache/PubSub-Cache-Overview.htm">PubSub+ Cache</MadCap:xref> cache clusters called MQTT retain caches. </p>
+    <p class="Caution">Support for MQTT Retained Messages is a Controlled Availability (CA) feature. Please <a href="../get-support.htm" class="link-internal">contact Solace</a> to find out if this feature is supported for your use case.</p>
+    <h2 class="with-rule"><a name="Prerequisites"/>Prerequisites </h2>
+    <p>Before an event broker can process MQTT retained messages, the following is required:</p>
+    <ul>
+      <li>The appropriate amount of  memory must be allocated to the event broker to support retained messages. For more information, see <MadCap:xref href="#Retain_Mem_Consider">MQTT Retained Message Memory Usage Considerations</MadCap:xref>.</li>
+      <li>If the event broker is deployed in a redundant configuration, a pre-shared authentication key must be configured for all event brokers in the deployment. For more information, see <MadCap:xref href="../Features/HA-Redundancy/Pre-Shared-Keys-SMB.htm">Pre-Shared-Keys</MadCap:xref> for the software event broker, or to <MadCap:xref href="../Features/HA-Redundancy/Pre-Shared-Keys-Appl.htm">Pre-Shared Authentication Keys for Appliances</MadCap:xref> for the appliance.</li>
+      <li> Appliances that are configured in high-availability (HA) redundant pairs must have their redundancy role configured as <code>primary</code> or <code>backup</code>.For more information, see <MadCap:xref href="../Features/HA-Redundancy/Configuring-Appliance-Redundancy-Parameters.htm#assign-active-standby-role">Assigning the Active/Standby Role</MadCap:xref>.</li>
+      <li>The message backbone must be enabled on the event broker. For more information, see <MadCap:xref href="Managing-Services.htm#Enable-All-Services">Enabling All Messaging Services.</MadCap:xref></li>
+      <li>The SMF service must be enabled on the event broker.  For more information, see <MadCap:xref href="Managing-Services.htm#Enable-SMF">Enabling System-Level SMF Service</MadCap:xref>.</li>
+      <li>An MQTT retain cache must be created and enabled on the event broker. For more information, see  <MadCap:xref href="#Retain_Config">MQTT Retain Cache Configuration</MadCap:xref>.</li>
+    </ul>
+    <h2 class="with-rule"><a name="Limitations"/>Limitations</h2>
+    <p>Solace PubSub+ event brokers support MQTT retained messages with the following limitations: </p>
+    <ul>
+      <li>Using retained messages on an appliance requires chassis variant CHS-3560AC-06-A or later.</li>
+      <li>Retained messages are supported only for DMR and bridges.  MNR is not supported.</li>
+      <li>
+        <p>The event broker's transport mechanism for retained messages is equivalent to QoS 0, although it has the ability to retain QoS 1 messages. This means:</p>
+        <ul>
+          <li>
+            <p>QoS 1 messages can be retained even though the event broker did not accept the published message.</p>
+          </li>
+          <li>
+            <p>QoS 1 messages sent by the retain cache to clients may be lost. The following is a list of factors that may contribute to QoS 1 retained messages loss:</p>
+            <ul>
+              <li>The burst size of retained messages directed towards the client due to large batches of subscriptions and/or addition of wildcard subscriptions covering a large number of retained messages.</li>
+              <li>The available space remaining on the message-spool and/or the client's QoS 1 queue when a burst of retained messages is queued towards the client.</li>
+              <li>The speed at which the client is able to receive messages. If the client can consume messages faster than the retained messages are queued to the client, little stress is placed on the message-spool and/or queue capacity limits in response to a burst of retained messages.</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Retain_Mem_Consider"/>MQTT Retained Message Memory Usage Considerations</h2>
+    <p>Enabling a PubSub+ event broker to process retained messages consumes additional system memory beyond what is normally required.  The amount of additional  memory  depends on the number and length of topics, and the payload of the retained messages the event broker needs to support.</p>
+    <p>For any reasonable retained message use case, a PubSub+ software event broker requires a minimum of an extra 2 GB of memory to process retained messages. More memory may be required if the retained messages are large, or if the use case has a very large number of retained messages. Solace recommends that you test and monitor your deployment for memory use and adjust the allocation as necessary. </p>
+    <p>For example, suppose you are creating a <MadCap:variable name="Product-Names.pubsub_brand_only"/> software event broker  that would normally require 4 GB of memory (based on the maximum number of client connections). If this event broker needs to process retained messages, you must reserve an additional 2 GB of memory (at minimum) on the host  to process these messages. </p>
+    <p>After you've reserved this additional memory, you can allocate it by configuring a  maximum shared pool of memory for all retain caches on the event broker. For more information, see <![CDATA[  ]]><MadCap:xref href="#Retain_Mem_Config_Global">MQTT Retained Cache Shared Memory Configuration</MadCap:xref>. </p>
+    <h2 class="with-rule"><a name="Retain_Redundant"/>MQTT Retained Messages in Redundant  Event Broker Deployments</h2>
+    <p>Consider the following when using retained messages in redundant event broker deployments:</p>
+    <ul>
+      <li>Before you can use retained messages in redundant  deployments, you must set a pre-shared authentication key on each event broker. For more information, see <MadCap:xref href="../Features/HA-Redundancy/Pre-Shared-Keys-SMB.htm">Pre-Shared-Keys</MadCap:xref> for the software event broker, or to <MadCap:xref href="../Features/HA-Redundancy/Pre-Shared-Keys-Appl.htm">Pre-Shared Authentication Keys for Appliances</MadCap:xref> for the appliance.</li>
+      <li>Retained messages are not supported in active/active deployments.</li>
+      <li>In any scenario where the primary event broker goes offline, the act of re-establishing the connection to the network (now on the backup), results in re-delivery of all retained messages appropriate to the topic subscriptions for each client.  The failover process may also result in the potential for multiple deliveries of retained messages.</li>
+    </ul>
+    <h2 class="with-rule"><a name="Retain_Mem_Config_Global"/>MQTT Retain Cache Shared Memory Configuration</h2>
+    <p> You can configure the  global maximum allowed memory for all MQTT retain caches on the broker. If the maximum memory is reached, all arriving retained messages are discarded. By default, no memory is allocated for software event brokers, which means all arriving retained messages are discarded. 1024 MB is allocated for appliances.</p>
+    <p>To configure the global maximum allowed memory for retain caches, enter the following commands:</p>
+    <p class="Code">solace(configure)# mqtt<br/>solace(configure/mqtt)# retain<br/>solace(configure/mqtt/retain)# max-memory &lt;megabytes&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;megabytes&gt;</code> is the  number of megabytes allocated as a shared pool for all retain caches on the broker. The no version of this command returns the value to the default. </p>
+    <h2 class="with-rule"><a name="Retain_Config"/>MQTT Retain Cache Configuration</h2>
+    <p>MQTT retain caches are configured on a per Message VPN basis. Each retain cache processes all retained messages for the Message VPN. </p>
+    <p>When you create a retain cache, a number of ancillary <MadCap:variable name="Product-Names.pubsub_cache"/> objects are also created. For more information, see <MadCap:xref href="../API/MQTT/Using-MQTT.htm#Retain_Cache_Objects">MQTT Retain Cache Ancillary Objects</MadCap:xref>.</p>
+    <p>On software event brokers, before you can enable a retain cache you must configure the global maximum allowed memory for all retain caches on the event broker. For more information, see  <MadCap:xref href="#Retain_Mem_Config_Global">MQTT Retained Cache Shared Memory Configuration</MadCap:xref>. </p>
+    <p>You must disable a retain cache  before you can remove it. When you remove a  retain cache, all retained messages are lost and all in flight and subsequent  requests are ignored.</p>
+    <p>To create an MQTT retain cache, enter the following commands:</p>
+    <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# mqtt<br/>solace(configure/message-vpn/mqtt)# retain<br/>solace(configure/message-vpn/mqtt/retain)# create cache &lt;retain-cache-name&gt;</p>
+    <p>To modify an existing retain cache, enter the following command.</p>
+    <p class="Code">solace(configure/message-vpn/mqtt/retain)# cache &lt;cache-name&gt;</p>
+    <p>To enable a retain cache, enter the following command:</p>
+    <p class="Code">solace(configure/message-vpn/mqtt/retain/cache)# no shutdown</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;cache-name&gt;</code> is the name of the retain cache you want to configure. </p>
+    <p>The configuration tasks you can perform for an existing retain cache include:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Retain_TTL_Config_VPN">Configuring the Retained Message Lifetime</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="Retain_TTL_Config_VPN"/>Configuring the Retained Message Lifetime</h3>
+    <p>You can configure the length of time you want messages to persist in an MQTT retain cache.  If a message remains cached for the duration of its lifetime, the retain cache removes the message. By default, no limit is configured. </p>
+    <p>To configure the retained message lifetime for a retain cache enter the following commands:</p>
+    <p class="Code">solace(configure/message-vpn/mqtt/retain/cache)# message-lifetime &lt;seconds&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;seconds&gt;</code> is the lifetime of the message in seconds. A lifetime of 0 results in the message being retained indefinitely. The no version of this command returns the value to the default. </p>
+    <h2 class="with-rule"><a name="Retain_Monitor"/>Monitoring MQTT Retain Caches</h2>
+    <p>This section provides some examples showing how to monitor MQTT retain caches on your PubSub+ event broker.</p>
+    <p>There are two ways to do this:</p>
+    <ul>
+      <li>The recommended way to monitor retain caches is with <MadCap:xref href="../Admin/Broker-Manager/PubSub-Manager-Overview.htm"><MadCap:variable name="Product-Names.pubsubmanager_long"/></MadCap:xref>. After logging in, select a Message VPN and navigate to <b>Caches</b> &gt; <b>MQTT Retain Cache</b>.</li>
+      <li>Alternatively, you can monitor retain caches via Solace CLI, for more information, see the following sections.</li>
+    </ul>
+    <p>Because <MadCap:variable name="Product-Names.pubsub_cache"/> is the underlying mechanism  used to manage retained messages, in addition to the sections below, see  <MadCap:xref href="../Additional-Products/Solace-PubSub-Cache/Monitoring-PubSub-Cache.htm">Monitoring PubSub+ Cache</MadCap:xref> for general information about monitoring <MadCap:variable name="Product-Names.pubsub_cache"/> components.</p>
+    <h3><a name="Displayi"/>Displaying General MQTT Retain Cache Information</h3>
+    <p>To display general information about an MQTT retain cache, enter the following command:</p>
+    <p class="Code">show message-vpn &lt;message-vpn&gt; mqtt retain cache &lt;cache-name&gt; [detail]</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;message-vpn&gt;</code> is the name of the Message VPN where the  retain cache resides.</p>
+    <p><code>&lt;cache-name&gt;</code> is the name of the retain cache you want to monitor. </p>
+    <p><code>detail</code> displays detailed information about the  retain cache, including the names of <MadCap:variable name="Product-Names.pubsub_cache"/> objects created to support the retain cache. For more information about these objects, see <MadCap:xref href="../API/MQTT/Using-MQTT.htm#Retain_Cache_Objects">MQTT Retain Cache Ancillary Objects</MadCap:xref>.</p>
+    <h3>Displaying Retain Cache  Statistics</h3>
+    <p>To display statistics about an MQTT retain cache, including memory and CPU usage, enter the following command:</p>
+    <p class="Code">show cache-instance &lt;name&gt; message-vpn &lt;vpn-name&gt; remote status</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the name of the <MadCap:variable name="Product-Names.pubsub_cache"/> instance created to support the retain cache. For more information, see <MadCap:xref href="../API/MQTT/Using-MQTT.htm#Retain_Cache_Objects">MQTT Retain Cache Ancillary Objects</MadCap:xref>.</p>
+    <p><code>&lt;vpn-name&gt;</code> is the name of the Message VPN where the  retain cache resides.</p>
+    <h3>Displaying Retain Cache Topics</h3>
+    <p>To display the list of topics a MQTT retain cache is subscribed to, enter the following command:</p>
+    <p class="Code">show cache-instance &lt;name&gt; message-vpn &lt;vpn-name&gt; remote topics</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the name of the <MadCap:variable name="Product-Names.pubsub_cache"/> instance created to support the retain cache. For more information, see <MadCap:xref href="../API/MQTT/Using-MQTT.htm#Retain_Cache_Objects">MQTT Retain Cache Ancillary Objects</MadCap:xref>.</p>
+    <p><code>&lt;vpn-name&gt;</code> is the name of the Message VPN where the  retain cache resides.</p>
+    <h3>Clearing Retain Cache Statistics</h3>
+    <p>To clear MQTT retain cache statistics, enter the following command:</p>
+    <p class="Code">clear cache-instance &lt;name&gt; message-vpn &lt;vpn-name&gt; stats</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the name of the <MadCap:variable name="Product-Names.pubsub_cache"/> instance created to support the retain cache. For more information, see <MadCap:xref href="../API/MQTT/Using-MQTT.htm#Retain_Cache_Objects">MQTT Retain Cache Ancillary Objects</MadCap:xref>.</p>
+    <p><code>&lt;vpn-name&gt;</code> is the name of the Message VPN where the  retain cache resides.</p>
+    <h3>Retain Cache Events</h3>
+    <p>For a complete list of MQTT retain cache events, see the <i>PubSub+ Cache syslog Message</i> section in the <MadCap:xref href="../Monitoring/PubSub-Event-Reference.htm">Event Reference</MadCap:xref>.</p>
+    <h3><a name="Verify_Caches_Sync"/>Verifying Retain Cache Redundancy</h3>
+    <p>To verify that a retain cache is redundant (for example, to make sure no messages are lost on upgrade), you must verify that the corresponding primary and backup cache instances are synchronized. This must be verified for all message VPNs on which a retain cache has been configured (and is expected to be operational).</p>
+    <p>To verify that the primary and backup cache instances are synchronized, enter the following command and confirm that each cache instance is operational:</p>
+    <pre class="Code" xml:space="preserve">show message-vpn * mqtt retain cache * detail
+		</pre>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example Output</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre class="Code">
+Name                            : default
+Message VPN                     : default
+Enabled                         : yes
+Operational                     : yes
+Failure Reason                : N/A
+Uptime                        : 42s
+
+Primary
+Cache Instance                : #retain-cache-instance-solace-primary
+<b>Operational                   : yes</b>         
+Failure Reason                : N/A
+Uptime                        : 42s
+Backup
+Cache Instance                : #retain-cache-instance-solace-backup
+<b>Operational                   : yes</b><![CDATA[         ]]>
+Failure Reason                : N/A
+Uptime                        : 40s
+
+Distributed Cache               : #retain-cache-solace
+Cache Cluster                   : #retain-cache-cluster
+
+Message Lifetime (s)            : Unlimited</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+  </body>
+</html>

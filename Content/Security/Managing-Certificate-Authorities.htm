@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Configuring Certificate Authorities</h1>
+    <p>This section provides basic information that will help you configure  certificate authorities (CA)s and manage certificate revocation checking for client authentication.</p>
+    <h2 class="with-rule"><a name="Enabling"/>Enabling or Disabling the Standard Domain Validation Certificate Authorities List</h2>
+    <p>The standard domain validation CAs list is a pre-populated list of standard, trusted domain validation root certificates used to verify the server name for all outgoing TLS connections and cannot be modified. By default, the standard domain CAs list is enabled. If you want to use only the domain CA list, you can disable the standard domain validation list. </p>
+    <p>To disable the standard domain validation CAs list, enter the following command:</p>
+    <pre xml:space="preserve">solace(configure)# no ssl standard-domain-certificate-authorities</pre>
+    <p>To enable the standard domain validation CAs list, enter the following command:</p>
+    <pre>solace(configure)# ssl standard-domain-certificate-authorities</pre>
+    <p class="Note">In versions earlier than 9.8.0, the client authentication CAs list is the only list and it is used for both incoming and outgoing TLS connections. </p>
+    <h2 class="with-rule"><a name="configure-domain-ca-list"/>Configuring the Domain Validation <a name="certificate-list"/>Certificate Authorities List</h2>
+    <p>The domain validation CAs list is used in combination with the standard domain validation list to verify the server name for all outgoing TLS connections. The domain validation CAs list is initially empty in new deployments. In deployments upgrading to version 9.8.0+ the event broker copies the contents of the existing CA list to both the domain CA list and the client authentication CA list. You can configure the CAs in this list to suit your deployment. </p>
+    <p>Here are the Solace CLI commands for domain validation CA  creation and configuration.</p>
+    <ol>
+      <li> To create a domain CA, enter the following commands:
+              <pre>solace(configure)# ssl<br/>solace(configure/ssl)# create domain-certificate-authority &lt;ca-name&gt;</pre><p>To configure an existing domain CA, enter the following command:</p><pre>solace(configure/ssl)# domain-certificate-authority &lt;ca-name&gt;</pre></li>
+      <li>Each certificate in the chain must be configured for authentication. To configure a CA certificate, enter the following command:
+              <pre>solace(configure/ssl/domain-certificate-authority)# certificate file &lt;ca-certificate&gt;</pre></li>
+    </ol>
+    <p><u>Where</u>:</p>
+    <p><code>ca-name</code> is the name of the CA. You can use a maximum of 64 characters for a <code>ca-name</code>. Acceptable characters are alpha-numeric characters, period (.), hyphen (-), and under score (_).</p>
+    <p><code>ca-certificate</code> is the filename of the CA certificate. This file must be located in the <code>/usr/sw/jail/certs</code> directory on the event broker. Once the certificate is in the <code>certs</code> directory, you can individually add certificates to the list of trusted CA certificates. The maximum number of trusted CA certificates that may be loaded is 64.</p>
+    <p>The <code>no</code> version of the certificate command, <code>no certificate</code>, removes the domain CA from the event broker.</p>
+    <p class="Note">In versions earlier than 9.8.0, the client authentication CAs list is the only list and it is used for both incoming and outgoing TLS connections. </p>
+    <h2 class="with-rule"><a name="configure-client-ca-list"/>Configuring the Client Authentication Certificate Authorities List</h2>
+    <p>Solace PubSub+ event brokers allow clients to authenticate over TLS by presenting a valid client certificate. The event broker authenticates the client certificate by constructing a full certificate chain (from the client certificate to intermediate CAs to a configured root CA). The intermediate CAs in this chain can be provided by the client, or configured in the event broker. The root CA must be configured on the event broker.</p>
+    <p>For Solace PubSub+ appliances using version 8.2.0+ and Solace PubSub+ software event brokers using version 8.7.0+, CA certificates must be configured to validate incoming certificates for all SSL connections.</p>
+    <p>The certificate files for a CA can only contain a single certificate. There are a couple of other considerations depending on whether you're also using SSL/TLS authentication and / or revocation checking:</p>
+    <ul>
+      <li>
+        <u>SSL/TLS Authentication</u>
+      </li>
+      <p> At a minimum you must configure the root CA on the broker.</p>
+      <li>
+        <u>Certificate Authority Revocation Checking</u>
+      </li>
+      <p>The root CA and all the intermediate CAs that complete the chain must be configured on the broker.</p>
+    </ul>
+    <p>Here are the Solace CLI commands for client authentication CA creation and configuration.</p>
+    <ol>
+      <li>To create a client authentication CA, enter the following commands:
+              <p class="Code">solace(configure)# authentication<br/>solace(configure/authentication)# create client-certificate-authority &lt;ca-name&gt;</p><p>To configure an existing client authentication CA, enter the following command:</p><p class="Code">solace(configure/authentication)# client-certificate-authority &lt;ca-name&gt;</p></li>
+      <li>Each certificate in the chain must be configured for authentication. To configure a CA certificate, enter the following command:
+            <p class="Code">solace(configure/authentication/client-certificate-authority)# certificate file &lt;ca-certificate&gt;</p></li>
+    </ol>
+    <p><u>Where</u>:</p>
+    <p><code>ca-name</code> is the name of the CA. You can use a maximum of 64 characters for a <code>ca-name</code>. Acceptable characters are alpha-numeric characters, period (.), hyphen (-), and under score (_).</p>
+    <p><code>ca-certificate</code> is the filename of the CA certificate. This file must be located in the <code>/usr/sw/jail/certs</code> directory on the event broker. Once the certificate is in the <code>certs</code> directory, you can individually add certificates to the list of trusted CA certificates. The maximum number of trusted CA certificates that may be loaded is 64.</p>
+    <p>The <code>no</code> version of the certificate command, <code>no certificate</code>, removes the CA from the event broker.</p>
+    <div class="Note">
+      <ul>
+        <li>CA certificates are HA Config-Sync'ed, but not Replication Config-Sync'ed.</li>
+        <li>Once a CA certificate is configured, a copy of it is saved internally. The file in the <code>/usr/sw/jail/certs</code> directory is no longer required. </li>
+        <li>In versions earlier than 9.8.0, use the <code>certificate-authority</code> command. For more information, see <MadCap:xref href="#Compatib">Compatibility with Older Releases</MadCap:xref>.</li>
+      </ul>
+    </div>
+    <h3><a name="ca-compatibility"/>Compatibility with Older Versions</h3>
+    <p>For compatibility with versions prior to 9.8.0, the <code>certificate-authority</code> commands have been deprecated but will continue to work until January 2027 (6 years after the 9.8.0 release), operating on both the client authentication CAs list and the domain validation CAs list, or just the client authentication list as appropriate.  After January 2027, these commands will be removed.</p>
+    <h4>Commands that Participate in Config-Sync</h4>
+    <p>The following commands participate in Config-Sync. Until January 2024 (3 years after the 9.8.0 release), the <u>original</u> commands will be emitted for Config-Sync purposes if the client authentication CA and domain validation CA lists contain the same certificates with the same CA names. If the lists differ, the <u>new</u> commands will be emitted. Between January 2024 and January 2027, the <u>new</u> commands will be emitted for Config-Sync purposes.  After January 2027  the deprecated commands will be removed.</p>
+    <ul>
+      <li><code>create certificate-authority &lt;ca-name&gt;</code> (This is the same  as running <code>create client-certificate-authority &lt;ca-name&gt;</code> and <code>create domain-certificate-authority &lt;ca-name&gt;</code>. If the specified CA name exists in either list or if either list is at capacity the event broker emits an error and does nothing .)</li>
+      <li><code>no certificate-authority &lt;ca-name&gt;</code> (This is the same as running <code>no client-certificate-authority &lt;ca-name&gt;</code> and <code> no domain-certificate-authority &lt;ca-name&gt;</code>. If the specified CA name doesn't exist in both lists the event broker emits an error and does nothing .)</li>
+      <li><code>certificate-authority &lt;ca-name&gt;</code> (This is the same  as running  <code>client-certificate-authority &lt;ca-name&gt;</code> and <code>domain-certificate-authority &lt;ca-name&gt;</code>. If the specified CA name doesn't exist in both lists the broker emits an error and does nothing.)</li>
+      <li><code>certificate-authority &lt;ca-name&gt; revocation-check</code> (All commands under <code>revocation-check</code> are the same as the corresponding command for <code>client-certificate-authority</code>, in other words, <code>client-certificate-authority &lt;ca-name&gt; revocation-check</code>)</li>
+    </ul>
+    <h4>Other Commands</h4>
+    <p>The following commands do not participate in Config-Sync.  After January 2027  these commands will be removed.</p>
+    <ul>
+      <li><code>show certificate-authority</code> (If a CA with the same name and certificate exists in both the client authentication CAs list and the domain validation CAs list, this is the same as <code>show client-certificate-authority</code>. If the name or certificate is not the same, the result will be empty.</li>
+      <li><code>admin certificate-authority &lt;ca-name&gt; refresh-crl</code> (This is the same as running <code>admin client-certificate-authority &lt;ca-name&gt; refresh-crl</code>)</li>
+      <li><code>clear certificate-authority stats</code> (This is the same as running <code>clear client-certificate-authority stats</code>)</li>
+    </ul>
+    <h4>Upgrades from 9.7.0 and Earlier to 9.8.0+</h4>
+    <p>Upgrades to version 9.8.0+ will copy the contents of the current CA list to both the domain validation CA list and the client authentication CA list.  You can modify the certificates from either list after the upgrade.</p>
+    <h2 class="with-rule"><a name="configure-certificate-revocation"/>Configuring Certificate Revocation Checking</h2>
+    <p>An event broker can check the revocation status of the certificate that clients use when attempting to authenticate. You can configure certificate revocation checking on a per-event broker basis. However, you can also configure overrides on a per-Message VPN basis to ignore the results of the revocation check, and to allow authentication of certificates with unknown revocation status.</p>
+    <p>You can configure event brokers to check the revocation status of client certificates using one of the following methods:</p>
+    <ul>
+      <li style="font-weight: normal;">Certificate Revocation List (CRL)</li>
+      <li style="font-weight: normal;">Online Certificate Status Protocol (OCSP)</li>
+      <li style="font-weight: normal;">OCSP-CRL (Combination of both)</li>
+    </ul>
+    <p style="font-weight: normal;">For more information, see <MadCap:xref href="TLS-SSL-Message-Encryption-Overview.htm#CRLOCSP">Certificate Revocation Checking Methods</MadCap:xref>.</p>
+    <p>To enable certificate revocation checking, enter the following command:</p>
+    <p class="Code">solace(configure/authentication)# client-certificate-revocation-checking [none | ocsp | crl | ocsp-crl]
+        </p>
+    <p><u>Where</u>:</p>
+    <p><code>none</code> (default) specifies to not check the revocation status of certificates during validation and all the certificates are considered valid.</p>
+    <p><code>ocsp</code> specifies to use OCSP to verify the revocation status of the certificates during validation.</p>
+    <p><code>crl</code> specifies to use CRL to verify the revocation status of the certificates during validation.</p>
+    <p><code>ocsp-crl</code> specifies to use OCSP first to verify the revocation status of the certificates, if OCSP fails to return an unambiguous result, then CRL is used to check the revocation status of the certificates.</p>
+    <p>For a step-by-step procedure to configure OCSP, CRL, or OCSP-CRL certificate revocation checking, see the following.</p>
+    <ul>
+      <li>
+        <MadCap:xref href="Configuring-OCSP-Certificate-Revocation.htm">Configuring OCSP Certificate Revocation Checking</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="Configuring-CRL-Certificate-Revocation.htm">Configuring CRL Certificate Revocation Checking</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="Configuring-OCSP-CRL-Certificate-Revocation.htm">Configuring OCSP-CRL Certificate Revocation Checking</MadCap:xref>
+      </li>
+    </ul>
+  </body>
+</html>

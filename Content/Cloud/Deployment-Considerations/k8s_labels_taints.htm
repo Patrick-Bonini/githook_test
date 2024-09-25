@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><a name="Support"/><MadCap:concept term="Cloud"/>Support for nodeSelector, Labels, Taints, and Tolerations</h1>
+    <p>You can use scheduling constraints (<code>nodeSelector</code>, labels, taints, and tolerations) in  your Kubernetes  cluster to schedule and segregate the workloads on separate node pools. Although it's not a requirement of your Kubernetes cluster to deploy <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.cloud_product_long"/></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><MadCap:variable name="Product-Names.cloud_product_firstuse"/></MadCap:conditionalText>, the use of scheduling constraints is a common  requirement for infrastructure management, and  <MadCap:variable name="Product-Names.cloud_product_short"/> does leverage it when it's available. </p>
+    <p>When you specify custom labels, taints, and tolerations, you can better control how the <MadCap:variable name="Product-Names.cloud_agent_short"/> and the <MadCap:variable name="Product-Names.broker_cloud_short"/>s are deployed in your infrastructure. Using scheduling constraints helps to reduce the cross-talk between workloads and is useful in scenarios like creating dedicated nodes, distributing Pods evenly across the cluster, or co-locating Pods on the same machine. For some more examples of how you might use scheduling constraints with <MadCap:variable name="Product-Names.cloud_product_short"/>, see <MadCap:xref href="#workload-mgmt-use-cases">Use Cases</MadCap:xref>.</p>
+    <p>Regardless of whether scheduling constraints are available, or the type of node pool you choose, <MadCap:variable name="Variables.CompanyName"/> works with you to efficiently leverage your infrastructure, ensuring that High Availability groups are spread across availability zones for highest reliability, and creating a successful deployment to meet you requirements.</p>
+    <p>If you choose to use <code>nodeSelector</code>, labels, taints, tolerations, or proxies you must let <MadCap:variable name="Variables.CompanyName"/> know at the time of deployment. This ensures that we generate a <code>values.yaml</code> file with the appropriate parameters for the Helm Chart. The example below shows part of the  <code>values.yaml</code> that we would provide for using a Toleration and <code>nodeSelector</code> for the <MadCap:variable name="Product-Names.cloud_agent_short"/>:</p>
+    <pre xml:space="preserve">cloudAgentTolerations:
+- key: key1
+  operator: Equal
+  value:  
+effect: NoSchedule
+cloudAgentLabels:
+solace: test
+version: ta
+cloudAgentNodeSelectors:
+test: version1
+solace: cloud-agent</pre>
+    <p>The <MadCap:variable name="Product-Names.cloud_agent_short"/> propagates these tolerations and <code>nodeSelectors</code> to the pods at creation time.</p>
+    <p>For more information about scheduling constraints and proxies, see the following sections of the Kubernetes documentation:</p>
+    <ul>
+      <li>
+        <code>
+          <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector" target="_blank" class="link-offsite">nodeSelector</a>
+        </code>
+      </li>
+      <li>
+        <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/" target="_blank" class="link-offsite">Taints and Tolerations</a>
+      </li>
+      <li>
+        <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/" target="_blank" class="link-offsite">Scheduling and Eviction</a>
+      </li>
+      <li>
+        <a href="https://kubernetes.io/docs/concepts/cluster-administration/proxies/" target="_blank" class="link-offsite">Proxies in Kubernetes</a>
+      </li>
+    </ul>
+    <h2><a name="Using"/>Using nodeSelector</h2>
+    <p>Using <code>nodeSelector</code> is a simple way to constrain how workloads are scheduled. The <code>nodeSelector</code> field is part of a pod's configuration, which follows the syntax described by the Kubernetes <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#podspec-v1-core" target="_blank" class="link-offsite">PodSpec</a>.The <code>nodeSelector</code> is a set of key-value pairs that specifies the node on which the pod can run. For the pod to be eligible to run on a node, the node must have each of the indicated key-value pairs as labels (it can have additional labels as well). </p>
+    <p>To use <code>nodeSelector</code>, you first attach a label to the node, and then you add matching <code>nodeSelector</code> values to the configuration for each pod that you want to run on that node.</p>
+    <p>For example, let's say you want to add the label <code>region=americas</code> to a node called <code>kubernetes-mesh-node-1.test</code>. You can assign the label at creation time via the configuration file, as shown below:</p>
+    <pre xml:space="preserve">{
+  "kind": "Node",
+  "apiVersion": "v2",
+  "metadata": {
+    "name": "kubernetes-mesh-node-1.test",
+    "labels": {
+      <span style="color: #ff0000;">"region": "americas"</span>
+    }
+  }
+}</pre>
+    <p>Alternatively, you can run the following command to add the label to the existing node:</p>
+    <pre xml:space="preserve">kubectl label nodes kubernetes-mesh-node-1.test <span style="color: #ff0000;">region=americas</span></pre>
+    <p>Now you can add a corresponding <code>nodeSelector</code> to the configuration (PodSpec) for your pod so that it runs on the labeled node. For example:</p>
+    <pre xml:space="preserve">apiVersion: v2
+kind: metadata:
+  name: nginx
+  labels:
+    env: test
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    imagePullPolicy: IfNotPresent
+  nodeSelector:
+    <span style="color: #ff0000;">region: americas</span></pre>
+    <p>When Kubernetes applies the configuration, the pod is scheduled on the node that you attached the label to.</p>
+    <p>When you deploy <MadCap:variable name="Product-Names.cloud_product_short"/>, instead of creating these configuration files directly, <MadCap:variable name="Variables.CompanyName"/> adds the required labels, <code>nodeSelectors</code>, and so on, to the <code>values.yml</code> file that is used to generate the Helm chart for the <MadCap:variable name="Product-Names.cloud_agent_short"/>. The <MadCap:variable name="Product-Names.cloud_agent_short"/> then uses these settings to label the various resources when it creates them.</p>
+    <h2><a name="workload-mgmt-use-cases"/>Use Cases</h2>
+    <p>The following are some examples of situations where you can use scheduling constraints to control how <MadCap:variable name="Product-Names.broker_cloud_short"/> nodes are scheduled in your cluster.</p>
+    <h4>Multiple Environments in a Cluster</h4>
+    <p>If you want to deploy multiple environments in the same cluster, you need to make sure that each environment gets its own set of nodes. For example, you might have a test and a production environment. In this case you would assign a label such as <code>environment=test</code> to one set of nodes, and <code>environment=prod</code> to another set of nodes. You can then configure the <MadCap:variable name="Product-Names.cloud_agent_short"/> to assign the corresponding <code>nodeSelector</code> to the pods it creates so that those pods are scheduled in the correct environment.</p>
+    <h4><a name="Schedule"/>Schedule Workload to Appropriately-Scaled Node Pool</h4>
+    <p> Suppose you are  deploying the <MadCap:variable name="Product-Names.cloud_agent_short"/> in the cloud and you want to automatically scale your nodes to match the size of the <MadCap:variable name="Product-Names.broker_cloud_short"/> you select.</p>
+    <p>To do this, you can create one autoscaling node pool for each instance type, as required by the <MadCap:variable name="Product-Names.cloud_product_short"/> <a href="../service-class-limits.htm" class="link-internal">Service Classes</a>. You label each node pool with a <code>ServiceClass</code> label, and configure the <MadCap:variable name="Product-Names.cloud_agent_short"/> to assign the correct <code>nodeSelector</code> to the workload (the event broker pod). This allows Kubernetes to schedule the workload to the node pool that best matches the workload’s requirement, resulting in better resource utilization</p>
+    <p class="Note" MadCap:conditions="SAP.SapHideFromOutput">The node pool requirements are the same for Enterprise service classes whether they are configured as standalone or High-Availability services. </p>
+    <p>You need the following node pools:</p>
+    <ul>
+      <li>One node pool (<code>prod1k</code>) for <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">Developer</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">Standard</MadCap:conditionalText>, <MadCap:variable name="Product-Names.class_250"/>, and <MadCap:variable name="Product-Names.class_1k"/> service classes</li>
+      <li>One node pool (<code>prod10k</code>) for <MadCap:variable name="Product-Names.class_5k"/> and  <MadCap:variable name="Product-Names.class_10k"/> service classes</li>
+      <li>One node pool (<code>prod100k</code>) for <MadCap:variable name="Product-Names.class_50k"/> and  <MadCap:variable name="Product-Names.class_100k"/> service classes</li>
+      <li>One node pool (<code>monitoring</code>) for monitoring pods</li>
+    </ul>
+    <p>These node pools require labels and taints as described in the following table:</p>
+    <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Node Pool</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Labels</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Taints</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>prod1k</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>serviceClass = "prod1k"</code>
+            </p>
+            <p>
+              <code>nodeType = "messaging"</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>
+              <code>serviceClass=prod1k:NoExecute</code>
+            </p>
+            <p>
+              <code>nodeType=messaging:NoExecute</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>prod10k</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>serviceClass = "prod10k"</code>
+            </p>
+            <p>
+              <code>nodeType = "messaging"</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>
+              <code>serviceClass=prod10k:NoExecute</code>
+            </p>
+            <p>
+              <code>nodeType=messaging:NoExecute</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>prod100k</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>serviceClass = "prod100k"</code>
+            </p>
+            <p>
+              <code>nodeType = "messaging"</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>
+              <code>serviceClass=prod100k:NoExecute</code>
+            </p>
+            <p>
+              <code>nodeType=messaging:NoExecute</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <code>monitoring</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>
+              <code>nodeType = "monitoring"</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>
+              <code>nodeType=monitoring:NoExecute</code>
+            </p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>To enable these service class selectors, you would add the following parameter to the <code>values.yaml</code> configuration file:</p>
+    <pre>k8s:
+  useServiceClassSelectors: true</pre>
+    <h4>Multiple Storage Zones</h4>
+    <p>If you are deploying the <MadCap:variable name="Product-Names.cloud_agent_short"/> in a cluster that has multiple storage zones, you must ensure that the workload (pods) get deployed into the zone where it can be attached to the correct storage instance.</p>
+    <p>As in previous examples, you can configure the <MadCap:variable name="Product-Names.cloud_agent_short"/> to schedule its Primary and Backup messaging pods to specific zones with the use of an appropriate <code>nodeSelector</code> (for example, <code>StorageZone</code>).</p>
+    <p>You could also  use a <code>nodeSelector</code> to assign a storage class to the Primary and Backup pods so that each uses a specific storage class. Using this combination, you could have the Primary and Backup pods using different storage zones, and also different storage classes.</p>
+    <h4>Multiple Failure Domains</h4>
+    <p>You are deploying the <MadCap:variable name="Product-Names.cloud_agent_short"/> in a cluster that has multiple availability zones or failure domains. You want to ensure that each HA <MadCap:variable name="Product-Names.broker_cloud_short"/> distributes its  three pods (Primary, Backup and Monitor) into a different availability zones or failure domains to reduce the vulnerability of the <MadCap:variable name="Product-Names.broker_cloud_short"/> as a whole.</p>
+    <p>To do this, you can configure the <MadCap:variable name="Product-Names.cloud_agent_short"/> to schedule its pods to correct failure domains with an appropriate <code>nodeSelector</code> (for example, <code>AvailabilityZone</code>). This allows Kubernetes to correctly schedule the pods into the  different zones.</p>
+  </body>
+</html>

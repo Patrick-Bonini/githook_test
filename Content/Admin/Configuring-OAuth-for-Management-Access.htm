@@ -1,0 +1,507 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Configuring OAuth Authentication</h1>
+    <p><MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers support authentication with OAuth 2.0 and OpenID Connect (OIDC) to grant management access to the event broker.</p>
+    <p>There are two ways you can use OAuth for management access in the event broker:</p>
+    <ul>
+      <li><b>Interactive</b>: OAuth is used to authenticate a user interacting with <MadCap:variable name="Product-Names.pubsubmanager_long"/>. </li>
+      <li><b>Automated</b>: An OAuth token is used as credentials to authenticate REST request from SEMPv2.</li>
+    </ul>
+    <p>The information that follows describes the interactive options to configure OAuth for management access to the event broker. To set up automation using SEMPV2, see  <MadCap:xref href="SEMP/SEMP-Security.htm#OAuth">OAuth Authentication</MadCap:xref>.</p>
+    <h4>Terms you should know</h4>
+    <p><b>Authorization server</b>: The server where the user is sent to authenticate and receive an authorization code.</p>
+    <p><b>Token Server</b>: The server where you get the issued ID token or access token based on the code you provide to the authorization server. Note that the token server can issue an access token, ID token, or both based on the request. For example, if the event broker is serving as a client (<code>oauth-role client</code>), you may receive an ID token and optionally an access token.</p>
+    <p><b>Resource Owner </b>: The end user that grants permission to access the resource server with an access token.</p>
+    <p><b>Client</b>: The application that requests the token (ID token or access token)from the token server and then passes it to the resource server. By default, event brokers play the role of the client.  In this mode, all the configuration under <code>resource-server</code> is ignored.</p>
+    <p><b>Resource server</b>: Accepts the access token and verifies that it's valid. The event broker can be configured to play the role of the resource server.</p>
+    <p><b>ID token</b>: The OpenID Connect ID token represented as a JWT, given to the client by the token server. </p>
+    <p><b>Access token</b>: The URL-encoded or JSON Web Token (JWT) version of the access token given to the client by the token server. The <code>access-token</code> format is not specified; from the client point of view it is an opaque data—the client has no information about the user.</p>
+    <p><b>Discovery endpoint</b>: The endpoint that can be used to determine information about the OAuth provider, including all the necessary endpoints and the issuer identifier.</p>
+    <h2 class="with-rule"><a name="OAuth-config"/>OAuth Configuration</h2>
+    <p>To implement OAuth authentication for management access to an event broker, the following configurations are required:</p>
+    <ul>
+      <li>The event broker must be configured to use TLS by setting a server certificate. For more information, see <MadCap:xref href="../Security/Managing-Server-Certs.htm">Managing Server Certificates</MadCap:xref>.</li>
+      <li><a href="#OAuth" class="link-internal">OAuth profile</a> must be created on the event broker with following additional configuration:<ul><li><p><code><a href="#Configur3" class="link-internal">client-id</a></code>: Client ID configured on the event broker must match with the OAuth Client ID.</p></li><li><p><code><a href="#Configur4" class="link-internal">client-secret</a></code>: Client secret configured on the event broker must match with the OAuth Client Secret.</p></li><li><p><a href="#Endpoint" class="link-internal">endpoints</a>: <MadCap:snippetText src="../Resources/Snippets/oauth-endpoints.flsnp"/> In addition, be sure to carefully consider endpoint timeouts during configuration. Depending on your deployment, the default   timeout  may be too short. </p></li></ul></li>
+    </ul>
+    <p>You will need to perform additional configurations depending on what token you want to get your claims from (<code>id-token</code> or <code>access-token</code>), claims you expect to receive from the token, and whether you want to use OAuth in the interactive or automated context. The additional configuration will depend on your specific setup. Detailed configuration information is provided in the topics below.</p>
+    <h3><a name="OAuth-profile"/>OAuth Profile</h3>
+    <p>To implement OAuth authentication to provide management access to an event broker, you must first create an <code>oauth-profile</code>. There is a limit of ten OAuth profiles per event broker. </p>
+    <p>To create an <code>oauth-profile</code>, enter the following commands:</p>
+    <pre class="Code" xml:space="preserve">
+solace(configure/authentication)# create oauth-profile &lt;oauth-profile&gt;
+solace(configure/authentication/oauth-profile)# 
+</pre>
+    <p>To configure an existing profile, enter the following command:</p>
+    <pre>solace(configure/authentication)# oauth-profile &lt;oauth-profile&gt;</pre>
+    <p>To enable the profile, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# no shutdown</p>
+    <p>To specify a default provider, enter the following command:</p>
+    <p class="Code">solace(configure/authentication)# oauth-profile-default &lt;profile-name&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;profile-name&gt;</code> is the name of the OAuth profile.</p>
+    <p>The configuration tasks you can perform for an OAuth profile include:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Configur">Configuring OAuth Role</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Access">Access LeveL</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Endpoint">Endpoints</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Client">Client</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Resource">Resource Server</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Group-Claim-Name">Configuring Access Level Group Claim Name</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#ID">Configuring Client ID</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#CSecret">Configuring Client Secret</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Interactive-Login">Configuring Interactive Login</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Display-Name">Configuring Display Name</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Prompt-Expired-Sessions">Configuring Prompt For Expired Sessions</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Prompt-New-Sessions">Configuring Prompt for New Sessions</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Global-Forward-Proxy">Configuring a Global Proxy</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#SEMP">Configuring SEMP</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Issuer-Identifier">Configuring Issuer Identifier</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Username-Claim-Name">Configuring Username Claim Name</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="Configur"/>OAuth Role</h3>
+    <p>You can configure the event broker to act as OAuth client or resource server. By default, the event broker role is set to <code>client</code>. If <code>oauth-role</code> is set to <code>resource-server</code> and <code>client scope</code> does not contain <code>openid scope</code>, the <code>oauth-role</code> cannot be changed to <code>client</code>. The change will be rejected and <code>oauth-role</code> will remain as <code>resource-server</code>. The <code>client scope</code> configuration must contain the <code>openid scope</code> before switching from <code> resource-server</code> to <code>client</code> role. If <code>oauth-role</code> is client, the introspection endpoint is not used and need not be configured, and similarly, the <code>userinfo</code> endpoint will not be used if <code>oauth-role</code> is resource-server.</p>
+    <p>To set the event broker as a OAuth client or resource server, enter the following command: </p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# oauth-role [client|resource-server]<br/></p>
+    <p>The no version of the command, <code>no oauth-role</code>, sets the event broker role to the default <code>client</code> role.</p>
+    <h3><a name="Access"/>Access Level</h3>
+    <p>The OAuth groups determine the access-level for the dynamic user created by logging in with OAuth. Specific access levels can be configured for each OAuth group. A user may belong to more than one OAuth group, and the access levels defined for each group may differ. </p>
+    <p>To assign a global access level for CLI users that belong to a given OAuth group, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# 
+ access-level<br/>solace(...uthentication/oauth-profile/access-level)# create group &lt;group-name&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>group-name</code> is the name of an OAuth group that exists on the OAuth server. </p>
+    <ul>
+      <li>To edit the properties for an OAuth group that has already been provisioned on the event broker, enter the following command: <code>solace(...tication/oauth-profile/access-level)# group &lt;group-name&gt;</code>.</li>
+      <li>The group name is case sensitive and must match the case of the groups returned by the OAuth server.</li>
+    </ul>
+    <p>The no version of this command, <code>no group name &lt;group-name&gt;</code>, removes the given group name.</p>
+    <h4><a name="Assign-Global-Access"/>Global Access Levels</h4>
+    <p>To assign a global access level for a given OAuth group, enter the following command:</p>
+    <p class="Code">solace(...on/oauth-profile/access-level/group)# global-access-level [admin|none|read-only|read-write]</p>
+    <p><u>Where</u>:</p>
+    <p><code>admin</code> specifies a global access level of admin.</p>
+    <p><code>none</code> specifies a global access level of none. The default value is none.</p>
+    <p><code>read-only</code> specifies a global access level of read-only.</p>
+    <p><code>read-write</code> specifies a global access level of read-write.</p>
+    <h4><a name="Assign-Default-MVPN"/>Message VPN Default Access Levels</h4>
+    <p>To assign a Message VPN default access level for CLI users that belong to a given OAuth group, enter the following commands:</p>
+    <p class="Code">solace(...on/oauth-profile/access-level/group)# message-vpn<br/>solace(...s/access-level/group/message-vpn)# default-access-level [none|read-only|read-write]</p>
+    <p><u>Where</u>:</p>
+    <p><code>none</code> specifies a default Message VPN access level of none. The default value is none.</p>
+    <p><code>read‑only</code> specifies a default Message VPN access level of read-only.</p>
+    <p><code>read-write</code> specifies a default Message VPN access level of read-write</p>
+    <h4><a name="VPN-Exceptions"/>Message VPN Access Level Exceptions</h4>
+    <p>To configure an exception to the Message VPN access level for CLI users that belong to the given OAuth group, enter the following command:</p>
+    <p class="Code">solace(...rofile/access-level/group/message-vpn)# create access-level-exception &lt;vpn-name&gt; access-level [none|read-only|read-write]</p>
+    <p>To modify an existing exception to the default Message VPN access level for CLI users that belong to the given OAuth group, enter the following command:</p>
+    <p class="Code">solace(...rofile/access-level/group/message-vpn)# access-level-exception &lt;vpn-name&gt; access-level [none|read-only|read-write]</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;vpn-name&gt;</code> is the name of a Message VPN that the exception to the default Message VPN access level will apply to.</p>
+    <p><code>none</code> specifies a Message VPN access level of none. The default value is none.</p>
+    <p><code>read‑only</code> specifies a Message VPN access level of read-only.</p>
+    <p><code>read-write</code> specifies a Message VPN access level of read-write.</p>
+    <p>The no version of this command, <code>no access-level-exception</code>, removes any exceptions so that the CLI user has the default Message VPN access level for all Message VPNs.</p>
+    <h3><a name="Endpoint"/>Endpoints</h3>
+    <p>OAuth endpoints are the URLs that you use to make authentication requests. All endpoints must be TLS. Any endpoint that does not start with <code>https://</code> (case insensitive) will be rejected at configuration. Endpoints that are determined through discovery will be rejected at runtime if they are not TLS. </p>
+    <p>To configure OAuth endpoints, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# 
+ endpoints<br/></p>
+    <p>From this level, you can configure the following endpoints:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# 
+[authorization|discovery|discovery-refresh-interval|introspection|introspection-timeout|jwks|jwks-refresh-interval|token|token-timeout|userinfo|userinfo-timeout]</p>
+    <h4><a name="Authoriz"/>Authorization Endpoint</h4>
+    <p>Authorization endpoint is used to obtain an authorization code during the interactive OAuth flow. </p>
+    <p>To configure an authorization endpoint, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/endpoints)# 
+authorization &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the URL to set for the authorization endpoint. </p>
+    <p>The no version of the command, <code>no authorization</code>, returns the endpoint value to none.</p>
+    <h4>Discovery Endpoint</h4>
+    <p>The discovery endpoint is the OpenID Connect Discovery endpoint or the OAuth 2.0 Authorization Server Metadata endpoint. Generally, this is the only endpoint that you will need to configure, as this endpoint provides information about the OAuth issuer and all the other endpoints. <MadCap:snippetText src="../Resources/Snippets/oauth-endpoints.flsnp"/></p>
+    <p>To configure a discovery endpoint, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/endpoints)# discovery &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the discovery URL.</p>
+    <p>The no version of the command, <code>no discovery &lt;value&gt;</code>,  returns the endpoint value to none.</p>
+    <h4>Discovery Refresh Interval Endpoint</h4>
+    <p>The discovery refresh interval endpoint is used to configure the number of seconds between a <code>discovery</code> endpoint requests.</p>
+    <p>To configure a discovery refresh interval request, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/endpoints)# discovery-refresh-interval &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is number of seconds between <code>discovery</code> endpoint requests. </p>
+    <p>The no version of the command, <code>discovery-refresh-interval</code>, returns its value to the default of 86400 seconds (1 day).</p>
+    <h4>Introspection Endpoint</h4>
+    <p>The token introspection endpoint returns claims associated with the user identified by the access token. </p>
+    <p>To configure an introspection endpoint, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/endpoints)# 
+introspection &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the URI of the OAuth introspection endpoint. Only HTTPS is supported. If you specify an HTTPS address, certificates and certificate authorities must be configured on the event broker. For more information, see  <MadCap:xref href="../Security/Managing-Server-Certs.htm">Managing Server Certificates</MadCap:xref>.</p>
+    <p>The no version of the command, <code>no introspection</code>, returns the endpoint value to none.</p>
+    <h4>Introspection Timeout Endpoint</h4>
+    <p>The configure introspection timeout endpoint is the maximum time in seconds a token introspection request is allowed to occur.</p>
+    <p>To configure an introspection timeout endpoint, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/endpoints)# 
+introspection-timeout &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the value to set in seconds.</p>
+    <p>The no version of the command, <code>no introspection-timeout</code>, returns its value to 1 second.</p>
+    <h4><a name="JWKS"/> JWKS Endpoint</h4>
+    <p>To verify the ID and access tokens, the event broker needs access to the public keys. These keys are available from the OAuth provider's JSON Web Key Set (JWKS) endpoint. This endpoint can be explicitly configured or determined from the discovery document. The<code>jwks</code> endpoint returns the keys that was used to verify JSON Web Tokens (JWTs) from the OAuth provider. The event broker retrieves these keys from that URL to validate token signatures and caches </p>
+    <p>To configure a JWKS endpoint, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/endpoints)# 
+jwks &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the URI of the <code>jwks</code> endpoint. Only HTTPS is supported. If you specify an HTTPS address, certificates and certificate authorities must be configured on the event broker. For more information, see <MadCap:xref href="../Security/Managing-Server-Certs.htm">Managing Server Certificates</MadCap:xref>.</p>
+    <p>The no version of the command, <code>no jwks</code>, returns the endpoint value to none.</p>
+    <h4> JWKS Refresh Interval</h4>
+    <p>By default, PubSub+ event brokers refresh any JWKS public keys obtained from an OAuth authorization server once every twenty four hours.</p>
+    <p>Keys are also refreshed any time the following occurs:</p>
+    <ul>
+      <li>The refresh interval is changed.</li>
+      <li>The JWKS endpoint is changed.</li>
+      <li>The issuer is changed.</li>
+      <li>The OAuth profile is enabled.</li>
+      <li>The event broker is restarted.</li>
+    </ul>
+    <p>Once every <code>jwks-refresh-interval</code>, the event broker will refresh the set of keys. If the event broker attempts to refresh the key and the request fails, the following retries are performed:</p>
+    <ul>
+      <li>retry every 60s indefinitely if valid data is missing</li>
+      <li>retry three times every 60s if valid data exists. The event broker will then stop and wait for the next scheduled refresh or data expiry</li>
+    </ul>
+    <p>In addition, JWKS keys expire when they are older than three times the <code>jwks-refresh-interval</code>.</p>
+    <p>To configure the JWKS refresh interval, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/endpoints)# 
+jwks-refresh-interval &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the number of seconds between forced public key refreshes. </p>
+    <p>The no version of the command, <code>no jwks-refresh-interval</code>, returns its value to the default of 86400 seconds (1 day).</p>
+    <h4><a name="Token"/>Token Endpoint</h4>
+    <p>Token endpoint is used to obtain the ID token and access token during the interactive OAuth Authorization Code Grant flow.</p>
+    <p>To configure a token endpoint, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/endpoints)# 
+token &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the URL of the token server. </p>
+    <p>The no version of the command, <code>no token</code>,returns the endpoint value to none.</p>
+    <h4>Token Timeout Endpoint</h4>
+    <p>Using the token timeout endpoint, you can set the maximum time (in seconds) a token request is allowed to take. </p>
+    <p>Take careful consideration when deciding how to configure this value. On one hand, depending on the speed of your network, the default of one second may be too short for a token request to complete. On the other hand, longer timeouts may cause performance issues as request queues stack up. </p>
+    <p>To configure the token timeout endpoint, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/endpoints)# 
+token-timeout &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the number of seconds that a token request is allowed to take. </p>
+    <p>The no version of the command, <code>no token</code>, returns its value to the default value of 1 second.</p>
+    <h4><a name="Userinfo"/>Userinfo Endpoint</h4>
+    <p>The UserInfo endpoint is part of the <a href="https://openid.net/specs/openid-connect-core-1_0.html#UserInfo" target="_blank" class="link-offsite">OpenID Connect standard (OIDC)</a>, designed to return claims about the authentication user. The endpoints is used in situations where ID token may not contain all the required claims, in which case the access token is used to retrieve the userinfo.</p>
+    <p>To configure a userinfo endpoint, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/endpoints)# 
+userinfo &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the URL of the userinfo endpoint. </p>
+    <p>The no version of the command, <code>no userinfo</code>, returns the endpoint value to none.</p>
+    <h4>Userinfo Timeout Endpoint</h4>
+    <p>Using the userinfo timeout endpoint, you can set the maximum time a userinfo request is allowed to take.</p>
+    <p>To configure a userinfotimeout endpoint, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/endpoints)# 
+userinfo-timeout &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the number of seconds is the number of seconds that a userinfo request is allowed to take.</p>
+    <p>The no version of the command, <code>no userinfo-timeout</code>, returns its value to the default value of 1 second.</p>
+    <h3><a name="Client"/>Client</h3>
+    <p>A client is the application that wants to access the resource server data. It is the application that requests the access token or ID token from the authorization server and then passes it to the token server to get access to the data.</p>
+    <p>To configure OAuth client settings on the event broker, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# client<br/>solace(...e/authentication/oauth-profile/client)# </p>
+    <p>From this level, you can configure the following settings:</p>
+    <p class="Code">solace(...e/authentication/oauth-profile/client)# [allowed-host|authorization-parameter|redirect-uri|required-type|scope|validate-type]</p>
+    <h4><a name="Allowed"/>Allowed Host</h4>
+    <p>The allowed host is a <code>host:port</code> combination configured as an allowed Host header value for the given event broker. The current best practice is to configure the hostname as a fully qualified domain name. A maximum of four <code>allowed-host</code> can be configured per OAuth profile. </p>
+    <p>To create an allowed host, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/client)# create allowed-host &lt;host&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;host&gt;</code> is the allowed host value for the Host header. </p>
+    <p>The no version of the command, <code>no allowed-host &lt;host&gt;</code>, deletes the configured allowed host value.</p>
+    <h4>Authorization Parameter</h4>
+    <p>You can add additional parameters to be passed to the OAuth authorization endpoint. A maximum of four additional authorization parameters can be added per OAuth profile. The authorization parameter names must be unique and are case-sensitive.</p>
+    <p>To add an additional authorization parameter, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/client)# create authorization-parameter &lt;para-name&gt;<br/></p>
+    <p>To modify an existing authorization parameter, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/client)# authorization-parameter &lt;para-name&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;para-name&gt;</code> is the name of the authorization parameter.</p>
+    <p>The no version of the command, <code>no authorization-parameter &lt;para-name&gt;</code>, deletes the configured parameter.</p>
+    <h4>Redirect URI</h4>
+    <p>A redirect URI is the endpoint where the authorization server sends the user once the application has been successfully authorized. While setting <a href="#Allowed" class="link-internal">allowed-host</a> is generally required, it is not necessary to set redirect URI. If redirect URI is not set, the event broker uses the host value provided by the browser to create the correct value. Before using this setting, we recommend that you contact <a href="https://solace.com/support/" target="_blank" class="link-offsite">Solace</a>.</p>
+    <p>To configure a redirect URI, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/client)# redirect-uri &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the URL to set for the <code>redirect-uri</code>.</p>
+    <p>The no version of the command, <code>no redirect-uri &lt;value&gt;</code>, returns the endpoint value to none.</p>
+    <h4>Required Type</h4>
+    <p>The content type required for the ID token header. The default value is JWT.</p>
+    <p>To configure required type value, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/client)# required-type &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the value to set for the <code>required-type</code>.</p>
+    <p>The no version of the command, <code>no required-type &lt;value&gt;</code>, returns its value to JWT.</p>
+    <h4>Scope</h4>
+    <p>The scope is a mechanism in OAuth 2.0 to limit an application's access to a user's account. It is used to initiate an OAuth flow that supports OpenID Connect. The event broker passes the scope parameter to the OAuth authorization endpoint. The default scope is the <code>openid email</code>.  If <code>oauth-role</code> is client, it is an error to change the scope to a value that doesn't include <code>openid</code>, and the change will be rejected. If <code>oauth-role</code> is set to <code>resource-server</code> and <code>validate-scope</code> is true, the scope value returned in the response must be verified to contain all the scope values specified in the <code>required-scope</code>.</p>
+    <p>To configure the scope parameter, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/client)# scope &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the space-separated list of values to set for the <code>scope</code>.</p>
+    <p>The no version of the command, <code>no scope &lt;value&gt;</code>, returns its value to the default <code>openid email</code>.</p>
+    <h4>Validate Type</h4>
+    <p>The <code>validate-type</code> parameter verifies the token ID type. By default, it is set to true. If <code>validate-type</code> is true, tokens that don't have the <code>typ</code> header field will fail to validate. Generally, most OAuth providers set <code>typ</code> to JWT. Also, if validate-type is enabled (default), the <code>typ</code> field in the JWT header must match the value configured in <code>required-type</code>.</p>
+    <p>To configure the validate type parameter, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/client)# validate-type<br/></p>
+    <p>The no version of the command, <code>no validate</code>, changes the default value (<code>true</code>) to <code>false</code>.</p>
+    <h4>Required Claim</h4>
+    <p>You can configure required claims in the event broker to verify the ID token. All claims specified under <code>required-claim</code> must match exactly. The <code>required-claim</code> values are specified as JSON, and may be strings, numbers, or arbitrary JSON objects. A maximum of four required claims can be configured per OAuth profile. </p>
+    <p>To create a required claim, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/client)# create required-claim &lt;name&gt; &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is name of the ID token claim to verify. The claim names must be unique and are case-sensitive. </p>
+    <p><code>&lt;value&gt;</code> is the required claim value, which must be a string containing a valid JSON value.</p>
+    <p>The no version of the command, <code>no required-claim &lt;value&gt;</code>, deletes the configured claim.</p>
+    <h3><a name="Resource"/>Resource Server</h3>
+    <p>In the OAuth flow, the resource server accepts the access token and verifies that it's valid. The configurations under <code>resource-server</code> only has effect if <code>oauth-role</code> is resource-server.</p>
+    <p>To configure OAuth resource server settings, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# resource-server<br/>solace(...e/authentication/oauth-profile/resource-server)# </p>
+    <p>From this level, you can configure the following settings:</p>
+    <p class="Code">solace(...e/authentication/oauth-profile/resource-server)# [parse-access-token | required-audience | required-claim | required-issuer | required-scope | required-type | validate-audience | validate-issuer | validate-scope | validate-type]</p>
+    <h4>Parse Access Token</h4>
+    <p>You can enable or disable parsing of the access token as a JWT. It is enabled by default. When <code>parse-access-token</code> is enabled, the access token is examined to determine whether it contains the claims specified for the username and groups. If it contains both claims, no further processing is required, and values of the appropriate claims are used. However, if an introspection endpoint is provided (either directly or via discovery), every access token is checked even if the token contains the username and groups. If <code>parse-access-token</code> is disabled, the <code>introspection-endpoint</code> must be specified.</p>
+    <p>To disable the default <code>parse-access-token</code>, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/resource-server)# no parse-access-token<br/></p>
+    <h4>Required Type</h4>
+    <p>The content type required for the access token header. The default value is JWT.</p>
+    <p>To configure required type value, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/client)# required-type &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the value to set for the <code>required-type</code>.</p>
+    <p>The no version of the command, <code>no required-type &lt;value&gt;</code>, returns its value to JWT.</p>
+    <h4>Required Audience</h4>
+    <p>You can configure the event broker to validate the required audience parameter provided by the client. The <code>required-audience</code> value must match the <code>aud</code> claim if the <code>aud</code> claim is a string and if it is an array of strings, it must match one of the values of the <code>aud</code> claims. If the <code>required-audience</code> value is incorrect, the event broker rejects the connection attempt.</p>
+    <p>To configure OAuth required audience value, enter the following command:</p>
+    <p class="Code">solace(...e/authentication/oauth-profile/resource-server)# required-audience &lt;value&gt;</p>
+    <p>The no version of the command, <code>no required-audience &lt;value&gt;</code>,  returns the value to none.</p>
+    <h4>Required Claim</h4>
+    <p>You can configure required claims in the event broker to verify the access token or introspection response. All claims specified under <code>required-claim</code> must match exactly. The <code>required-claim</code> values are specified as JSON, and may be strings, numbers, or arbitrary JSON objects. A maximum of 8 required claims can be configured per OAuth profile.</p>
+    <p>To create a required claim, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/resource-server)# create required-claim &lt;name&gt; &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is name of the <code>id-token</code> claim to verify. The claim names must be unique and are case-sensitive. </p>
+    <p><code>&lt;value&gt;</code> is the required claim value, which must be a string containing a valid JSON value.</p>
+    <p>The no version of the command, <code>no required-claim &lt;value&gt;</code>, deletes the configured claim.</p>
+    <h4>Required Issuer</h4>
+    <p>You can configure the required issuer claim value in the event broker as part verifying the access token or introspection response. The configured <code>required-issuer</code> value must match the <code>iss</code> claim. If the <code>required-issuer</code> is not specified, the <code>issuer</code> from the <code>discovery</code> endpoint is used to verify the <code>iss</code> claim.</p>
+    <p>To configure a required issuer claim, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/resource-server)# required-issuer &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the value to configure for the required issuer claim.</p>
+    <p>The no version of the command, <code>no required-claim &lt;value&gt;</code>,   returns the value to none.</p>
+    <h4>Required Scope</h4>
+    <p>The required scopes are space-separated list of scopes that must be present in the <code>scope</code> claim The <code>scope</code> claim must contain all of the values in <code>required-scope</code>, but may contain other scopes, and the scopes may be in a different order. If the <code>required-scope</code> is empty or not set, no <code>scope</code> verification is performed.</p>
+    <p>To configure the required scope on the event broker, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/resource-server)# required-scope &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the value to configure for the required issuer claim.</p>
+    <p>The no version of the command, <code>no required-scope &lt;value&gt;</code>, returns the value to none.</p>
+    <h4>Validate Audience</h4>
+    <p>You can configure the event broker to validate audience parameter to verify the <code>aud</code> claim in the access token or introspection response. By default this feature is enabled. If <code>validate-audience</code> is disabled, <code>required-audience</code> validation is not performed. If it is enabled, the validation described at <code>required-audience</code> will be performed.</p>
+    <p>To configure the event broker to validate the audience claim, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/resource-server)# validate-audience<br/></p>
+    <p>The no version of the command, <code>no validate-audience</code>, disables it.</p>
+    <h4>Validate Issuer</h4>
+    <p>You can configure the event broker to validate issuer parameter to verify the <code>iss</code> claim in the access token or introspection response. By default this feature is enabled. If <code>validate-issuer</code> is disabled,  <code>required-issuer</code> validation is not performed.  If it is enabled, the validation described at <code>required-issuer</code> will be performed.</p>
+    <p>To configure the event broker to validate the issuer claim, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/resource-server)# validate-issuer<br/></p>
+    <p>The no version of the command, <code>no validate-issuer</code>, disables it.</p>
+    <h4>Validate Scope</h4>
+    <p>You can configure the event broker to validate scope parameter to verify the <code>scope</code> claims in the access token or introspection response. By default this feature is enabled. If <code>validate-scope</code> is disabled, <code>required-scope</code> validation is not performed.  If it is enabled, the validation described at <code>required-scope</code> will be performed.</p>
+    <p>To configure the event broker to validate scope claims, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/resource-server)# validate-scope<br/></p>
+    <p>The no version of the command, <code>no validate-scope</code>, disables it.</p>
+    <h4>Validate Type</h4>
+    <p>You can configure the event broker to validate scope parameter to verify the  <code>typ</code> field in the access token header. By default this feature is enabled. If <code>validate-type</code> is disabled, <code>required-type</code> validation is not performed.  If it is enabled, the validation described at <code>required-type</code> will be performed.</p>
+    <p>To configure the event broker to validate the <code>typ </code>field, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/resource-server)# validate-type<br/></p>
+    <p>The no version of the command, <code>no validate-type</code>, disables it.</p>
+    <h3><a name="Group-Claim-Name"/>Access Level Group Claim</h3>
+    <p>The access level group claim name is the name of the claim that contains the groups that the event broker will use to authorize the user. Once all appropriate token verification has been performed, the event broker will determine the OAuth groups based on the <code>access-level-groups-claim-name</code>.</p>
+    <p>To configure an access level groups claim name, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# access-level-groups-claim-name &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the field in the token used  to determine the access level group. If no value is provided, <code>groups</code> is used as the default. When using JWTs, claim names must be at the top level of the JWT. In other words, they cannot be embedded. In addition, the value of any claim that you want to use as an access level group must be a  string or an array of strings.</p>
+    <p>In this example the <code>"aclevGroupClaim"</code> field is used to determine the access level group, and its value is the  string <code>"abcdefghi"</code>:</p>
+    <pre xml:space="preserve">{
+...
+   "aclevGroupClaim": "abcdefghi",
+...
+}</pre>
+    <p>In this example the <code>"aclevGroup"</code> field is used to determine the authorization group, and its value is the string array <code>["a b c", "def", "ghi"]</code>. The event broker interprets this array as three authorization groups, <code>"a b c"</code> (including the spaces), <code>"def"</code>, and <code>"ghi"</code>.</p>
+    <pre xml:space="preserve">{
+...
+   "aclevGroup": ["a b c", "def", "ghi"],
+...
+}</pre>
+    <p>The no version of the command, <code>no access-level-groups-claim-name</code>, returns its value to the default <code>groups</code>.</p>
+    <p>For compatibility, you can configure the event broker  to interpret a string value for the claim as a space-delimited set of groups, similar to the <code>scope</code> claim. For example, a claim value of <code>"a b c"</code> would be interpreted as three groups: <code>"a"</code>, <code>"b"</code>,  and <code>"c"</code>.</p>
+    <p>To configure this behaviour, enter the following command:</p>
+    <pre xml:space="preserve">solace(configure/authentication/oauth-profile)# access-level-groups-claim-string-format space-delimited</pre>
+    <p>The no version of the command, <code>no access-level-groups-claim-string-format</code>, returns its value to the default <code>single</code>.</p>
+    <h3><a name="ID"/>Client ID</h3>
+    <p>When a client registers with an OAuth provider they receive a Client ID along with a Client Secret. These are essentially equivalent to username and password, which the authorization server uses to authenticate the application. The <code>client-id </code>identifies the client responsible for the OAuth request. </p>
+    <p>To configure client ID on your event broker, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# client-id &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the OAuth provided Client ID.</p>
+    <p>The no version of the command, <code>no client-id</code>,   returns the value to none.</p>
+    <h3><a name="CSecret"/>Client Secret</h3>
+    <p>When a client registers with an OAuth provider they receive a Client ID and Client Secret. These are essentially equivalent to username and password, which the authorization server uses to authenticate the application.</p>
+    <p>To configure client secret on your event broker, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# client-secret &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the OAuth provided Client Secret.</p>
+    <p>The no version of the command, <code>no client-secret</code>,  returns the value to none.</p>
+    <h3><a name="Interactive-Login"/>Interactive Login</h3>
+    <p> The interactive login option is used to authenticate user interacting with <MadCap:variable name="Product-Names.pubsubmanager_short"/> or any other browser-based web applications that use SEMPv2. The feature is enabled by default. Disabling the feature will disable login via OAuth when using <MadCap:variable name="Product-Names.pubsubmanager_short"/>.</p>
+    <p>To disable interactive log in via OAuth, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# no interactive <br/></p>
+    <h3><a name="Display-Name"/>Display Name</h3>
+    <p>You can configure a friendly display name to be used as your OAuth login profile. If <code>display-name</code> is not configured, OAuth profile name is used.</p>
+    <p>To configure the display name for your OAuth profile, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# display-name &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the display name to be configured.</p>
+    <p>The no version of the command, <code>no display-name &lt;value&gt;</code>, returns its value to none.</p>
+    <h3><a name="Prompt-Expired-Sessions"/>Prompt For Expired Sessions</h3>
+    <p> When an OAuth session has expired (not new or logged out), the prompt for expired sessions can be used to log back in.</p>
+    <p>To configure prompt for expired sessions for an OAuth profile, enter the following commands: </p>
+    <p class="Code" style="text-decoration: underline;">
+      <span style="text-decoration: none;">solace(configure/authentication/oauth-profile)# prompt-for-expired-session &lt;value&gt;</span>
+      <br/>
+    </p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the value of the prompt parameter provided to the OAuth authorization server for login requests where the session has expired.</p>
+    <p>The no version of the command, <code>no prompt-for-expired-session &lt;value&gt;</code>, returns its value to none.</p>
+    <h3><a name="Prompt-New-Sessions"/>Prompt for New Sessions</h3>
+    <p>Prompt for new sessions is used for new OAuth session or to log back in if the user has explicitly logged out.</p>
+    <p>To configure prompt for new sessions for an OAuth profile, enter the following commands: </p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# prompt-for-new-session &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the value of the prompt parameter provided to the OAuth authorization server for login requests where the session is new or the user has explicitly logged out.</p>
+    <p>The no version of the command, <code>no prompt-for-new-session &lt;value&gt;</code>,   returns its value to none.</p>
+    <h3><a name="Global-Forward-Proxy"/>Global Forward Proxy</h3>
+    <p>Depending on your deployment, you may require that communication between the event broker and authorization servers  goes through a global forward proxy. This is often the case if your event broker sits behind a firewall and egress traffic needs to connect to a proxy server to go outside the firewall.</p>
+    <p>To configure a global forward proxy for an OAuth profile, enter the following command:</p>
+    <pre xml:space="preserve">solace(configure/authentication/oauth-profile)# proxy &lt;proxy-name&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;proxy-name&gt;</code> is the name of the global forward proxy configured on the event broker to use for discovery, token, user info, and introspection requests. For more information, see <MadCap:xref href="Configuring-Global-Forward-Proxy.htm">Global Forward Proxy Configuration</MadCap:xref>. </p>
+    <p>The no version of this command, <code>no proxy</code>, removes any configured global forward proxy. </p>
+    <h3><a name="SEMP"/>SEMP</h3>
+    <p>This is the SEMP setting for the OAuth profile that controls whether the profile can be used for authentication of bearer tokens in SEMPv2 calls. This feature is enabled by default. To learn more about OAuth configuration with SEMPv2, see <MadCap:xref href="SEMP/SEMP-Security.htm#OAuth">OAuth Authentication</MadCap:xref>.</p>
+    <p>To configure OAuth for SEMP, enter the following commands: </p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# semp &lt;value&gt;<br/></p>
+    <p>The no version of the command, <code>no semp</code>, disables the ability to authenticate SEMPv2 requests with OAuth.</p>
+    <h3><a name="Issuer-Identifier"/>Issuer </h3>
+    <p>The issuer is the identifier of the OAuth provider. The <code>issuer</code> identifier is automatically determined from the <code>discovery</code> endpoint, if the <code>discovery</code> endpoint has been configured. </p>
+    <p>To configure issuer identifier, enter the following commands: </p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# issuer &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the value for issuer identifier. The value will be available in the discovery endpoint, if configured.</p>
+    <p>The no version of the command, <code>no issuer &lt;value&gt;</code>, returns the value to none.</p>
+    <h3><a name="Username-Claim-Name"/>Username Claim Name</h3>
+    <p>Username claim name is the name of <code>claim</code> containing the username that the event broker verifies. You can configure a custom<code> username-claim-name</code>, which must be a string; for example, <code>email</code>. Claims of other types such as number, boolean, object, array, etc., are not supported. <br/>To configure username claim name, enter the following commands: </p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# username-claim-name &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the name of the <code>username-claim-name</code>. </p>
+    <p>The no version of the command, <code>no username-claim-name &lt;value&gt;</code>, returns its value to the default <code>sub</code>.</p>
+    <h2 class="with-rule"><a name="Example"/>OAuth for Management Access Example Configuration</h2>
+    <p>The following example shows how to configure OAuth authentication for management access on an event broker with the event broker serving as a <code>client</code>.</p>
+    <p>In this example, it is assumed that the discovery endpoint contains the following information:</p>
+    <ul>
+      <li>
+        <code>
+          <MadCap:xref href="#Issuer-Identifier">Issuer Identifier</MadCap:xref>
+        </code>
+      </li>
+      <li>
+        <code>
+          <MadCap:xref href="#Authoriz">Authorization Endpoint</MadCap:xref>
+        </code>
+      </li>
+      <li>
+        <code>
+          <MadCap:xref href="#JWKS">JWKS Endpoint</MadCap:xref>
+        </code>
+      </li>
+      <li>
+        <code>
+          <MadCap:xref href="#Token">Token Endpoint</MadCap:xref>
+        </code>
+      </li>
+      <li>
+        <code>
+          <MadCap:xref href="#Userinfo">Userinfo Endpoint</MadCap:xref>
+        </code>
+      </li>
+    </ul>
+    <pre class="Code" xml:space="preserve">solace(configure/authentication)# create oauth-profile solace
+solace(configure/authentication/oauth-profile)# client-id 863072204556-uf9jkn4i08429rsu91ejmi51ve5arjc1.apps.solace.com
+solace(configure/authentication/oauth-profile)# client-secret 83nw9OsXglnbyrU7ZjUyvSRK
+solace(configure/authentication/oauth-profile)# username-claim-name email
+solace(configure/authentication/oauth-profile)# endpoints
+solace(configure/authentication/oauth-profile/endpoints)# discovery https://accounts.solace.com/.well-known/openid-configuration
+solace(configure/authentication/oauth-profile/endpoints/discovery)# exit
+solace(configure/authentication/oauth-profile)# no shutdown
+solace(configure/authentication/oauth-profile)# client
+solace(...e/authentication/oauth-profile/client)# create allowed-host my.pubsubplus.manager.url:1943
+solace(...e/authentication/oauth-profile/client)# exit
+solace(configure/authentication/oauth-profile)# access-level-groups-claim-name my_groups_claim_name
+solace(configure/authentication/oauth-profile)# access-level
+solace(...entication/oauth-profile/access-level)# create group my_admin_group_claim_value
+solace(...tion/oauth-profile/access-level/group)# global-access-level admin
+solace(...entication/oauth-profile/access-level)# create group my_read_only_group_claim_value
+solace(...tion/oauth-profile/access-level/group)# global-access-level read-only</pre>
+    <p>Once OAuth is successfully configured on the event broker, a new log in button appears on the <MadCap:variable name="Product-Names.pubsubmanager_short"/>'s login screen. Clicking the button will automatically log the users in to <MadCap:variable name="Product-Names.pubsubmanager_short"/> via the OAuth provider. For more information about accessing <MadCap:variable name="Product-Names.pubsubmanager_short"/>, see <MadCap:xref href="Broker-Manager/PubSub-Manager-Overview.htm#how-to-access">Accessing  [%=Product-Names.pubsubmanager_short%]</MadCap:xref>.</p>
+  </body>
+</html>

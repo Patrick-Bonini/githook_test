@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>How Replication Works</h1>
+    <p>This section provides a simplified description of how replication works. All diagrams and descriptions are for the synchronous mode of replication, where messages are stored on both sites before responding to the client. For more details about message replication, see <MadCap:xref href="Sync-Asynch-Replication.htm">Synchronous and Asynchronous Message Replication</MadCap:xref>.</p>
+    <p>The process of replication can differ depending on whether the guaranteed messages are part of a transaction. There are also differences in how local and XA transactions are handled.</p>
+    <h2 class="with-rule"><a name="data_center_replication_non_transacted"/>Non-Transacted Messages</h2>
+    <p>The following diagram provides an example of how replication propagates non-transacted Guaranteed messages that have been published to a topic. The diagram shows a replication group consisting of the New York data center (the active replication site), and the Boston  data center (the standby replication site). </p>
+    <p>
+      <img src="../../Resources/Images/DR-Replication/how_replication_works.png" style="max-width: 75%;" alt=""/>
+    </p>
+    <p>The detailed steps of this process flow (corresponding to the numbers in the diagram) are as follows:</p>
+    <ol>
+      <li>The client publishes a message that matches a replicated topic subscription  that is configured for the Message VPN with an active replication state. The message is persisted on the event broker.</li>
+      <li>A copy of the message is sent over a replication bridge (named <code>#MSGVPN_REPLICATION_BRIDGE</code>) that is automatically created when replication is enabled for a Message VPN. This bridge links the Message VPN with the active replication state in the New York data center and its mate Message VPN of the same name that has a standby replication state in the Boston  datacenter.</li>
+      <p class="Note">For added security, Transport Layer Security (TLS) / Secure Sockets Layer (SSL) encryption can be used on Message VPN replication bridges and replication Config-Sync bridges. For information on using SSL encryption on replication Config-Sync bridges and Message VPN replication bridges, refer to <MadCap:xref MadCap:unresolvedLink="import-link:managing_tls_ssl_service_2542923039_15157" href="../../Security/Managing-TLS-SSL-Service.htm">Managing TLS/SSL Service</MadCap:xref>.</p>
+      <li>The message is also persisted on the replication mate.</li>
+      <li>When the message is consumed from an endpoint on the replication active Message VPN, it is removed from the persistent store.</li>
+      <li>An acknowledgment (ACK) is propagated to the replication standby Message VPN that the message has been delivered to the consumer.</li>
+      <li>The message is then also removed from the persistent store of the event broker the replication standby Message VPN resides on.</li>
+    </ol>
+    <h2 class="with-rule"><a name="data_center_replication_local_transacts"/>Local Transactions</h2>
+    <p>With a local transaction, the messages and acknowledgments are propagated to the replication mate as a part of an internal XA transaction.</p>
+    <p>For publishing messages in a local transaction, the process flow is as follows:</p>
+    <ol>
+      <li>The client opens a local transaction and publishes multiple messages that matches a replicated topic subscription. The messages are persisted on the active site.</li>
+      <li>The client commits the transaction. An internal XA transaction containing the messages is created.</li>
+      <li>Copies of the messages are sent over the replication bridge to standby site as part of the internal XA transaction and persisted on the standby site.</li>
+      <li>The internal XA transaction is committed on the standby site. The messages are inserted into the destination endpoint(s) standby site.</li>
+      <li>The messages are inserted into the destination endpoints on the active site. The internal XA transaction completes. The commit response is sent back to the client.</li>
+    </ol>
+    <p>For consuming messages, the process is as follows:</p>
+    <ol>
+      <li>The client opens a local transaction and consumes multiple messages that have been replicated (that is, when they were published, they matched a replicated topic subscription) from an endpoint.</li>
+      <li>The client commits the transaction. An internal XA transaction containing an acknowledgment of the consumed messages is created.</li>
+      <li>The acknowledgment is sent over the replication bridge to standby site as part of the internal XA transaction.</li>
+      <li>The internal XA transaction is committed on the standby site. The consumed messages are removed from the endpoint on the standby site.</li>
+      <li>The internal XA transaction completes. The consumed messages are removed from the endpoint on the active site. The commit response is sent back to the client.</li>
+    </ol>
+    <p class="Note">It is possible for a single local transaction to include  both the publishing and consuming of messages. For simplicity, the examples show publishing and consuming in separate transactions.</p>
+    <h2 class="with-rule"><a name="data_center_replication_xa_transacts"/>XA Transactions</h2>
+    <p>With an XA transaction, the standby site is included in the distributed transaction.</p>
+    <p>This is the process for publishing messages in an XA transaction:</p>
+    <ol>
+      <li>The client starts an XA transaction and publishes multiple messages that match a replicated topic subscription. The messages are persisted on the active site.</li>
+      <li>Copies of the messages are sent immediately over the replication bridge to the standby replication site. The messages are persisted on the standby site.</li>
+      <li>The client ends the XA transaction. The transaction state is updated on the active site.</li>
+      <li>The client prepares the XA transaction. The active site checks if the transaction can succeed. If it can, the prepare request is sent to the standby site, where it is checked. If it can also succeed on the standby site, the XA transaction state is updated on both active and standby sites. The prepare response is sent back to the client.</li>
+      <li>The client commits the XA transaction. The messages are inserted into the destination endpoints on the active site. The commit request is sent to the standby site and the messages are inserted into the destination endpoints on the standby site.</li>
+      <li>The commit response is sent back to the client.</li>
+      <li>The XA transaction is completed.</li>
+    </ol>
+    <p>This is the process for consuming messages in an XA transaction:</p>
+    <ol>
+      <li>The client starts an XA transaction and consumes multiple messages that has been replicated  (that is, when they were published, they matched a replicated topic subscription).</li>
+      <li>The client ends the XA transaction. The transaction state is updated with the acknowledgment on the active site.</li>
+      <li> The client prepares the XA transaction. The active site checks if the transaction can succeed. If it can, the prepare request is sent to the standby site, where it is checked. If it can also succeed on the standby site, the XA transaction state is updated on both active and standby sites. The prepare response is sent back to the client.</li>
+      <li>The client commits the XA transaction. The messages are removed from endpoint on the active site. The commit request is sent to the standby site and the messages are removed from the endpoint on the standby site.</li>
+      <li>The commit response is sent back to the client.</li>
+      <li>The XA transaction is completed.</li>
+    </ol>
+    <p class="Note">It is possible for an XA transaction to include both the publishing and consuming of messages. For simplicity, the examples show publishing and consuming in separate transactions.</p>
+  </body>
+</html>

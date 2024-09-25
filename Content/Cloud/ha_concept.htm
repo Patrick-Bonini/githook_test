@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="Default.ContentProductLink">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>High Availability in <MadCap:variable name="Product-Names.cloud_product_titlecase"/></h1>
+    <p><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.cloud_product_long"/><MadCap:variable name="Product-Names.broker_cloud_short"/>s can be</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><MadCap:variable name="Product-Names.cloud_product_firstuse_initialcase"/> Enterprise <MadCap:variable name="Product-Names.broker_cloud_short"/>s are</MadCap:conditionalText> deployed in high-availability (HA) redundancy groups. HA redundancy provides 1:1 event broker sparing to provide fault tolerance and increase overall service availability. If one of the event brokers fails or is taken out of service, the other event broker automatically takes over and provides service to the clients
+that were previously served by the now-out-of-service event broker.  There is a brief interruption of less than one minute that occurs  during the HA activity failover. In comparison, outages of 15-30 minutes occur for  <MadCap:variable name="Product-Names.class_100"/> <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">and standalone </MadCap:conditionalText><MadCap:variable name="Product-Names.broker_cloud_short"/>s because they do not have  HA redundancy.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">To learn more about HA redundancy, see <MadCap:xref href="../Features/HA-Redundancy/SW-Broker-Redundancy-and-Fault-Tolerance.htm">Software Event Broker Redundancy &amp; Fault Tolerance</MadCap:xref>.</p>
+    <h2 class="with-rule">HA Concepts</h2>
+    <p><MadCap:variable name="Product-Names.cloud_product_short_initialcase"/> implements HA using an Active/Standby model
+                with an arbiter node (Monitoring Node) for split-brain detection. This requires three nodes each running the event broker:</p>
+    <ul>
+      <li>Primary node</li>
+      <li>Backup node</li>
+      <li>Monitoring node</li>
+    </ul>
+    <p>
+      <div class="thumbnail-container">
+        <img class="solacethumbnail" src="../Resources/Images/Cloud/HA_Model_Overview.png" alt=""/>
+      </div>
+    </p>
+    <p>The primary and backup nodes both run the software event broker under the messaging node role, while the
+                monitoring node runs it under the monitoring node role. Each of their respective roles is fixed by the
+                configuration and never changes. The HA group is fronted by a network load balancer that routes
+                traffic to-and-from the active node in the HA group (either the primary or backup).</p>
+    <p>When in operation, the messaging nodes will assume one of these Active/Standby roles: <b>Primary</b> or <b>Backup</b>. At any one time, one node is the primary and the other is the backup.</p>
+    <p>
+      <MadCap:snippetText src="../Resources/Snippets/about-ha-model-description.flsnp"/>
+    </p>
+    <p>Upon a failover, connections to the broker are switched over from the <b>Primary</b> to the <b>Backup</b> node automatically. </p>
+    <MadCap:snippetBlock src="../Resources/Snippets/about-failover-sequence.flsnp"/>
+    <h2 class="with-rule">HA in Public and Private Clouds</h2>
+    <p>To ensure that a high-availability group is adequately provisioned, pods run on different worker nodes. Additionally, the pods can be spread over multiple availability zones (AZ) when available. The following diagram shows a Kubernetes cluster that has worker nodes over three availability zones. The Cloud-Agent will schedule the Messaging nodes over two AZ and the monitor node on a third AZ. For each HA service, the primary pod is deployed in one AZ, the backup pod in a second AZ, and the monitoring pod in a third AZ. This guarantees that pods for the same HA service are not running on the same hardware.</p>
+    <p>
+      <img class="img-border" src="../Resources/Images/Cloud/HA-Cluster-Kubernetes.png" alt=""/>
+    </p>
+    <p>Similarly, when deploying a HA group in virtual private clouds such as AWS, there are two network topologies available. </p>
+    <ol>
+      <li>For regions with three or more  AZ:
+            <p><img class="img-border" src="../Resources/Images/Cloud/HA-Cluster-AWS-3Zones.png" alt=""/></p></li>
+      <li>For regions with two AZ:
+            <p><img class="img-border" src="../Resources/Images/Cloud/HA-Cluster-AWS-2Zones.png" alt=""/></p></li>
+    </ol>
+    <h2 class="with-rule">Connecting to a Cloud HA Group</h2>
+    <p>Typically, applications using HA would have to provide a host list: one IP address for the primary node and another for the backup node. However, this approach (providing hosts list) does not work for 3rd-party messaging APIs, so <MadCap:variable name="Product-Names.cloud_product_short"/> uses a single DNS entry for applications to use (behind a load balancer), abstracting away the switchover between primary and backup in the event of a failure.</p>
+    <h2 class="with-rule">HA and Service Types</h2>
+    <p>The following service types deploy an HA redundancy group by default:</p>
+    <ul>
+      <li>Professional (Standard account)</li>
+      <li>Enterprise (Enterprise account)</li>
+    </ul>
+    <p><MadCap:variable name="Product-Names.cloud_product_short"/> automates all of the configuration and setup when you create your <MadCap:variable name="Product-Names.broker_cloud_short"/>. Once the <MadCap:variable name="Product-Names.broker_cloud_short"/> is created, applications can use the DNS name entry provided in the connectivity tab in the console.</p>
+    <p>
+      <div class="thumbnail-container">
+        <img class="solacethumbnail" src="../Resources/Images/Cloud/HA_Service_How_2.png" alt="Screenshot showing an example as described by the surrounding text."/>
+      </div>
+    </p>
+    <h2 class="with-rule"><a name="Securing"/>HA-Link Security</h2>
+    <p>When a new enterprise <MadCap:variable name="Product-Names.broker_cloud_short"/> is created, the communication between the primary and backup event brokers are encrypted by default, including the HA mate link and Config-sync . You can override the default HA Mate link encryption to plain text through the advanced options when you create a service (see <MadCap:xref href="create-service.htm#Configure-Mate-Link">Configuring Mate-link Encryption</MadCap:xref>). Overriding the default HA mate link encryption to plain text may be useful if you require maximum performance, and are willing to trust the security restrictions of the VPC in the cloud providers or on-premises; Config-sync always remains encrypted.</p>
+    <p>If you have an existing <MadCap:variable name="Product-Names.broker_cloud_short"/> without encryption, you can encrypt it, including its HA mate link and Config-Sync link through the console or the REST API. In the console, you can easily differentiate between the encrypted services and ones that are not; when the mate-link encryption is disabled, a warning icon is displayed on the <MadCap:variable name="Product-Names.broker_cloud_short"/>'s status screen.  For more information, see <MadCap:xref href="create-service.htm#Configure-Mate-Link">Modifying Mate-link Encryption</MadCap:xref>.</p>
+    <h3>Viewing the Mate-link Encryption Status</h3>
+    <p>The status of the mate-link encryption is available in <MadCap:variable name="Product-Names.cluster_mgr"/> and shown on the 
+		<b>Status</b> tab for the selected <MadCap:variable name="Product-Names.broker_cloud_short"/>. </p>
+    <p>
+      <div class="thumbnail-container">
+        <img class="solacethumbnail" src="../Resources/Images/Cloud/mate-link-encryption-status.png" alt="">
+                </img>
+      </div>
+    </p>
+    <h3>Modifying the HA Mate-Link Encryption Status</h3>
+    <p>To modify the HA mate-link encryption status for an existing  <MadCap:variable name="Product-Names.broker_cloud_short"/> perform these steps:</p>
+    <ol>
+      <li>
+        <MadCap:snippetBlock src="../Resources/Snippets/Cloud/Task_UI_Snippets/login_console.flsnp"/>
+      </li>
+      <li>
+        <p>Select <MadCap:variable name="Product-Names.cluster_mgr" style="font-weight: bold;"/><img src="../Resources/Images/Cloud/reusable-icons/navbar_cluster_manager.png" class="img.img-inline" alt=""/> from the navigation bar.</p>
+      </li>
+      <li> On the service page, select the <b>Manage</b> tab.</li>
+      <li>On the <b>Manage</b> tab, click <b>Advanced Options</b>.<p><p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/Manage-Advanced-Options.png" alt=""/></div></p></p></li>
+      <li>In the <b>Mate-Link Encryption</b> pane, select <b>Disable</b> or <b>Enable</b> to modify the encryption.<p><p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/mate-link-encryption-modify1.png" alt=""/></div></p></p></li>
+    </ol>
+  </body>
+</html>

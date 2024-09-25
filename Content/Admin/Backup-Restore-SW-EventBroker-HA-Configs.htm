@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Backing Up and Restoring HA Software Event Broker Configurations</h1>
+    <p>This section provides instructions on how to back up and restore configuration for high-availability (HA) Solace PubSub+ software event brokers running Guaranteed Messaging.</p>
+    <p class="Warning">Do not use this procedure for <MadCap:variable name="Product-Names.broker_cloud_short"/>s in <MadCap:variable name="Product-Names.cloud_product_short"/>. Using this procedure in <MadCap:variable name="Product-Names.cloud_product_short"/>  may result in a degradation of service. Instead, see <MadCap:xref href="../Cloud/backup-brokers-messaging.htm">Backing Up [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref> for more information.</p>
+    <MadCap:snippetBlock src="../Resources/Snippets/broker-config-not-backed-up.flsnp"/>
+    <h2 class="with-rule"><a name="Before"/>Before you begin</h2>
+    <p>In the example that follows, the naming convention for the software event brokers is as follows:</p>
+    <ul>
+      <li>Primary event broker: <code>solace-primary</code></li>
+      <li>Backup event broker: <code>solace-backup</code></li>
+      <li>Monitoring event broker: <code>solace-monitor</code></li>
+    </ul>
+    <h2 class="with-rule"><a name="Steps"/>Backing Up Configurations</h2>
+    <p>To back up the config on each of the event brokers in an HA configuration, run the following commands.</p>
+    <p>On the primary:</p>
+    <pre>solace-primary# copy current-config /configs/cfg_primary_AD_active</pre>
+    <p>On the backup:</p>
+    <pre>solace-backup# copy current-config /configs/cfg_backup_AD_inactive</pre>
+    <p>On the monitoring node:</p>
+    <pre>solace-monitor# copy current-config /configs/cfg_monitor</pre>
+    <p>The above commands will save a configuration backup file to the <code>/usr/sw/jail/configs/</code> directory on each of the event brokers. For example, to see the backup file that was created on the primary event broker, run the <code>dir configs</code> command:</p>
+    <pre>solace-primary# dir configs
+-rw-rw----    admin solgroup     9523 Jan 21 09:41 cfg_primary_AD_active</pre>
+    <h2 class="with-rule"><a name="Rolling"/>Rolling Back to a Previous Configurations</h2>
+    <p>To rollback to a previous Guaranteed Messaging config used by HA software event brokers, use the following procedure.</p>
+    <div class="Caution">
+      <p>This procedure results in the loss of all spooled messages on the HA software event brokers.</p>
+      <p>This is not an in-service restoration, so no messaging services are available for most of this procedure.</p>
+    </div>
+    <ol>
+      <li>Restore the monitoring node's configuration:</li>
+      <p class="Code">solace-monitor# reload config cfg_monitor</p>
+      <li>Reset and rollback the primary event broker to the previous config:</li>
+      <p class="Code">solace-primary# configure<br/>solace-primary(configure)# redundancy<br/>solace-primary(configure/redundancy)# shutdown<br/>solace-primary(configure/redundancy)# exit<br/>solace-primary(configure)# hardware message-spool<br/>solace-primary(configure/hardware/message-spool)# shutdown<br/>solace-primary(configure/hardware/message-spool)# end</p>
+      <p> </p>
+      <p class="Code">solace-primary# admin<br/>solace-primary(admin)# system message-spool<br/>solace-primary(admin/system/message-spool)# reset<br/>solace-primary(admin/system/message-spool)# end<br/>solace-primary# reload config cfg_primary_AD_active</p>
+      <p> </p>
+      <p class="Code">solace-primary# configure<br/>solace-primary(configure)# hardware message-spool<br/>solace-primary(configure/hardware/message-spool)# shutdown<br/>solace-primary(configure/hardware/message-spool)# end</p>
+      <li>Shutdown redundancy and the message-spool on the backup event broker:</li>
+      <p class="Code">solace-backup# configure<br/>solace-backup(configure)# redundancy<br/>solace-backup(configure/redundancy)# shutdown<br/>solace-backup(configure/redundancy)# exit<br/>solace-backup(configure)# hardware message-spool<br/>solace-backup(configure/hardware/message-spool)# shutdown<br/>solace-backup(configure/hardware/message-spool)# end</p>
+      <p> </p>
+      <p class="Code">solace-backup# admin<br/>solace-backup(admin)# system message-spool<br/>solace-backup(admin/system/message-spool)# reset<br/>solace-backup(admin/system/message-spool)# end</p>
+      <li>Re-enable  the message-spool and redundancy on the primary event broker:</li>
+      <p class="Code">solace-primary# configure<br/>solace-primary(configure)# hardware message-spool<br/>solace-primary(configure/hardware/message-spool)# no shutdown<br/>solace-primary(configure/hardware/message-spool)# exit<br/>solace-primary(configure/hardware)# exit</p>
+      <p> </p>
+      <p class="Code">solace-primary(configure)# redundancy<br/>solace-primary(configure/redundancy)# no shutdown</p>
+      <li>Restore the backup event broker's configuration:</li>
+      <p class="Code">solace-backup# reload config cfg_backup_AD_inactive</p>
+      <li><u>Optional</u>: If the backup event broker comes up active, you may wish to revert activity back to the primary by doing a <code>revert-activity</code> on the backup event broker:		 <p><p class="Code">solace-backup# admin<br/>solace-backup(admin)# redundancy revert-activity<br/>solace-backup(admin)# end</p></p></li>
+      <li>If config-sync is out of sync, perform an <code>assert-leader router</code> command as described in <MadCap:xref href="../Features/Config-Sync/Configuring-Config-Sync.htm#Assertin">Asserting Event Broker System Configurations</MadCap:xref>, and an <code>assert-leader message-vpn</code> command as described in <MadCap:xref href="../Features/Config-Sync/Configuring-Config-Sync.htm#Assertin2">Asserting Event Brokers VPN Configurations</MadCap:xref>.</li>
+    </ol>
+  </body>
+</html>

@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Running Event Mesh Health Checks</h1>
+    <p>An <i>Event Mesh Health Check</i> (or just Health Check) validates that events can be exchanged between the links in an event mesh. To run the Health Check on an event mesh in <MadCap:variable name="Product-Names.mesh_manager"/>, you require the <MadCap:variable name="Product-Names.cm_viewer"/> role assigned to your user profile.  For more information about the role requirements, see <MadCap:xref href="about_event_meshes.htm#considerations-working-with-event-meshes">Considerations for Working with Event Meshes in [%=Product-Names.cloud_product_short%]</MadCap:xref>.</p>
+    <p>For a Health Check to run, the operational status of a link must be <code>Up</code>.  If the operational is <code>Down</code>, you won't be able to run a Heath Check and may need to troubleshoot the issue on the <MadCap:variable name="Product-Names.broker_cloud_short"/>. To do this, select the service in <MadCap:variable name="Product-Names.cluster_mgr"/> and then open  <MadCap:variable name="Product-Names.pubsubmanager_short"/>. For more information, see <MadCap:xref href="#troubleshoot-mesh-links">Troubleshooting Operational Links</MadCap:xref>.</p>
+    <p> The Health Check uses an advanced pinger to  check the connectivity between <MadCap:variable name="Product-Names.broker_cloud_short"/>s. A Health Check validates the following in an event mesh using one secure SMF connection on each <MadCap:variable name="Product-Names.broker_cloud_short"/>:</p>
+    <ul>
+      <li><b>Link status</b>—Each direction for a link between two <MadCap:variable name="Product-Names.broker_cloud_short"/>s is pinged. This validates connectivity and the time of the ping is recorded. This process checks all links by sending a ping from each <MadCap:variable name="Product-Names.broker_cloud_short"/> (or event broker) to the other <MadCap:variable name="Product-Names.broker_cloud_short"/>s in the event mesh.</li>
+      <li><b>Event status</b>—We check the topics are properly propagated using the Request-Reply pattern to check that topics can be subscribed and published to using a reserved topic called <code>#insights/pinger/ping</code>. A temporary client username is created and removed after with the name <code>mesh-validation-<i>&lt;session-id&gt;</i></code> where <code><i>&lt;session-id&gt;</i></code> is a string value representing the Health Check session.</li>
+    </ul>
+    <p>We recommend that you run a Health Check if you have manually made changes to <MadCap:variable name="Product-Names.broker_cloud_short"/> or are experiencing issues with your event mesh.</p>
+    <p>For more information about:</p>
+    <ul>
+      <li>running a Health Check, see <MadCap:xref href="#run-health-check">Running a Health Check</MadCap:xref></li>
+      <li>handling failed Health Checks, see <MadCap:xref href="#failed-health-check">Handling Failed Health Checks</MadCap:xref></li>
+      <li>troubleshooting your links that are not up (have operational state of <code>Down</code>), see <MadCap:xref href="#troubleshoot-mesh-links">Troubleshooting Links</MadCap:xref></li>
+    </ul>
+    <h2><a name="run-health-check"/>Running Health Checks</h2>
+    <p>There are two ways that you can run a Health Check  in <MadCap:variable name="Product-Names.mesh_manager"/>. One way is to run it from selecting the event mesh and the other is when you view the details of mesh. Use these steps to run a Health Check:</p>
+    <ol>
+      <li>
+        <MadCap:snippetBlock src="../../Resources/Snippets/Cloud/Task_UI_Snippets/login_console.flsnp"/>
+      </li>
+      <li>
+        <p>Select <MadCap:variable name="Product-Names.mesh_manager" style="font-weight: bold;"/> <img src="../../Resources/Images/Cloud/reusable-icons/navbar_mesh_manager.png" class="img-img-inline" alt=""/> from the navigation bar.</p>
+      </li>
+      <li>
+        <p>On the <b>Mesh Manager: Event Meshes</b> page,  on the card of an event mesh, you can either:</p>
+      </li>
+    </ol>
+    <ul>
+      <li>
+        <p>click <b>Mesh Actions</b><img src="../../Resources/Images/Cloud/reusable-icons/more_actions_ellipsis.png" class="img.img-inline" alt=""/>on the card, and then select <b>Run Health Check</b>. You should see the Health Check run:</p>
+        <p>
+          <div class="thumbnail-container">
+            <img src="../../Resources/Images/Mesh_Manager/progress_healthcheck.png" class="solacethumbnail" alt=""/>
+          </div>
+        </p>
+      </li>
+      <li>
+        <p>click <b>Mesh Actions</b><img src="../../Resources/Images/Cloud/reusable-icons/more_actions_ellipsis.png" class="img.img-inline" alt=""/> on the card, select <b>View Details</b>, expand  <b>Latest  Health Check</b> on the <b>Event Mesh Details</b> panel, and then click <b>Run  Health Check</b>.</p>
+        <p>For example, when you run a Health Check using these steps, the following dialog appears:</p>
+        <p>
+          <div class="thumbnail-container">
+            <img src="../../Resources/Images/Mesh_Manager/health_check_start1.png" class="solacethumbnail" alt=""/>
+          </div>
+        </p>
+        <p>As the Health Checks run, the progress appears in the <b>Event Mesh Health Check</b> dialog. You can optionally click <b>Close</b> if you choose to dismiss the dialog.</p>
+        <p>
+          <div class="thumbnail-container">
+            <img class="solacethumbnail" src="../../Resources/Images/Mesh_Manager/health_check_progress2.png" alt=""/>
+          </div>
+        </p>
+        <p>If you keep the dialog up, each of the tests complete for each service and you'll see the test status. You can expand each <MadCap:variable name="Product-Names.broker_cloud_short"/> to see the details of the test. Results for each of the endpoints are visible.</p>
+        <p>
+          <div class="thumbnail-container">
+            <img class="solacethumbnail" src="../../Resources/Images/Mesh_Manager/event_mesh_health_check_dialog.png" alt=""/>
+          </div>
+        </p>
+      </li>
+    </ul>
+    <p>Note that if you had clicked <b>Close</b> before the Health Check completes, but stayed on the page, the Health Check runs in the background and  dialog updates as the validation completes; however if you navigate to another page, you must bring up the results to check the status of the Health Check. For information about how to check the results of a Health Check, see <MadCap:xref href="view_mesh_information.htm#view-health-check">Viewing the Status of a Health Check and Links in an Event Mesh</MadCap:xref>.</p>
+    <h2><a name="failed-health-check"/>Handling Failed Health Checks</h2>
+    <p>An event mesh is considered unhealthy if  at least one link between any of the <MadCap:variable name="Product-Names.broker_cloud_short"/>s  fails the Health Check test. It's important to note that the Health Check test reflects the event mesh itself and not the individual services. To understand how to view the status of a Health Check, see <MadCap:xref href="view_mesh_information.htm#view-health-check">Viewing the Status of a Health Check and Links in an Event Mesh</MadCap:xref>.</p>
+    <p>You can identify the failed link and useful information to identify the issue with the link.</p>
+    <p>Note that if the Health Check is not successful, sometimes artifacts created for the Health Check aren't cleaned up as expected. Here's the clean-up required at times after a failed Health Check:</p>
+    <ul>
+      <li>the temporary <code>mesh-validation-<i>&lt;session-id&gt;</i></code> might not be properly deleted. To resolve this, you must remove the temporary client username from each  <MadCap:variable name="Product-Names.broker_cloud_short"/> within your event mesh.</li>
+    </ul>
+    <p>During the event mesh beta, certain properties in the ACL Profile for your <MadCap:variable name="Product-Names.broker_cloud_short"/> must be set to <b>Allow</b>. If you have configured these properties to <b>Disallow</b>, the health check will fail. See <MadCap:xref href="#config-acl-properties">Configuring ACL Profile Properties When Using the Event Mesh</MadCap:xref>.</p>
+    <h2><a name="troubleshoot-mesh-links"/>Troubleshooting Operational Links</h2>
+    <p>If the operational status of a link is down, you won't be able to run a Health Check. To help in identifying the cause of the problem, you need to use <MadCap:variable name="Product-Names.pubsubmanager_short"/> to identify and resolve the operational status of a link. </p>
+    <p>To troubleshoot the link, you can either go to <MadCap:variable name="Product-Names.cluster_mgr"/>, select one of <MadCap:variable name="Product-Names.broker_cloud_short"/> in the event mesh you're troubleshooting, and then go to <MadCap:variable name="Product-Names.pubsubmanager_short"/> or go directly from <MadCap:variable name="Product-Names.mesh_manager"/>. </p>
+    <p>For information about using <MadCap:variable name="Product-Names.cluster_mgr"/>, see <MadCap:xref href="../cloud-configure-messaging-services.htm">Viewing and Configuring Event Broker Services</MadCap:xref>. </p>
+    <p>Here, we'll show you how to access <MadCap:variable name="Product-Names.pubsubmanager_short"/> from  <MadCap:variable name="Product-Names.mesh_manager"/>. </p>
+    <ol>
+      <li>
+        <MadCap:snippetBlock src="../../Resources/Snippets/Cloud/Task_UI_Snippets/login_console.flsnp"/>
+      </li>
+      <li>Select <MadCap:variable name="Product-Names.mesh_manager" style="font-weight: bold;"/> <img src="../../Resources/Images/Cloud/reusable-icons/navbar_mesh_manager.png" class="img-img-inline" alt=""/> from the navigation bar.</li>
+      <li>In <MadCap:variable name="Product-Names.mesh_manager"/>, on the <b>Mesh Manager: Event Meshes</b> page, click <b>Mesh Actions</b><img src="../../Resources/Images/Cloud/reusable-icons/more_actions_ellipsis.png" class="img.img-inline" alt=""/>on your event mesh, and select <b>View Details</b>.</li>
+      <li>On the <b>Event Mesh Details</b> card, click the <MadCap:variable name="Product-Names.broker_cloud_short"/> in your event mesh that you want troubleshoot.</li>
+      <li>On the service card, click <b>Service Actions</b> <img src="../../Resources/Images/Cloud/reusable-icons/more_actions_ellipsis.png" class="img.img-inline" alt=""/> and then select <b>Manage Service</b>.</li>
+      <li>In <MadCap:variable name="Product-Names.pubsubmanager_short"/>, click <b>Clustering</b> and then troubleshoot the links from there. For example, you could select the <b>External Links</b> tab to check if a link is down.</li>
+    </ol>
+    <p>For more information about using <MadCap:variable name="Product-Names.pubsubmanager_short"/>, see <MadCap:xref href="../using-broker-manager-cloud.htm">Using [%=Product-Names.pubsubmanager_short%]</MadCap:xref>. Some common problems that may occur:</p>
+    <dl>
+      <dt>Linking to an <MadCap:variable name="Product-Names.broker_cloud_short"/> that previously existed</dt>
+      <dd>If you deleted the service that was the second-last <MadCap:variable name="Product-Names.broker_cloud_short"/> in an event mesh, at times the links aren't cleaned up and you might need to manually remove the previous external links using <MadCap:variable name="Product-Names.pubsubmanager_short"/>.</dd>
+      <dt>One of the <MadCap:variable name="Product-Names.broker_cloud_short"/>s is in a Virtual Private Cloud/Virtual Network (VPC/VNet) or one uses a private endpoint</dt>
+      <dd>If one of the <MadCap:variable name="Product-Names.broker_cloud_short"/>s has a public endpoint while the other has a private endpoint, the initiating service must be the service with the private endpoint.
+            </dd>
+      <dd>In either case, switch the initiator so that the initiator is the private endpoint or the service that's connecting from a private region to resolve this issue. </dd>
+      <dd>For more information, see <MadCap:xref href="modify_mesh.htm#modify-change-initiator">Switch the Initiator for a Link on the Event Mesh</MadCap:xref>.</dd>
+      <dt>Can't validate server certificates</dt>
+      <dd>If you are using server certificates instead of the default <MadCap:variable name="Variables.CompanyName"/> server certificates, you must ensure that those server certificates are uploaded to each of the  <MadCap:variable name="Product-Names.broker_cloud_short"/>s in your event mesh. </dd>
+      <dt>Links between <MadCap:variable name="Product-Names.broker_cloud_short"/>s fail when both services are in a different Virtual Private Clouds/Virtual Networks (VPCs/VNets) or both use private endpoints in different VPCs/VNets.</dt>
+      <dd>The IP connectivity between private regions (for example, <a href="../Deployment-Considerations/deployment-options-ownership.htm#customer-owned-vnet" class="link-internal"><MadCap:variable name="Product-Names.customer-controlled_region"/>s</a>, such as VPCs/VNets) are the responsibility of your organization. It is recommended that you verify the connectivity between regions, otherwise creating an event mesh is not possible.</dd>
+    </dl>
+    <h2><a name="config-acl-properties"/>Configuring ACL Profile Properties When Using the Event Mesh</h2>
+    <p>To successfully use <MadCap:variable name="Product-Names.mesh_manager"/> during its beta, the following properties in your Access Control List (ACL) Profile for the <MadCap:variable name="Product-Names.broker_cloud_short"/> in the event mesh must be set to <b>Allow</b>.</p>
+    <ul>
+      <li>
+        <p>
+          <code>Client Connect Default</code>
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>Publish Default Action</code>
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>Subscribe Default Action</code>
+        </p>
+      </li>
+    </ul>
+    <p><b>Allow</b> is set by for these properties when the ACL Profiles are generated during service creation. If you set any of them to disallow, health checks you perform on your event mesh will fail. You can configure the ACL Profiles in the <MadCap:variable name="Product-Names.pubsubmanager_short"/> on the Access Control tab.</p>
+    <ol>
+      <li>
+        <MadCap:snippetBlock src="../../Resources/Snippets/Cloud/Task_UI_Snippets/login_console.flsnp"/>
+      </li>
+      <li>On the navigation bar, click <b>Cluster Manager</b> <img src="../../Resources/Images/Cloud/reusable-icons/navbar_cluster_manager.png" alt=""/>.</li>
+      <li>On the Services page, select the card for the <MadCap:variable name="Product-Names.broker_cloud_short"/> you want to configure and then click <b>Open <MadCap:variable name="Product-Names.pubsubmanager_short"/>.</b>.</li>
+      <li>In <MadCap:variable name="Product-Names.pubsubmanager_short"/>, select <b>Access Control</b>.</li>
+      <li>On the Access Control page, click the <b>ACL Profiles</b> tab. <p>You can review the configuration of each property in an ACL Profile in the table. If you see the <code>Client Connect Default</code>, <code>Publish Default Action</code>, or <code>Subscribe Default Action</code> properties set to disallow, you must change them to allow.</p><p><div class="thumbnail-container"><img class="solacethumbnail" src="../../Resources/Images/Mesh_Manager/ACL_profile_properties_in_table.png" alt=""/></div></p></li>
+      <li>
+        <p>Select the ACL profile you want to change by clicking it. Note that you cannot change the properties for the <b>#acl-profile</b> profile.</p>
+      </li>
+      <li>
+        <p>On the ACL Profiles page, click the tab for the property you want to change. For example, click <b>Publish Topic</b> to change the <code>Publish Default Action</code> property.</p>
+        <p>
+          <div class="thumbnail-container">
+            <img class="solacethumbnail" src="../../Resources/Images/Mesh_Manager/ACL_profile_properties_tabs.png" alt=""/>
+          </div>
+        </p>
+      </li>
+      <li>Click <b>Edit</b>.</li>
+      <li>Click in the property field and select <b>Allow</b> and then click <b>Apply</b>.</li>
+      <li>Repeat steps 7 through 9 until you have set all the required properties to <b>Allow</b>.</li>
+      <li>Click the <b>Back</b> <img src="../../Resources/Images/Cloud/reusable-icons/brokermanager-back.png" alt=""/> to return to the ACL Profiles page.</li>
+    </ol>
+  </body>
+</html>

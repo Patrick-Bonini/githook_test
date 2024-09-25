@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <meta name="description" content="Learn how to configure Cipher Suites for inbound connections."/>
+    <meta name="keywords" content="cipher suites"/>
+    <meta name="author" content="Solace Corporation"/>
+    <title>Configuring Cipher Suites for Inbound Connections</title>
+  </head>
+  <body>
+    <h1>Configuring Cipher Suites for Inbound Connections</h1>
+    <p>By default, Solace PubSub+ event broker support several prioritized lists of cipher suites for incoming TLS/SSL connections. When a client or management application connects to the event broker, the client’s list of preferred suites is compared against the list the event broker maintains, and the first suite in the client's list that matches the event broker's list is used to continue the connection.</p>
+    <p>Solace PubSub+ event brokers support a different prioritized list for  each of the following connection types:</p>
+    <ul>
+      <li>Network management applications using SEMP  to manage the event broker (management connections)</li>
+      <li>Client applications connecting to the event broker to publish or receive messages (message backbone connections)</li>
+      <li>SSH connections</li>
+    </ul>
+    <p>You can modify each of the  lists by removing, reordering, or clearing all cipher suites the event broker currently supports.</p>
+    <p>If you modify any of the lists of eligible cipher suites there is no effect on existing clients; however, clients that are no longer using any of the eligible cipher suites are prevented from reconnecting.</p>
+    <p>For the full list of cipher suites event brokers support, see <MadCap:xref href="TLS-SSL-Message-Encryption-Overview.htm#transport_security_and_compression_440573439_213360">Supported Cipher Suites</MadCap:xref>.</p>
+    <div class="Note">
+      <ul>
+        <li>Upon upgrade, any cipher suites that the event broker no longer supports are removed from all cipher suite lists (including lists that you have previously modified). In addition, any new cipher suites that the event broker supports are added to all  unmodified cipher suite lists.</li>
+        <li>Cipher suite configuration is not synchronized across replication links. Therefore, if the event broker is used in a replicated site you must manually configure these properties on each replicated Message VPN.</li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="Configur"/>Configuring   Cipher Suites for Management Connections</h2>
+    <p>The event broker uses the same cipher suite list for both inbound connections from network management applications and outbound connections to LDAP servers. Be aware that any change to this list affects both connection types.</p>
+    <p>To configure eligible cipher suites for management connections:</p>
+    <p class="Code">solace# configure<br/>solace(configure)# ssl<br/>solace(configure/ssl)# cipher-suite management name &lt;suite-name&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;suite-name&gt;</code> is the name of a supported cipher suite you want to add to the list of eligible suites for management  and LDAP connections.</p>
+    <p>The no version of this command, <code>no cipher-suite management name &lt;suite-name&gt;</code>, removes the cipher suite from the list.</p>
+    <div class="Caution">
+      <p>Removing all cipher suites from this list for longer than 20 seconds can cause Kubernetes-based event brokers (primary and backup) to repeatedly reboot until you add a valid suite to the list. </p>
+    </div>
+    <h2 class="with-rule"><a name="Configur2"/>Configuring   Cipher Suites for Message Backbone Connections</h2>
+    <p>You can configure eligible cipher suites for client applications that publish and receive messages. These connections, regardless of protocol, are referred to as message backbone connections.</p>
+    <p>To configure eligible cipher suites for message backbone connections:</p>
+    <p class="Code">solace# configure<br/>solace(configure)# ssl<br/>solace(configure/ssl)# cipher-suite msg-backbone name &lt;suite-name&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;suite-name&gt;</code> is the name of a supported cipher suite you want to add to the list of eligible suites for message backbone connections.</p>
+    <p>The no version of this command, <code>no cipher-suite msg-backbone name &lt;suite-name&gt;</code>, removes the cipher suite from the list.</p>
+    <h2 class="with-rule"><a name="Configur3"/>Configuring   Ciphers for SSH Connections</h2>
+    <p>The list of supported ciphers for SSH connections  is different than the list of cipher suites for management or message backbone connections. You cannot add or remove supported cipher suites from the cipher list and vice-versa. For the full list of ciphers event brokers support for SSH connections, see <MadCap:xref href="TLS-SSL-Message-Encryption-Overview.htm#Supporte">Supported Ciphers</MadCap:xref>.</p>
+    <p>To configure eligible ciphers for SSH connections:</p>
+    <p class="Code">solace# configure<br/>solace(configure)# ssl<br/>solace(configure/ssl)# cipher-suite ssh name &lt;cipher-name&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;cipher-name&gt;</code> is the name of a supported cipher  that you want to add to the list of eligible ciphers for SSH connections.</p>
+    <p>The no version of this command, <code>no cipher-suite ssh name &lt;cipher-name&gt;</code>, removes the cipher from the list.</p>
+    <h2 class="with-rule"><a name="Reorderi"/>Reordering  Cipher and Cipher Suite Lists</h2>
+    <p>All cipher suite lists event brokers maintain are prioritized from top (highest) to bottom (lowest). Although client and management applications  determine the priority of cipher suites used for inbound TLS/SSL and SSH connections, you can reorder each list to modify the priority the event broker associates with each cipher suite. In addition, any change to the priority in the management cipher suite list applies to outbound LDAP connections.  </p>
+    <p>To reorder a cipher suite list:</p>
+    <p class="Code">solace# configure<br/>solace(configure)# ssl<br/>solace(configure/ssl)# cipher-suite {management | msg-backbone | ssh} name &lt;suite-name&gt; [{before | after} &lt;suite-name&gt;]</p>
+    <p><u>Where</u>:</p>
+    <p><code>management</code> specifies the cipher suite list the event broker uses for inbound management and outbound LDAP connections.</p>
+    <p><code>msg-backbone</code> specifies the cipher suite list the event broker uses for message backbone connections.</p>
+    <p><code>ssh</code> specifies the cipher suite list the event broker uses for SSH connections.</p>
+    <p><code>name &lt;suite-name&gt;</code> is the name of a supported cipher suite you want to insert before or after an existing suite in the list.</p>
+    <p><code>before &lt;suite-name&gt;</code> specifies that the suite specified by the <code>name</code> parameter be inserted into the list immediately before the suite specified by the <code>before</code> parameter.</p>
+    <p><code>after &lt;suite-name&gt;</code> specifies that the suite specified by the <code>name</code> parameter be inserted into the list immediately after the suite specified by the <code>after</code> parameter.</p>
+    <p class="Note">If you do not specify a position, the cipher suite is added to the end of the list (and given the lowest priority).</p>
+    <h2 class="with-rule"><a name="Clearing"/>Clearing  Cipher and Cipher Suite Lists</h2>
+    <p>To clear a cipher or cipher suite list:</p>
+    <p class="Code">solace# configure<br/>solace(configure)# ssl<br/>solace(configure/ssl)# cipher-suite {management | msg-backbone | ssh} empty</p>
+    <p><u>Where</u>:</p>
+    <p><code>management</code> specifies the cipher suite list the event broker uses for inbound management and outbound LDAP connections.</p>
+    <p><code>msg-backbone</code> specifies the cipher suite list the event broker uses for message backbone connections.</p>
+    <p><code>ssh</code> specifies the cipher  list the event broker uses for SSH connections.</p>
+    <p class="Note">An empty cipher or cipher suite list prevents clients or management applications from initiating a connection.</p>
+    <h2 class="with-rule"><a name="Resettin"/>Resetting Cipher and Cipher Suite Lists</h2>
+    <p>To return a cipher or cipher suite list to the default: </p>
+    <p class="Code">solace# configure<br/>solace(configure)# ssl<br/>solace(configure/ssl)# cipher-suite {management | msg-backbone | ssh} default</p>
+    <p><u>Where</u>:</p>
+    <p><code>management</code> specifies the cipher suite list the event broker uses for inbound management and outbound LDAP connections.</p>
+    <p><code>msg-backbone</code> specifies the cipher suite list the event broker uses for message backbone connections.</p>
+    <p><code>ssh</code> specifies the cipher  list the event broker uses for SSH connections.</p>
+  </body>
+</html>

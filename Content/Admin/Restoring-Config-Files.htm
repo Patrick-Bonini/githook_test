@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Restoring Configuration Files</h1>
+    <p class="Note">The information in this section applies to standalone broker configurations only.</p>
+    <p class="Warning">Do not use this procedure for <MadCap:variable name="Product-Names.broker_cloud_short"/>s in <MadCap:variable name="Product-Names.cloud_product_short"/>. Using this procedure in <MadCap:variable name="Product-Names.cloud_product_short"/>  may result in a degradation of service. Instead, see <MadCap:xref href="../Cloud/backup-brokers-messaging.htm">Backing Up [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref> for more information.</p>
+    <p>If you need to restore backed up configuration files, you may use local or external backups. Restoring configuration files may cause an interruption in service and should be performed at a time when it will be minimally disruptive.</p>
+    <MadCap:snippetBlock src="../Resources/Snippets/broker-config-not-backed-up.flsnp"/>
+    <div class="Caution">
+      <p>If you have spooled messages on an event broker and you need to restore a configuration file from a backup, <a class="link-internal" href="../get-support.htm">contact Solace</a> for assistance before using this procedure. Care is required to maintain the spooled messages when restoring a configuration file.</p>
+    </div>
+    <h2 class="with-rule"><a name="system_and_software_maint_Restore_when"/>When to Restore</h2>
+    <MadCap:snippetBlock src="../Resources/Snippets/reload-command-disruption-warning.flsnp"/>
+    <p>Restoring a backup configuration file might be necessary in a number of circumstances:</p>
+    <ul>
+      <li>to move management information from one event broker to another (for example to upgrade to a newer hardware platform)</li>
+      <li>if catastrophic hardware or software failure occurs, and network management must continue using alternate hardware</li>
+      <li>to return configuration information back to an event broker after performing a software downgrade</li>
+      <li>if the event broker databases are otherwise corrupted or their integrity is compromised, for example, from an accidental deletion by an operator</li>
+    </ul>
+    <div class="Note">
+      <p>When restoring from a backup file, it is vitally important that the event broker on which the restore is being performed is identical to, and compatible with, that from which the backup was taken. In particular:
+        </p>
+      <ul>
+        <li>The software version for the restored event broker must be exactly the same as the event broker the backup was taken on, including the maintenance and build version.</li>
+        <li>There must be sufficient disk space on the event broker being restored to for the restored configuration file.</li>
+        <li>The hardware configuration for the event broker being restored to must be the same as the event broker the backup was taken on, that is, the same set of blades must be installed in the same set of slots.</li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="system_and_software_maint_Restore_To_Factory"/>Restoring Configurations to the Factory Default</h2>
+    <p>To reload the default configuration file on an event broker, follow this procedure:</p>
+    <ol>
+      <li>Enter the following commands:
+        <pre>solace&gt; enable<br/>solace# reload  default-config
+</pre></li>
+    </ol>
+    <p class="Note">When reloading to default configuration, the management IP address remains unchanged.</p>
+    <h2 class="with-rule"><a name="system_and_software_maint_Restore_from_local"/>Restoring Configurations From Local Backups</h2>
+    <p>To restore a local backup configuration file on an event broker, follow this procedure:</p>
+    <ol>
+      <li>Enter the following commands to display and identify the backup file to be restored:
+        <pre>solace&gt; enable
+solace# dir configs</pre><p>An example response is:</p><pre xml:space="preserve">-rw-rw----    admin solgroup  1569027 Mar 13 13:06 backup
+-rw-rw-rw-     root     root 25749320 Mar 24 03:15 autobackup
+-rw-rw-rw-     root     root 25749348 Mar 24 20:10 autobackup.1
+-rw-rw-rw-     root     root 25749348 Mar 31 03:15 autobackup.2
+-rw-rw-rw-     root     root 25749348 Mar 31 20:10 autobackup.3</pre></li>
+      <li>Enter the following command to restore a backup file and activate it.
+        <pre>solace# reload config &lt;config-file&gt;</pre><p><u>Where</u>:</p><p><code>&lt;config-file&gt;</code> is the location from where to retrieve the event broker’s configuration file on restart </p><p><u>Example</u>:</p><pre>solace# reload config //autobackup.3</pre><p class="Note">If left unspecified, the event broker is restarted with no change to the configuration database.</p><MadCap:snippetBlock src="../Resources/Snippets/reload-command-disruption-warning.flsnp"/><p>The event broker restarts, and the configuration file that was previously backed up is restored.</p><p class="Note">When a backup configuration that used TLS/SSL service is reloaded, TLS/SSL service is administratively enabled but operationally down until a server certificate is configured. A server certificate can only be installed after the reload is complete.</p></li>
+    </ol>
+    <h2 class="with-rule"><a name="system_and_software_maint_Restore_SFTP"/>Restoring Configurations From File Servers Using SFTP or SCP</h2>
+    <p>To restore a backup configuration file from an external file server (using either SFTP or SCP) to the event broker, follow this procedure:</p>
+    <p class="Note">Ensure that you have a file server on the event broker network to which you have IP connectivity.</p>
+    <ol>
+      <li>Enter the following commands to copy the desired backup file from an external file server (using either SFTP or SCP) to the <code>/configs</code> subdirectory on the event broker:
+        <pre>solace&gt; enable
+solace# copy sftp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /configs/&lt;config-file&gt;</pre><p><u>Or</u></p><pre>solace&gt; enable
+solace# copy scp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /configs/&lt;config-file&gt;</pre><p><u>Where</u>:</p><p><code>&lt;username&gt;</code> is your  SFTP or SCP username and <code> &lt;ip-addr&gt;</code> and <code>&lt;remote-pathname&gt;</code> point to the location where the backup configuration file is located on the SFTP or SCP server</p><p><code>&lt;config-file&gt;</code> is where to place the backup configuration file on the event broker</p></li>
+      <li>After successfully transferring the backup file from the external file server to the <code>/configs</code> subdirectory, enter the following command to restore the backup file and activate it:
+        <pre>solace# reload config &lt;config-file&gt;</pre><p><u>Where</u>:</p><p><code>&lt;config-file&gt;</code> is the location from where to retrieve the event broker’s configuration file on restart</p><p class="Note">If left unspecified, the local current configuration file is used.</p><MadCap:snippetBlock src="../Resources/Snippets/reload-command-disruption-warning.flsnp"/><p>The event broker restarts, and the configuration file that was previously backed up is loaded onto the event broker and restored.</p></li>
+    </ol>
+  </body>
+</html>

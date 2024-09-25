@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Configuring an Event Broker Service to use Client Certificate Authentication</h1>
+    <p>The tutorial provides an example of how to configure client certificate authentication, from generating the certificates to using the <MadCap:variable name="Product-Names.pubsub_brand_only"/> <MadCap:variable name="Product-Names.console_ui_short"/> to upload the certificate. For more detailed information, see <MadCap:xref href="server_certs.htm">Configuring Certificates for Server and Client Authentication</MadCap:xref>.</p>
+    <p>The tutorial uses the widely available <a class="link-offsite" href="https://www.openssl.org/">OpenSSL tools</a>  to create an internal certificate authority that you can use to sign client certificates. It also uses the <a class="link-offsite" href="https://mqttfx.jensd.de/">MQTT.fx tool</a> to demonstrate connecting an MQTT client using the client certificate. The MQTT.fx tool is open source and can be downloaded <a class="link-offsite" href="https://mqttfx.jensd.de/index.php/download">here</a>. Packages are available for Linux, Windows, and Mac.</p>
+    <p> The tasks in this tutorial include:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#step1-tutorial-cacerts">Create an Internal Certificate Authority</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#create-client-certificate">Create a Client Certificate</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#enable-client-authentication">Enable Client Certificate Authentication</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#upload-certificate">Upload a Certificate for an Internal CA</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#add-username">Add the Client Username from a Client Certificate</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#test-mqtt-client">Connect an MQTT Client to an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>
+      </li>
+    </ul>
+    <h2><a name="before-you-begin"/>Before You Begin</h2>
+    <p>Before starting this tutorial make sure you have:</p>
+    <ul>
+      <li>An <MadCap:variable name="Product-Names.broker_cloud_short"/> of the Enterprise service type.  For information about selecting your <MadCap:variable name="Product-Names.broker_cloud_short"/> version, see <MadCap:xref href="create-service.htm#Select-EB-version">Selecting the Event Broker Service Version</MadCap:xref>.</li>
+      <li>OpenSSL tools installed</li>
+      <li>MQTT.fx tool installed</li>
+    </ul>
+    <h2><a name="step1-tutorial-cacerts"/>Create an Internal Certificate Authority</h2>
+    <MadCap:snippetBlock src="../Resources/Snippets/CloudSecurity/CreatePrivateCertAuthority.flsnp"/>
+    <h2><a name="create-client-certificate"/>Create a Client Certificate</h2>
+    <MadCap:snippetBlock src="../Resources/Snippets/CloudSecurity/CreateClientCertificate.flsnp"/>
+    <h2><a name="enable-client-authentication"/>Enable Client Certificate Authentication</h2>
+    <p>After creating an internal CA and signed certificate for the client, you can enable client certificate authentication for your <MadCap:variable name="Product-Names.broker_cloud_short"/>. By default, the <MadCap:variable name="Product-Names.broker_cloud_short"/> has basic authentication enabled, which allows authentication using a username and password. For this procedure, you will basic authentication enabled so that the existing usernames and passwords for your service still work.</p>
+    <p class="Note">You can only configure client certificate authentication for  <MadCap:variable name="Product-Names.class_100"/> service types in an Enterprise account.</p>
+    <p>To enable client certificate authentication, follow the steps below.</p>
+    <ol>
+      <li>
+        <MadCap:snippetBlock src="../Resources/Snippets/Cloud/Task_UI_Snippets/login_console.flsnp">
+                </MadCap:snippetBlock>
+      </li>
+      <li>On the navigation bar, select <MadCap:variable name="Product-Names.cluster_mgr" style="font-weight: bold;"/> <img src="../Resources/Images/Cloud/reusable-icons/navbar_cluster_manager.png" class="img.img-inline" alt=""/>, and then click the card of the <MadCap:variable name="Product-Names.broker_cloud_short"/> you want to configure.</li>
+      <li>On the <b>Service Details</b> page, select the <b>Manage</b> tab.</li>
+      <li>Click the <b>Authentication</b> tile.
+				<p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/oauth_enableauthentication.png" alt=""/></div></p></li>
+      <li>Click the <b>Client Certificate Authentication</b> toggle to turn on certificate-based authentication.</li>
+      <li>Click the <b>Validate Certificate Dates</b> toggle to require event broker services to check the expiry dates of certificates.
+				<p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/ght_cert_toggles.png" alt="Screenshot showing the settings described in the surrounding text."/></div></p></li>
+      <li>Click the <b>Username Source</b> list and select the type of username for authentication. Selecting Common Name uses the Common Name (CN) in the Subject field of your client certificate. If you select Subject Alternative Name (SAN), the Microsoft universal principal name (msUPN) inside the SAN section of your client certificate is used. The msUPN is typically found in the otherName field of the SAN (the <MadCap:variable name="Product-Names.broker_cloud_short"/> does not support other SAN identities, such as email addresses, IP addresses, or DNS names).</li>
+      <li>(Optional) Click <b>Allow API Provided Username</b> to allow authentication using API provided usernames. This overrides the username provided in Username Source with the one provided by an API. <MadCap:variable name="Variables.CompanyName"/> recommends against using client-provided user names, as they are less secure than those in the Username Source. It can allow an authenticated user to assume any client username rather than restricting that user to a particular client username.</li>
+      <li>Click <b>Save</b>.</li>
+    </ol>
+    <h2><a name="upload-certificate"/>Upload a Certificate for an Internal CA</h2>
+    <p>Now that we have enabled client certificate authentication, we need to make sure that client certificates signed by our internal CA are trusted by the <MadCap:variable name="Product-Names.broker_cloud_short"/>. To do that, we need upload the certificate for our internal CA to the list of CAs trusted by our <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+    <p class="Note">You can only configure client certificate authentication for  <MadCap:variable name="Product-Names.class_100"/> service types in an Enterprise account.</p>
+    <p>To upload a certificate for a trusted CA, perform the following steps:</p>
+    <ol>
+      <li>In <MadCap:variable name="Product-Names.cluster_mgr" style="font-weight: normal;"/>, click the card of the <MadCap:variable name="Product-Names.broker_cloud_short"/> you want to configure.</li>
+      <li>Select the <b>Manage</b> tab and then click <b>Certificate Authorities</b>.
+<div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/oauth_certauthority.png" alt="Screenshot highlighting the Certificate Authorities tile."/></div></li>
+      <li>
+        <p>On the Client Certificates tab , click <b>Add Client Certificate Authority</b> to upload a new CA certificate. </p>
+        <p>
+          <div class="thumbnail-container">
+            <img class="solacethumbnail" src="../Resources/Images/Cloud/oauth_client_authorities.png" alt=""/>
+          </div>
+        </p>
+      </li>
+      <li>In the <b>Add Client Certificate Authority</b> dialog, enter a name for the client certificate CA. The name can't contain spaces or special characters.
+				<p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/oauth_add_client_certificate.png" alt="Screenshot showing the settings described in the surrounding text."/></div></p></li>
+      <li>Open the public certificate (<code>MyRootCaCert.pem</code>) for the internal CA that you created  in a text editor. The public certificate was create in <MadCap:xref href="#step1-tutorial-cacerts">Step 1: Create a Private Certificate Authority</MadCap:xref>.</li>
+      <li>Copy all of the text in the certificate file, including the <code>-----BEGIN CERTIFICATE-----</code> and <code>-----END CERTIFICATE-----</code> lines.
+				<p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/ght_cert_CA_cert_text.png" alt=""/></div></p></li>
+      <li>Paste the certificate text into the <b>Certificate Content</b> text box.
+				</li>
+      <li>Click <b>Save</b>. After the certificate has been uploaded, click <b>OK</b> in the confirmation dialog.
+</li>
+    </ol>
+    <p>For more information about  adding and managing CA certificates, see <MadCap:xref href="server_certs.htm#managing-certificates">Managing Certificate Authorities in the [%=Product-Names.console_ui_long%]</MadCap:xref>. </p>
+    <h2><a name="add-username"/>Add the Client Username from a Client Certificate</h2>
+    <p>For a client to authenticate when connecting with an <MadCap:variable name="Product-Names.broker_cloud_short"/>, it must provide a valid client username. By default, the <MadCap:variable name="Product-Names.broker_cloud_short"/> uses the first Common Name (CN) from the Subject Name field of the certificate as the client username. In the case of the certificate you created at the start of this procedure, that is <code>client1.<MadCap:variable name="Manifest-Products-Links.CloudConsoleMessagingURL"/></code>. You can configure the <MadCap:variable name="Product-Names.broker_cloud_short"/> to use a different source for the username, including:</p>
+    <ul>
+      <li>A universal principal name (UPN) from the subject alternative name (SAN) <b>otherName</b> field if the certificate has a SAN extension.</li>
+      <li>An API provided usernames.</li>
+    </ul>
+    <p>Consider the following details when adding client usernames:</p>
+    <ul>
+      <li>
+        <p>Client certificate SAN extensions must carry a UPN using the <b>otherName</b> field. Other identities, including email address, DNS name, or IP address, are not supported.</p>
+      </li>
+      <li>
+        <p>If multiple SAN extensions with UPNs exist, the first is used.</p>
+      </li>
+      <li>
+        <p>If you enable the <b>Allow API Provided Username</b> toggle, usernames provided by APIs take precedence over those in the SAN extension.</p>
+      </li>
+      <li>
+        <p>If you leave <b>Allow API Provided Username</b> toggle disabled, and are using subject alternative names to authenticate, clients connecting with certificates without SAN extension fail authentication. </p>
+      </li>
+    </ul>
+    <h3>To add a client username</h3>
+    <ol>
+      <li>On the navigation bar, select <MadCap:variable name="Product-Names.cluster_mgr" style="font-weight: bold;"/><img src="../Resources/Images/Cloud/reusable-icons/navbar_cluster_manager.png" class="img.img-inline" alt=""/>, and then select your <MadCap:variable name="Product-Names.broker_cloud_short"/>.
+            </li>
+      <li>Click <b>Open </b><MadCap:variable name="Product-Names.pubsubmanager_long" style="font-weight: bold;"/>. </li>
+      <li>In the new browser tab, click <b>Access Control</b> in the navigation bar and select the <b>Client Usernames</b> tab.
+				<p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/ght_cert_access_control.png" alt="Screenshot showing the settings described in the surrounding text"/></div></p></li>
+      <li>Click <b>+ Client Username</b>.
+				</li>
+      <li>Enter a username from the client certificate and click <b>Create</b>. The username can be the CN or a UPN from the SAN extension. For example, the common name from the certificate you created earlier was <code>client1.<MadCap:variable name="Manifest-Products-Links.CloudConsoleMessagingURL"/></code>.  			<p><img class="img-border" src="../Resources/Images/Cloud/ght_cert_cu_create.png" alt="Screenshot showing the settings described in the surrounding text."/></p></li>
+      <li>Click the <b>Enable</b> toggle and then click <b>Apply</b>. The client username is added and enabled.
+				<p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/ght_cert_cu_apply.png" alt="Screenshot showing the settings described in the surrounding text"/></div></p></li>
+    </ol>
+    <h2><a name="test-mqtt-client"/>Connect an MQTT Client to an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h2>
+    <p>The <MadCap:variable name="Product-Names.broker_cloud_short"/> is now configured to authenticate a client using a client certificate. If you want to authenticate an MQTT client, you need to gather some connection details from the <MadCap:variable name="Product-Names.broker_cloud_short"/>. We need to know the host name and secure MQTT port for our service. We also need the certificate for the public CA used by the <MadCap:variable name="Product-Names.broker_cloud_short"/> so that the client can validate our server certificate.</p>
+    <p><b>Note:</b> The certificate for the public CA is not needed in all cases. The CA certificate used to sign the server certificate is highly trusted and installed in most default trust stores. However, not all clients have access to a default trust store, especially IoT client which may be running in a minimally configured environment. The MQTT.fx tool that we will use in the next step requires that we specify the root CA certificate when using client certificates. If we were not using client certificates, the MQTT.fx tool would trust our server certificate (using the <b>CA signed server certificate</b> setting).</p>
+    <p>To gather connection information for an MQTT client:</p>
+    <ol>
+      <li>From the service details page, click the <b>Connect</b> tab.</li>
+      <li>Click the <b>View by</b> drop down and select <b>Protocol</b>.</li>
+      <li>Click the <b>MQTT</b> tile to expand it.
+				<p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/ght_cert_mqtt_tile.png" alt=""/></div></p></li>
+      <li>Click the tile for the language your client application is written in. For example, we have selected <b>Java</b>. Under <b>Connections Details</b>, record the value for the <b>Secured MQTT URI</b>. This includes the host name and port for the secure MQTT connection in URL format.
+				<p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/ght_cert_secured_mqtt_host.png" alt=""/></div></p></li>
+      <li>At the top of the page, click the <b>Solace Messaging</b> tile to expand it and click the tile for the language your client application is written in.</li>
+      <li>Click the <b>Download PEM</b> link and save the file. Note the location of this file. This is the certificate for the public CA.
+				<p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/ght_cert_download_pem.png" alt=""/></div></p></li>
+    </ol>
+    <h2>Connect an MQTT Client using the Client Certificate</h2>
+    <p>The <MadCap:variable name="Product-Names.broker_cloud_short"/> is configured to authenticate a client using the client certificate we created in step 2. We will now using the MQTT.fx tool to connect an MQTT client to our service using a client certificate. If you haven't already, you can download it from <a class="link-offsite" href="https://mqttfx.jensd.de/">MQTT.fx</a>.</p>
+    <p>To connect an MQTT client, do the following:</p>
+    <ol>
+      <li>Start the MQTT.fx tool.</li>
+      <li>Click the settings icon in the top bar, near the middle.
+				<p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/ght_cert_mqtt_settings.png" alt=""/></div></p></li>
+      <li>In the <b>MQTT Broker Profile Settings</b> section, enter the host value from the connection details in the <b>Broker Address</b> and the port value in the <b>Broker Port</b> (typically 8883). Click the <b>Generate</b> button to generate a random client ID.
+				<p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/ght_cert_broker_settings.png" alt=""/></div></p></li>
+      <li>Click the <b>SSL/TLS</b> tab underneath the <b>MQTT Broker Profile Settings</b> section. Click on <b>Enable SSL/TLS</b>, then click the <b>Self signed certificates</b> radio button.
+				<p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/ght_cert_self_signed_tab.png" alt=""/></div></p></li>
+      <li>In the <b>CA File</b> field enter the path to the public CA certificate you downloaded in the previous step. In the <b>Client Certificate File</b> field, enter the path to the client certificate you created in step 2. In the <b>Client Key File</b> field, enter the path to the client key you created in step 2. Select the <b>PEM Formatted</b> checkbox since all files are in PEM format.
+				<p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/ght_cert_ssl_settings.png" alt=""/></div></p></li>
+      <li>Click on <b>OK</b>.</li>
+      <li>Click the <b>Connect</b> button in top bar beside the settings icon to connect the MQTT client to the <MadCap:variable name="Product-Names.broker_cloud_short"/> using the client certificate.
+				<p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/ght_cert_mqtt_connect.png" alt=""/></div></p></li>
+      <li>When the client is successfully connected, the circular indicator in the top right turns green. Since the client is encrypted, a padlock icon also appears.
+				<p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/ght_cert_mqtt_connected.png" alt=""/></div></p></li>
+      <li>You can use the MQTT.fx tool to publish and subscribe using the MQTT connection.</li>
+    </ol>
+    <h2>Next Steps</h2>
+    <p>Congratulations! You've done a lot in this tutorial. You created an internal CA, generated a client certificate, configured your <MadCap:variable name="Product-Names.broker_cloud_short"/> to authenticate using that client certificate, and connected an MQTT client with mutual (two-way) authentication. Still want to learn more?</p>
+    <ul>
+      <li>See the other APIs you can use for <MadCap:xref href="gqs_building_apps.htm">Developing Applications with <MadCap:variable name="Product-Names.cloud_product_titlecase"/>.</MadCap:xref></li>
+      <li MadCap:conditions="SAP.SapHideFromOutput">Learn how to manage your <MadCap:variable name="Product-Names.broker_cloud_short"/> with <MadCap:xref href="../Admin/SEMP/Using-SEMP.htm">SEMP.</MadCap:xref></li>
+      <li MadCap:conditions="SAP.SapHideFromOutput">Learn more about client authentication, see <MadCap:xref href="../Security/Client-Authentication.htm">Client Authentication</MadCap:xref>.</li>
+    </ul>
+  </body>
+</html>

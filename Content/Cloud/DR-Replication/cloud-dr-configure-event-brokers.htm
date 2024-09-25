@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="Default.OnlyForPDF">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Configuring the <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s for as a Replication Pair</h1>
+    <p>You configure two <MadCap:variable name="Product-Names.broker_cloud_short"/>s as <i>replication mates</i> for your replication pair. The Primary site is where your VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/> is located (the source) and the Backup site, is where your copy of the <MadCap:variable name="Product-Names.broker_cloud_short"/> exists that's in a Kubernetes-based deployment.</p>
+    <p class="caution"><MadCap:variable name="Variables.CompanyName"/> recommends that you synchronize all service configuration in the <MadCap:variable name="Product-Names.console_ui_short"/> between the replicated pair <b>before</b> you enable the replication feature. For more information, see <MadCap:xref href="cloud-dr-overview.htm#Limitati">Limitations of Replication in [%=Product-Names.cloud_product_titlecase%]</MadCap:xref>.</p>
+    <p>The high-level steps for creating a replication pair are as follows:</p>
+    <ol>
+      <li>In the <MadCap:variable name="Product-Names.console_ui_long"/>, <a href="#create-replication-pair-event-broker-services" class="link-internal">create <MadCap:variable name="Product-Names.broker_cloud_short"/>s  Backup replication site</a>. This presumes you have a Primary site created. See <MadCap:xref href="cloud-dr-overview.htm#Best">[%=Product-Names.broker_cloud_short_title%]  Best Practices</MadCap:xref> about creating your <MadCap:variable name="Product-Names.broker_cloud_short"/>s.</li>
+      <li><a href="#enable-ssh-port" class="link-internal">Enable <b>Secured CLI Host (SSH)</b></a> on the <MadCap:variable name="Product-Names.broker_cloud_short"/>s.</li>
+      <li><a href="#replication-cloud-client-username" class="link-internal">Create specific client profiles and client usernames for replication</a> on each <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li>
+      <li><a href="#replication-hostnames" class="link-internal">Create a custom hostname</a> on the <MadCap:variable name="Product-Names.broker_cloud_short"/> that will be the initial active site for the replication pair (generally this is the primary site). </li>
+    </ol>
+    <p>For a summary of the configuration settings used in the steps below, see <MadCap:xref href="cloud-dr-examplesheet.htm">Example Replication Information</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="create-replication-pair-event-broker-services"/>Create <MadCap:variable name="Product-Names.broker_cloud_short_title"/> in Different Regions in the <MadCap:variable name="Product-Names.console_ui_long"/></h2>
+    <p>The steps below presume you have <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><a href="../create-service.htm#Creating" class="link-internal">created an <MadCap:variable name="Product-Names.broker_cloud_short"/></a></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/create-service.htm#Creating" class="link-offsite">created an <MadCap:variable name="Product-Names.broker_cloud_short"/></a></MadCap:conditionalText> (for example, the <code>primary-myfirstservice</code> has a Message VPN name of   <code>myfirstservice</code> and a cluster name of <code>my-first-cluster</code> that will be the Primary replication site. For example the starting topology or steps is a single <MadCap:variable name="Product-Names.broker_cloud_short"/>. In <MadCap:variable name="Product-Names.cloud_product_short"/>, <MadCap:variable name="Product-Names.broker_cloud_short"/>s are enabled with DMR and reside in their own cluster.</p>
+    <p>
+      <img src="../../Resources/Images/Cloud-DR-Replication/replication-only-start-pirmary-only.png" alt=""/>
+    </p>
+    <p>The Backup <MadCap:variable name="Product-Names.broker_cloud_short"/>s (Backup site) that you create to be the replication mate must be the same :</p>
+    <ul>
+      <li>have high-availability (HA) configured</li>
+      <li>be the same Enterprise service class</li>
+      <li>have the same Message VPN name</li>
+      <li>we recommend that you create the backup in a  different regions</li>
+      <li>the same cluster name</li>
+      <li>have the same ports configured</li>
+    </ul>
+    <p>For more information about what to ensure you synchronize after creation, see <MadCap:xref href="cloud-dr-overview.htm#Best">[%=Product-Names.broker_cloud_short_title%]  Best Practices.</MadCap:xref></p>
+    <p>To create the <MadCap:variable name="Product-Names.broker_cloud_short"/>, in the <MadCap:variable name="Product-Names.console_ui_long"/> in <MadCap:variable name="Product-Names.cluster_mgr"/>, do the following:</p>
+    <ol>
+      <li>
+        <p>In the region you want to use as the Backup site, create an <MadCap:variable name="Product-Names.broker_cloud_short"/> using the same service class. Ensure that you <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><a href="../create-service.htm#Set-Message-VPN-Name" class="link-internal">set the Message VPN name</a></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"> <a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/create-service.htm#Set-Message-VPN-Name" class="link-offsite">set the Message VPN name</a></MadCap:conditionalText> <b>and</b> <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><a href="../create-service.htm#configure-dmr-cluster" class="link-internal">set the cluster name</a></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/create-service.htm#configure-dmr-cluster" class="link-offsite">the cluster name</a></MadCap:conditionalText> to be  the same as the <MadCap:variable name="Product-Names.broker_cloud_short"/> of your Primary site. For example,  create a service named <code>backup-myfirstservice</code>, with a Message VPN name of <code>myfirstservice</code> and a cluster name of <code>my-first-cluster</code>. After you create the <code>backup-myfirstservice</code> in the same cluster as the <code>primary-myfirstservice</code> topology:</p>
+        <p>
+          <img src="../../Resources/Images/Cloud-DR-Replication/replication-only-add-service.png" alt=""/>
+        </p>
+      </li>
+      <li MadCap:conditions="SAP.SapHideFromOutput">
+        <p>(Optional) If you're using custom domain hostnames (you have custom domain configured for your event broker services), the custom TLS certificate must be installed on both <MadCap:variable name="Product-Names.broker_cloud_short"/>s. <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"> <a href="../../get-support.htm" target="_blank" class="link-internal">Contact <MadCap:variable name="Variables.CompanyName"/></a></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF">Contact <MadCap:variable name="Variables.CompanyName"/></MadCap:conditionalText> for more information. For more information about custom domains, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../configure-domain-name.htm">Configuring a Custom Domain for  [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/configure-domain-name.htm" class="link-offsite">Configuring a Custom Domain for <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</a></MadCap:conditionalText>.</p>
+      </li>
+    </ol>
+    <p>For information about creating <MadCap:variable name="Product-Names.broker_cloud_short"/>, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../create-service.htm">Creating  [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/create-service.htm" class="link-offsite">Creating  [%=Product-Names.broker_cloud_short_title%]s</a></MadCap:conditionalText>.</p>
+    <p class="warning">If you did not create matching Message VPN names for your pair of replication mates, you must delete them and recreate them. Message VPN names can only be configured when you create the event broker service and cannot be modified in <MadCap:variable name="Product-Names.cloud_product_short"/> after service creation. For more information, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../create-service.htm#Set-Message-VPN-Name">Setting the Message VPN Name</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/create-service.htm#Set-Message-VPN-Name" class="link-offsite">Setting the Message VPN Name</a></MadCap:conditionalText>.</p>
+    <h2 class="with-rule"><a name="enable-ssh-port"/>Enable the Secure CLI Host (SSH) Port on the <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</h2>
+    <p>We recommend that you enable the Secure CLI Host port only for private endpoints in <MadCap:variable name="Product-Names.dedicated_region"/>s or  <MadCap:variable name="Product-Names.customer-controlled_region"/>s because those are accessible via private IP addresses instead of the public Internet.</p>
+    <p>For <MadCap:variable name="Product-Names.public_region"/>s, we recommend that you only enable the CLI port when you to need to configure replication or when a failover is required, otherwise disable the port.</p>
+    <p>You can enable the Secure CLI Host (SSH) port in the <MadCap:variable name="Product-Names.console_ui_long"/>. Remember to apply the same changes for both the primary and backup<MadCap:variable name="Product-Names.broker_cloud_short"/>s in your replication pair. For more information, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><![CDATA[  ]]><MadCap:xref href="../edit-port-configuration.htm">Changing the Port Configuration for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/edit-port-configuration.htm" class="link-offsite">Changing the Port Configuration for an [%=Product-Names.broker_cloud_short_title%]</a></MadCap:conditionalText>.</p>
+    <h2 class="with-rule"><a name="replication-cloud-client-username"/>Create a Client Profile and Client Username for Replication</h2>
+    <p>You must create a client profile specifically for replication. A replication-specific client profile is required because:</p>
+    <ul>
+      <li>If there is a difference of message delivery priority between replication and messaging activities, it ensure a higher priority is given to site replication.</li>
+      <li>WAN tuning is required for replication. You must set <b>Priority Queues - G-1 Minimum Burst</b>  to <code>66000</code>.  The default value the setting is <code>256</code>.</li>
+    </ul>
+    <p class="Note">We recommend you use the same client profile and client username for both replication mates. </p>
+    <p>For example:</p>
+    <ol>
+      <li>
+        <p>On the primary <MadCap:variable name="Product-Names.broker_cloud_short"/>, create a replication-specific <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><a href="../client-profiles.htm#creating-client-profiles" target="_blank" class="link-internal">client profile</a></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/client-profiles.htm#creating-client-profiles" target="_blank" class="link-offsite">client profile</a></MadCap:conditionalText> (for example, <b>myfirstclientprofile</b> on <b>Primary-myfirstservice</b>) and configure the following settings:</p>
+        <ul>
+          <li>Toggle <b>Add Shared Subscriptions</b> so that it is enabled.</li>
+          <li>Set <b>Priority Queues - G-1 Minimum Burst</b> to 66000.</li>
+        </ul>
+      </li>
+      <li>
+        <p>Confirm the following additional settings in the client profile:</p>
+        <ul>
+          <li>Send guaranteed messages (Enabled)</li>
+          <li>Use transacted sessions (Enabled)</li>
+          <li>Use compression (Enabled)</li>
+          <li>Receive guaranteed messages (Enabled)</li>
+          <li>Allow client to create endpoints (Enabled)</li>
+          <li>Connect as a bridge (Enabled)</li>
+        </ul>
+      </li>
+      <li>Ensure that the <b>Connect When Replication Standby</b> setting is disabled. It is not used for replication in <MadCap:variable name="Product-Names.cloud_product_short"/>.
+            </li>
+      <li>
+        <p><MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><a href="../client-profiles.htm#create-client-username" target="_blank" class="link-internal">Create a client username</a></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/client-profiles.htm#create-client-username" target="_blank" class="link-offsite">Create a client username</a></MadCap:conditionalText> and set the <b>Client Profile</b> field to the client profile you created in the previous step.</p>
+        <p> For example, create a client username called  <code>myfirstclientusername</code> on <code>Primary-myfirstservice</code></p>
+      </li>
+      <li>Enable the client username and set the password (for example, <code>myfirstclientpassword</code>). Make a note of the password for configuring the rest of replication.</li>
+      <li>Repeat steps 1 to 5 for the other <MadCap:variable name="Product-Names.broker_cloud_short"/> in your replication pair. For example, create a client profile named <b>myfirstclientprofile</b> on the <MadCap:variable name="Product-Names.broker_cloud_short"/> called <b>Backup-myfirstservice</b>.</li>
+    </ol>
+    <h2 class="with-rule"><a name="replication-hostnames"/>Create a Custom Hostname for the Replication Pair</h2>
+    <p>Clients must use a custom hostname to connect to one of the replication mates when you use replication in <MadCap:variable name="Product-Names.cloud_product_short"/>. Client applications must not use  the IP address or the initial, system-generated hostnames for <MadCap:variable name="Product-Names.broker_cloud_short"/>s configured as replication pairs in <MadCap:variable name="Product-Names.cloud_product_short"/>.</p>
+    <ol>
+      <li>Choose the <MadCap:variable name="Product-Names.broker_cloud_short"/> in your replication pair.</li>
+      <li>Add a custom hostname to that <MadCap:variable name="Product-Names.broker_cloud_short"/>, such as <code>myfirsthostname</code>.<br/>For information about creating a custom hostname <span MadCap:conditions="SAP.SapHideFromOutput">(or custom domain hostnames)</span>, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../configure-hostnames.htm#add-hostname-ui">Adding a Custom Hostname</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/configure-hostnames.htm" class="link-offsite" target="_blank">Adding a Custom Hostname</a></MadCap:conditionalText>.</li>
+    </ol>
+    <p class="Note" MadCap:conditions="SAP.SapHideFromOutput">If you use a custom domain hostname (using another domain other than <code><MadCap:variable name="Manifest-Products-Links.CloudConsoleMessagingURL"/></code>), you must update your DNS server to ensure that the  <code>CNAME</code> for the host record points to the system-generated name for the <MadCap:variable name="Product-Names.broker_cloud_short"/> that is in the <code>active</code> state. For more information about using custom domain hostnames, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../configure-domain-name.htm"> Configuring Custom Domain Hostnames for [%=Product-Names.broker_cloud_short_title%]s </MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/configure-domain-name.htm" target="_blank" class="link-offsite"> Configuring Custom Domain Hostnames for  <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</a></MadCap:conditionalText>. </p>
+    <p> </p>
+    <div class="Note">
+      <p> Do not create a hostname for the <MadCap:variable name="Product-Names.broker_cloud_short"/> at the Standby site.</p>
+      <p>As part of the procedure for failing over to the other replication site, the custom hostname is reassigned the newly Active site.</p>
+    </div>
+  </body>
+</html>

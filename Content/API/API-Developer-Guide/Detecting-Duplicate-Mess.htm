@@ -1,0 +1,292 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Detecting Duplicate Messages</h1>
+    <p>A guaranteed message contains a replication group message ID. This message ID can be used to detect duplicate message delivery, so the application can attempt to avoid processing the same message more than once.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Get a Message's Replication Group Message ID</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">XMLMessage.getReplicationGroupMessageId()</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">MessageHandle.getReplicationGroupMessageIdForHandle(…)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">solClient_msg_getReplicationGroupMessageId(…)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">IMessage.ReplicationGroupMessageId</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">Javascript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode">Message.getReplicationGroupMessageId()</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>The ID for a particular message is only guaranteed to be the same for a particular copy of a message on a particular queue or topic endpoint within a replication group. The same message on different queues or topic endpoints within the same replication group may or may not have the same replication group message ID. The same message propagated to different replication groups via bridges, DMR links, MNR links, or multiple publishes by the application will have different replication group message ID’s. So, the ID's intended use is for an application consuming messages from a particular queue or topic endpoint within a replication group to avoid processing the same message from that queue or topic endpoint more than once. Note that if a message is moved from a queue or topic endpoint to its associated dead message queue, the message will get a different replication group message ID.</p>
+    <p>The following techniques  can be used to detect duplicate messages, each having their own pros and cons. The  technique you decide to use will depend on the nature of your application.</p>
+    <ul>
+      <li>
+        <p>
+          <MadCap:xref href="#Replication-Grp-Msg-Id-Lookup">Looking up  Replication Group Message IDs in a Database</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Replication-Grp-Msg-ID-Comparison">Comparing Replication Group Message IDs</MadCap:xref>
+        </p>
+      </li>
+    </ul>
+    <p>Both techniques require converting a replication group message ID to a string, which can be persistently stored by the application.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Convert a Replication Group Message ID to a String</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">ReplicationGroupMessageId.toString()</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">ReplicationGroupMesageIdHandle.toString()</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">solClient_replicationGroupMessageId_toString(…)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">IReplicationGroupMessageId.ToString()</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">Javascript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode">ReplicationGroupMessageId.toString()</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="Replication-Grp-Msg-Id-Lookup"/>Looking up Replication Group Message IDs in a Database</h2>
+    <p>This technique is only practical for applications that maintain a history of messages processed in a database. An application using this technique would follow these steps:</p>
+    <ol>
+      <li>
+        <p>Receive a message.</p>
+      </li>
+      <li>
+        <p>Convert the message’s replication group message ID to a string.</p>
+      </li>
+      <li>
+        <p>Lookup the string form of the replication group message ID in the database.</p>
+      </li>
+      <li>
+        <p>If found, the message has already been processed. Acknowledge the message to delete it from the queue.</p>
+      </li>
+      <li>
+        <p>If not found, process the message, and store the string in a database, ensuring this is all done as an atomic transaction.</p>
+      </li>
+    </ol>
+    <h2 class="with-rule"><a name="Replication-Grp-Msg-ID-Comparison"/>Comparing Replication Group Message IDs</h2>
+    <p>This technique requires that only the last message ID processed is stored. However, there are cases where the comparison between the two ID’s can fail. Failures should be considered rare, though they can occur if the messages being compared originated from different replication sites. On the other hand, these failures are useful in detecting duplicates after a replication failover because the greatest chance of duplicates after a failover involve messages that originated from the mate site of the newly active replication site.</p>
+    <p>Since the comparison of replication group message ID objects can fail, the object’s comparison function intentionally does not implement standard comparison interfaces present in some of API’s native languages. These interfaces assume the only cause of failure is due to an application error, and do not allow for the specification of checked exceptions that are intended to be handled by the application.</p>
+    <p>Where this technique stands the greatest chance of failing to detect a duplicate is if a replication failover occurs before a client has consumed all messages originated from the mate replication site from the previous replication failover.</p>
+    <p>An application using this technique would follow these steps:</p>
+    <ol>
+      <li>
+        <p>On start up, the application would retrieve the most recently processed message’s replication group message ID from persistent storage, and convert this string into the application’s most recently processed replication group message ID object. This string must be equal to the string previously obtained by using the API to convert a message’s replication group message ID to a string.</p>
+      </li>
+      <li>
+        <p>Receive a message.</p>
+      </li>
+      <li>
+        <p>Retrieve the message’s replication group message ID.</p>
+      </li>
+      <li>
+        <p>Compare the message’s replication group message ID to the most recently processed message.</p>
+      </li>
+      <li>
+        <p>If the most recently processed message is not newer, discard the message as a duplicate.</p>
+      </li>
+      <li>
+        <p>If the comparison fails, the application must decide how to proceed. Most applications would want to ensure there is no chance of losing a message and would wish to treat the message as “unprocessed” and so it would handle the message as if it were a newer message.</p>
+      </li>
+      <li>
+        <p>If the most recently processed message is newer, the application would convert the message’s replication group message ID to a string, then process the message and store the string persistently as the most recently processed message as a transaction. This persistent store would be read on the next application start up as described in step 1. Then the application’s most recently processed replication group message ID is updated to be this message’s replication group message ID object before receiving the next message.</p>
+      </li>
+    </ol>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Convert a String into a Replication Group Message ID</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">JCSMPFactory.createReplicationGroupMessageId(…)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">Solclient.createReplicationGroupMessageIdForHandle(…)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">solClient_replicationGroupMessageId_fromString(…)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">ContextFactory.CreateReplicationGroupMessageId(…)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">Javascript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode">SolclientFactory.createReplicationGroupMessageId(…)</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Compare a Replication Group Message ID to Another Replication Group Message ID</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">ReplicationGroupMessageId.compare(…)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">ReplicationGroupMesageIdHandle.compare(…)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">solClient_replicationGroupMessageId_compare(…)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">IReplicationGroupMessageId.Compare(…)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">Javascript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode">ReplicationGroupMessageId.compare(…)</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

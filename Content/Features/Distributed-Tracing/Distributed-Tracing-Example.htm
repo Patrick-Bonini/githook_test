@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <title>[%=Heading.Level1%]</title>
+    <script type="text/javascript" async="async" src="https://play.vidyard.com/embed/v4.js">
+        </script>
+  </head>
+  <body>
+    <h1>Distributed Tracing Example</h1>
+    <p>The following sections provide an example of how you can use distributed tracing to  help speed up troubleshooting in your network.</p>
+    <p>This example shows you how to configure initial telemetry settings, then enable and disable tracing for two types of traffic in an order management system. </p>
+    <h2>Before You Begin</h2>
+    <p>Before you start this example, you must have:</p>
+    <ul>
+      <li>a deployed receiver, as described in <MadCap:xref href="Distributed-Tracing-Receiver.htm">[%=Product-Names.opentelemetry_receiver_long%]</MadCap:xref></li>
+      <li MadCap:conditions="SAP.SapHideFromOutput">a configured Message VPN (named <code>myVpn</code> in this example)</li>
+    </ul>
+    <h2><a name="config-initial-settings"/>Step 1: Configure Initial Telemetry Settings</h2>
+    <p>In this example, the first step is to configure the event broker so that Receiver clients can bind to the telemetry data queue.</p>
+    <p>To configure the initial telemetry settings:</p>
+    <ol>
+      <li>Create a  telemetry profile for the Message VPN.<pre xml:space="preserve">solace&gt; enable
+solace# configure
+solace(configure)# message-vpn myVpn
+solace(configure/message-vpn)# create telemetry-profile default
+solace(configure/message-vpn/telemetry-profile)# end</pre></li>
+      <li>Create a client username.<pre>solace# configure
+solace(configure)# create client-username telemetry-receiver message-vpn myVpn</pre></li>
+      <li>Bind the client username to the telemetry profile's client profile and ACL profile objects, which is required to be able to bind to and consume from the telemetry profile's data queue.<pre>solace(configure/client-username)# acl-profile #telemetry-default
+solace(configure/client-username)# client-profile #telemetry-default</pre></li>
+      <li>Assign a password if the client username will use basic authentication, then enable the client username.<pre>solace(configure/client-username)# password *******
+solace(configure/client-username)# no shutdown</pre></li>
+    </ol>
+    <h2><a name="config-tracing"/>Step 2: Configure Tracing</h2>
+    <p>Next, we will enable tracing, and set up trace filters  to identify messages that should be traced.</p>
+    <p>In this example, there are two types of traffic we want to trace:</p>
+    <ul>
+      <li>An order management system's messages, where all messages are to be tracked as they move through the event mesh. Generally, we always want to trace these messages.</li>
+      <li>Some logging-related messages, where the primary use case to trace these messages is for debugging (when messages are not getting to their desired destination). We don't want tracing on for these messages all the time, but only when a debugging activity is in progress.</li>
+    </ul>
+    <p>To configure tracing:</p>
+    <ol>
+      <li>Enable tracing. This won't actually do anything yet without any enabled trace filters, but it allows tracing to begin when a trace filter is created and enabled.<pre>solace&gt; enable
+solace# configure
+solace(configure)# message-vpn myVpn
+solace(configure/message-vpn)# telemetry-profile default
+solace(configure/message-vpn/telemetry-profile)# trace
+solace(configure/message-vpn/telemetry-profile/trace)# no shutdown</pre></li>
+      <li> Create the <code>OrderMgmtSystem</code> trace filter with all messages using the first topic level of <code>oms</code>, unless the fourth topic level is <code>pii</code>.<pre>
+solace(configure/message-vpn/telemetry-profile/trace)# create filter OrderMgmtSystem
+solace(configure/message-vpn/telemetry-profile/trace/filter)# create subscription oms/&gt;
+solace(configure/message-vpn/telemetry-profile/trace/filter/subscription)# exit
+solace(configure/message-vpn/telemetry-profile/trace/filter)# create subscription !oms/*/*/pii/&gt;
+solace(configure/message-vpn/telemetry-profile/trace/filter/subscription)# exit</pre></li>
+      <li>Enable the <code>OrderMgmtSystem</code> trace filter to begin tracing on these messages.<pre>solace(configure/message-vpn/telemetry-profile/trace/filter)# no shutdown
+solace(configure/message-vpn/telemetry-profile/trace/filter)# exit</pre></li>
+      <li>Create the <code>LogFilter</code> trace filter, but don't enable it yet.<pre>solace(configure/message-vpn/telemetry-profile/trace)# create filter LogFilter
+solace(configure/message-vpn/telemetry-profile/trace/filter)# create subscription log/&gt;
+solace(configure/message-vpn/telemetry-profile/trace/filter/subscription)# exit
+solace(configure/message-vpn/telemetry-profile/trace/filter)# create subscription !log/*/*/pii/&gt;</pre></li>
+    </ol>
+    <h2><a name="enable-debug-logging"/>Step 3: Enable a Debugging Activity</h2>
+    <p>With the configuration above in place, suppose we want to begin a debugging activity using logging-related messages.</p>
+    <p>To start tracing these logging-related messages, enable the <code>LogFilter</code> trace filter:</p>
+    <pre>solace&gt; enable
+solace# configure
+solace(configure)# message-vpn myVpn
+solace(configure/message-vpn)# telemetry-profile default
+solace(configure/message-vpn/telemetry-profile)# trace filter LogFilter
+solace(configure/message-vpn/telemetry-profile/trace/filter)# no shutdown</pre>
+    <h2><a name="disable-tracing"/>Step 4: Disable Tracing</h2>
+    <p>Perhaps the system is getting overwhelmed by the amount of tracing it is doing, which is adversely affecting other traffic. Rather than spending time to selectively enable and disable individual trace filters, we want to stop tracing now.</p>
+    <p>To disable tracing, enter the following commands:</p>
+    <pre>solace&gt; enable
+solace# configure
+solace(configure)# message-vpn myVpn
+solace(configure/message-vpn)# telemetry-profile default
+solace(configure/message-vpn/telemetry-profile)# trace shutdown</pre>
+  </body>
+</html>

@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><a name="Consuming-Persistent-Messages-Java-API"/>Consuming Persistent Messages Using the Go API </h1>
+    <p>Subscribing applications that cannot tolerate message loss can use persistent messaging (referred to as  <i>guaranteed messages</i> in other parts of this documentation) instead of direct messaging. When persistent messaging is used, messages are stored on a queue on the event broker. Messages are not deleted from the event broker until the message has been consumed and acknowledged by the subscribing application (referred to as a message receiver). The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Go API can only consume persistent messages from queues and not from topic endpoints.</p>
+    <p>To consume persistent messages, you must first set up a message queue on the  event broker. For information about creating and configuring durable queues on an event broker, see <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-Queues.htm">Configuring Queues</MadCap:xref>. Alternatively, a non-durable queue can be created when a persistent message receiver (<code>PersistentMessageReceiver</code>) is created. </p>
+    <p>To use a persistent message receiver to consume persistent messages, use the following steps:</p>
+    <ol>
+      <li><a href="#Creating-A-PersistentMessageReceiver-Object" class="link-internal">Create a PersistentMessageReceiver</a>.</li>
+      <li><a href="#Receiving-Persistent-Synchronously" class="link-internal">Receive a Persistent Message Synchronously</a>.</li>
+      <li><a href="#Receiving-Persistent-Asynchronously" class="link-internal">Receive a Persistent Message Asynchronously</a>.</li>
+      <li><a href="#Extract-Message-Props" class="link-internal">Extract Properties from an Inbound Message</a>.</li>
+      <li><a href="#Message-Acknowledgments-Error-Handling" class="link-internal">Message Acknowledgments</a>.</li>
+      <li><a href="Go-API-Create-Queues.htm#Creating" class="link-internal">Create a Queue with the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Go API</a>.</li>
+    </ol>
+    <p class="Note">Back-pressure can occur if your consumer (or subscribing) application experiences a situation where it is unable to process messages as fast as it receives them from the event broker. Messages continue to be buffered internally until a high watermark is reached at which point the API tells the event broker to stop sending messages to prevent message loss.</p>
+    <p>For examples of applications  that consume persistent messages,  see <a href="https://github.com/SolaceSamples/solace-samples-go/blob/main/patterns/guaranteed_subscriber.go" class="link-offsite">guaranteed_subscriber.go</a> on the <MadCap:variable name="Variables.CompanyName"/> GitHub page.</p>
+    <h2 class="with-rule"><a name="Creating-A-PersistentMessageReceiver-Object"/>Creating a PersistentMessageReceiver</h2>
+    <p>After you have established a connection to the event broker using a <code>MessagingService</code> instance, you use a   <code>PersistentMessageReceiver</code> to consume persistent messages from a queue on the event broker. </p>
+    <p>You can use a <code>PersistentMessageReceiverBuilder</code> to configure your <code>PersistentMessageReceiver</code> to use certain features of the API, such as topic subscriptions.  You then call <code>Build()</code> on the <code>PersistentMessageReceiverBuilder</code>, which returns a <code>PersistentMessageReceiver</code> instance. To enable your <code>PersistentMessageReceiver</code> to start receiving messages, call <code>Start()</code> on it.</p>
+    <div class="Note">
+      <p>Ensure that the queue properties you specify with the Go API correspond to the those configured on the event broker. For more information, see: </p>
+      <ul>
+        <li>
+          <a href="https://solace.com/blog/solace-endpoints-durable-vs-non-durable/" class="link-offsite">Durable vs Non-Durable</a>
+        </li>
+        <li>
+          <a href="https://solace.com/blog/solace-message-queue-access-types/" class="link-offsite">Message Queue Access Types</a>
+        </li>
+      </ul>
+    </div>
+    <p style="font-size: 11pt;"> For more information about the functions used in the Go API, see the <a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Go reference</a>.</p>
+    <p>The following is an example how to use a <code>PersistentMessageReceiver</code> to bind to a queue:</p>
+    <pre xml:space="preserve">
+nonDurableExclusiveQueue := resource.QueueNonDurableExclusive(queueName)     // Creates a reference to an exclusive, non-durable queue with the specified name
+topic := resource.TopicSubscriptionOf("go/persistentReceiver/sample/topic")  // Creates a TopicSubscription of the specified topic string
+			
+/* Creates an instance of PersistentMessageReceiverBuilder, which is used to create PersistentMessageReceivers. */
+persistentReceiver, builderError := messagingService. 
+	CreatePersistentMessageReceiverBuilder().  // Creates a PersistentMessageReceiverBuilder that can be used to configure persistent message receiver instances.
+	WithSubscriptions(topic).		   // Sets a list of TopicSubscriptions to subscribe to when starting the receiver.
+	Build(nonDurableExclusiveQueue)            // Creates a new PersistentMessageReceiver instance based on the configured properties. Returns *IllegalArgumentError if the queue is nil.
+if builderErr != nil {
+	panic(builderErr)
+}
+
+startErr := persistentReceiver.Start()    // Start starts the receiver synchronously. Before this function is called, the receiver is considered off-duty.
+if startErr != nil {
+	panic(startErr)
+}  </pre>
+    <p class="Note">You can use the Go API to create durable and non-durable queues on the event broker. For more information see <MadCap:xref href="Go-API-Create-Queues.htm#Creating">Creating Queues with the Go API</MadCap:xref>. </p>
+    <h3>Asynchronous Receivers </h3>
+    <p>It is also possible to start a persistent message receiver using a callback listener to allow for asynchronous notifications after the start operation is complete.</p>
+    <p>The following example shows how to start a <code>PersistentMessageReceiver</code> asynchronously:</p>
+    <pre xml:space="preserve">
+func ReceiverCallback(receiver solace.PersistentMessageReceiver, err error) {
+	if err != nil {
+		panic(err) // receiver started up with an error
+	} else {
+		// receiver started without issue
+	}
+}
+// ...	
+// ...
+persistentReceiver.StartAsyncCallback(ReceiverCallback) // Starts the receiver asynchronously. Calls the callback when started with an error if one occurred, otherwise nil if successful.</pre>
+    <p class="Note"> Your receiver application is not operational until you call <code>Start()</code> or <code>StartAsyncCallback()</code> on it.</p>
+    <h2 class="with-rule"><a name="Receiving-Persistent-Synchronously"/>Consuming a Persistent Message Synchronously</h2>
+    <p>You can consume persistent messages synchronously. To do this, you create a  <code>PersistentMessageReceiver</code> and bind it to a queue. After successfully binding to the queue, your receiver application can begin to consume persistent messages. </p>
+    <p>When you use the <code>ReceiveMessage(message.InboundMessage)</code> function, it blocks the routine until the next message has been received. </p>
+    <p>When an application processes an <code>InboundMessage</code>, it can then send an acknowledgment to the event broker with <code>PersistentMessageReceiver.Ack()</code>. The event broker will then remove the <code>InboundMessage</code> from the queue. Until a message is acknowledged it remains on the broker queue and may be redelivered when the application reconnects to the queue.</p>
+    <p>For more information about the preceding functions, see the <a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Go reference</a></a>.</p>
+    <p>The following example shows you how to consume persistent messages synchronously:</p>
+    <pre xml:space="preserve">persistentReceiver, err := messagingService.
+	CreatePersistentMessageReceiverBuilder().  // Creates a PersistentMessageReceiverBuilder that can be used to configure persistent message receiver instances.
+	WithSubscriptions(topicsSub...).       // Sets a list of TopicSubscriptions to subscribe to when starting the receiver.
+	Build()                                // Creates a PersistentMessageReceiver with the specified properties.
+
+if err != nil {
+	panic(err)
+}
+
+if err := persistentReceiver.Start(); err != nil { // Starts the receiver synchronously. Before this function is called, the receiver is considered off-duty.
+	panic(err)
+}	
+        
+var receivedMessage message.InboundMessage
+var regErr solace.Error
+if receivedMessage, regErr := persistentReceiver.ReceiveMessage(1 * time.Second); regErr != nil {  // Waits until the specified timeout to receive a message
+	panic(regErr)
+} else {
+	// Process the received message
+	persistentReceiver.Ack(message) // Acknowledges that a message was received.
+}
+</pre>
+    <p class="Warning">If you do not call the <code>ReceiveMessage()</code> function, messages can accumulate on the API's internal buffer and you risk running into a back-pressure scenario. If this occurs, the Go API automatically informs the event broker to stop sending messages. </p>
+    <h2 class="with-rule"><a name="Receiving-Persistent-Asynchronously"/>Consuming a Persistent Message Asynchronously</h2>
+    <p>You can consume persistent messages in an asynchronous manner. To do so, you create a <code>PersistentMessageReceiver</code> and start the connection to the event broker as normal, but you use a  <code>MessageHandler</code> to act as a callback function to notify your application when a message has been received. </p>
+    <p>The following example shows you how to consume persistent messages asynchronously:</p>
+    <pre xml:space="preserve">
+// Message Handler
+messageHandler := func(message message.InboundMessage) {
+	var messageBody string
+	if payload, ok := message.GetPayloadAsString(); ok {
+		messageBody = payload
+		persistentReceiver.Ack(message)  // Acknowledges the received message
+	} else if payload, ok := message.GetPayloadAsBytes(); ok {
+		messageBody = string(payload)
+		persistentReceiver.Ack(message)  // Acknowledges the received message
+	}
+	fmt.Printf("Received Message Body %s \n", messageBody)
+}
+
+// ...
+// ...        
+// Register Message callback handler to the Message Receiver
+if regErr := persistentReceiver.ReceiveAsync(messageHandler); regErr != nil {
+panic(regErr)
+}
+</pre>
+    <h3>
+            Pausing and Resuming Message Consumption
+from Internal Buffers </h3>
+    <p>When your application consumes messages asynchronously using the <code>ReceiveAsync()</code> function, you may call the <code>Pause()</code> and <code>Resume()</code>functions to control the flow of messages to your application's callback.</p>
+    <p class="Note">The <code>Pause()</code> and <code>Resume()</code> functions have no effect if you use <code>ReceiveMessage()</code>. </p>
+    <p>You can use the <code>Pause()</code> and <code>Resume()</code> functions to control the flow of messages between the API's internal buffer  and your application. This internal buffer is where messages are received from the event broker. This flow control is useful if your application must momentarily stop processing messages to handle other operations. The <code>Pause()</code> and <code>Resume()</code> functions do not control the flow of messages between the event broker and the internal buffer of the API. When you call the <code>Pause()</code>function, messages continue to be sent from the event broker. The <code>Pause()</code> and <code>Resume()</code> functions control the message delivery only to the application. Messages received from the event broker continue to accumulate in the internal buffer.</p>
+    <p>Since the event broker continues to send messages, a back-pressure scenario may occur–that is, messages  continue to accumulate until an internal high watermark is reached. At this  point, the <code>PersistentMessageReceiver</code> notifies the event broker to stop sending messages until the number of accumulated messages falls below the internal low watermark. This internal API mechanism handles back-pressure scenarios for you and ensures that no messages are lost between the event broker and your application.</p>
+    <p>The following  functions are used to pause and resume processing of messages from the API's internal buffer:</p>
+    <ul>
+      <ul>
+        <li>
+          <code>Pause()</code>
+        </li>
+      </ul>
+      <ul>
+        <li>
+          <code>Resume()</code>
+        </li>
+      </ul>
+    </ul>
+    <p>For more information about the preceding functions, see the <a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Go reference</a></a>.</p>
+    <p>The following  example shows how to pause and resume processing of messages from the internal queue in the API using the scheduler:</p>
+    <pre xml:space="preserve">
+persistentReceiver.Pause() //  Pauses the receiver's message delivery to asynchronous message handlers.
+// Perform any action here, for example wait 60 seconds: time.Sleep(60 * time.Second)
+persistentReceiver.Resume() // Resumes the receiver's message delivery to asynchronous message handlers.</pre>
+    <h2 class="with-rule"><a name="Extract-Message-Props"/>Extracting Properties from an Inbound Message</h2>
+    <p>After you establish a connection to the event broker, your receiver application can subscribe to topics. Whenever your application receives a message from the broker with a matching topic, an <code>InboundMessage</code> instance is returned to the application. You can extract a number of properties from an <code>InboundMessage</code>, such as the message payload (as bytes or a string), and sender ID. The following examples show how to extract properties from a message.</p>
+    <ul>
+      <li>
+        <p>Use a <code>MessageHandler</code> callback when you receive a message asynchronously:</p>
+        <pre xml:space="preserve">
+func MessageHandler(message message.InboundMessage) {
+	var messagePayload string
+	var senderID string
+	if payload, ok := receivedMessage.GetPayloadAsString(); ok { // Extract the payload from a received message.
+		messagePayload = payload
+	}
+	if senderID, ok := receivedMessage.GetSenderID(); ok {       // Extract the sender ID from a received message.
+		senderID = senderID
+	}
+	persistentReceiver.Ack(message) // Acknowledges that a message was received.
+}				</pre>
+      </li>
+      <li>
+        <p>Use the <code>ReceiveMessage()</code> function when you receive a message synchronously:</p>
+        <pre xml:space="preserve">var receivedMessage message.InboundMessage
+var regErr solace.Error
+if receivedMessage, regErr = persistentReceiver.ReceiveMessage(1 * time.Second); regErr != nil {
+	panic(regErr)
+} else {
+	var messagePayload string
+	var senderID string
+	if payload, ok := receivedMessage.GetPayloadAsString(); ok {   // Extract the payload from a received message.
+		messagePayload = payload
+	}
+	if senderID, ok := receivedMessage.GetSenderID(); ok {         // Extract the sender ID from a received message.
+		senderID = senderID
+	}
+	persistentReceiver.Ack(message) // Acknowledges that a message was received.
+}		</pre>
+      </li>
+    </ul>
+    <p>For a complete list of functions that you can use to extract properties from an <code>InboundMessage</code>, see the <a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Go reference</a></a>.</p>
+    <h2 class="with-rule"><a name="Message-Acknowledgments-Error-Handling"/>Message Acknowledgments</h2>
+    <p>ACKs are asynchronous.  Any routine can  acknowledge messages at any time as long as  the receiver has not been terminated. It is important to remember that after a <code>PersistentMessageReceiver</code> has acknowledged a message from the event broker, it  deletes that message from the queue on the event broker. For this reason it's important to perform any processing and storage of the message <b>before</b> you acknowledge it. </p>
+    <p>The following example  shows how to acknowledge a persistent message:</p>
+    <pre xml:space="preserve">
+// Message Handler
+messageHandler := func(message message.InboundMessage) {
+	var messageBody string
+	if payload, ok := message.GetPayloadAsString(); ok {
+		messageBody = payload
+		persistentReceiver.Ack(message)  // Acknowledges the received message
+	} else if payload, ok := message.GetPayloadAsBytes(); ok {
+		messageBody = string(payload)
+		persistentReceiver.Ack(message)  // Acknowledges the received message
+	}
+	fmt.Printf("Received Message Body %s \n", messageBody)
+}
+// ...
+// ...       
+if regErr := persistentReceiver.ReceiveAsync(messageHandler); regErr != nil {  // Register Message callback handler to the Message Receiver
+panic(regErr)
+}		
+</pre>
+  </body>
+</html>

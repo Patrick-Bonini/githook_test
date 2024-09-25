@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1> Configuring Client LDAP Authorization</h1>
+    <p>By default, clients that connect to a Message VPN are provided authorizations for access to event broker resources and messaging capabilities based on what client username accounts on that Message VPN that they use. This internal authorization method requires client username accounts to be manually provisioned on Message VPNs.</p>
+    <p>You can also use client authorization groups that are configured on an external LDAP server to provide client authorizations. Authorization group objects must be created on the Message VPN that match the authorization groups provisioned on the LDAP server. These authorization group objects must be configured with the client profiles and ACL profiles that you want to assign to the clients that belong to those authorization groups.</p>
+    <h2 class="with-rule"><a name="Configuring-LDAP-Auth-Groups"/>Configuring Authorization Groups</h2>
+    <p>To configure a new  authorization group for a Message VPN, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# authorization<br/>solace(.../message-vpn/authorization)# create authorization-group &lt;name&gt;</p>
+    <p>To edit the configuration of an existing  authorization group object on the given Message VPN, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# authorization<br/>solace(.../message-vpn/authorization)# authorization-group &lt;name&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the name of the authentication group that exists on an external LDAP server (or if using OAuth authorization, specified claims in OAuth tokens). A group name can contain up to 256 alphanumeric characters. Note that if the group name contains the characters “#”, “+”, “;”, “=”, the LDAP server may return the value of the group name where those characters are prepended with a “\” character. For example, for a group name of “<code>test#,lab,com</code>”, the LDAP server could return “<code>test\#,lab,com</code>”. The exact handling of these special characters depends on the LDAP server provider that is used.</p>
+    <p>The no version of this command, <code>no authorization-group</code>, removes the given authorization group object from the given Message VPN.</p>
+    <div class="Note">
+      <ul>
+        <li>When multiple authorization group objects are created, each new group that is configured is placed at the end of the group list, which is ordered from highest priority to lowest. (To change the priority of an authorization group, refer to <MadCap:xref href="#Prioriti">Prioritizing Authorization Groups</MadCap:xref>.)</li>
+        <li>When an authorization group is created, it is not automatically enabled. To enable an authorization group, refer to <MadCap:xref href="#Enabling">Enabling/Disabling Authorization Groups</MadCap:xref>.</li>
+        <li>PubSub+ event brokers also use authorization groups  for OAuth authorization. In this case a specified claim in incoming OAuth tokens is compared against authorization groups configured  on the event broker to determine the client's ACLs and client profiles. For more information, see <MadCap:xref href="Client-Authorization-Overview.htm#Authoriz2">Authorizing Clients Through OAuth</MadCap:xref>.</li>
+      </ul>
+    </div>
+    <h3><a name="Enabling"/>Enabling/Disabling Authorization Groups</h3>
+    <p>Authorization group objects can only be used to authorize clients when they are enabled.</p>
+    <p>To enable a given authorization group object, enter the following CONFIG commands:
+                <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# authorization<br/>solace(.../message-vpn/authorization)# create authorization-group &lt;name&gt;<br/>solace(...zation/authorization-group)# no shutdown</p></p>
+    <p>To disable a given authorization group object, enter the following CONFIG commands:
+                
+				<p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# authorization<br/>solace(.../message-vpn/authorization)# create authorization-group &lt;name&gt;<br/>solace(...zation/authorization-group)# shutdown</p></p>
+    <p class="Note">When an authorization group object is shutdown, any connected clients that were authorized by that group will be disconnected.</p>
+    <h3><a name="Prioriti"/>Prioritizing Authorization Groups</h3>
+    <p>The response from a LDAP lookup for an authorization request may indicate that there is more than one matching group configured in the Message VPN. In this case, the first match found in the ordered list of groups will provide the client with its authorizations. Because groups are listed in order of importance, where a group with the highest priority is listed first and the group with the least priority is listed last, you may want to change the positioning of each listed group to change its priority.</p>
+    <p>To change the priority of the given authorization group, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# authorization<br/>solace(.../message-vpn/authorization)# authorization-group &lt;name&gt;<br/>solace(...zation/authorization-group)# order {before | after} &lt;authorization-group-name&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>before</code> specifies to assign the given authorization group a priority immediately higher than that of the existing named authorization group.</p>
+    <p><code>after</code> specifies to assign the given authorization group a priority immediately lower than that of the named authorization group.</p>
+    <p><code>&lt;authorization-group-name&gt;</code> is the name of an authorization group that the given group will move before or after.</p>
+    <h3><a name="Setting"/>Setting ACL Profiles for Authorization Groups</h3>
+    <p>To associate an ACL profile with the given authorization group, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# authorization<br/>solace(.../message-vpn/authorization)# create authorization-group &lt;name&gt;<br/>solace(...zation/authorization-group)# acl-profile &lt;name&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the name of an existing ACL profile within the given Message VPN. If no ACL profile is explicitly entered, the default ACL profile for the Message VPN, named <code>default</code>, is used.</p>
+    <p>The no version of this command, <code>no acl-profile</code> resets the assigned ACL profile back to the default ACL profile, named <code>default</code>.</p>
+    <p class="Note">For information on configuring ACL profiles, refer to <MadCap:xref href="Managing-Access-Control-Lists.htm">Managing Access Control Lists</MadCap:xref>.
+        </p>
+    <h3><a name="Setting2"/>Setting Client Profiles for Authorization Groups</h3>
+    <p>To associate a client profile with the given authorization group, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# authorization<br/>solace(.../message-vpn/authorization)# create authorization-group &lt;name&gt;<br/>solace(...zation/authorization-group)# client-profile &lt;name&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the name of an existing client profile within the given Message VPN. If no client profile is explicitly entered, the default client profile for the Message VPN, named <code>default</code>, is used.</p>
+    <p>The no version of this command, <code>no client-profile</code>, resets the assigned client profile back to the default client profile, named <code>default</code></p>
+    <p class="Note">For information on configuring client profiles, refer to <MadCap:xref href="Configuring-Client-Profiles.htm">Configuring Client Profiles</MadCap:xref>.
+        </p>
+    <h2 class="with-rule"><a name="managing_client_authentication_and_authorization_21734666_421849"/>Setting the Type of Client Authorization to Use</h2>
+    <p>Clients can be authorized by internal and LDAP authorization types. Internal authorization is always supported, and the event broker always attempts to authorize a client using internal authorization. In this case, if the client provides a client username that is configured in the Message VPN that the client has connected to, the authorization parameters configured for that client username are used.</p>
+    <p>However, if the client does not provide a client username that is configured in the Message VPN that the client has connected to, and LDAP authorization is enabled for the Message VPN, the event broker attempts to authorize the user using LDAP. To use LDAP authorization, an LDAP profile must be configured (refer to <MadCap:xref href="../Admin/Configuring-LDAP-Authentication.htm#Configur2">Configuring LDAP Profiles</MadCap:xref>). An LDAP profile provides authorization request retry timeout values and LDAP authorization configurations for each of the LDAP servers used by the LDAP profile.</p>
+    <p>To set the authorization mechanism to use for client authorization, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# authorization<br/>solace(.../message-vpn/authorization)# authorization-type {ldap &lt;ldap-profile&gt; | internal}</p>
+    <p><u>Where</u>:</p>
+    <p><code>ldap</code> specifies to authorize clients through a provisioned external LDAP server. <code>&lt;ldap-profile&gt;</code> is the name of an LDAP profile that has been configured on the event broker. An LDAP profile name can contain up to 32 alphanumeric characters and underscores. For information on how to configure LDAP profiles, refer to <MadCap:xref href="../Admin/Configuring-LDAP-Authentication.htm#Configur2">Configuring LDAP Profiles</MadCap:xref>.</p>
+    <p><code>internal</code> specifies to authorize clients through client usernames that they provide using the internal Solace PubSub+ appliance database. By default, internal authorization is used to authorize connected clients.</p>
+    <p class="Note">If the internal parameter is chosen for this command when LDAP client authorization has already been sent up, LDAP authorization is disabled, and the authorization method is reset to the default of internal authorization.</p>
+    <h2 class="with-rule"><a name="managing_client_authentication_and_authorization_21734666_419731"/>Configuring LDAP Group Membership Attribute Names</h2>
+    <p>To enable LDAP authorization of clients, an attribute name must be retrieved from the LDAP server as part of the LDAP search. The attribute name indicates that the clients belongs to a particular group (that is, the value associated with this attribute).</p>
+    <p>To configure an LDAP group membership attribute to use for client authorization for the given Message VPN, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# authorization<br/>solace(.../message-vpn/authorization)# ldap group-membership-attribute-name &lt;attribute-name&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;attribute-name&gt;</code> is the name of the attribute. An attribute name can contain up to 64 alphanumeric characters. The default value is “<code>memberOf</code>”.</p>
+    <p>The no version of this command, <code>no group-membership-attribute-name</code>, resets the given attribute name back to the default value.</p>
+    <h2 class="with-rule"><a name="Configur"/>Configuring LDAP Trim Client-Username Domain </h2>
+    <p> You can enable or disable trim client-username domain attribute for LDAP lookups of client connections. When LDAP trim client-username domain attribute is enabled, the value of <code>$CLIENT_USERNAME</code> (when used for searching), will be truncated at the first occurrence of the <code>@</code> character. For example, if the client username is in the form of an email address, the domain portion will be removed.</p>
+    <p>To enable LDAP trim client-username domain attribute for a given Message VPN, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# authorization<br/>solace(.../message-vpn/authorization)# ldap trim-client-username-domain</p>
+    <p>To disable LDAP trim client-username domain attribute for a given Message VPN, enter the following CONFIG commands:</p>
+    <p class="Code">solace(.../message-vpn/authorization)# no ldap trim-client-username-domain</p>
+  </body>
+</html>

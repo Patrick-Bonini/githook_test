@@ -1,0 +1,936 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Managing Services with the <MadCap:variable name="Product-Names.cloud_product_titlecase"/> REST API</h1>
+    <MadCap:snippetBlock src="../Resources/Snippets/Cloud/REST-API/pointv2APIs.flsnp" MadCap:conditions="SAP.SapHideFromOutput"/>
+    <p>A common practice when developing and deploying applications in a cloud environment is to bring up a cloud resource using the cloud provider’s APIs, use that resource, then remove it when testing is complete. Since this is all accomplished programmatically, there is no need to manually start or stop the resources with the cloud provider’s user interface.</p>
+    <p>For example, a common flow for testing an application would be to:</p>
+    <ol>
+      <li>Bring up a cloud server (for example, AWS EC2) programmatically.            </li>
+      <li>Install and test the app on that cloud server.            </li>
+      <li>Tear down the cloud server when your testing is complete.            </li>
+    </ol>
+    <p>Likewise, with <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.cloud_product_long"/></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><MadCap:variable name="Product-Names.cloud_product_firstuse"/></MadCap:conditionalText>, you can use the <MadCap:variable name="Product-Names.cloud_product_short"/> REST API to create <MadCap:variable name="Product-Names.broker_cloud_short"/>s and extract information about them.</p>
+    <p>This tutorial  shows you how to:</p>
+    <ul>
+      <li>Use an API token to create an <MadCap:variable name="Product-Names.broker_cloud_short"/> via the
+<MadCap:variable name="Product-Names.cloud_product_short"/> REST API. For more information, see <MadCap:xref href="#create-service">Creating a [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref>.<ul><li MadCap:conditions="SAP.SapHideFromOutput">Use the REST API to create a standalone <MadCap:variable name="Product-Names.broker_cloud_short"/>. For more information, see <MadCap:xref href="#Creating">Creating a Standalone [%=Product-Names.broker_cloud_short_title%] 10.0 and later using the REST API</MadCap:xref></li><li>Use the REST API to configure select an the message spool size for an existing <MadCap:variable name="Product-Names.broker_cloud_short"/>, For more information, see <MadCap:xref href="#configure-spool-rest-api">Configuring the Message Spool Size Using the REST API</MadCap:xref></li><li MadCap:conditions="SAP.SapHideFromOutput">Use the REST API to modify the message spool size for an existing <MadCap:variable name="Product-Names.broker_cloud_short"/>. For more information, see <MadCap:xref href="#Increasing-spool-size">Modify the Message Spool Size of an [%=Product-Names.broker_cloud_short_title%] 10.0 and Later Using the REST API</MadCap:xref></li><li>Use the REST API to configure the cluster name for an existing <MadCap:variable name="Product-Names.broker_cloud_short"/>. For more information, see <MadCap:xref href="#configure-cluster-name-rest-api">Configuring the Cluster Name Using the REST API</MadCap:xref></li><li>Use the REST API to configure connection endpoints and ports for Kubernetes based <MadCap:variable name="Product-Names.broker_cloud_short"/>s. For more information, see <MadCap:xref href="#Configur">Configuring Connection Endpoints and Ports for Kubernetes-based [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref>.</li><li>Use the RES API to create connection endpoints and ports for Kubernetes based <MadCap:variable name="Product-Names.broker_cloud_short"/>s.  For more information, see <MadCap:xref href="#Creating2">Creating Connection Endpoints and Ports for Kubernetes-based [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref>.</li></ul></li>
+      <li>Use the REST API to update an cluster name for an existing <MadCap:variable name="Product-Names.broker_cloud_short"/>. For more information, see <MadCap:xref href="#change-cluster-name-rest-api">Changing the Cluster Name for an Existing [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref>.</li>
+      <li>Use the REST API to update an existing <MadCap:variable name="Product-Names.broker_cloud_short"/> with a hostname. For more information, see <MadCap:xref href="#configure-hostnames-rest-api">Configuring Hostnames</MadCap:xref>.</li>
+      <li>Use the REST APIs to get connection details for the new <MadCap:variable name="Product-Names.broker_cloud_short"/>. For more information, see <MadCap:xref href="#getdetails-service">Getting the Connection Details for the Event Broker Service</MadCap:xref>.<ul><li>Use the REST APIs to get a retrieve connection endpoint URL templates from an <MadCap:variable name="Product-Names.broker_cloud_short"/>. For more information, see <MadCap:xref href="#Retrievi">Retrieving Connection Endpoint URL Templates from an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</li></ul></li>
+      <li>Use the REST API to edit connection endpoints for an existing Kubernetes based <MadCap:variable name="Product-Names.broker_cloud_short"/>. For more information, see <MadCap:xref href="#Editing">Editing Connection Endpoints Using REST API for Kubernetes-Based [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>. </li>
+      <li>Use the REST API to delete the service. You must have the permission enabled for your API token. For more information, see <MadCap:xref href="#delete-service">Deleting an Event Broker Service</MadCap:xref>.</li>
+    </ul>
+    <h2>Before you Begin</h2>
+    <p>You can start this tutorial, you'll require the following:</p>
+    <ul>
+      <li>An account with <MadCap:variable name="Product-Names.cloud_product_short"/> and an <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li>
+      <li>You must have the Administrator or <MadCap:variable name="Product-Names.cm_editor"/>  role.</li>
+      <li>An API token must be available in the account with at least the  following permissions:<ul><li>Either the <b>Get My Services with Management Credentials</b> or <b>Get Services with Viewer Credentials</b> permission (both are recommended for this tutorial)</li><li><b>Create Services</b></li><li><b>Delete Services</b></li><li><b>Get Cluster Information</b></li><li><b>Update Cluster Name</b></li><li><b>Update Services</b></li><li><b>Delete My Service Connection Endpoints</b></li><li><b>Create Service Connection Endpoints</b></li><li><b>Update Service Connection Endpoints</b></li><li><b>Delete Service Connection Endpoints</b></li></ul></li>
+      <p>For more information, see <MadCap:xref href="ght_api_tokens.htm#Create">Creating an API Token</MadCap:xref>. </p>
+      <li>
+        <p>A way to send REST messages from your development environment. We use Postman in this tutorial.  You can use the <a href="https://documenter.getpostman.com/view/3081638/RWM8SWza?version=latest" target="_blank" class="link-offsite">Solace Blogs –  Create Messaging Service</a> Postman collection and click the <b>Run in Postman</b> button to import the collection to Postman, which permits you to easily work through the steps in this tutorial. </p>
+        <MadCap:snippetBlock src="../Resources/Snippets/Cloud/restapi_checktoken.flsnp"/>
+      </li>
+    </ul>
+    <h2><a name="create-service"/>Creating an <MadCap:variable name="Product-Names.broker_cloud_short_title"/> Using the REST API</h2>
+    <MadCap:snippetBlock src="../Resources/Snippets/Cloud/REST-API/create_service_v2.flsnp"/>
+    <p>You can use the <MadCap:variable name="Product-Names.cloud_product_short"/> REST API to create a default high-availability, or <MadCap:variable name="Product-Names.class_100"/> (which is not high-availability) <MadCap:variable name="Product-Names.broker_cloud_short"/>. Some considerations when you create a service:</p>
+    <ul>
+      <li MadCap:conditions="SAP.SapHideFromOutput">You can create standalone <MadCap:variable name="Product-Names.broker_cloud_short_intitalcap"/>s if you do not require high availability. See <MadCap:xref href="#Creating">Creating a Standalone [%=Product-Names.broker_cloud_short_title%] 10.0 and later using the REST API</MadCap:xref>.</li>
+      <li>You fill must provide values for the following name-value pairs:<ul><li><code>name</code>—a unique name for the service </li><li><code>serviceTypeId</code>—the type of service to create such as  <code>developer</code> or <code>enterprise</code></li><li><code>serviceClassId</code>—with the class of the service, such as <code>developer</code> or <code>enterprise-kilo.</code> The table below lists the service classes and their corresponding <code>ServiceClassId</code></li><table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Service Class</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">ServiceClassId</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><MadCap:variable name="Product-Names.class_100"/></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">developer</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><MadCap:variable name="Product-Names.class_250"/></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">enterprise-250-nano</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><MadCap:variable name="Product-Names.class_1k"/></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">enterprise-kilo</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyE-Column1-Body1"><MadCap:variable name="Product-Names.class_5k"/></td><td class="TableStyle-Table_Num-BodyD-Column1-Body1">enterprise-mega</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><MadCap:variable name="Product-Names.class_10k"/></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">enterprise-giga</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><MadCap:variable name="Product-Names.class_50k"/></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">enterprise-tera</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1"><MadCap:variable name="Product-Names.class_100k"/></td><td class="TableStyle-Table_Num-BodyA-Column1-Body1">enterprise-100k-tera</td></tr></tbody></table></ul></li>
+      <MadCap:snippetBlock src="../Resources/Snippets/Cloud/SpecifySpoolSizeOnCreation.flsnp"/>
+      <li>Ensure that the API token you are using has been granted the permission <code>Create  Services</code> to permit you to create an <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li>
+      <li>You cannot create more <MadCap:variable name="Product-Names.broker_cloud_short"/>s than what your account permits and this API call may fail if you have reached the limit for your account. <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">For example, for trial accounts, you are permitted to have one developer account so if you have a service created already, this API call will fail.</MadCap:conditionalText></li>
+    </ul>
+    <p>Follow these steps to create an <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+    <ol>
+      <li>
+                In the <b>Solace Blogs – Create Messaging Service</b> Postman Collection, select the <b>POST Create Messaging Service</b> request.
+The POST request would be to the URL, <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services</code>	.			</li>
+      <li>For the POST command, fill the Body with the following information:	
+                <ul><li>The <code>name</code> object is pre-filled as <code>Demo Service</code>. You can use a different name here if you want.</li><li>The <code>{{datacenterId}}</code> to name of the data center. For this example, we'll set it to <code>eks-us-east-2a</code>.</li><li><code>serviceTypeId </code>and <code>serviceClassId</code>: <code>developer </code></li></ul></li>
+      <li>Click <b>Send</b>. You should see a response that shows that service was created like the following illustration:<p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/restapi/use_api_create_service.png" alt=""/></div></p></li>
+      <li>A service takes a few minutes to create so wait a few minutes, and then go back to the <MadCap:variable name="Product-Names.console_ui_long"/> and in <MadCap:variable name="Product-Names.cluster_mgr"/>, you should see your <MadCap:variable name="Product-Names.broker_cloud_short"/>.
+</li>
+    </ol>
+    <p class="solacethumbnail"><img src="../Resources/Images/Cloud/restapi/create_service.png" alt="" class="img-border"/><![CDATA[				]]></p>
+    <p>You have successfully created an <MadCap:variable name="Product-Names.broker_cloud_short"/>. In the response is a <code>serviceId</code>, you may want to add this as variable or make it note of it for future commands. To add the <code>{{service variable}}</code>, click <b>Environment quick look</b>	(eye icon) to specify the <code>{{serviceId}}</code> variable with the value of the <code>serviceId</code> from the response. You can also use optional parameters when you create your service to do the following:</p>
+    <ul>
+      <li>Create a service with a specific event broker version. For more information, see <MadCap:xref href="#configure-ebversion-rest-api">Configuring the Event Broker Version</MadCap:xref>.</li>
+      <li>Specify the Message Spool size. For more information, see <MadCap:xref href="#configure-spool-rest-api">Configuring Message Spool Size Using the [%=Product-Names.cloud_product_short%] REST API</MadCap:xref>. </li>
+      <li>Set the cluster name. For more information, see <MadCap:xref href="#configure-cluster-name-rest-api">Configuring the Cluster Name</MadCap:xref>.</li>
+      <li>Create a service with the connection endpoint with ports configured. Connection endpoints can either be public or private endpoints. For more information about public and private endpoints, see <MadCap:xref href="create-service.htm#endpoint-considerations">Endpoint Considerations</MadCap:xref> and <MadCap:xref href="create-service.htm#configure-port-9.13later">Configuring Connection Endpoints and Ports for  [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref>. <br/>To configure a service with connection endpoint ports configured using REST API, see <MadCap:xref href="#Configur">Configuring Connection Endpoints and Ports for Kubernetes-based [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref></li>
+    </ul>
+    <h3 MadCap:conditions="SAP.SapHideFromOutput"><a name="Creating"/>Creating a Standalone <MadCap:variable name="Product-Names.broker_cloud_short_title"/> 10.0 and Later Using the REST API</h3>
+    <MadCap:snippetBlock src="../Resources/Snippets/Cloud/REST-API/create_service_v2.flsnp" MadCap:conditions="SAP.SapHideFromOutput"/>
+    <p MadCap:conditions="SAP.SapHideFromOutput">By default, when you create event brokers services, they are created with high-availability (except for the <MadCap:variable name="Product-Names.class_100"/> class). Standalone event broker services are also available that may be useful in environments where high-availability isn't required (fault tolerant client applications) or in non-production environments (for example a testing or development environment where you require more connections/disk sizes than what is offered for Developer services). Standalone <MadCap:variable name="Product-Names.broker_cloud_short"/>s are available after you have added them as a service class to your  <a href="ght_capacity_increase.htm" class="link-internal">Service Limits</a>.  To  use standalone <MadCap:variable name="Product-Names.broker_cloud_short"/>s, <a href="../get-support.htm" class="link-internal">contact Solace</a><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">or <a href="ght_capacity_increase.htm" class="link-internal">request a limit change</a></MadCap:conditionalText>.  For more information, see <a href="create-service.htm#Standalone_Broker_Service" alt="Link to Standalone Broker Considerations" title="Link to Standalone Broker Considerations" class="link-internal">Standalone Broker Considerations</a>. Some considerations when you create a service:</p>
+    <ul MadCap:conditions="SAP.SapHideFromOutput">
+      <li>Standalone <MadCap:variable name="Product-Names.broker_cloud_short"/>s do not offer high availability, see <MadCap:xref href="#create-service">Creating an [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref> to create a high availability <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li>
+      <li>You fill must provide values for the following name-value pairs:<ul><li><code>name</code>—a unique name for the service </li><li><code>serviceTypeId</code>—the type of service to create <code>enterprise-standalone</code></li><li><code>serviceClassId</code>—with the class of the service, such as <code>enterprise-1k-standalone</code>.</li><table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Service Class</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">ServiceClassId</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><MadCap:variable name="Product-Names.class_250"/></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">enterprise-250-standalone</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><MadCap:variable name="Product-Names.class_1k"/></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">enterprise-1k-standalone</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><MadCap:variable name="Product-Names.class_5k"/></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">enterprise-5k-standalone</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyE-Column1-Body1"><MadCap:variable name="Product-Names.class_10k"/></td><td class="TableStyle-Table_Num-BodyD-Column1-Body1">enterprise-10k-standalone</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><MadCap:variable name="Product-Names.class_50k"/></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">enterprise-50k-standalone</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1"><MadCap:variable name="Product-Names.class_100k"/></td><td class="TableStyle-Table_Num-BodyA-Column1-Body1">enterprise-100k-standalone</td></tr></tbody></table></ul></li>
+      <li>
+        <MadCap:snippetBlock src="../Resources/Snippets/Cloud/SpecifySpoolSizeOnCreation.flsnp"/>
+      </li>
+      <li>
+        <p>Ensure that the API token you are using has been granted the permission <code>Create  Services</code> to permit you to create an <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+      </li>
+      <li>
+        <p>You cannot create more <MadCap:variable name="Product-Names.broker_cloud_short"/>s than what your account permits and this API call may fail if you have reached the limit for your account. <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">For example, for trial accounts, you are permitted to have one developer account so if you have a service created already, this API call will fail.</MadCap:conditionalText></p>
+      </li>
+    </ul>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Follow these steps to create an <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+    <ol MadCap:conditions="SAP.SapHideFromOutput">
+      <li>
+                In the <b>Solace Blogs – Create Messaging Service</b> Postman Collection, select the <b>POST Create Messaging Service</b> request.
+The POST request would be to the URL, <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services</code>	.			</li>
+      <li>For the POST command, fill the Body with the following information:	
+                <ul><li><code>name</code>: The name for your <MadCap:variable name="Product-Names.broker_cloud_short_intitalcap"/>.</li><li><code>datacenterId</code>: The name of the data center. For this example, we'll set it to <code>gke-gcp-us-central1-a</code>.</li><li><code>serviceTypeId</code>: The type of service to create, in this case <code>enterprise-standalone.</code></li><li><code>serviceClassId</code>: The class of the service you are creating, in this case <code>enterprise-1k-standalone</code>. For information about service classes see <MadCap:xref href="service-class-limits.htm">Service Class Options for [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref></li><li><code>adminState</code>: <code>start</code></li></ul></li>
+      <li>Click <b>Send</b>. You should receive a response stating that service was created. </li>
+      <li>A service takes a few minutes to create so wait a few minutes, and then go back to the <MadCap:variable name="Product-Names.console_ui_long"/> and in <MadCap:variable name="Product-Names.cluster_mgr"/>, you should see your <MadCap:variable name="Product-Names.broker_cloud_short"/>.
+</li>
+    </ol>
+    <p MadCap:conditions="SAP.SapHideFromOutput">You have successfully created a standalone <MadCap:variable name="Product-Names.broker_cloud_short"/>. In the response is a <code>serviceId</code>, you may want to add this as variable or make it note of it for future commands. To add the <code>{{service variable}}</code>, click <b>Environment quick look</b>	(eye icon) to specify the <code>{{serviceId}}</code> variable with the value of the <code>serviceId</code> from the response. You can also use optional parameters when you create your service to do the following:</p>
+    <ul MadCap:conditions="SAP.SapHideFromOutput">
+      <li>Create a service with a specific event broker version. For more information, see <MadCap:xref href="#configure-ebversion-rest-api">Configuring the Event Broker Version</MadCap:xref>.</li>
+      <li>Specify the Message Spool size. For more information, see <MadCap:xref href="#configure-spool-rest-api">Configuring Message Spool Size Using the [%=Product-Names.cloud_product_short%] REST API</MadCap:xref>. </li>
+      <li>Set the cluster name. For more information, see <MadCap:xref href="#configure-cluster-name-rest-api">Configuring the Cluster Name</MadCap:xref>.</li>
+      <li>Create a service with the connection endpoint with ports configured. Connection endpoints can either be public or private endpoints. For more information about public and private endpoints, see <MadCap:xref href="create-service.htm#endpoint-considerations">Endpoint Considerations</MadCap:xref> and <MadCap:xref href="create-service.htm#configure-port-9.13later">Configuring Connection Endpoints and Ports for  [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref>. <br/>To configure a service with connection endpoint ports configured using REST API, see <MadCap:xref href="#Configur">Configuring Connection Endpoints and Ports for Kubernetes-based [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref></li>
+    </ul>
+    <h3><a name="configure-ebversion-rest-api"/>Selecting the <MadCap:variable name="Product-Names.broker_cloud_short_title"/> Version Using the REST API</h3>
+    <MadCap:snippetBlock src="../Resources/Snippets/Cloud/REST-API/create_service_v2.flsnp"/>
+    <p>You can choose the <MadCap:variable name="Product-Names.broker_cloud_short"/> version to use when creating an <MadCap:variable name="Product-Names.broker_cloud_short"/> using the REST API. To do this, use  POST to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services</code>  with the optional attribute of <code>eventBrokerVersion</code> to create the service. A successful response returns <code>201</code> (Created), otherwise one of the following responses are returned with a subcode (if applicable):</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Note that standalone <MadCap:variable name="Product-Names.broker_cloud_short"/>s require version 10.0 and later.</p>
+    <ul>
+      <li><code>400</code>—a bad request occurred for the following reason:<ul><li><code>5000_102</code>—an unsupported version was specified.
+							<ul><li><b>Suggested resolution</b>: Issue a GET to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>eventBrokerVersions</code>with the parameters <code>serviceClassId</code> and <code>dcId</code> set where <code>serviceClassId</code> is the service class and <code>dcId</code> is datacenter id. For example, running <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>eventBrokerVersions?serviceClassId=developer&amp;dcId=eks-us-east-2a</code> gives the following list of versions:<pre xml:space="preserve">{
+"data": [
+   {
+     "versionId": "10.1",
+     "defaultVersion": true,
+     "portRemappingEnabled": true,
+     "redundancyGroupSslEnabled": false,
+     "portDisablingEnabled": true
+    }
+]
+}</pre></li><li>The returned information is:  <ul><li><code>versionId</code>: The version that can be used to create the service.</li><li><code>defaultVersion</code>: Whether the specified version is the default version.</li><li><code>isPortDisablingEnabled</code>: Whether the event broker version supports port disabling.</li><li><code>isPortRemappingEnabled</code>: Whether the event broker version supports port remapping.</li><li><code>isRedundancyGroupSslEnabled</code>: Whether theversion  supports encrypted High-Availability (HA) links.</li></ul></li></ul></li></ul></li>
+    </ul>
+    <p> For example, the following JSON is for a REST API call to create a service with an <MadCap:variable name="Product-Names.broker_cloud_short"/> version of 10.1:</p>
+    <pre class="Code" xml:space="preserve">
+{
+  "name": "myfirstservice",
+  "serviceTypeId": "enterprise",
+  "serviceClassId": "enterprise-kilo",
+  "adminState": "start",
+  "datacenterId": "azure-eastus2",
+  "eventBrokerVersion": "10.1"
+}</pre>
+    <h3><a name="configure-spool-rest-api"/>Configuring the Message Spool Size Using the REST API</h3>
+    <MadCap:snippetBlock src="../Resources/Snippets/Cloud/REST-API/create_service_v2.flsnp"/>
+    <p><MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">For <MadCap:variable name="Product-Names.broker_cloud_short"/>s 10.6.1 and earlier, </MadCap:conditionalText>You can configure the message spool size using the <MadCap:variable name="Product-Names.cloud_product_short"/> REST API. To do this, use a POST to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services</code>  with the optional attribute of <code>messageStorage</code> to create the service. <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">The range can be from 1 to 800 in GB.</MadCap:conditionalText> <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">Note that this value can be set up to 6000 GB with the appropriate account permissions, <a href="../get-support.htm" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a> for details. </MadCap:conditionalText>It's important to note that after you've set the limit, it cannot be changed. For information about creating a service using the REST API, see <MadCap:xref href="ght_use_rest_api_services.htm#create-service">Creating an Event Broker Service</MadCap:xref>.</p>
+    <p> For example, the following JSON is for a REST API call to create a service with a Message Spool Size of 700 GB:</p>
+    <pre class="Code" xml:space="preserve">
+{
+  "name": "myfirstservice",
+  "serviceTypeId": "enterprise",
+  "serviceClassId": "enterprise-kilo",
+  "adminState": "start",
+  "datacenterId": "google-eastus2",
+  "eventBrokerVersion": "10.1"
+  "messagingStorage": 700
+}</pre>
+    <p>A successful response returns <code>201</code>.</p>
+    <h3><a name="Increasing-spool-size"/>Modify the Message Spool Size of an <MadCap:variable name="Product-Names.broker_cloud_short_title"/> Using the REST API</h3>
+    <MadCap:snippetBlock src="../Resources/Snippets/Cloud/REST-API/update_service_v2.flsnp" MadCap:conditions="SAP.SapHideFromOutput"/>
+    <p><MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">You can use the <MadCap:variable name="Product-Names.cloud_product_short"/> REST API to scale the message spool  size of a Kubernetes-based <MadCap:variable name="Product-Names.broker_cloud_short"/> 10.6.1 and earlier up to 800GB. </MadCap:conditionalText>Message spool  sizes of up to 6TB are possible as an add-on feature for all <MadCap:variable name="Product-Names.broker_cloud_short"/> versions with the appropriate account permissions, and <MadCap:variable name="Product-Names.broker_cloud_short"/> version 10.0 and later running in Kubernetes 1.23 or later cluster.</p>
+    <p>You should note the following:</p>
+    <ul>
+      <li>The ability to scale the message spool  size <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">for <MadCap:variable name="Product-Names.broker_cloud_short"/>s 10.6.1 and earlier </MadCap:conditionalText>is not enabled by default. To enable it, you must <a href="../get-support.htm" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a>. </li>
+      <li MadCap:conditions="Default.HideFromAllOutput">Your account requires permissions to scale message spool size<MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput"> past 800GB</MadCap:conditionalText>. To enable permissions, <a href="../get-support.htm" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a></li>
+      <li>Specifications related to scalable message spool  sizing, including availability and implementation can vary by cloud provider. Consult your cloud providers Kubernetes and storage related documentation for specifications.</li>
+      <li>While possible, scaling message spool sizes above 4TB for an <MadCap:variable name="Product-Names.broker_cloud_short"/> in an Azure Kuberenetes cluster is not currently fully supported. If you require scaling above 4TB and you encounter issues,<a href="../get-support.htm" target="_blank" class="link-internal"> contact <MadCap:variable name="Variables.CompanyName"/></a> for support.
+            </li>
+      <MadCap:snippetBlock src="../Resources/Snippets/Cloud/MissionControl/MessageSpool_NoDeveloperClassSupport.flsnp"/>
+      <li>Message spool  size can only be scaled up. Scaling down is not possible.</li>
+      <li>To perform this operation, you must know the <code>infrastructureId</code> for the <MadCap:variable name="Product-Names.broker_cloud_short"/> whose message spool size you want to scale. The <code>infrastructureId</code> is listed under the <code>data</code> section in the body of a response to a <code>GET</code> <MadCap:variable name="Product-Names.broker_cloud_short"/> request. See <MadCap:xref href="#getdetails-service">Getting the Connection Details for the [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref></li>
+    </ul>
+    <p>To scale up the message spool  size use a <code>POST</code> call to <code><MadCap:variable name="Manifest-Products-Links.CloudRestAPIBaseURL"/><MadCap:variable name="Manifest-Products-Links.CloudRestAPIv1"/>infrastructures/{infrastructureId}/requests/scaleUpInfrastructure </code>with the data parameter <code>infrastructureId </code>as the infrastructureId of the <MadCap:variable name="Product-Names.broker_cloud_short"/> whose message spool  size you want to scale up, with the following payload in the body:</p>
+    <pre xml:space="preserve">{	
+	"requestedSpoolSize": {number}
+}</pre>
+    <p>The <code>requestSpoolSize</code> parameter must be a number ranging from 10 to 800 (6000 with appropriate account permissions and <MadCap:variable name="Product-Names.broker_cloud_short"/> 10.0 or later in a Kubernetes 1.23 or later cluster) in increments of 1. Be aware that using a number lower than the current spool  size will cause the <code>POST</code> to fail. You can see the current spool  size of the service you want to scale up by performing a <code>GET</code> (see <MadCap:xref href="#getdetails-service">Getting the Connection Details for the [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref>) and looking at the <code>Storage</code> attribute in the <code>serviceClassDisplayedAttributes</code> section of the response.</p>
+    <pre xml:space="preserve">"serviceClassDisplayedAttributes": 
+        "Storage": "50 GB"</pre>
+    <p> A successful <code>POST</code> returns a code of <code>202 Accepted</code> with the response containing a message similar to the following:</p>
+    <pre xml:space="preserve">{
+       "data": {
+        	"id": "77h28m4kbej",
+        	"creationTimestamp": 1666903921206,
+        	"serviceClassId": "enterprise-250-nano",
+        	"requestedSpoolSize": 105,
+        	"type": "scaleUpInfrastructure"
+        	}
+}	</pre>
+    <p>You can use the <code>id</code> in the response to query the status of the scale up spool  size request, see <MadCap:xref href="#Get-status-scaleup">Getting the Status to a Scale Message Spool  Size Request Using the REST API</MadCap:xref>. </p>
+    <p>Once the increase in message spool  size is complete, you must update the size of your queues in the <MadCap:variable name="Product-Names.pubsubmanager_short"/> so they utilize the new storage space, see <MadCap:xref href="ggs_queue.htm">Creating Your First  Queue</MadCap:xref> for information.</p>
+    <p>The following error responses and codes can be returned, with some possible solutions: </p>
+    <ul>
+      <li><code><b>400</b></code>—a bad request occurred for one of the following reasons:				<ul><li>the requested spool size is invalid—the requested spool size may be to high, or it is below the existing spool size. <ul><li><b>Suggested resolution</b>—review the existing message spool size, and try a different number.</li></ul></li><li>another job is in progress 
+			<ul><li><b>Suggested resolution</b>—the service may already be scaling up its message spool  size. Wait several minutes and retry the request.</li></ul></li></ul></li>
+      <li><code><b>404</b></code>—the specified <MadCap:variable name="Product-Names.broker_cloud_short"/> not found<ul><li><b>Suggested resolution</b> — check that the <MadCap:variable name="Product-Names.broker_cloud_short"/> has been created and that the <code>infrastructureId</code> is correct.</li></ul></li>
+    </ul>
+    <h4><a name="Get-status-scaleup"/>Getting the Status to a Scale Message Spool  Size Request Using the REST API</h4>
+    <MadCap:snippetBlock src="../Resources/Snippets/Cloud/REST-API/update_service_status_v2.flsnp" MadCap:conditions="SAP.SapHideFromOutput"/>
+    <p>You can get the status of a scale message spool  size request using the REST API. To get the status to a scale message spool  size request, use a <code>GET</code> call to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>infrastructures/{infrastructureId}/requests/{requestId}</code> where the <code>infrastructureId</code> parameter is the infrastructureId used original scale up spool size <code>POST</code> request, and where the <code>requestId</code> parameter is the Id that was returned in the <code>202 Accepted</code> response to that request. </p>
+    <p>A successful GET returns a <code>200 OK</code> with a response containing a message similar to the following: </p>
+    <pre xml:space="preserve">
+"data": 
+	{
+	 "id": "98mcm4zzoaa",
+	 "creationTimestamp": 1667303594827,
+	 "adminProgress": "inProgress",
+	 "serviceClassId": "enterprise-250-nano",
+	 "requestedSpoolSize": 50,
+	 "type": "scaleUpInfrastructure"
+	}
+</pre>
+    <p>the <code>adminProgress</code> parameter displays the following states for the original <code>POST</code> request:</p>
+    <ul>
+      <li>
+        <p><code>inProgress</code>: The request in progress.</p>
+      </li>
+      <li>
+        <p><code>completed</code>: The request is complete.</p>
+      </li>
+      <li>
+        <p><code>failed</code>: The request failed.</p>
+      </li>
+    </ul>
+    <h4><a name="Testing-scale-ability"/>Checking Whether Message Spool  Size Expansion is Available for <MadCap:variable name="Product-Names.broker_cloud_short_title"/> Using the REST API</h4>
+    <MadCap:snippetBlock src="../Resources/Snippets/Cloud/REST-API/get_list_datacenters_v2.flsnp"/>
+    <p>You can test the ability to scale the message spool  size for your Kubernetes-based <MadCap:variable name="Product-Names.broker_cloud_short"/> in customer-controlled datacenters using the REST API. Note that ability to scale the message spool  size is not enabled by default. To enable it, you must <a href="../get-support.htm" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a>. </p>
+    <p>To test a customer-controlled datacenters ability to scale up message spool  size, use a <code>POST</code> to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>{datacenterId}/requests/testSpoolSizeScaleUp</code> with the data parameter <code>datacenterId</code> as the datacenterId of the datacenter you want to test the message spool size scaling on. To acquire the <code>datacenterId</code>, see <MadCap:xref href="#Getting-datacenter">Getting Datacenter Information Using the REST API</MadCap:xref>. </p>
+    <p>A successful <code>POST</code> returns a code of <code>202 Accepted</code> with an empty response payload. The test takes a period of time to run; its results will be available in the response to a <code>GET</code> call for datacenter information (see <MadCap:xref href="#Getting-datacenter">Getting Datacenter Information Using the REST API</MadCap:xref>), and will appear similar to the following:</p>
+    <pre xml:space="preserve">    ],
+	...
+	"spoolScaleUpCapability": "SUPPORTED",
+	"spoolScaleUpTestTimestamp": "2022-10-28T13:32:50Z",
+	"spoolScaleUpTestMessage": "Spool size scale up test passed",
+	...
+	},</pre>
+    <p>The <code>spoolScaleUpCapability</code> parameter displays the results of a test, and has the following values:</p>
+    <ul>
+      <li><code>UKNOWN</code>: Testing has not been run. The status of this feature is unknown; run the test.</li>
+      <li><code>IN_PROGRESS</code>: Testing is in progress.</li>
+      <li><code>SUPPORTED</code>: Testing has succeeded and scaling up is available.</li>
+      <li><code>NOT_SUPPORTED</code>: Testing has failed and scaling is not supported.</li>
+    </ul>
+    <p>Potential failed responses to the <code>GET</code> include:</p>
+    <ul>
+      <li><code><b>404</b></code>—the specified datacenter could not be found. <ul><li><b>Suggested resolution</b>—check that the <code>datacenterId</code> is correct, and that you are not trying to run the test on a public datacenter.</li></ul></li>
+    </ul>
+    <h4><a name="Getting-datacenter"/>Getting Datacenter Information Using the REST API</h4>
+    <p MadCap:conditions="SAP.SapHideFromOutput" class="Note">You can perform this procedure using our feature rich and consistent v2 REST API. See the <a href="https://api.solace.dev/cloud/reference/getdatacenters" target="_blank" class="link-offsite">Get a list of datacenters v2 REST API</a> in the <a href="https://api.solace.dev/cloud/reference/using-the-v2-rest-apis-for-pubsub-cloud" target="_blank" class="link-offsite"><MadCap:variable name="Product-Names.pubsub_brand_only"/>REST API Reference</a> for more information. </p>
+    <p>You can acquire information about your datacenters using REST API. This provides you with the <code>DatacenterID</code> you need to run the <a href="#Testing-scale-ability" alt="link to procedure for testing ability to scale message spool storage size" class="link-internal">scale message spool size test for customer-controlled datacenters</a>, as well as the results of that test. </p>
+    <p>To get datacenter information perform a <code>GET</code> to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>datacenters</code>. </p>
+    <p>A successful <code>GET</code> returns a code of <code>200 OK</code> with the response containing details about available datacenters. </p>
+    <ul>
+      <li> If you are looking for the <code>datacenterId</code>, you will find it in the response listed as <code>"id"</code> similar to the following in the response:</li>
+      <pre xml:space="preserve">	"id": "myregion-aws-us-central1",
+	 "type": "datacenter",
+	 "name": "",
+	 "displayName": "Private AWS Datacenter",</pre>
+    </ul>
+    <ul>
+      <li>If you are looking for test results for scaling of message spool size, you will see something similar to the following in the response:</li>
+      <pre xml:space="preserve">    ],
+	...
+	"spoolScaleUpCapability": "SUPPORTED",
+	"spoolScaleUpTestTimestamp": "2022-10-28T13:32:50Z",
+	"spoolScaleUpTestMessage": "Spool size scale up test passed",
+	...
+	},</pre>
+    </ul>
+    <h3><a name="configure-cluster-name-rest-api"/>Configuring the Cluster Name Using the REST API</h3>
+    <MadCap:snippetBlock src="../Resources/Snippets/Cloud/REST-API/create_service_v2.flsnp"/>
+    <p>To create a DMR cluster, each <MadCap:variable name="Product-Names.broker_cloud_short"/> in the cluster must have the same cluster name. You can configure the cluster name for a service using the <MadCap:variable name="Product-Names.cloud_product_short"/> REST API to set up your DMR cluster. To do this, use a POST to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services</code>  with the optional attribute of <code>clusterName</code> to create the service. A valid name is 1 to 64 characters long and can contain only alphanumeric characters, dashes, and underscores.</p>
+    <p>After you have set up your <MadCap:variable name="Product-Names.broker_cloud_short"/>s to have the same cluster name and you're ready to create the DMR cluster. To start this,  contact  <a href="../get-support.htm" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a> as the ability to create the  DMR cluster is not yet available.</p>
+    <p> A successful response returns <code>201</code> (Created), otherwise one of the following responses are returned with a subcode (if applicable):</p>
+    <ul>
+      <li><code>400</code>—with a support code of <code>102</code>, which indicates that an invalid request was made. The reason it failed is for one or more of the following reasons:<ul><li> the cluster name specified was not 1 to 64 characters in length</li><li>the cluster name specified has characters other than alphanumeric, dashes, or underscores</li><li> the version for <code>eventBrokerVersion</code> that was selected is not supported</li></ul></li>
+    </ul>
+    <p class="Note">Creating an <MadCap:variable name="Product-Names.broker_cloud_short"/> with a custom cluster name is supported for Kubernetes for Virtual Private Cloud/Virtual Network (VPC/VNet) and on-premises deployments, including Google Cloud, <MadCap:variable name="Product-Names.customer-controlled_region"/>s, and <MadCap:variable name="Product-Names.dedicated_region"/>s. This call currently can't be used in AWS or Azure public regions.</p>
+    <p> For example, the following JSON is for a POST call to <code>https://api.solace.cloud/api/v0/services</code> for creating a service with a cluster name of <code>My-First-Cluster</code>:</p>
+    <pre class="Code" xml:space="preserve">
+{
+	"name": "service-1",
+	"serviceTypeId": "developer",
+	"serviceClassId": "developer",
+	"adminState": "start",
+	"redundancyGroupSslEnabled": true,
+	"msgVpnName": "service-1",
+	<b>"cluster": {
+		"name": "My-First-Cluster"</b>
+  	},
+	<b>"datacenterId": "gke-gcp-us-east1",
+	"eventBrokerVersion": "10.1"</b>,
+	"partitionId": "default",
+	"attributes": {
+		"customizedMessagingPorts": {
+			"serviceAmqpPlainTextListenPort": 0,
+			"serviceAmqpTlsListenPort": 5671,
+			"serviceMqttPlainTextListenPort": 0,
+			"serviceMqttTlsListenPort": 8883,
+			"serviceMqttTlsWebSocketListenPort": 8443,
+			"serviceMqttWebSocketListenPort": 0,
+			"serviceRestIncomingPlainTextListenPort": 0,
+			"serviceRestIncomingTlsListenPort": 9443,
+			"serviceSmfPlainTextListenPort": 0,
+			"serviceSmfCompressedListenPort": 0,
+			"serviceSmfTlsListenPort": 55443,
+			"serviceWebPlainTextListenPort": 0,
+			"serviceWebTlsListenPort": 443
+		}
+	}
+}
+</pre>
+    <h3><a name="Configur"/>Configuring Connection Endpoints and Ports for Kubernetes-Based <MadCap:variable name="Product-Names.broker_cloud_short_title"/> Using the REST API</h3>
+    <MadCap:snippetBlock src="../Resources/Snippets/Cloud/REST-API/create_service_v2.flsnp" MadCap:conditions="SAP.SapHideFromOutput"/>
+    <p>When creating Kubernetes-based <MadCap:variable name="Product-Names.broker_cloud_short_intitalcap"/> service, you can configure service connection endpoints at the same time. To do this, use a POST to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services</code> with the optional attribute of <code>serviceConnectionEndpoints</code>.</p>
+    <p>When doing so, you must specify the following mandatory values:</p>
+    <ul>
+      <li><code>Name</code>—can contain any text, and must be 1 and 50 characters in length.</li>
+      <li><code>Description</code>—can contain any text, and can be between 0 and 50 characters in length.</li>
+      <li><code>accessType</code>—must be set to either <code>"public"</code> or <code>"private"</code>.</li>
+      <li><code>type</code>—must be set to either <code>"nodeport"</code> or <code>"loadbalancer"</code>.</li>
+    </ul>
+    <p>The following JSON example shows a REST API call to create a service named <code>My-First-Service</code> with various service connection endpoint ports defined under <code>serviceConnectionEndpoints</code> value:</p>
+    <pre xml:space="preserve">
+{
+	"type": "service",
+	"timestamp": 0,
+	"name": "My-First-Service",
+	"datacenterId": "gke-gcp-us-central1-a",
+	"eventBrokerVersion": "10.1",
+	"msgVpnName": "My-First-Service",
+	"redundancyGroupSslEnabled": true,
+	"serviceTypeId": "developer",
+	"serviceClassId": "developer",
+	"adminState": "start",
+	"partitionId": "default",		
+	"serviceConnectionEndpoints": [
+		{
+		"name": "Public Endpoint",
+		"description": "",
+		"accessType": "public",
+		"type": "loadbalancer",
+		"ports": {
+			"serviceSmfPlainTextListenPort": 0,
+			"serviceSmfCompressedListenPort": 0,
+			"serviceSmfTlsListenPort": 55443,
+			"serviceWebPlainTextListenPort": 0,
+			"serviceWebTlsListenPort": 443,
+			"serviceAmqpPlainTextListenPort": 0,
+			"serviceAmqpTlsListenPort": 5671,
+			"serviceMqttPlainTextListenPort": 0,
+			"serviceMqttWebSocketListenPort": 0,
+			"serviceMqttTlsListenPort": 8883,
+			"serviceMqttTlsWebSocketListenPort": 8443,
+			"serviceRestIncomingPlainTextListenPort": 0,
+			"serviceRestIncomingTlsListenPort": 9443,
+			"serviceManagementTlsListenPort": 943,
+			"managementSshTlsListenPort": 22
+			}
+		}
+		]
+}</pre>
+    <p>You can change the values in <code>serviceConnectionEndpoints</code> value of the JSON above based on the criteria list below:</p>
+    <ul>
+      <li>There is a maximum of one public and one private connection endpoint.</li>
+      <li>Only the protocols listed in the code example above are allowed.</li>
+      <li>You can enter a value for any port in the list, with the following limitations:</li>
+      <ul>
+        <li>At least one port must be enabled. </li>
+        <MadCap:snippetBlock src="../Resources/Snippets/Cloud/EndpointPortValues.flsnp"/>
+        <li>The values for each port must be unique. Duplicating values will cause the POST to fail. </li>
+        <li>Setting a port value to 0 or not listing a port implies it is disabled. </li>
+        <li>The following reserved port values can not be used: 5550, 8080, 8300, 8301, 8302, 8741</li>
+      </ul>
+      <li>The connection endpoints require both <code>serviceSmfTlsListenPort</code> and <code>serviceManagementTlsListenPort</code> ports enabled (not set to 0), but both do not have to be on the same endpoint, see the list of parameters below for details:</li>
+      <ul>
+        <MadCap:snippetBlock src="../Resources/Snippets/Cloud/EndpointSMFandSEMP.flsnp"/>
+      </ul>
+    </ul>
+    <p>A successful POST returns a <code>201</code> (Created) with the response containing a message similar to the following:</p>
+    <pre xml:space="preserve" class="Code">
+{
+	"data": {
+	"type": "service",
+	"timestamp": 0,
+	"userId": "28hn3x03t66",
+	"serviceId": "y4y003ixeud",
+	"name": "My-First-Service",
+	"msgVpnName": "My-First-Service",
+	...
+	 &lt;snip&gt;
+	...	
+	"serviceConnectionEndpoints": []
+	}
+}
+</pre>
+    <p>The following should be noted:</p>
+    <ul>
+      <li>If the <code>serviceConnectionEndpoints</code> section is missing and the legacy <code>customizedMessagingPorts</code> section is instead specified, a default connection endpoint is created with the customized messaging ports, with the additions of SEMP and SMF, TLS and SSH.</li>
+      <li>If the entire <code>serviceConnectionEndpoints</code> and <code>customizedMessagingPorts</code> sections are not provided a connection endpoint is created with default secure (TLS) ports enabled.</li>
+    </ul>
+    <h3><a name="Creating2"/>Creating Connection Endpoints and Ports for Kubernetes-Based <MadCap:variable name="Product-Names.broker_cloud_short_title"/>  Using the REST API</h3>
+    <p>You can create service connection endpoints for an existing kubernetes-based <MadCap:variable name="Product-Names.broker_cloud_short"/> service. To do this, use a POST to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>serviceConnectionEndpoints</code>.</p>
+    <p>When doing so, you must specify the following mandatory values:</p>
+    <ul>
+      <li><code>serviceId</code>—the ID for the service you want to add connection endpoints to, see <MadCap:xref href="#getdetails-service">Getting the Connection Details for the [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref></li>
+      <li><code>Name</code>—can contain any text, and must be 1 and 50 characters in length.</li>
+      <li><code>Description</code>—can contain any text, and can be between 0 and 50 characters in length.</li>
+      <li><code>accessType</code>—must be set to either <code>public</code> or <code>private</code>.</li>
+      <li><code>type</code>—must be set to either <code>nodeport"</code> or <code>loadbalancer</code>.</li>
+    </ul>
+    <p>The following JSON example shows a REST API call to create public endpoint connections on an <MadCap:variable name="Product-Names.broker_cloud_short"/> with the <code>serviceId</code> of <code>30b53ks8azm</code>. The various service connection endpoint ports are defined under the <code>serviceConnectionEndpoints</code> value:</p>
+    <pre xml:space="preserve">{
+	"serviceId": "30b53ks8azm"
+       "serviceConnectionEndpoints": [
+		{
+		"name": "Private Endpoint",
+		"description": "",
+		"accessType": "Private",
+		"type": "loadbalancer",
+		"ports": {
+			"serviceSmfPlainTextListenPort": 0,
+			"serviceSmfCompressedListenPort": 0,
+			"serviceSmfTlsListenPort": 55442,
+			"serviceWebPlainTextListenPort": 0,
+			"serviceWebTlsListenPort": 442,
+			"serviceAmqpPlainTextListenPort": 0,
+			"serviceAmqpTlsListenPort": 5671,
+			"serviceMqttPlainTextListenPort": 0,
+			"serviceMqttWebSocketListenPort": 0,
+			"serviceMqttTlsListenPort": 8883,
+			"serviceMqttTlsWebSocketListenPort": 8443,
+			"serviceRestIncomingPlainTextListenPort": 0,
+			"serviceRestIncomingTlsListenPort": 9442,
+			"serviceManagementTlsListenPort": 942,
+			"managementSshTlsListenPort": 21
+			}
+		}
+		]
+}</pre>
+    <p>You can change the values in <code>serviceConnectionEndpoints</code> value of the JSON above based on the criteria list below:</p>
+    <ul>
+      <li>There is a maximum of one public and one private connection endpoint. If the POST attempts to create connection endpoints of a type that already exist, it will be denied.</li>
+      <li>Only the protocols listed in the code example above are allowed.</li>
+      <li>You can enter a value for any port in the list, with the following limitations:</li>
+      <ul>
+        <li>At least one port must be enabled. </li>
+        <MadCap:snippetBlock src="../Resources/Snippets/Cloud/EndpointPortValues.flsnp">
+                </MadCap:snippetBlock>
+        <li>The values for each port must be unique. Duplicating values will cause the POST to fail. </li>
+        <li>Setting a port value to 0 or not listing a port implies it is disabled. </li>
+        <li>The following reserved port values can not be used: 5550, 8080, 8300, 8301, 8302, 8741</li>
+      </ul>
+      <li>The connection endpoints require both <code>serviceSmfTlsListenPort</code> and <code>serviceManagementTlsListenPort</code> ports enabled (not set to 0), but both do not have to be on the same endpoint, see the list of parameters below for details:</li>
+      <ul>
+        <MadCap:snippetBlock src="../Resources/Snippets/Cloud/EndpointSMFandSEMP.flsnp">
+                </MadCap:snippetBlock>
+      </ul>
+    </ul>
+    <p>A successful POST returns a <code>202</code> (Accepted) with the response containing a message similar to the following:</p>
+    <pre xml:space="preserve" class="Code">
+{
+       "id": "8iq2n1t9v50",
+	"job": null,
+	"serviceId": "30b53ks8azm",
+	"requestType": "serviceConnectionEndpointRequest",
+	"creationTimestamp": 0,
+	"requestAttributes": {
+		"serviceWebPlainTextListenPort": "0",
+		"serviceRestIncomingTlsListenPort": "9442",
+		"serviceManagementTlsListenPort": "942",
+		"serviceAmqpPlainTextListenPort": "0",
+		"description": "",
+		"serviceMqttWebSocketListenPort": "0",
+		"serviceWebTlsListenPort": "442",
+		"serviceRestIncomingPlainTextListenPort": "0",
+		"type": "LoadBalancer",
+		"serviceSmfCompressedListenPort": "0",
+		"accessType": "Public",
+		"serviceMqttPlainTextListenPort": "0",
+		"serviceSmfPlainTextListenPort": "0",
+		"serviceAmqpTlsListenPort": "5671",
+		"serviceMqttTlsListenPort": "8882",
+		"serviceSmfTlsListenPort": "55442",
+		"name": "Public Endpoint",
+		"serviceMqttTlsWebSocketListenPort": "8443",
+		"managementSshTlsListenPort": "21",
+		"operation": "create"
+	}
+}
+</pre>
+    <p>The POST call is asynchronous. You can use the <code>id</code> in the response to look up the status of the  request by calling <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{service id}/requests/{id}</code></p>
+    <h2><a name="change-cluster-name-rest-api"/>Changing the Cluster Name for an Existing <MadCap:variable name="Product-Names.broker_cloud_short_title"/> Using the REST API</h2>
+    <p>You may have an existing <MadCap:variable name="Product-Names.broker_cloud_short"/>s that you want to add to an DMR cluster. To start this, you must change the current cluster name to match the cluster name for another service. You can change the cluster name using the  <MadCap:variable name="Product-Names.cloud_product_short"/> REST API provided your API Token has at least the following permissions:</p>
+    <ul>
+      <li>
+        <b>Get Cluster Information</b>
+      </li>
+      <li>
+        <b>Update Cluster Name</b>
+      </li>
+    </ul>
+    <p>An <MadCap:variable name="Product-Names.broker_cloud_short"/> cluster name can be changed if the following conditions are specified:</p>
+    <ul>
+      <li>The <MadCap:variable name="Product-Names.broker_cloud_short"/> whose cluster name is being changed is not part of an event mesh. If it is, that <MadCap:variable name="Product-Names.broker_cloud_short"/> must first be removed from the event mesh.</li>
+      <li>The new cluster name specified is 1 to 64 characters in length and contains  			 only alphanumeric characters, dashes, or underscores.</li>
+    </ul>
+    <p>The following is a suggested work flow to change the cluster name for an <MadCap:variable name="Product-Names.broker_cloud_short"/></p>
+    <ol>
+      <li>(Optional) Determine if the cluster name can be edited. For more information, see <MadCap:xref href="#determine-cluster-name-editable-rest-api">Determining if the Cluster Name for an  [%=Product-Names.broker_cloud_short_title%] Can Be Edited</MadCap:xref>.</li>
+      <li>(Optional) Determine what existing cluster names are available for use in the account. For more information, see <MadCap:xref href="#get-existing-clusternames-rest-api">Getting the Cluster Names Available Using the REST API</MadCap:xref>.</li>
+      <li>Edit the cluster name using either a new name or an existing name. For more information, see <MadCap:xref href="#edit-clustername-rest-api">Editing the Cluster name for an Existing [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>. You can also use the same call from the previous step to validate that your cluster name was created for the service.</li>
+    </ol>
+    <h3><a name="determine-cluster-name-editable-rest-api"/>Determining Whether the Cluster Name for an  <MadCap:variable name="Product-Names.broker_cloud_short_title"/> Can Be Edited</h3>
+    <p>The cluster name for an <MadCap:variable name="Product-Names.broker_cloud_short"/> can be changed only if there are no pre-existing DMR external links are configured on the <MadCap:variable name="Product-Names.broker_cloud_short"/>- in other words, it isn't part of an event mesh.</p>
+    <p>To validate, issue a <code>GET</code> to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>admin/infrastructures/{infrastructureid}/clusterInfo</code>. A response that is returned that indicates whether the cluster name can be edited in the <code>supportsClusterRename</code> property. A value of <code>true </code>indicates that it can be changed, while a value of <code>false </code>indicates it cannot. When it is <code>false</code>, it indicates that there are DMR external links configured on the service.</p>
+    <p>To determine the value for <code>{infrastructureId}</code>, issue a GET response to the <MadCap:variable name="Product-Names.broker_cloud_short"/> using its service identifier and from the response get the infrastructureId. For example,  a <code>GET <MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/de472ut2xic</code> and from the response, the <code>infrastructureId</code> is <code>u9bs2tiij8e </code>. For more information getting information about getting information about an <MadCap:variable name="Product-Names.broker_cloud_short"/>, see <MadCap:xref href="#getdetails-service">Getting the Connection Details for the Event Broker Service using the REST API</MadCap:xref>.</p>
+    <p class="Note">Note to make this call, you must set <b>Solace Element Management Protocol (SEMP) over Message Bus</b> to Enabled. This is enabled from the service details page in the <MadCap:variable name="Product-Names.console_ui_long"/> on the <b>Manage </b>tab<b> &gt; Advanced Options</b> for an <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+    <p>For example, a GET response <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>admin/infrastructures/u9bs2tiij8e/clusterInfo</code> returns the following response to indicate that  it is possible to edit the existing cluster name for the specified  <code>infrastructureId</code>. A successul operations returns a response status of <code>200</code>:</p>
+    <pre xml:space="preserve">{
+    "infrastructureId": "u9bs2tiij8e",
+    "infrastructureName": "nano-daily-dev-u9bs2tiij8e",
+    "infrastructure": {
+        "supportsClusterRename": true
+    },
+    "errorMessage": null,
+    "type": "infrastructureClusterInfo",
+    "id": "u9bs2tiij8e"
+}</pre>
+    <h3><a name="edit-clustername-rest-api"/>Editing the Cluster Name for an Existing <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h3>
+    <p>You can edit the cluster name, provided the cluster name is considered editable. Though not necessary, it is possible to determine whether the cluster is editable prior to attempting to do it. For more information, see <MadCap:xref href="#determine-cluster-name-editable-rest-api">Determining if the Cluster Name for an  [%=Product-Names.broker_cloud_short_title%] Can Be Edited</MadCap:xref>.</p>
+    <p>You can specify a new name or using a pre-existing cluster name.  You can get the list of pre-existing cluster name available in the account if you want. For more information about how to do this, see <MadCap:xref href="#get-existing-clusternames-rest-api">Getting the Cluster Names Available Using the REST API</MadCap:xref>.</p>
+    <p>To edit the name of the cluster for an <MadCap:variable name="Product-Names.broker_cloud_short"/>,  <code>POST</code> to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>infrastructures/{infrastructureid}/requests/dmrClusterNameUpdateRequests</code> and set <code>dmrClusterName</code> in the body of the request to cluster name you want.  To determine the <code>{infrastructureId}</code>, issue a <code>GET</code> response to the <MadCap:variable name="Product-Names.broker_cloud_short"/>. For more information getting information about a service, see <MadCap:xref href="#getdetails-service">Getting the Connection Details for the Event Broker Service using the REST API</MadCap:xref>.</p>
+    <p>For example, for the <code>infrastructureid</code> of <code>u9bs2tiij8e</code>, issue the <code>POST</code> request <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>infrastructures/u9bs2tiij8e/requests/dmrClusterNameUpdateRequests</code> with the following payload in the body:</p>
+    <pre xml:space="preserve">{
+  "dmrClusterName" : "MyFirstCluster"
+}</pre>
+    <p> A successful response returns <code>202</code> (Created), otherwise a <code>400</code> response is returned to indicate that the cluster name was not changed. </p>
+    <p>Here's what a successful response looks like, where <code>dmrClusterName</code> specifies the new cluster name:</p>
+    <pre xml:space="preserve">{
+  "data": {
+  "id": "c98m7382xht",
+  "creationTimestamp": 1630688550818,
+  "dmrClusterName": "MyFirstCluster",
+  "type": "dmrClusterNameUpdateRequest"
+  }
+}</pre>
+    <h3><a name="get-existing-clusternames-rest-api"/>Getting the Cluster Names Available Using the REST API</h3>
+    <p>You can get the cluster names available for an account. This might be useful so you can identify an existing cluster name to which to set  your <MadCap:variable name="Product-Names.broker_cloud_short"/>. </p>
+    <p>To determine the cluster names available, issue  a <code>GET</code> to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>serviceClusterNames?detail=true</code> (for detailed information about the cluster names and <MadCap:variable name="Product-Names.broker_cloud_short"/>s using that cluster name) or <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>serviceClusterNames?detail=false</code> (for a simple the list of the cluster names).</p>
+    <p>For example:</p>
+    <pre xml:space="preserve">{
+  "data": [
+  {
+    "clusterName": "MyFirstCluster",
+    "serviceNames": [
+                     "My-Second-Service",
+                     "My-First-Service"
+                    ],
+    "type": "clusterNames"
+  },
+  {
+    "clusterName": "cluster-gke-gcp-us-central1-a-p9fqu5ymy3i",
+    "serviceNames": [
+                     "My-Third-Service"
+			        ],
+			"type": "clusterNames"
+  }
+  ],
+  "meta": {
+           "currentTime": 1630689531325,
+           "pageNumber": 0,
+           "pages": {
+              "next-page": null,
+              "total-pages": 1
+           },
+           "count": 3,
+           "pageSize": 100
+          }
+   }
+  }
+}</pre>
+    <h2><a name="configure-hostnames-rest-api"/>Configuring Hostnames Using the REST API</h2>
+    <p>You can configure  hostnames for an existing <MadCap:variable name="Product-Names.broker_cloud_short"/> using the <MadCap:variable name="Product-Names.cloud_product_short"/> REST API and the service identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/>. The service identifier is part of the response returned when you create an <MadCap:variable name="Product-Names.broker_cloud_short"/> or retrieved via a GET.  For information about creating an <MadCap:variable name="Product-Names.broker_cloud_short"/> or retrieving the service identifier using the REST API, see <MadCap:xref href="ght_use_rest_api_services.htm#create-service">Creating an Event Broker Service</MadCap:xref> and <MadCap:xref href="#getdetails-service">Getting the Connection Details for the Event Broker Service using the REST API</MadCap:xref>, respectively.</p>
+    <p>Operations to configure a hostname occur asynchronously. For this reason, you may see a delay before the operation completes. Using the REST API,  you can perform the following operations to  configure hostnames on an <MadCap:variable name="Product-Names.broker_cloud_short"/>:</p>
+    <ul>
+      <li><a href="#add-hostname-using-rest-api" class="link-internal">Add a hostname</a> to an existing <MadCap:variable name="Product-Names.broker_cloud_short"/></li>
+      <li><a href="#Adding" class="link-internal">Add additional hostnames to endpoints</a> on an existing <MadCap:variable name="Product-Names.broker_cloud_short"/></li>
+      <li><a href="#Updating" class="link-internal">Update additional endpoint hostnames</a> on an existing <MadCap:variable name="Product-Names.broker_cloud_short"/></li>
+      <li class="devlink"><a href="#delete-hostname-using-rest-api" class="link-internal">Delete a hostname</a> from an existing <MadCap:variable name="Product-Names.broker_cloud_short"/></li>
+      <li class="devlink"><a href="#Deleting" class="link-internal">Delete additional endpoint hostnames</a> from an existing <MadCap:variable name="Product-Names.broker_cloud_short"/></li>
+    </ul>
+    <p>To add, move, or delete a hostname for <MadCap:variable name="Product-Names.broker_cloud_short"/>s you own or in your organization, you require an API token with the <b>Update Service</b> permission under <b>My Services</b> and <b>Organization Services</b>, respectively. For more information about API tokens, see <MadCap:xref href="ght_api_tokens.htm">Managing API Tokens</MadCap:xref>.</p>
+    <p>For information about managing <MadCap:variable name="Product-Names.broker_cloud_short"/>s using the REST API, see <MadCap:xref href="ght_use_rest_api_services.htm">Managing Services with the [%=Product-Names.cloud_product_short%] REST API</MadCap:xref>.</p>
+    <h3><a name="add-hostname-using-rest-api"/>Adding a Hostname Using the REST API</h3>
+    <p>You can add a hostname using the REST API to an existing <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+    <p>To perform this operation, you must know the service identifier for your <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+    <p>To add a hostname to an existing <MadCap:variable name="Product-Names.broker_cloud_short"/>, use a POST call to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{service_id}/serviceHostNames</code> with the data parameters <code>serviceHostName</code> as the hostname and <code>operation</code> as <code>create</code>. A successful response returns <code>202</code> (Accepted), otherwise one of the following responses are returned with a subcode (if applicable):</p>
+    <ul>
+      <li><code><b>400</b></code>—a bad request occurred for one of the following reasons:<ul><li><code><b>5000_5800</b></code>—the specified hostname is already being used for an <MadCap:variable name="Product-Names.broker_cloud_short"/><ul><li><b>Suggested resolution</b>—specify a different hostname</li></ul></li><li><p><code><b>5000_5802</b></code>—the <MadCap:variable name="Product-Names.broker_cloud_short"/> already has five additional hostnames configured</p><ul><li><b>Suggested resolution</b> — the maximum number of hostnames has already been configured; you can remove an existing hostname and try again</li></ul></li><li><p><code><b>5000_5803</b></code>—the hostname that was specified cannot be longer than 255 characters</p><ul><li><p><b>Suggested resolution</b> — the maximum number of hostnames has already been configured; you can remove an existing hostname and try again</p></li></ul></li></ul></li>
+      <li><code><b>404</b></code>—the specified <MadCap:variable name="Product-Names.broker_cloud_short"/> does not exist<ul><li><b>Suggested resolution</b> — check that the <MadCap:variable name="Product-Names.broker_cloud_short"/> has been created and that the <code>service_id</code> is correct</li></ul></li>
+    </ul>
+    <p> For example, the following JSON shows a REST API call to create the hostname, <code>mytesthostname</code>:</p>
+    <pre class="Code" xml:space="preserve">
+{  "serviceHostName": "mytesthostname", 
+   "operation": "create"
+}</pre>
+    <p>Here's an example of a successful 202 response:</p>
+    <pre xml:space="preserve" class="Code">{
+  "id": "24iadhksu1",   <br/>  "job": null, <br/>  "serviceId": "24iadhkfzh",   <br/>  "requestType": "serviceHostNameRequest",    <br/>  "creationTimestamp": 1608069258621,    <br/>  "requestAttributes": <br/>  {
+    "serviceHostName": "mytesthostname", <br/>    "operation": "create"
+  }
+}</pre>
+    <p>To access the <MadCap:variable name="Product-Names.broker_cloud_short"/>, you can use <code>mytesthostname.<MadCap:variable name="Manifest-Products-Links.CloudConsoleMessagingHostname"/></code> as a hostname.</p>
+    <h3><a name="Adding"/>Adding Additional Hostnames to Connection Endpoints Using the REST API for an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h3>
+    <p>You can create additional hostnames on existing connection endpoints only on Kubernetes-based <MadCap:variable name="Product-Names.broker_cloud_short"/> using the REST API. You can specify up to five additional hostnames per <MadCap:variable name="Product-Names.broker_cloud_short"/> in this way. It also allows you to specify different hostnames based on public or private connectivity type. Doing this permits multiple client applications to connect to the same service. </p>
+    <p>To create additional hostnames, you will need the <code>serviceConnectionEndpointId</code> for the <MadCap:variable name="Product-Names.broker_cloud_short"/>, see <MadCap:xref href="#getdetails-service">Getting the Connection Details for the [%=Product-Names.broker_cloud_short_title%] using the REST API</MadCap:xref> for details. </p>
+    <p>To create a hostname on an existing service connection endpoint, use a POST call to <code><code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/></code>serviceConnectionEndpoints/{serviceConnectionEndpointId}/serviceHostNames/</code> with the data parameters <code>serviceHostName</code> as the hostname and the <code>operation</code> as <code>create</code>. </p>
+    <p>The following JSON example shows a REST API call to create the hostname for an endpoint on <code>testapiservice</code>:</p>
+    <pre xml:space="preserve">
+{
+   "serviceHostName": "testapiservice",
+   "operation": "create"
+}
+		</pre>
+    <p> A successful response to your call returns a <code>202</code> (Accepted), otherwise one of the following responses may be returned with a subcode (if applicable):</p>
+    <ul>
+      <li><code><b>500</b></code>—(Internal Server Error) a bad request occurred for one of the following reasons:				<ul><li><code><b>5000_5800</b></code>—the specified hostname is already being used</li><ul><li><b>Suggested resolution</b>—specify a different hostname</li></ul><li><code><b>5000_5802</b></code>—the <MadCap:variable name="Product-Names.broker_cloud_short"/> already has five additional hostnames configured</li><ul><li> <b>Suggested resolution</b>—the maximum number of hostnames has already been configured; you can remove an existing hostname and try again</li></ul><li><code><b>5000_5803</b></code>—the hostname that was specified cannot be longer than 255 characters</li><ul><li> <b>Suggested resolution</b>—the maximum number of hostnames has already been configured; you can remove an existing hostname and try again</li></ul></ul></li>
+      <li><code><b>404</b></code>—the specified <MadCap:variable name="Product-Names.broker_cloud_short"/> or service connection endpoint does not exist<ul><li><b>Suggested resolution</b>—check that the <MadCap:variable name="Product-Names.broker_cloud_short"/> has been created and that the <code>service_id</code> or <code>serviceConnectionEndpointId</code> is correct</li></ul></li>
+    </ul>
+    <p>Here's an example of a successful 202 response to our example above:</p>
+    <pre xml:space="preserve" class="Code">
+{
+	"id": "o02ejztmja0",
+	"job": null,
+	"serviceId": "0tkmieag38e",
+	"requestType": "serviceHostNameRequest",
+	"creationTimestamp": 1650990377391,
+	"requestAttributes": {
+		"serviceHostName": "testapiservice",
+		"serviceConnectionEndpointId": "nfk1n4sb9k9",
+		"operation": "create"
+	}
+}	</pre>
+    <h3><a name="Updating"/>Updating Additional Hostnames for Connection Endpoints Using the REST API for an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h3>
+    <p>You can update the additional hostnames for the connection endpoints on an Kubernetes-based <MadCap:variable name="Product-Names.broker_cloud_short"/> using REST API.
+        </p>
+    <p>To update the hostname, you will need the <code>serviceConnectionEndpointId</code> for the <MadCap:variable name="Product-Names.broker_cloud_short"/>. See <MadCap:xref href="#getdetails-service">Getting the Connection Details for the [%=Product-Names.broker_cloud_short_title%] using the REST API</MadCap:xref> for details. </p>
+    <p>To update hostnames, use a POST call to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>serviceConnectionEndpoints/serviceConnectionEndpointId/serviceHostNames/</code> with the data parameters <code>serviceHostName</code> as the hostname of the service to move, and the <code>operation</code> as <code>update</code>. </p>
+    <p>The following JSON example shows a REST API call to update the hostname to <code>testapiservice</code>:</p>
+    <pre xml:space="preserve">
+{
+  "serviceHostName": "testapiservice",
+  "operation": "update"
+}
+		</pre>
+    <p> A successful response will return a <code>202</code> (Accepted), otherwise one of the following responses will be returned with a subcode (if applicable):</p>
+    <ul>
+      <li><code><b>500</b></code>—(Internal Server Error) a bad request occurred for one of the following reasons:				<ul><li><code><b>5000_5801</b></code>—the hostname is not being applied to a service.</li><ul><li><b>Suggested resolution</b> — specify a different hostname</li></ul></ul></li>
+      <li><code><b>404</b></code>—the specified <MadCap:variable name="Product-Names.broker_cloud_short"/> or service connection endpoint does not exist<ul><li><b>Suggested resolution</b> — check that the <MadCap:variable name="Product-Names.broker_cloud_short"/> has been created and that the <code>service_id</code> or <code>serviceConnectionEndpointId</code> is correct</li></ul></li>
+    </ul>
+    <p>Here's an example of a successful <code>202</code> response:</p>
+    <pre xml:space="preserve" class="Code">
+{
+	"id": "nbcgrr6zo9p",
+	"job": null,
+	"serviceId": "0tkmieag38e",
+	"requestType": "serviceHostNameRequest",
+	"creationTimestamp": 1650999473614,
+	"requestAttributes": {
+		"serviceHostName": "testapiservice",
+		"serviceConnectionEndpointId": "nfk1n4sb9k9",
+		"operation": "update"
+	}
+}	</pre>
+    <h3><a name="delete-hostname-using-rest-api"/>Deleting a Hostname from an <MadCap:variable name="Product-Names.broker_cloud_short_title"/> Using the REST API</h3>
+    <p>You can remove a hostname from an <MadCap:variable name="Product-Names.broker_cloud_short"/>. To perform this operation, you must know the service identifier for your <MadCap:variable name="Product-Names.broker_cloud_short"/>. It's important to understand that you cannot remove the default name that's assigned to the <MadCap:variable name="Product-Names.broker_cloud_short"/>. For information about retrieving the service identifier using the REST API, see  <MadCap:xref href="#getdetails-service">Getting the Connection Details for the Event Broker Service using the REST API</MadCap:xref>.</p>
+    <p>To remove a hostname from an <MadCap:variable name="Product-Names.broker_cloud_short"/>, use a DELETE call to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{service_id}/serviceHostNames</code> with the data parameters <code>serviceHostName</code> as the hostname to delete and <code>operation</code> as <code>delete</code>.. A successful response returns <code>202</code> (Accepted), otherwise the following response is returned:</p>
+    <ul>
+      <li><code><b>404</b></code>—the specified <MadCap:variable name="Product-Names.broker_cloud_short"/> or specified hostname for the <MadCap:variable name="Product-Names.broker_cloud_short"/> doesn't exist<ul><li><b>Suggested resolution</b>—check that <MadCap:variable name="Product-Names.broker_cloud_short"/> exists or the hostname exists on the specified <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li></ul></li>
+    </ul>
+    <p> For example, the following JSON is for a REST API call to delete the hostname of <code>mytesthostname</code>:</p>
+    <pre class="Code" xml:space="preserve">
+{  "serviceHostName": "mytesthostname",  
+   "operation": "delete"
+}</pre>
+    <p>Here's an example of a successful <code><b>202</b></code> response:</p>
+    <pre xml:space="preserve" class="Code">{
+  "id": "24iadhkgu1",   <br/>  "job": null, <br/>  "serviceId": "24iadhkfzh",   <br/>  "requestType": "serviceHostNameRequest",    <br/>  "creationTimestamp": 1608069258621,    <br/>  "requestAttributes": <br/>  {
+    "serviceHostName": "mytesthostname", <br/>    "operation": "delete"
+  }
+}.</pre>
+    <h3><a name="Deleting"/>Deleting Additional Hostnames from Connection Endpoints Using the REST API for an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h3>
+    <p>You can delete additional hostnames for existing connection endpoint on an Kubernetes-based <MadCap:variable name="Product-Names.broker_cloud_short"/> using REST API. To delete additional hostnames, you will need the <code>serviceConnectionEndpointId</code> for the <MadCap:variable name="Product-Names.broker_cloud_short"/>. See <MadCap:xref href="#getdetails-service">Getting the Connection Details for the [%=Product-Names.broker_cloud_short_title%] using the REST API</MadCap:xref> for details. </p>
+    <p>To delete a hostname on an service connection endpoint, use a POST call to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>serviceConnectionEndpoints/{serviceConnectionEndpointId}/serviceHostNames</code> with the data parameters <code>serviceHostName</code> as the hostname and <code>operation</code> as DELETE. </p>
+    <p>The following JSON example shows a REST API call to delete the hostname <code>testapiservice</code>:</p>
+    <pre xml:space="preserve">
+{
+  "serviceHostName": "testapiservice",
+  "operation": "delete"
+}	</pre>
+    <p> A successful response returns a <code>202</code> (Accepted), otherwise the following responses may be returned:</p>
+    <ul>
+      <li><code><b>404</b></code>—the specified <MadCap:variable name="Product-Names.broker_cloud_short"/> or service connection endpoint, or hostname does not exist<ul><li><b>Suggested resolution</b>—check that the <MadCap:variable name="Product-Names.broker_cloud_short"/> has been created and that the <code>service_id</code>, <code>serviceConnectionEndpointId</code>, and <code>hostname</code> are correct</li></ul></li>
+    </ul>
+    <p>Here's an example of a successful 202 response to our example above:</p>
+    <pre xml:space="preserve" class="Code">
+{
+	"id": "9j3e95xnevi",
+	"job": null,
+	"serviceId": "0tkmieag38e",
+	"requestType": "serviceHostNameRequest",
+	"creationTimestamp": 1650993634873,
+	"requestAttributes": {
+		"serviceHostName": "testapiservice",
+		"serviceConnectionEndpointId": "nfk1n4sb9k9",
+		"operation": "delete"
+	}
+}
+</pre>
+    <h2><a name="getdetails-service"/>Getting the Connection Details for the <MadCap:variable name="Product-Names.broker_cloud_short_title"/> Using the REST API</h2>
+    <MadCap:snippetBlock src="../Resources/Snippets/Cloud/REST-API/get_service_v2.flsnp"/>
+    <p>After you have created an <MadCap:variable name="Product-Names.broker_cloud_short"/>, you can use the <MadCap:variable name="Product-Names.cloud_product_short"/> REST API to  retrieve the service's connection details. </p>
+    <ol>
+      <li>In the <b><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.cloud_product_long"/></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><MadCap:variable name="Product-Names.cloud_product_firstuse"/></MadCap:conditionalText>  – Create Messaging Services</b> Postman Collection, select the <b>Get Messaging Service</b> request. The GET request would be to the URL, <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{serviceid}</code>	.	</li>
+      <li>In the GET request URL,  replace the <code>{serviceId}</code> variable with the identifier of the service you want to see. If you don't provide the specific <code>{serviceId}</code>, you can get all the services that you are permitted to see (i.e., issue a <code>GET</code> to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services</code>).</li>
+      <li>Click <b>Send</b>.<p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/restapi/use_api_get_service.png" alt=""/></div></p>You should  see the connection details in the response.</li>
+      <li>Note that if you are looking for the <code>serviceConnectionEndpointId</code> it is located at the end of the response as shown in the following code snippet:<pre xml:space="preserve">{
+	"data": {
+        	"type": "service",
+        	"timestamp": 0,
+        	"userId": "28hn3x03t66",
+       	"serviceId": "0tkmieag38e",
+        	...
+       	 &lt;snip&gt;
+        	...
+		"serviceConnectionEndpoints": [
+			{
+				"serviceConnectionEndpointId": "nfk1n4sb9k9",
+				"name": "Public Endpoint",
+				"description": "",				
+				...
+				&lt;snip&gt;
+				...	</pre> </li>
+    </ol>
+    <h3><a name="Retrievi"/>Retrieving Connection Endpoint URL Templates from an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h3>
+    <MadCap:snippetBlock src="../Resources/Snippets/Cloud/REST-API/get_service_v2.flsnp"/>
+    <p><MadCap:variable name="Product-Names.broker_cloud_short_intitalcap"/>s can have numerous connection endpoints and multiple hostnames for each. To simplify the management of these URLs, <MadCap:variable name="Variables.CompanyName"/> provides URL templates within the body of a response to a GET for an <MadCap:variable name="Product-Names.broker_cloud_short"/>s connection details. Using the URL template, and information within the response, you can create the URLs for your hostnames on connection endpoints for the following:</p>
+    <ul>
+      <li>
+        <p>
+          <code>messagingProtocols</code>
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>managementProtocols</code>
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>serviceConnectionEndpoints</code>
+        </p>
+      </li>
+    </ul>
+    <p>To construct an URL using the template, perform a GET to retrieve details of the <MadCap:variable name="Product-Names.broker_cloud_short"/> as outlined in <MadCap:xref href="#getdetails-service">Getting the Connection Details for the [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref>. In the body of the response, look for <code>protocolUrlTemplate</code> for the protocol you want an URL for. The <code>protocolUrlTemplate</code> provides details on how to construct the URL, and the information you need to populate it. It appears similar to the example below:</p>
+    <pre>"protocolUrlTemplate": {
+        "template": "https://{host}:{port}",
+        "protocolName": "serviceRestIncomingTlsListenPort"</pre>
+    <p>For example, to construct an URL for the Secured REST messaging protocol, you would look for something similar to the following in the response body:</p>
+    <pre xml:space="preserve">...
+&lt;snip&gt;
+...	
+"messagingProtocols": [
+	...
+	&lt;snip&gt;
+	...	
+		"name": "REST",
+		...
+		&lt;snip&gt;
+		...
+		"endPoints": [
+			...
+			&lt;snip&gt;
+			...
+			{
+			"name": "Secured REST",
+			"transport": "HTTPS",
+			"uris": [
+				"https://mr-connection-c86ikbkijlu.messaging.solace.cloud:9443"
+			],
+			"secured": "yes",
+			"compressed": "no",
+			"protocolUrlTemplate": {
+				"template": "https://{host}:{port}",
+				"protocolName": "serviceRestIncomingTlsListenPort"
+			}
+		}
+	...
+	&lt;snip&gt;
+	...</pre>
+    <p>In the example above, the template indicates that the URL is constructed in this format: <code>https://{host}:{port}</code>. The <code>host</code> and <code>port</code> information are located towards the end of the response body, in <code>serviceConnectionEndpoints</code> section, as follows:</p>
+    <pre xml:space="preserve">...
+&lt;snip&gt;
+...
+"serviceConnectionEndpoints": [
+	{
+		"serviceConnectionEndpointId": "c86ikbkijlu",
+		"name": "Public Endpoint",
+		"description": "",
+		"accessType": "public",
+		"type": "LoadBalancer",
+		"k8sServiceId": "nano-daily-dev-c86ikbkijlu-solace",
+		"hostNames": [
+			"mr-connection-c86ikbkijlu.messaging.solace.cloud"
+		],
+		"ports": {
+			"serviceWebPlainTextListenPort": 0,
+			"serviceRestIncomingTlsListenPort": 9443,
+			"serviceManagementTlsListenPort": 943,
+			"serviceAmqpPlainTextListenPort": 0,
+			"serviceMqttWebSocketListenPort": 0,
+			"serviceWebTlsListenPort": 443,
+			"serviceRestIncomingPlainTextListenPort": 9000,
+			"serviceSmfCompressedListenPort": 0,
+			"serviceMqttPlainTextListenPort": 0,
+			"serviceSmfPlainTextListenPort": 0,
+			"serviceMqttTlsListenPort": 8883,
+			"serviceAmqpTlsListenPort": 5671,
+			"serviceSmfTlsListenPort": 55443,
+			"serviceMqttTlsWebSocketListenPort": 8443,
+			"managementSshTlsListenPort": 0
+		}
+	}
+...
+&lt;snip&gt;
+...</pre>
+    <p>In this situation, the <code>hostNames</code> is <code>mr-connection-c86ikbkijlu.messaging.solace.cloud</code> and the <code>protocolName</code> is <code>serviceRestIncomingTlsListenPort</code> which has a value of <code>9443</code>. Replacing the <code>{host}</code> and <code>{port}</code> values in the template provides the URL which is: <code>https://mr-connection-c86ikbkijlu.messaging.solace.cloud:9443</code></p>
+    <h2><a name="Editing"/>Editing Connection Endpoints Using REST API for Kubernetes-Based <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h2>
+    <p>You can edit the connection endpoint ports of an existing Kubernetes-based <MadCap:variable name="Product-Names.broker_cloud_short"/> using REST API.</p>
+    <p>To edit the ports you will need the <code>serviceConnectionEndpointID</code> for the <MadCap:variable name="Product-Names.broker_cloud_short"/>, which will be included in the response to a GET for an <MadCap:variable name="Product-Names.broker_cloud_short"/>, see <MadCap:xref href="#getdetails-service">Getting the Connection Details for the [%=Product-Names.broker_cloud_short_title%] using the REST API</MadCap:xref> for details.</p>
+    <p>To edit a port for an existing service, use a PUT call to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>serviceConnectionEndpoints/{serviceConnectionEndpointId}</code> and use the following JSON in the in the body of the PUT: </p>
+    <pre xml:space="preserve">
+{
+"serviceConnectionEndpoint": {
+	"name": "PrivateEndpoint",
+	"description": "",
+	"ports": {
+	"serviceSmfPlainTextListenPort": 0,
+	"serviceSmfCompressedListenPort": 0,
+	"serviceSmfTlsListenPort": 55443,
+	"serviceWebPlainTextListenPort": 0,
+	"serviceWebTlsListenPort": 0,
+	"serviceAmqpPlainTextListenPort": 0,
+	"serviceAmqpTlsListenPort": 0,
+	"serviceMqttPlainTextListenPort": 0,
+	"serviceMqttWebSocketListenPort": 0,
+	"serviceMqttTlsListenPort": 0,
+	"serviceMqttTlsWebSocketListenPort": 0,
+	"serviceRestIncomingPlainTextListenPort": 0,
+	"serviceRestIncomingTlsListenPort": 0,
+	"serviceManagementTlsListenPort": 943,
+	"managementSshTlsListenPort": 0
+	}
+   }
+}		</pre>
+    <p>You changes the values in the JSON above based on the criteria in the list below:</p>
+    <ul>
+      <li>The <code>Name</code> and <code>Description</code> values can contain any text, but must be between 0 and 50 characters in length. If these values are left unspecified, no changes will be made to them.</li>
+      <li>At least one port must be enabled.</li>
+      <li>You can enter a value for any port in the list, with the following limitations:</li>
+      <ul>
+        <li>Port values can range from 0 to 65534.</li>
+        <li>A value of 0 indicates that the port is disabled. </li>
+        <li>If no value is specified when making the PUT, the corresponding port will remain unchanged. </li>
+        <li>The values entered must be unique, duplicating values in the port fields will cause the PUT to fail. </li>
+        <li>The following values are reserved, and can not be used: 5550, 8080, 8300, 8301, 8302, 8741</li>
+      </ul>
+    </ul>
+    <p>A successful PUT returns a code of <code>202</code> with the response containing a message similar to the following:</p>
+    <pre>
+{
+	"id": "c5kd80ff8qw",
+	"job": null,
+	"serviceId": "5b6p7b7lvxg",
+	"requestType": "serviceConnectionEndpointRequest",
+	"creationTimestamp": 0,
+	"requestAttributes": {
+		"serviceWebPlainTextListenPort": "0",
+		"serviceRestIncomingTlsListenPort": "0",
+		"serviceManagementTlsListenPort": "943",
+		"serviceAmqpPlainTextListenPort": "0",
+		"serviceMqttWebSocketListenPort": "0",
+		"serviceWebTlsListenPort": "0",
+		"serviceRestIncomingPlainTextListenPort": "0",
+		"type": "LoadBalancer",
+		"serviceSmfCompressedListenPort": "0",
+		"accessType": "Private",
+		"serviceMqttPlainTextListenPort": "0",
+		"serviceSmfPlainTextListenPort": "0",
+		"serviceAmqpTlsListenPort": "0",
+		"serviceMqttTlsListenPort": "0",
+		"serviceSmfTlsListenPort": "55443",
+		"name": "Private Endpoint",
+		"serviceMqttTlsWebSocketListenPort": "0",
+		"managementSshTlsListenPort": "0",
+		"description": "",
+		"operation": "create"
+		}
+}
+</pre>
+    <p>You can use the <code>id</code> provided in the response to look up the status of the asynchronous request by using a PUT call to  <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{service_id}/requests/{id}</code>.</p>
+    <p>For example, using data in the response above, you would use a <code>PUT</code> call to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>5b6p7b7lvxg/requests/c5kd80ff8qw</code></p>
+    <h3><a name="Deleting2"/>Deleting Connection Endpoints for Kubernetes-Based <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h3>
+    <p>You can use the <MadCap:variable name="Product-Names.cloud_product_short"/> REST API to delete connection endpoints on an Kubernetes-based <MadCap:variable name="Product-Names.broker_cloud_short"/>.
+        </p>
+    <p>To delete the connection endpoints you will need the <code>serviceConnectionEndpointID</code> for the <MadCap:variable name="Product-Names.broker_cloud_short"/>, which will be included in the response to a GET for an <MadCap:variable name="Product-Names.broker_cloud_short"/>, see <MadCap:xref href="#getdetails-service">Getting the Connection Details for the [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref> for details.</p>
+    <p>To delete service connection endpoints on an <MadCap:variable name="Product-Names.broker_cloud_short"/>, use a DELETE call to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>serviceConnectionEndpoints/{serviceConnectionEndpointId}</code> the following constraints on the DELETE call should be noted:</p>
+    <ul>
+      <li>The last service connection endpoint cannot be deleted.</li>
+      <li>The service connection endpoint that is providing <code>serviceSmfTlsListenPort</code> or <code>serviceManagementTlsListenPort</code> cannot be deleted. </li>
+    </ul>
+    <p>A successful DELETE will return a code of <code>202</code> with the response containing a message similar to the following:</p>
+    <pre xml:space="preserve">{
+	"id": "c70z4rbxydr",
+	"job": null,
+	"serviceId": "5b6p7b7lvxg",
+	"requestType": "serviceConnectionEndpointRequest",
+	"creationTimestamp": 0,
+	"requestAttributes": {
+	    "serviceConnectionEndpointId": "n5qyikaqwlq",
+	    "operation": "delete"
+	    }
+}</pre>
+    <p>The DELETE call is asynchronous. You can use the <code>id</code> in the response to look up the status of the  request by calling <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{service id}/requests/{id}</code></p>
+    <h2><a name="delete-service"/>Deleting an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h2>
+    <p MadCap:conditions="SAP.SapHideFromOutput" class="Note">You can perform this procedure using our feature rich and consistent v2 REST API. See the <a href="https://api.solace.dev/cloud/reference/deleteservice" target="_blank" class="link-offsite">Delete an event broker service v2 REST API</a> in the <a href="https://api.solace.dev/cloud/reference/using-the-v2-rest-apis-for-pubsub-cloud" target="_blank" class="link-offsite"><MadCap:variable name="Product-Names.pubsub_brand_only"/>REST API Reference</a> for more information. </p>
+    <p>You can use the <MadCap:variable name="Product-Names.cloud_product_short"/> REST API to delete an <MadCap:variable name="Product-Names.broker_cloud_short"/>. Follow these steps to delete an <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+    <ol>
+      <li>In the <b>Solace Blogs – Create Messaging Service</b> Postman Collection, select the <b>DEL Delete Messaging Service</b> request . The DELETE request would be to the URL, <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{serviceid}</code>.	</li>
+      <li>In the DELETE request URL,  replace the <code>{serviceId}</code> variable with the identifier of the service you want to delete. </li>
+      <li>Click <b>Send</b>.
+			
+           
+                <p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/restapi/use_api_delete_service.png" alt=""/></div></p></li>
+    </ol>
+    <p>You should see a <code>200 OK</code> response that indicates that the request was successful. Go back to the <MadCap:variable name="Product-Names.console_ui_long"/> and in <MadCap:variable name="Product-Names.cluster_mgr"/>,you should no longer see the service you delete or if you run a Get Service REST call, you will get a "Could not find service <code>{serviceID}</code> in your organization <code>{organizationID}</code>" message.
+</p>
+  </body>
+</html>

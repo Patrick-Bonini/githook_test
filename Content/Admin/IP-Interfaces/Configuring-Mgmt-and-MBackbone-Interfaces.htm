@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Configuring the Management Interface and Message Backbone Interface</h1>
+    <p>A Solace PubSub+ appliance uses two Virtual Routing and Forwarding (VRF) objects:</p>
+    <ul>
+      <li>a Management VRF to enable out-of-band management and monitoring of the appliance</li>
+      <li>a Message Backbone VRF to enable applications to establish client connections to the appliance to send and receive data</li>
+    </ul>
+    <p>To configure the Management and Message Backbone VRFs on appliances, enter the following Global CONFIG commands:</p>
+    <p class="Code">solace(configure)# ip vrf {management | msg-backbone}</p>
+    <p><u>Where</u>:</p>
+    <p><code>management</code> is the Management VRF</p>
+    <p><code>msg-backbone</code> is the Message Backbone VRF</p>
+    <p>The no version of this command, <code>no vrf</code>, deletes the specified VRF object from the appliance.</p>
+    <p>For both the Management VRF and Message Backbone VRF objects, you can perform the following configuration tasks:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#cfg_mgmt_and_mbbone_interfaces_IP">Configuring IP Interfaces</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#cfg_mgmt_and_mbbone_interfaces_IP_routes">Configuring IP Routes</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="cfg_mgmt_and_mbbone_interfaces_IP"/>Configuring IP Interfaces</h2>
+    <p>To add IP interfaces for a VRF on an interface-by-interface basis, enter the following CONFIG command:</p>
+    <pre>solace(configure/ip/vrf)# create interface &lt;ip-interface&gt; [primary | backup | static]</pre>
+    <p>To configure existing IP interfaces for a VRF on an interface-by-interface basis, enter the following CONFIG command:</p>
+    <pre>solace(configure/ip/vrf)# interface &lt;ip-interface&gt; [primary | backup | static]</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;ip-interface&gt;</code> is an ASCII string in the form of <code>&lt;phy-interface&gt;:&lt;ip&gt;</code> that specifies the IP interface to be associated with the physical interface port. The <code>&lt;ip&gt;</code> parameter is a number from 1 to 3 that uniquely identifies this IP interface on the associated physical interface; it can be associated with any one of the interface types (primary, backup, or static). Valid values are:</p>
+    <ul>
+      <li><code>eth&lt;port&gt;:&lt;ip&gt;</code> (for example, eth1:1)</li>
+      <li><code>chassis/lag1:1</code> (for example, chassis/lag1:1)</li>
+      <li><code>&lt;cartridge&gt;/&lt;slot&gt;/&lt;port&gt;:&lt;ip&gt;</code> (for example, 1/1/8:3)</li>
+      <li><code>&lt;cartridge&gt;/&lt;slot&gt;/lag1:&lt;ip&gt;</code> (for example, 1/1/lag1:2)</li>
+    </ul>
+    <p><code>primary</code> specifies that this interface is for the primary virtual router—this is the default if no parameter is entered. It is only active when both the primary virtual router is locally active, and the IP interface on the VRF is running (through the <code>no shutdown</code> VRF IP Interface command)</p>
+    <p><code>backup</code> specifies that this interface is for the backup virtual router. It is only active when both the backup virtual router is locally active, and the IP interface on the VRF is running (through the <code>no shutdown</code> VRF IP Interface command)</p>
+    <p><code>static</code> specifies that this is the static interface for the appliance. It is always active irrespective of the virtual router activity. Clients cannot connect to the static interface if appliance redundancy is enabled.</p>
+    <p>The no version of this command (<code>no interface</code>) deletes the specified IP interface from the VRF object.</p>
+    <div class="Note">
+      <ul>
+        <li>An IP interface can not be deleted if it is referenced for services such as Virtual Router Redundancy Protocol (VRRP).</li>
+        <li>There can only be at most one of each IP interface type (that is, primary, backup, or static) bound to any physical interface on the Solace PubSub+ appliance. For example, you can not configure two primary IP interfaces on physical interface 1/1/5.</li>
+      </ul>
+    </div>
+    <p>After you have entered the <code>interface</code> command, the  CLI is at the configuration level, from which you can perform the following tasks for the given IP interface on the VRF:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#cfg_mgmt_and_mbbone_interfaces_IP_addresses">Configuring IP Addresses for IP Interfaces</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#cfg_mgmt_and_mbbone_interfaces_K_spn">Configuring Kerberos Service Principal Names</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#cfg_mgmt_and_mbbone_interfaces_start_stop">Starting and Stopping IP Interfaces on VRFs</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="cfg_mgmt_and_mbbone_interfaces_IP_addresses"/>Configuring IP Addresses for IP Interfaces</h3>
+    <p>The Message Backbone VRF supports the assignment of either IPv4 or IPv6 addresses, but the Management VRF only supports IPv4.</p>
+    <p>To configure the IP address and network mask for the IP interface on the VRF, enter the following CONFIG command:</p>
+    <pre>solace(configure/ip/vrf/interface)# ip-address &lt;cidr-addr&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;cidr-addr&gt;</code> is the IP address and prefix length combination expressed in Classless Inter-Domain Routing (CIDR) notation. The specific format depends on whether <code>&lt;cidr-addr&gt;</code> is IPv4 or IPv6.</p>
+    <p>For IPv4 addresses, the format consists of an address in dot-decimal notation with a slash (/) terminating, followed by a decimal number in the range 1 to 32 such that the format looks like this, nnn.nnn.nnn.nnn/dd. An example is, 192.168.1.34/24.</p>
+    <p>For IPv6 addresses, the longest address format consists of 8 groups of hexadecimal quartets with a slash (/) terminating, followed by a decimal number in the range 1 to 128 such that the format looks like this, nnnn:nnnn:nnnn:nnnn:nnnn:nnnn:nnnn:nnnn/ddd. An example is, 2001:cdba:9abc:5678:0000:0000:0000:0000/64. Two shortening conventions are supported. The first is to replace any hexadecimal quartets equal to 0000 with 0. Applying this convention, the example address becomes 2001:cdba:9abc:5678:0:0:0:0/64. The second allows for an extended sequence of zero quartets to be replaced by ::. Applying this second convention to the example address yields, 2001:cdba:9abc:5678::/64.</p>
+    <p>The no version of this command, <code>no ip-address</code>, deletes the IP address and network mask configuration from the VRF's IP interface.</p>
+    <h3><a name="cfg_mgmt_and_mbbone_interfaces_K_spn"/>Configuring Kerberos Service Principal Names</h3>
+    <p>For a msg-backbone VRF, you can optionally configure a Kerberos Service Principal Name (SPN) to be used for Kerberos-authenticated connections to the given IP address.</p>
+    <p>To configure a SPN for the given IP address, enter the following CONFIG commands (available only for a message backbone VRF and not for a management VRF):</p>
+    <p class="Code">solace(configure/ip/vrf/interface)# kerberos<br/>solace(configure/ip/vrf/interface/kerberos)# service-principal-name &lt;name&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is a Kerberos SPN of the form <code>component/&lt;customer-provided-fully-qualified-domain-name-of-host&gt;@&lt;Kerberos Realm&gt;</code>. For example, <code>solace/dev212@SIMPLESPNEXAMPLE.COM</code>.</p>
+    <p>The no version of this command, <code>no service-principal-name</code>, removes the configured SPN from the IP interface on the VRF and the appliance’s default credentials are used for authentication.</p>
+    <h3><a name="cfg_mgmt_and_mbbone_interfaces_start_stop"/>Starting/Stopping IP Interfaces on VRFs</h3>
+    <p>To start the IP interface on the VRF, enter the following CONFIG command:</p>
+    <pre>solace(configure/ip/vrf/interface)# no shutdown</pre>
+    <p>To stop the IP interface on the VRF from running, enter the following CONFIG command:</p>
+    <pre>solace(configure/ip/vrf/interface)# shutdown</pre>
+    <p class="Note">IP interfaces on the Message Backbone VRF are turned off by default.</p>
+    <h2 class="with-rule"><a name="cfg_mgmt_and_mbbone_interfaces_IP_routes"/>Configuring IP Routes</h2>
+    <p>Static routes and a default gateway can be created for the Management and Message Backbone VRFs. The Management VRF supports IPv4 addressing, but the Message Backbone VRF supports both IPv4 and IPv6.</p>
+    <h3><a name="Configur"/>Configuring IP Routes on the Management VRF</h3>
+    <p>Static routes and a default gateway can be created utilizing IPv4 addressing on the Management VRF. To configure IP routes, enter the following CONFIG commands:</p>
+    <pre>solace(configure)# ip vrf management
+solace(configure/ip/vrf)# route {default | &lt;cidr-addr&gt;} &lt;ip-addr&gt; [&lt;interface&gt;]</pre>
+    <p><u>Where</u>:</p>
+    <p><code>default</code> specifies the default route</p>
+    <p><code>&lt;cidr-addr&gt;</code> specifies the IP/prefix length of the destination address in CIDR form.</p>
+    <p><code>&lt;ip-addr&gt;</code> is the IP address of the gateway.</p>
+    <p><code>&lt;interface&gt;</code> is an ASCII string that specifies the IP interface for the Management VRF to be associated with the gateway. Valid values for an IP interface are <code>eth&lt;port&gt;:&lt;ip&gt; | chassis/lag1:1</code> (for example, <code>eth1:1 or chassis/lag1:1</code>). There is no default value.</p>
+    <p>The no version of this command, <code>no route</code>, deletes the specified route from the Management VRF.</p>
+    <h3><a name="Configur2"/>Configuring IP Routes on the Message Backbone VRF</h3>
+    <p>Static routes and a default gateway can be created utilizing either IPv4 or IPv6 addressing on the Message Backbone VRF. To configure IP routes, enter the following CONFIG commands:</p>
+    <pre>solace(configure)# ip vrf msg-backbone
+solace(configure/ip/vrf)# route {default | default6 | &lt;cidr-addr&gt;} &lt;ip-addr&gt; [&lt;interface&gt;]</pre>
+    <p><u>Where</u>:</p>
+    <p><code>default</code> indicates that this is the default IPv4 route.</p>
+    <p><code>default6</code> indicates that this is the default IPv6 route.</p>
+    <p><code>&lt;cidr-addr&gt;</code> specifies the IP/prefix length of the destination address in CIDR form.</p>
+    <p><code>&lt;ip-addr&gt;</code> is the IP address of the gateway.</p>
+    <p><code>&lt;interface&gt;</code> is an ASCII string that specifies the physical Ethernet interface port or LAG to be associated with the gateway. Valid values for a physical interface are <code>&lt;cartridge&gt;/&lt;slot&gt;/&lt;port&gt;</code> (for example, <code>1/1/8</code>) or <code>&lt;cartridge&gt;/&lt;slot&gt;/lag&lt;N&gt;</code> (for example, <code>1/1/lag1</code>). There is no default value.</p>
+    <p>The no version of this command, <code>no route</code>, deletes the specified route from the Message Backbone VRF.</p>
+  </body>
+</html>

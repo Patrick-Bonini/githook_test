@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><a name="Publishing-Direct-Messages-Python-API"/>Publishing Direct Messages Using the Python API</h1>
+    <p>Direct messages are useful when high-throughput and low-latency is required. We recommend that you publish events using direct messages if some message loss can be tolerated without negatively impacting client applications. Message loss can occur  due to external factors, such as network congestion or client disconnection.  If your applications require guaranteed delivery and message acknowledgment, then we recommend using persistent messages instead. </p>
+    <p>To  publish direct messages using the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python, use the following steps:</p>
+    <ol>
+      <li><a href="#Creating-A-DirectMessagePublisher-Object" class="link-internal">Create a DirectMessagePublisher</a>.</li>
+      <li><a href="#Configuring-Messages" class="link-internal">Configure and Create an OutboundMessage</a>.</li>
+      <li><a href="#Configuring-Back-Pressure" class="link-internal">Handling Back-Pressure When Publishing Direct Messages</a>.</li>
+      <li><a href="#Publishing-A-Direct-Message" class="link-internal">Publish a Direct Message</a>.</li>
+      <li><a href="#Handling-Errors" class="link-internal">Handle Errors</a>.</li>
+    </ol>
+    <p>In some use cases, it's possible for your application to send messages faster than the messages can be transported. Messages can fill the API's internal buffers causing <i>back-pressure</i>. If this scenario is possible, we recommend that you consider changing the back-pressure settings to meet the requirements of your application. For more information, see  <MadCap:xref href="#Configuring-Back-Pressure">Configuring Back-pressure</MadCap:xref>.</p>
+    <p>For examples of applications  that publish direct messages, see  <a href="https://github.com/SolaceSamples/solace-samples-python/blob/main/patterns/direct_publisher.py" target="_blank" class="link-offsite">direct_publisher.py</a> on the <MadCap:variable name="Variables.CompanyName"/> GitHub page.</p>
+    <h2 class="with-rule"><a name="Creating-A-DirectMessagePublisher-Object"/>Creating a DirectMessagePublisher</h2>
+    <p>After a <code>MessagingService</code> instance has established a connection to an event broker, use a <code>DirectMessagePublisher</code> to publish direct messages. To create a <code>DirectMessagePublisher</code> object, do the following:</p>
+    <ol>
+      <li>
+        <p>Call the <code>create_direct_message_publisher_builder()</code> function on a <code>MessagingService</code> object. This returns a <code>DirectMessagePublisherBuilder</code> object.</p>
+      </li>
+      <li>
+        <p>You can now use the functions in the <code>DirectMessagePublisherBuilder</code> interface to configure a <code>DirectMessagePublisher</code> to use certain features of the API, such as back-pressure strategies.</p>
+      </li>
+      <li>
+        <p>Call the <code>build()</code> function on your <code>DirectMessagePublisherBuilder</code> to return a <code>DirectMessagePublisher</code> object.</p>
+      </li>
+      <li>
+        <p>To enable your <code>DirectMessagePublisher</code> to start publishing messages, call the <code>start()</code> function on it.</p>
+      </li>
+    </ol>
+    <p>For more information, see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a>.</p>
+    <p>The following is an example that shows how to use  a direct message publisher to enable your application to publish messages to the event broker:</p>
+    <pre xml:space="preserve">
+# Create a DirectMessagePublisherBuilder which allows you to create a DirectMessagePublisher and start it
+direct_publisher = messaging_service.create_direct_message_publisher_builder() \
+               .on_back_pressure_reject(1000) \
+               .build()
+
+# Starts the configured DirectMessagePublisher synchronously. Before the start() function is called, the publisher is considered off-duty
+direct_publisher.start()		</pre>
+    <h3>Asynchronous Publishers</h3>
+    <p>It is also possible to start a direct message publisher using a callback listener to allow for asynchronous notifications after the start operation is complete.</p>
+    <p>In the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API, you can use the <code>start_async()</code> function to start a <code>DirectMessagePublisher</code> asynchronously.  This allows the publisher object to start in a separate background thread, which means you can start multiple publishers concurrently or your code can continue to execute and you do not have wait for the function to return. </p>
+    <p>The example below shows 1000 publishers being started asynchronously. The <code>as_completed()</code> function lets your application use publishers when they become available, instead of waiting for all publishers to become operational.</p>
+    <pre xml:space="preserve">
+import concurrent.futures
+# ...
+publishers = [direct_message_publisher_builder.build() for _ in range(10)]
+futures_to_publisher = { publisher.start_async() : publisher for publisher in publishers}
+
+for future in concurrent.futures.as_completed(futures_to_publisher):
+    publisher = futures_to_publisher[future]
+    try:
+        # start async has no return but will raise an on start failure
+        future.result()
+        print(f'Publisher {id(publisher)} started successfully')
+    except Exception as err:
+        print(f'Publisher {id(publisher)} generated an error: {err}') </pre>
+    <p class="Note">Your publisher application is not operational until you call <code>start()</code> or <code>start_async()</code> on it.</p>
+    <h2 class="with-rule"><a name="Configuring-Messages"/>Configuring and Creating Outbound Messages</h2>
+    <p>Your client applications explicitly create the outbound messages to publish. In the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API, when you publish messages you use <code>OutboundMessage</code> instances. To configure and create <code>OutboundMessage</code> instances, follow these steps: </p>
+    <ol>
+      <li>
+        <p>Call  <code>message_builder()</code> on a messaging service object to return an <code>OutboundMessageBuilder</code> instance. For better performance, we recommend you use a single <code>OutboundMessageBuilder</code> to create multiple <code>OutboundMessage</code> instances. </p>
+        <pre xml:space="preserve">outbound_msg_builder = messaging_service.message_builder()</pre>
+      </li>
+      <li>Configure your message with an <code>OutboundMessageBuilder</code> and then call the <code>build()</code> function to return a message instance. You can configure message properties using either method below.
+			
+				<ul><li>Use the <code>OutboundMessageBuilder</code> interface and the <code>with_property(propertyName,propertyValue)</code> functions. Both <MadCap:variable name="Variables.CompanyName"/> defined <code>message_properties</code> keys as well as arbitrary user-defined property keys are accepted. The following example shows how to set <MadCap:variable name="Variables.CompanyName"/> defined properties for message ID, sender ID and message type, and a custom key-value property on a message:<pre xml:space="preserve">
+message_builder = messaging_service.message_builder()   \
+               .with_application_message_id("myID") \
+               .with_sender_id("senderID") \
+               .with_application_message_type("messageType") \
+               .with_property("key","value") \
+               .build(message_body)</pre></li><li>Use a message properties dictionary with the <code>message_properties.*</code> keys. The following example shows how to create a message property dictionary with values for message ID, sender ID and message type constants, and then configure a message using the <code>from_properties()</code> function:		<pre xml:space="preserve">from solace.messaging.config.solace_properties import message_properties
+# ...
+message_props = {
+    message_properties.APPLICATION_MESSAGE_ID: "myID",
+    message_properties.SENDER_ID: "senderID",
+    message_properties.APPLICATION_MESSAGE_TYPE: "messageType"
+    # For a complete list of message_properties constants see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a>.
+    }							
+# ...												
+outbound_msg = outbound_msg_builder \
+               .from_properties(message_props) \
+               .build(message_body)</pre></li></ul></li>
+    </ol>
+    <p>The following code example shows how to create a message builder, set message properties and create a message:</p>
+    <pre xml:space="preserve">
+# Builder for creation of similarly configured messages. 
+message_builder = messaging_service.message_builder()   \
+               .with_application_message_id(message_id) \
+               .from_properties(message_props) \
+               .with_property("key","value") \
+               .build(message_body)</pre>
+    <p>For more information about the functions, see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a></a>.</p>
+    <h2 class="with-rule"><a name="Configuring-Back-Pressure"/>Handling Back-Pressure When Publishing Direct Messages</h2>
+    <MadCap:snippetBlock src="../../Resources/Snippets/API-Guide/NG-API/backpressureintro-publisher-direct-messages.flsnp"/>
+    <p>In the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API, the <code>DirectMessagePublisher</code> has the following  mechanisms to handle back-pressure:</p>
+    <ul>
+      <li>
+        <a href="#no-limit" class="link-internal">use an unlimited internal publishing buffer (default)</a>
+      </li>
+      <li>
+        <a href="#reject" class="link-internal">reject messages when a specified limit is reached</a>
+      </li>
+      <li>
+        <a href="#throttle" class="link-internal">throttle the application  when a specified limit is reached</a>
+      </li>
+    </ul>
+    <h3><a name="no-limit"/>Configuring an Unlimited Internal Buffer </h3>
+    <p>The default configuration for the API is to use an unlimited sized internal buffer for messages. When you use an unlimited buffer, the Python API continuously  puts messages published by the client application on the internal buffer. This configuration is useful for situations where your publishers need to send a lot of data quickly, even when the network cannot keep up without blocking. This configuration, called <code>on_back_pressure_elastic()</code>, is also useful because you don't have to write code to tell your application how to handle scenarios where the internal buffer reaches capacity. </p>
+    <p>We recommend this configuration when dealing with data sizes that do not overly strain your system resources, whether they are small or large. It's important to note that data size plays an important role in determining transmission bandwidth, affecting how quickly your application can write data to the socket. A large number of small messages, or a small number of large messages can both strain your application's resources. If your application lacks stability when using elastic back-pressure, we recommend you use alternative back-pressure strategies like 'wait' or 'reject' to manage flow control for your application. </p>
+    <p class="Caution">This configuration is not suitable for memory restrictive environments because the buffer is allowed to grow indefinitely, and it can cause out-of-memory errors (or potentially  undefined errors).  This configuration is useful when your infrastructure is made up of several microservices which are short-lived, and can provide publishing redundancy for the unlikely event of an internal queue encountering an out-of-memory scenario.  </p>
+    <p> The following example shows an explicit call to the  <code>on_back_pressure_elastic()</code> function, which is not required because it is the default behavior:</p>
+    <pre xml:space="preserve">
+# Create a DirectMessagePublisherBuilder which allows you to create a DirectMessagePublisher and start it
+direct_publisher = messaging_service.create_direct_message_publisher_builder() \
+               .on_back_pressure_elastic() \
+               .build()
+
+# Starts the configured DirectMessagePublisher synchronously. Before the start() function is called, the publisher is considered off-duty
+direct_publisher.start()		</pre>
+    <h3><a name="reject"/>Rejecting Messages When A Specified Limit is Reached </h3>
+    <p>When back-pressure occurs, you can choose to reject the messages from the client application when a specified limit is reached in the internal buffer. You can use the <code>on_back_pressure_reject(buffer_capacity: int)</code> function to specify a defined buffer capacity for a set number of messages to accumulate. After the specified capacity is reached, it is no longer possible to publish new messages and the API returns errors until the buffer has capacity again. If <code>buffer_capacity</code> is set to zero, the Python API does not buffer any outbound messages and rejects immediately when unable to write a message to the native library.</p>
+    <pre xml:space="preserve">
+# Create a DirectMessagePublisherBuilder which allows you to create a DirectMessagePublisher and start it
+direct_publisher = messaging_service.create_direct_message_publisher_builder() \
+               .on_back_pressure_reject(1000) \
+               .build()
+
+# Starts the configured DirectMessagePublisher synchronously. Before the start() function is called, the publisher is considered off-duty
+direct_publisher.start()		</pre>
+    <h4>Using a Publisher Readiness Listener</h4>
+    <p>We recommend that you use a <code>PublisherReadinessListener</code> when you use the <code>on_back_pressure_reject()</code> function because it lets your application know when there is capacity available in the buffer and it can resume publishing messages.</p>
+    <p>The following is an example of  registering an event handler <code>PublisherReadinessListener</code> instance: </p>
+    <pre xml:space="preserve">
+class CanPublishListener(PublisherReadinessListener):
+    def ready(self):
+        # This method is executed when the publisher is ready to publish again
+        # You can use this callback to handle message publishing when backpressure is relieved
+        pass
+# ...
+# ...
+direct_publisher.set_publisher_readiness_listener(CanPublishListener())    
+			
+# Initiator for the callback
+some_condition_is_true = True
+while some_condition_is_true:
+    # prepare/process some data prior to publishing a message...
+    try:
+        message_publisher.publish("can't send, buffer over capacity", my_topic)
+    except PublisherOverflowError as e:
+        # Handle the overflow exception (backpressure)
+        # You can do some work here or signal to slow down message publishing
+        pass			  	</pre>
+    <h3><a name="throttle"/>Throttling the Publisher When a Specified Limit is Reached</h3>
+    <p>You can choose to throttle the publishing application if a specified limit is reached in the internal buffer. The use of throttling is useful when applications can block and wait for capacity to appear in the buffer. You can use the <code>on_back_pressure_wait(buffer_capacity: int)</code> function to set the maximum number of messages that can accumulate in the buffer. When this maximum capacity (<code>buffer_capacity</code>) is reached, the publisher routine pauses and waits for  available capacity in the internal buffer before letting the application publish any more messages. The back pressure strategy of <code>on_back_pressure_wait()</code> will not call a <code>PublisherReadinessListener</code>.</p>
+    <p> This function should be used when you don't want your application to throw exceptions after the buffer's capacity has been reached. Using this mechanism effectively gives time for the API to empty the internal buffer.</p>
+    <p>The following shows an example of how to configure an internal buffer to accommodate up to one thousand messages:</p>
+    <pre xml:space="preserve">
+# Create a DirectMessagePublisherBuilder which allows you to create a DirectMessagePublisher and start it
+direct_publisher = messaging_service.create_direct_message_publisher_builder() \
+               .on_back_pressure_wait(1000) \
+               .build()
+
+# Starts the configured DirectMessagePublisher synchronously. Before the start() function is called, the publisher is considered off-duty
+direct_publisher.start()		</pre>
+    <h2 class="with-rule"><a name="Publishing-A-Direct-Message"/>Publishing a Direct Message</h2>
+    <p>After you have created the <code>DirectMessagePublisher</code>, you can start sending messages. When you send a message, there are two primary components:</p>
+    <ul>
+      <li>the topic to publish on  <a href="https://docs.solace.com/Get-Started/Understanding-Topics.htm" class="link-internal">(Understanding Topics)</a></li>
+      <li>the payload of the message (optional) </li>
+    </ul>
+    <p>The topic must be an object of the <code>Topic</code> class that follows the <MadCap:variable name="Variables.CompanyName"/> hierarchical format, for example: <code>solace/messaging/direct/pub</code>. The publish function currently supports simple string messages, byte arrays, as well as <code>OutboundMessage</code> instances, which can be obtained through an <code>OutboundMessageBuilder</code> via <code>messaging_service.MessageBuilder()</code>. The following function publishes a direct message:</p>
+    <ul>
+      <li>
+        <code>publish(message: bytearray | str | OutboundMessage, destination: Topic, additional_message_properties: Dict[str, str | int | float | bool | dict | list | tuple | bytearray | None] | None = None)</code>
+        <ul>
+          <li><code>message</code>—The outbound message that can be an <code>OutboundMessage</code> object, <code>bytearray</code>, or <code>str</code>. If the payload is a <code>bytearray</code> or <code>str</code>, the API creates an <code>OutboundMessage</code> object to send.</li>
+          <li><code>destination</code>—The <code>Topic</code> to publish to.</li>
+          <li><code>additional_properties</code>—Additional key-value properties to customize a message. Each key can be customer provided, or it can be a key from of type<code> solace.messaging.config.solace_properties.message_properties</code>.</li>
+        </ul>
+      </li>
+    </ul>
+    <p> See the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a> for information about the publish functions that are available when you use a  <code>DirectMessagePublisher</code>.</p>
+    <p>Here's an example that shows how to publish a direct message:</p>
+    <pre xml:space="preserve">
+topic = Topic.of("topic/to/publish/to")
+outbound_message = outbound_msg_builder \
+                .from_properties(message_props) \
+                .build("my message body")
+direct_publisher.publish(outbound_message, topic)</pre>
+    <h2 class="with-rule"><a name="Handling-Errors"/>Handling Errors</h2>
+    <p>The Python API provides the <code>set_publish_failure_listener()</code> function that notifies the client if the API is unable to publish messages. A failed publish event could be due to an issue such as an invalid topic or a termination of the service.  See the example below:</p>
+    <pre xml:space="preserve">
+# An example implementation of a PublishFailureListener
+class PublishFailureListenerImpl(PublishFailureListener):
+    def on_failed_publish(self, failed_publish_event: 'FailedPublishEvent'):
+        print(f"fail_destination name:{failed_publish_event.get_destination()}\n"
+              f"fail_message:{failed_publish_event.get_message()}\n"
+              f"fail_timestamp:{failed_publish_event.get_timestamp()}\n"
+              f"fail_exception:{failed_publish_event.get_exception()}\n")
+
+direct_publisher.set_publish_failure_listener(PublishFailureListenerImpl())     </pre>
+  </body>
+</html>

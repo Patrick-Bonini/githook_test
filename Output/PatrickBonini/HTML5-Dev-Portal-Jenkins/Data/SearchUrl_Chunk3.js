@@ -1,0 +1,1 @@
+define({"../Software-Broker/System-Scaling-Parameters.htm":30,"../Software-Broker/Timezone.htm":59,"../get-support.htm":1345,"../index.html":1358,});

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Using Replication with DMR</h1>
+    <p>You can take advantage of disaster recovery (using replication and Config-Sync) while using <a href="../DMR/DMR-Overview.htm" class="link-internal">Dynamic Message Routing (DMR)</a> to dynamically route messages through your event mesh. DMR provides a means to interconnect instances of Solace PubSub+ event brokers so that messages published by clients hosted by one broker can be consumed by clients hosted on another. </p>
+    <p>For example, imagine a three-region replication-enabled event mesh, interconnected using DMR:</p>
+    <ul>
+      <li>Each region (depicted by a gray oval) is a separate DMR cluster.</li>
+      <li>In each region  there are two nodes, each of which consists of one High-Availability (HA) pair. </li>
+      <li>Each node in the network is connected to every other node by a DMR link:<ul><li>Nodes between clusters (regions, in this example) are connected by <i>external</i> DMR links</li><li>Nodes within the same cluster (for example, Seattle and San Jose) are connected by <i>internal</i> DMR links.</li></ul></li>
+    </ul>
+    <p>This example topology is illustrated in the following diagram:</p>
+    <p>
+      <img src="../../Resources/Images/DR-Replication/DMR-Replication-full-mesh.png" style="max-width: 75%;" alt=""/>
+    </p>
+    <p>In this example,</p>
+    <ul>
+      <li>in the USA West region, the <b>Seattle</b> and <b>San Jose</b> nodes form a replication group, with VPNs Red and Blue active in Seattle, and VPN Green active in San Jose.</li>
+      <li>in USA East, the <b>New York</b> and <b>Chicago</b> nodes form another replication group, with VPNs Red and Blue active in New York, and VPN Green active in Chicago.</li>
+      <li>in Canada East, a replication group has been established between the <b>Toronto</b> and <b>Montreal</b> nodes, with VPNs Green and Blue active in Toronto, and VPN Red active in Montreal.</li>
+    </ul>
+    <p>Within this fully connected mesh, the brokers are able to determine how messages should be routed. Each node advertises the list of its connected DMR neighbors and replication mates, allowing all nodes to build an accurate internal model of the network. As nodes are added or removed, this same mechanism allows the other nodes to dynamically adjust their internal representation of the DMR network.</p>
+    <p>Because the nodes in the network are aware of the replication mates, messages are routed as if the replication group were a single node:</p>
+    <ul>
+      <li>DMR data channels are active only on the active message VPNs, as shown below.</li>
+      <li>Messages are not propagated over DMR links between replication mates. Instead messages are replicated over the replication bridge as normal.</li>
+      <li>Nodes that are connected to replication mates use a single shared data channel and queue for both members of the replication group (for more information, see <MadCap:xref href="../DMR/DMR-with-DR-Cluster-Link-Config.htm">Configuring DMR Cluster Links with Replication</MadCap:xref>).</li>
+    </ul>
+    <p>
+      <img src="../../Resources/Images/DR-Replication/DMR-Replication-data-channels.png" alt=""/>
+    </p>
+    <p class="Note">
+            Replication mates must be in the same cluster, connected with an internal DMR link.</p>
+    <p>In versions 10.0.1 and later, replication may be enabled or disabled on all DMR-enabled Message VPNs. If replication is disabled on a DMR-enabled Message VPN, messages are propagated over the DMR link between replication mates instead of the replication bridge. Using the previous example, if replication is disabled on Message VPN Blue for nodes in the Canada East cluster, the resulting topology looks like this:</p>
+    <p>
+      <img src="../../Resources/Images/DR-Replication/DMR-Replication-data-channels-DR-disabled.png" alt=""/>
+    </p>
+    <p>In this example, no DMR bridge is configured from the <b>Toronto</b> node to <b>New York</b> node for Message VPN Blue. </p>
+    <p>To learn how to configure replication with an event mesh, see <MadCap:xref href="Replication-with-DMR.htm">Configuring Replication with a DMR Network</MadCap:xref>.</p>
+  </body>
+</html>

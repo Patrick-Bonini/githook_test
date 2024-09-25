@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Frequently Asked Questions</h1>
+    <p>This section provides answers to the following frequently asked questions (FAQs) about the Solace Geneos Agent configuration and operation.</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#sample-rate">Can the sampling rate be less than 30 seconds?</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#obsolete-views">Why do obsolete data views show up in Active Console after changing the view name?</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#dynamic-views">How do I create dynamic views?</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#rules">Why do Solace rules in the include file not work when included in the Gateway configuration?</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#duplicate-entries">Why do I get duplicate log entries in solgeneosagent.log?</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#sampling-status">Why is my samplingStatus in Active Console not updated when the agent stops?</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#host-not-trusted">Why do I get error code 102 (HOST_NOT_TRUSTED) when running the agent?</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="sample-rate"/>Can the sampling rate be less than 30 seconds?</h2>
+    <p>A monitor's sampling rate is required to be 30 seconds or greater because smaller polling interval may impact the event broker performance and therefore the agent's performance. Sampling rate can be set to a value below 30 seconds if:</p>
+    <ul>
+      <li>the agent is running in development mode for testing purposes</li>
+      <li>the monitor is doing low performance impact queries, such as <code>MonitorStatusMonitor</code> and <code>ServiceStatusMonitor</code>, which do not send SEMP requests to the event broker, but instead simply gather statistics</li>
+    </ul>
+    <p>To run the agent in development mode, add <code>-DdevMode=true</code> to the agent's VM startup option.</p>
+    <p>To allow a monitor to have a sampling rate less than 30 seconds even when the agent is running in production mode, override <code>getSamplingRateFloor()</code> method in monitor class to return a value other than 30. Caution must be exercised when overriding this method because the agent and the event broker's performance could be affected. </p>
+    <h2 class="with-rule"><a name="obsolete-views"/>Why do obsolete data views show up in Active Console after changing the view name?</h2>
+    <p>If a data view with certain name is already added to a gateway through NetProbes, changing its name, group header, sampler, and managed entity will not cause the view removed from the gateway. The only way to remove it is to restart the NetProbes.</p>
+    <h2 class="with-rule"><a name="dynamic-views"/>How do I create dynamic views?</h2>
+    <p>Solace Geneos Agent provides a default implementation of the <code>View</code> interface called <code>BaseView</code>. All the static views configured through monitor properties are loaded as <code>BaseView</code> objects. Monitor developers can call the <code>BaseView</code> constructor to create views on the fly to create new view instance, and can add/remove them to/from the monitor's <code>viewMap</code> by using the following monitor methods:</p>
+    <ul>
+      <li>
+        <code>addView(View)</code>
+      </li>
+      <li>
+        <code>removeView(viewAliasName)</code>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="rules"/>Why do Solace rules in the include file not work when included in the Gateway configuration?</h2>
+    <p>Solace rules do not work from an include file, but they will work if they are part of the top level configuration.</p>
+    <ol>
+      <li>Open up the gateway configuration editor. You should see the configuration <b>Gateway</b> &gt; <b>Includes</b> &gt; <b>solace_include.xml</b> &gt; <b>Gateway</b>.</li>
+      <li>Open up the Actions folder (<b>Gateway</b> &gt; <b>Includes</b> &gt; <b>solace_include.xml</b> &gt; <b>Gateway</b> &gt; <b>Actions</b>), right-click the <b>Email</b> action, and select <b>Copy</b>.</li>
+      <li>Select the <b>Actions</b> folder under <b>Gateway</b> &gt; <b>Actions</b>. </li>
+      <li>If prompted to "Create Actions", click <b>Yes</b>.</li>
+      <li>Paste the <b>Email</b> action.</li>
+      <li>Copy the <b>Solace</b> folder under <b>Gateway</b> &gt; <b>Includes</b> &gt; <b>solace_include.xml</b> &gt; <b>Gateway</b> &gt; <b>Rules</b>, and paste it under <b>Gateway</b> &gt; <b>Rules</b>.</li>
+    </ol>
+    <h2 class="with-rule"><a name="duplicate-entries"/>Why do I get duplicate log entries in solgeneosagent.log?</h2>
+    <p>This may be due to log4j's appender additivity feature. Basically, each enabled logging request for a given logger is forwarded to all the appenders in that logger, as well as the appenders higher in the hierarchy. In other words, appenders are inherited additively from the logger hierarchy. For example:</p>
+    <p class="Code">log4j.category.com.solacesystems=ERROR, A1</p>
+    <p class="Code">log4j.category.com.solacesystems.solgeneos.solgeneosagent=WARN, A1</p>
+    <p>The warning log output by a class under <code>solgeneosagent</code> are forwarded to file appender <code>A1</code> twice, which results in duplicate log entries in the log file.</p>
+    <p>There are two ways to avoid the problem:</p>
+    <ol>
+      <li>Remove appender <code>A1</code> from <code>solgeneosagent</code> logger. This way, the logger inherits the logger appender <code>A1</code> from <code>solacesystem</code>.
+                <p class="Code">log4j.category.com.solacesystems.solgeneos.solgeneosagent=WARN</p></li>
+      <li>Add the following line to disable additivity:
+                <p class="Code">log4j.additivity.com.solacesystems.solgeneos.solgeneosagent=false</p></li>
+    </ol>
+    <h2 class="with-rule"><a name="sampling-status"/>Why is my samplingStatus in Active Console not updated when the agent stops?</h2>
+    <p>This problem could occur if you override the <code>reportView</code> method in your monitor implementation but forget to call <code>checkSignedIn</code> method in the <code>NetProbeService</code> class before updating the data view.</p>
+    <h2 class="with-rule"><a name="host-not-trusted"/>Why do I get error code 102 (HOST_NOT_TRUSTED) when running the agent?</h2>
+    <p>If you get error code 102 (HOST_NOT_TRUSTED) when running the agent, that means you probably configured "Trusted API Hosts" on the NetProbe, and the hostname where the agent is running on is not in that list.</p>
+  </body>
+</html>

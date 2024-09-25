@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Subscription Capacity</h1>
+    <p><MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers  provide three levels of capacity for subscriptions: 50k, 500k, and 5M. This number represents the number of unique subscriptions that an individual event broker can keep track of, and includes all local subscriptions (of clients, queues, and topic-endpoints), as well as all remote subscriptions  learned from other event brokers in the event mesh through the Multi-Node Routing (MNR) or Dynamic Message Routing (DMR) features. Unique subscriptions are subscriptions that have the same topic string, belong to the same Message VPN, and (in the case of MNR or DMR) were added to the same event broker instance. For example, if two clients connect to the same Message VPN on the same event broker, and both add the subscription <code>a/b/c</code>, this subscription counts as one unique subscription against the subscription limit.</p>
+    <p>Selecting your  subscription capacity depends on how your <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker is deployed:
+
+</p>
+    <ul>
+      <li>
+        <p>For <MadCap:variable name="Product-Names.pubsub_brand_only"/> <MadCap:variable name="Product-Names.broker_sw_short"/>s, subscription capacity depends on the configured scaling parameters. For more information, see <MadCap:xref href="../Software-Broker/System-Scaling-Parameters.htm#max-subscriptions">Maximum Number of Subscriptions</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>For <MadCap:variable name="Product-Names.pubsub_brand_only"/> <MadCap:variable name="Product-Names.broker_appliance_short"/>s, subscription capacity is 5M for all appliance models. </p>
+      </li>
+      <li>
+        <p>For <MadCap:variable name="Product-Names.pubsub_brand_only"/> Cloud, subscription capacity depends on the service class and the corresponding service limit. For more information, see <MadCap:xref href="../Cloud/service-class-limits.htm">Service Class Options for [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref>.</p>
+      </li>
+    </ul>
+    <h2><a name="monitoring-subscription-usage"/>Monitoring the Subscription Usage</h2>
+    <p><MadCap:variable name="Variables.CompanyName"/> recommends that you monitor the number of unique subscriptions for your event broker together with the Subscription Load Factor to ensure that you don't exceed the subscription limit and that you have enough resources on your event brokers available to operate correctly.</p>
+    <p>The Subscription Load Factor  accounts for the number of subscriptions and the amount of internal memory resources that are consumed by these subscriptions. Because memory resource consumption depends on more than the number of subscriptions, such as subscription length and  amount of repetition, the Subscription Load Factor provides a more complete indication of your subscription capacity than the number of subscriptions alone. It is exposed as the <code>SYSTEM_ROUTING_SUBSCRIPTIONS_LOAD_FACTOR_HIGH</code> system event with configurable thresholds. For more information about system events, see <MadCap:xref href="../Admin-Ref/Solace-PubSub-Event-Reference/event_ref_boiler.html">Solace PubSub+ Syslog Events</MadCap:xref>. For more information about configuring thresholds, see <MadCap:xref href="../Monitoring/Configuring-System-Event-Thresholds.htm">Configuring System Event Thresholds</MadCap:xref>. </p>
+    <h3>Monitoring the Unique Subscription Limit</h3>
+    <p>To view the current number of unique subscriptions, run the <code>show smrp subscriptions summary</code> command:</p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre xml:space="preserve">solace&gt; show smrp subscriptions summary
+
+Flags Legend:
+T - Destination Type (C=local-client, Q=local-queue,
+       R=remote-router)
+R - Redundancy Type for Local Destinations (P=primary, B=backup,
+       S=static, -=not-applicable)
+
+Total Subscriptions        :     450017
+  Local Subscriptions      :     450017
+  Remote Subscriptions     :          0<span style="color: #ff0000;">
+Total Unique Subscriptions :     450017</span>
+
+
+Message VPN            Flg Destination              Subscription              
+                       T R                          Persist  Non-Pst  Total   
+---------------------- - - ------------------------ -------- -------- --------
+#cluster               C S #client                         0        6        6
+#cluster               C P #cluster/vmr-134-39             0        4        4
+default                C S #client                         0        6        6
+default                C P dev3-236/18961/00000001/        0   450001   450001
+                             R6k0pmxV1Z
+</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <h3>Monitoring the Subscription Load Factor</h3>
+    <p>To view the Subscription Load Factor, expressed as a percent, run the <code>show memory</code> command: </p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre xml:space="preserve">
+solace&gt; show memory
+
+Memory (KB):
+
+                    Total        Used        Free     Buffers      Cached
+               ----------  ----------  ----------  ----------  ----------
+Physical
+  Memory         13155980    10070580     3085400        6348     1684756
+  Swap            2047996           0     2047996
+Subscriptions
+  Memory           131071       70315       60756
+
+IPC Buffers:
+
+    Buffer                # Buffers                   Memory (KB)
+Pool   Size(B)     Total    Used    Free       Total      Used      Free
+---- ---------   ------- ------- -------   --------- --------- ---------
+   0       256      8192       1    8191        2048         1      2047
+   1      2048     16536       0   16536       33072         0     33072
+   2     10240      2048       0    2048       20480         0     20480
+   3    102400       450       0     450       45000         0     45000
+   4   1048576        10       0      10       10240         0     10240
+   5  10485760         1       0       1       10240         0     10240
+
+Physical memory usage:  63.74%
+Subscription memory usage:  53.65%<span style="color: #ff0000;">
+Subscriptions load factor:  75%</span>
+  Highest contributor:  Subscription Hash
+
+NAB Buffers:
+
+Slot     NAB Buffer Load Factor
+-------- ----------------------
+1/1      0%
+
+Event Threshold                           Set Value      Clear Value
+---------------------------------- ---------------- ----------------
+Subscriptions Memory (%)                         80               60 
+Subscriptions Load Factor (%)                    80               60
+NAB Buffer Load Factor (%)                       80               60
+</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <h2><a name="subscription-limit-per-message-vpn-and-client"/>Assigning Subscription Limits To Message VPNs Or Clients</h2>
+    <p>Besides assigning the system-level subscription limit as a scaling parameter, you can assign a local subscription limit to individual Message VPNs and clients (that is less than the system-level subscription limit). For more information, see <a href="../Features/VPN/Configuring-VPNs.htm#Max-Subs" class="link-internal">Configuring Maximum Subscriptions for Message VPNs</a>  and <a href="../Security/Configuring-Client-Profiles.htm#Config-Max-Subscriptions" class="link-internal">Configuring Maximum Subscriptions for Client Profiles</a>.</p>
+    <h2><a name="event-mesh-considerations"/>Event Mesh Considerations</h2>
+    <p>If your event broker is part of an event mesh, and connected in some manner to other event brokers, the subscriptions of the other event brokers (the remote subscriptions)  count against your event broker’s subscription limit. In this case, you must be aware of the following considerations: </p>
+    <ul>
+      <li>
+        <p>If your event mesh is built using MNR, all event brokers in the event mesh learn of all subscriptions that are exported by every other event broker in the network, regardless of whether they are directly or indirectly connected by neighbor links (see <MadCap:xref href="../Features/MNR/Managing-Multi-Node-Routing-Links.htm">Multi-Node Routing</MadCap:xref>). In this case, the subscription limit of all event brokers must be the same, and must meet or exceed the combined needs of all clients and queues, no matter which event broker is hosting them.</p>
+      </li>
+      <li>
+        <p>If your event mesh is built using DMR, all event brokers in the same DMR cluster learn of all subscriptions that are exported by every other event broker in the same DMR cluster. In addition, if the cluster has an external link to another cluster, all subscriptions of the Message VPNs  (for which there is a per-Message VPN DMR bridge configured) from the other cluster are learned  (see <MadCap:xref href="../Features/DMR/DMR-Overview.htm">Dynamic Message Routing</MadCap:xref>). In this case, the subscription limits of all event brokers in a given DMR cluster must be the same, and must meet or exceed the combined needs of all clients and queues of all event brokers in the same DMR cluster, in addition to all clients and queues that are exposed from an adjacent DMR cluster over a DMR bridge.</p>
+      </li>
+      <li>
+        <p>If your event mesh includes Message VPN bridges, the subscriptions of the client and queue of the Message VPN bridge are included in the number of local subscriptions of your event broker.</p>
+      </li>
+    </ul>
+  </body>
+</html>

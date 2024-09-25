@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Upgrading the <MadCap:variable name="Product-Names.cloud_agent_short"/> in Kubernetes</h1>
+    <p>In most cases, for Kubernetes deployments of <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.cloud_product_long"/></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><MadCap:variable name="Product-Names.cloud_product_firstuse"/></MadCap:conditionalText> in a <MadCap:variable name="Product-Names.customer-controlled_region"/>, the <MadCap:variable name="Product-Names.cloud_agent_short"/> is self-upgrading, so no action is required. Note that this may depend on the version of the <MadCap:variable name="Product-Names.cloud_agent_short"/> that you have. You can  <a href="../../get-support.htm" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a> to see if your <MadCap:variable name="Product-Names.cloud_agent_short"/> is self-upgrading. If your <MadCap:variable name="Product-Names.cloud_agent_short"/> is not self-upgrading, you can upgrade it in conjunction with <MadCap:variable name="Variables.CompanyName"/> by performing the steps described on this page.</p>
+    <p>Upgrades to the <MadCap:variable name="Product-Names.cloud_agent_short"/> are necessary for these reasons:</p>
+    <ul>
+      <li>To pick up the most recent security updates (maintenance releases).</li>
+      <li>To be able to upgrade <MadCap:variable name="Product-Names.broker_cloud_short"/>s to a more recent release.</li>
+      <li>To pick up functionality or features, because they often require an updated <MadCap:variable name="Product-Names.cloud_agent_short"/>.</li>
+    </ul>
+    <p>For information about <MadCap:variable name="Product-Names.broker_cloud_short"/>s and upgrades, see <MadCap:xref href="../upgrade-event-broker.htm">Upgrading Existing [%=Product-Names.broker_cloud_short_title%]s in [%=Product-Names.cloud_product_short%]</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="before-you-begin"/>Before You Begin</h2>
+    <p>Review the following information before you start upgrading the <MadCap:variable name="Product-Names.cloud_agent_short"/>:</p>
+    <ul>
+      <li>
+        <p>The procedures listed  <u>must</u> be executed in conjunction with  <MadCap:variable name="Variables.CompanyName"/> to help you to keep your <MadCap:variable name="Product-Names.cloud_agent_short"/>s up-to-date. Before you begin any procedure to upgrade your <MadCap:variable name="Product-Names.cloud_agent_short"/>, <a href="../../get-support.htm" target="_blank" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a>. </p>
+        <p>You must know the version number of the Helm chart that you are  updating from because it determines which of the following procedures to use:</p>
+        <ul>
+          <li>If you are upgrading a Helm Chart version that's earlier than 0.10.1, see <MadCap:xref href="#upgrade-agent-kubernetes-using-beforeversion">Upgrading with Helm Chart Before 0.10.1</MadCap:xref>.</li>
+          <li>If you are upgrading using Helm Chart version that's 0.10.1 or later, see <MadCap:xref href="#upgrade-agent-kubernetes-using-afterversion">Upgrading with Helm Chart 0.10.1 or later</MadCap:xref>.</li>
+        </ul>
+      </li>
+      <li>
+        <p><a name="variabledefinitions"/>The following are the descriptions for the variables in  the procedures to upgrade the <MadCap:variable name="Product-Names.cloud_agent_short"/>:</p>
+        <ul>
+          <li><code>&lt;data_center_values.yaml&gt;</code>—The YAML file that was previously used to  deploy the <MadCap:variable name="Product-Names.cloud_agent_short"/> to your environment; this file should be the same as the one in production if you aren't changing anything other upgrading your <MadCap:variable name="Product-Names.cloud_agent_short"/>.<li><code>&lt;namespace&gt;</code>—The namespace for <MadCap:variable name="Product-Names.cloud_agent_short"/> that you created when you had first deployed,  such as <code>solace</code>.</li><li><code>&lt;release_name&gt;</code>—The name of the cloud-release. This is the value you used to deploy the release that you've specified, such as <code>cloud-agent-rel</code>.</li><li><code>&lt;version_of_helm_chart_upgrade_from&gt;</code>—The name and the version of the Helm chart that's provided by <MadCap:variable name="Variables.CompanyName"/>. <a href="../../get-support.htm" class="link-internal">Contact <MadCap:variable name="Variables.CompanyName"/></a> for information from your deployment if you don't have this. </li><li><code>&lt;new_version_of_helm_chart_upgrade_to&gt;</code>—The name and the version of the Helm chart to upgrade to. Contact <MadCap:variable name="Variables.CompanyName"/> for this information. This can be an URL or a network location.</li></li>
+        </ul>
+      </li>
+      <li>
+        <p>If you need to determine the <code>namespace</code> values and <code>releasename</code>, but you don't remember them, you can run the following commands to find the information when you connect to your Kubernetes cluster:</p>
+        <ul>
+          <li>
+            <p>If you don't know the <code>&lt;namespace&gt;</code> or <code>&lt;release_name&gt;</code>, use this command:</p>
+            <pre>helm ls</pre>
+          </li>
+          <li>
+            <p>If you know the <code>&lt;namespace&gt;</code> is <code>solace</code> and <code>&lt;release_name&gt;</code> is <code>cloud-agent-rel</code>, but want to find a specific release to upgrade using Helm chart version <code>solace-cloud-ca-0.10.1</code>, you can use this command:</p>
+            <pre xml:space="preserve">helm ls -n &lt;namespace&gt; | grep &lt;release_name&gt; \
+     | awk '{print $9}' <code>&lt;version_of_helm_chart_upgrade_from&gt;</code></pre>
+            <p>Based on the example data, the command would be this:</p>
+            <pre xml:space="preserve">helm ls -n solace | grep cloud-agent-rel \
+     | awk '{print $9}' solace-cloud-ca-0.10.1</pre>
+            <p>You can also do this using the <code>jq</code> command where the <code>&lt;namespace&gt;</code> is <code>solace</code> using the following command:</p>
+            <p class="Note">You might need to first install <code>jq</code> before you can run the command [e.g., <code>brew install</code> <code>jq</code> (macOS), <code>apt-get install jq</code> or <code>yum install jq</code> (Linux)].</p>
+            <pre xml:space="preserve">helm ls -n &lt;namespace&gt; -o json | \
+     jq '.[] | select(.name=="&lt;version_of_helm_chart_upgrade_from&gt;").chart'</pre>
+            <p>Based on the example data, the command would be this:</p>
+            <pre xml:space="preserve">helm ls -n solace -o json \ 
+     | jq '.[] | select(.name=="solace-cloud-ca-0.10.1").chart'</pre>
+          </li>
+        </ul>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="upgrade-agent-kubernetes-using-beforeversion"/>Upgrading with Helm Chart Prior to Version 0.10.1</h2>
+    <p>Before you start this procedure, ensure that you review the information in the <MadCap:xref href="#before-you-begin">Before You Begin</MadCap:xref>. Use the steps in this section  only if you're updating with a Helm chart version that's <b>earlier than 0.10.1</b>. The examples below use <a href="#variabledefinitions" class="link-internal">variables</a> set to the following values:</p>
+    <ul>
+      <li><code>&lt;namespace&gt;</code> as <code>solace</code></li>
+      <li><code>&lt;release-name&gt;</code> as <code>cloud-agent-rel</code></li>
+      <li><code>&lt;version_of_helm_chart_upgrade_from&gt;</code> as <code>solace-cloud-ca-0.10.0</code> (this older release is specific to you)</li>
+      <li><code>&lt;new_version_of_helm_chart_upgrade_to&gt;</code> as  <code>https://URL.from<MadCap:variable name="Variables.CompanyName"/>.com/solace-cloud-ca-new.tgz</code> (note that the location is just an example and is not a valid URL. <a href="../../get-support.htm" target="_blank" class="link-internal">Contact <MadCap:variable name="Variables.CompanyName"/></a> for this information.)</li>
+      <li><code>&lt;data_center_values.yaml&gt;</code>as <code>values.yaml</code></li>
+    </ul>
+    <p>If you're updating a Helm chart version that's <b>earlier than 0.10.1</b>, use the following steps to upgrade your <MadCap:variable name="Product-Names.cloud_agent_short"/>:</p>
+    <ol>
+      <li>Connect to the Kubernetes cluster to that you want upgrade.</li>
+      <li>Check that the <code>&lt;data_center_values.yaml&gt;</code> file specific to your data center is the same as the one in production for the same data center. </li>
+      <li>
+        <p>Upgrade the Helm chart using the command:</p>
+        <pre xml:space="preserve">helm upgrade &lt;release-name&gt; &lt;version_of_helm_chart_upgrade_from&gt; --namespace &lt;namespace&gt; --values &lt;data_center_values.yaml&gt;</pre>
+        <p>For example:</p>
+        <pre xml:space="preserve">helm upgrade cloud-agent-rel solace-cloud-ca-0.10.0 --namespace solace --values values.yaml</pre>
+      </li>
+      <li>
+        <p>Delete the <MadCap:variable name="Product-Names.cloud_agent_short"/> deployment
+using the following command:</p>
+        <pre>helm delete --namespace &lt;namespace&gt; &lt;release_name&gt;</pre>
+        <p>For example:</p>
+        <pre xml:space="preserve">helm delete --namespace solace cloud-agent-rel</pre>
+      </li>
+      <li>
+        <p>Re-install the <MadCap:variable name="Product-Names.cloud_agent_short"/> Helm deployment with the following command:</p>
+        <pre xml:space="preserve">helm install &lt;release-name&gt; &lt;new_version_of_helm_chart_upgrade_to&gt; \
+             --namespace &lt;namespace&gt; --values &lt;data_center_values.yaml&gt;</pre>
+        <p>For example:</p>
+        <pre xml:space="preserve">helm install cloud-agent-rel \
+https://URL.from<MadCap:variable name="Variables.CompanyName"/>.com/solace-cloud-ca-newchart.tgz --namespace solace --values values.yaml</pre>
+      </li>
+      <li>
+        <p>Verify that the <MadCap:variable name="Product-Names.cloud_agent_short"/> is running using the <code>kubectl</code> command.
+</p>
+        <pre xml:space="preserve"> kubectl get pods --namespace &lt;namespace&gt;</pre>
+        <p>For example, if you namespace was <code>solace</code>, you would run this command:</p>
+        <pre xml:space="preserve"> kubectl get pods --namespace solace</pre>
+        <p>Your <MadCap:variable name="Product-Names.cloud_agent_short"/>  is now  in the running state.</p>
+      </li>
+    </ol>
+    <h2 class="with-rule"><a name="upgrade-agent-kubernetes-using-afterversion"/>Upgrading with Helm Chart Version 0.10.1 or later</h2>
+    <p>Before you start this procedure, ensure that you review the information in the <MadCap:xref href="#before-you-begin">Before You Begin</MadCap:xref>. Use the steps in this section only if you're updating with a Helm chart version that's <b>0.10.1 or later</b>. The examples below use these <a href="#variabledefinitions" class="link-internal">variables</a> set to the following values:</p>
+    <ul>
+      <li><code>&lt;namespace&gt;</code> as <code>solace</code></li>
+      <li><code>&lt;release-name&gt;</code> as <code>cloud-agent-rel</code></li>
+      <li><code>&lt;new_version_of_helm_chart_upgrade_to&gt;</code> as  <code>https://URL.from<MadCap:variable name="Variables.CompanyName"/>.com/solace-cloud-ca-new.tgz</code> (note that the location is just an example and is not a valid URL. <a href="../../get-support.htm" target="_blank" class="link-internal">Contact <MadCap:variable name="Variables.CompanyName"/></a> for this information.) </li>
+      <li><code>&lt;data_center_values.yaml&gt;</code> as <code>values.yaml</code>:</li>
+    </ul>
+    <p>If you're upgrading from a Helm chart version that's <b>0.10.1 or later</b>, use the following steps to upgrade your <MadCap:variable name="Product-Names.cloud_agent_short"/>.</p>
+    <ol>
+      <li> Connect to the Kubernetes cluster that you want to upgrade.</li>
+      <li>Check that the <code>values.yaml</code> file specific to your data center is the same as the one in production for the same data center. </li>
+      <li>
+        <p>Upgrade the Helm chart using this command: </p>
+        <pre xml:space="preserve">helm upgrade &lt;release_name&gt; \
+     &lt;new_version_of_helm_chart_upgrade_to&gt; \
+     --namespace &lt;namespace&gt; --values &lt;data_center_values.yaml&gt;</pre>
+        <p>For example:</p>
+        <pre xml:space="preserve">helm upgrade cloud-agent-rel \
+     https://URL.from<MadCap:variable name="Variables.CompanyName"/>.com/solace-cloud-ca-new.tgz \
+      --namespace solace --values values.yaml</pre>
+      </li>
+      <li>
+        <p>Verify that the <MadCap:variable name="Product-Names.cloud_agent_short"/> is running using the <code>kubectl</code> command:</p>
+        <pre xml:space="preserve"> kubectl get pods --namespace &lt;namespace&gt;</pre>
+        <p>For example, if your namespace was <code>solace</code>, you would run this command:</p>
+        <pre xml:space="preserve"> kubectl get pods --namespace solace</pre>
+        <p>Your <MadCap:variable name="Product-Names.cloud_agent_short"/>  is now in the running state.</p>
+      </li>
+    </ol>
+  </body>
+</html>

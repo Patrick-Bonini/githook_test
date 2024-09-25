@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Using <MadCap:variable name="Product-Names.pubsub_cache"/> With the Python API</h1>
+    <p><MadCap:variable name="Product-Names.pubsub_brand_only"/> Cache is a scalable, in-memory message cache for direct messaging. It allows client applications to request the most current messages for a topic of interest when they come online, or when they start subscribing to topics that they were not originally subscribed to. For information about setting up a <MadCap:variable name="Product-Names.pubsub_brand_only"/> Cache instance, see <MadCap:xref href="../../Additional-Products/Solace-PubSub-Cache/PubSub-Cache-Overview.htm#top">Solace PubSub+ Cache</MadCap:xref>. The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API allows your applications to send cache requests to receive cached messages that your receiving application is interested in. The following sections describe how to send cache requests and receive cached messages:</p>
+    <p class="Note">To consume cached messages, your application needs access to the <code>ReceiverCacheRequests</code> interface. The  <code>DirectMessageReceiver</code> interface includes the <code>ReceiverCacheRequests</code> interface, so a <code>DirectMessageReceiver</code> instance is required to consume cached messages. See <MadCap:xref href="Python-DM-Receive.htm#Creating-A-DirectMessageReceiver-Object">Creating a DirectMessageReceiver</MadCap:xref> for more information.</p>
+    <ol>
+      <li>
+        <p>
+          <MadCap:xref href="#Creating">Creating a CachedMessageSubscriptionRequest Object</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Creating2">Sending a Cache Request</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Correlat">Creating an Event Listener Using the CacheRequestOutcomeListener Class</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Consider">Considerations When Receiving Cached Messages</MadCap:xref>
+        </p>
+      </li>
+    </ol>
+    <h2><a name="Creating"/>Creating a CachedMessageSubscriptionRequest Object</h2>
+    <p>To send a cache request, you first create an object of the <code>CachedMessageSubscriptionRequest</code> class. This class contains four different functions for requesting cached messages that each return an instance of <code>CachedMessageSubscriptionRequest</code>. Select the function that best suits the needs of your application:</p>
+    <ul>
+      <li>
+        <p>
+          <code>as_available(cache_name: str, subscription: TopicSubscription, cache_access_timeout: int, max_cached_messages: int=0, cached_message_age: int=0)</code>
+        </p>
+        <ul>
+          <li> Returns an instance of a <code>CachedMessageSubscriptionRequest</code> used to configure a cached data request. The request object adds a live data subscription to the topic passed into the function parameter if your receiver is not already subscribed to that topic. This means your application receives a mix of cached messages from the cache request and live messages from the topic subscription.</li>
+        </ul>
+      </li>
+      <li>
+        <p>
+          <code>live_cancels_cached(cache_name: str, subscription: TopicSubscription, cache_access_timeout: int, max_cached_messages: int=0, cached_message_age: int=0)</code>
+        </p>
+        <ul>
+          <li>Returns an instance of a <code>CachedMessageSubscriptionRequest</code> that configures the cache request application to receive the latest messages.  The request object adds a live data subscription to the topic passed into the function parameter if your receiver is not already subscribed to that topic. When there are no live (non-cached) messages, cached messages that match your chosen topic subscription are considered the latest. Otherwise, live messages  that match your chosen topic subscription are considered the latest. </li>
+        </ul>
+      </li>
+      <li>
+        <p>
+          <code>cached_first(cache_name: str, subscription: TopicSubscription, cache_access_timeout: int, max_cached_messages: int=0, cached_message_age: int=0)</code>
+        </p>
+        <ul>
+          <li>Returns an instance of <code>CachedMessageSubscriptionRequest</code> that configures  the cache request to receive cached messages when available, followed by live (non-cached) messages.  The request object adds a live data subscription to the topic passed into the function parameter if your receiver is not already subscribed to that topic. </li>
+        </ul>
+      </li>
+      <li>
+        <p>
+          <code>cached_only(cache_name: str, subscription: TopicSubscription, cache_access_timeout: int, max_cached_messages: int=0, cached_message_age: int=0)</code>
+        </p>
+        <ul>
+          <li>Returns an instance of a <code>CachedMessageSubscriptionRequest</code> that configures your application to receive cached messages only for the duration of the cache request. </li>
+          <li>Only use <code>cached_only()</code> when your receiver has no live subscriptions that match the cache request subscription, because your receiver will receive duplicates of any cached messages on overlapping topic subscriptions. When you have pre-existing live data subscriptions that overlap with your cache request topic subscription, use <code>as_available()</code> or <code>cached_first()</code> to avoid message duplication.</li>
+        </ul>
+      </li>
+    </ul>
+    <p class="Note">
+      <span>When you use the <code>as_available()</code>, <code>live_cancels_cached()</code>, and <code>cached_first()</code> functions, the cache request creates a live topic subscription if one does not already exist on your receiver. This subscription persists even after the cache request ends. You can remove the subscription by calling the <code>remove_subscription(topic_sub)</code> function on your receiver object after the cache outcome returns, which cancels the receipt of any live data to your client application on that subscription.</span>
+    </p>
+    <table style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 100%;margin-left: 0;margin-right: auto;" class="TableStyle-Table_Num" cellspacing="0" MadCap:conditions="Default.HideFromAllOutput">
+      <col class="TableStyle-Table_Num-Column-Column1">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 20%;">
+            </col>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="text-align: left;">Function</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="border-left-style: solid;border-left-width: 1px;border-right-style: solid;border-right-width: 1px;border-bottom-style: solid;border-bottom-width: 1px;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;text-align: left;" colspan="2">Definition<br/></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="font-weight: bold;text-align: left;">
+            <code>as_available(cache_name: str, subscription: TopicSubscription, cache_access_timeout: int, max_cached_messages: int=0, cached_message_age: int=0)</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="text-align: left;" colspan="2">Subscribes for a mix of live (non-cached) and cached messages matching a specified topic subscription.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="font-weight: bold;text-align: left;">
+            <code>live_cancels_cached(cache_name: str, subscription: TopicSubscription, cache_access_timeout: int, max_cached_messages: int=0, cached_message_age: int=0)</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="text-align: left;" colspan="2">Subscribes to the latest messages. When there are no live (non-cached) messages, cached messages that match your chosen topic subscription are considered the latest. Otherwise, live messages  that match your chosen topic subscription are considered the latest.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="font-weight: bold;text-align: left;">
+            <code>cached_first(cache_name: str, subscription: TopicSubscription, cache_access_timeout: int, max_cached_messages: int=0, cached_message_age: int=0)</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="text-align: left;" colspan="2">Subscribes to cached messages when available, followed by live (non-cached) messages.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1" style="font-weight: bold;text-align: left;">
+            <code>cached_only(cache_name: str, subscription: TopicSubscription, cache_access_timeout: int, max_cached_messages: int=0, cached_message_age: int=0)</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1" style="text-align: left;" colspan="2">Subscribes to cached messages only, when available.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>The parameters of all four functions are the same:<br/></p>
+    <ul>
+      <li><code>cache_name</code>—name of the Solace cache to retrieve from.</li>
+      <li><code>subscription</code>—matching topic subscription.</li>
+      <li><code>cache_access_timeout</code>—cache request timeout (in milliseconds). This value must be between 3,000  and 2,147,483,647, for most applications a value of 10,000 (10 seconds) is sufficient. See <MadCap:xref href="#Appropriate-Cache-Timeout">Assign an Appropriate cache_access_timeout Value</MadCap:xref> for more information.</li>
+      <li><code>max_cached_messages</code>—max number of messages expected to be received from a cache. Default value is 0, which means there is no limit on the number of messages that can be received from a cache.</li>
+      <li><code>cached_message_age</code>—maximum age (in seconds) of the messages to be retrieved from a cache. Default value is 0, which means there is no limit on the age of messages that can be received from a cache.</li>
+    </ul>
+    <p>The following example shows how to create an instance of <code>CachedMessageSubscriptionRequest</code> using the <code>as_available()</code> function:<br/></p>
+    <pre xml:space="preserve">
+cached_message_subscription_request = CachedMessageSubscriptionRequest.as_available("my_cache_name",
+                                                                                   TopicSubscription.of("my/cache/example"),
+                                                                                   10000)	</pre>
+    <p>For more information, see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a></a>.</p>
+    <h2><a name="Creating2"/>Sending a Cache Request</h2>
+    <p>To create a cache request and begin receiving cached messages from a <MadCap:variable name="Product-Names.pubsub_brand_only"/> cache instance, you use the <code>request_cached()</code> function from the <code>ReceiverCacheRequests</code> class. It is important to note that when you use the Python API to make a cache request, it uses a non-blocking function that returns immediately, but the actual request may be deferred. If you make multiple cache requests prior to receiving a cache outcome, you need to use unique cache request ids to avoid receiving duplicate messages. This function requests messages from a broker which were previously cached using <MadCap:variable name="Product-Names.pubsub_brand_only"/> cache:</p>
+    <p>
+      <code>request_cached(cached_message_subscription_request: CachedMessageSubscriptionRequest, cache_request_id: int, completion_listener: CacheRequestOutcomeListener)</code>
+      <ul>
+        <li><code>cached_message_subscription_request</code>—Request for cached messages matching specified subscription and other fulfillment criteria.</li>
+        <li><code>cache_request_id</code>—request identifier which can be used for response callback correlation purposes. This ID needs to be unique for the duration of each cache request that occurs on a <code>MessagingService</code> instance. This                                         value is returned on a callback of the <code style="font-family: ;">CacheRequestOutcomeListener</code>'s <code>on_completion(                                      )</code> function.  This identifier is how the application correlates cache requests with cache responses and data messages. Live messages do not have a cache request ID.  It is the responsibility of the application to ensure the identifier is unique so that no collisions in your correlations occur. This value should not be confused with the <code>CORRELATION_ID</code> property used for general message correlation in the <code>InboundMessage</code> class.</li>
+        <li><code>completion_listener</code>—an instance of <code>CacheRequestOutcomeListener</code>, a callback that notifies the application when a cache request is completed.</li>
+      </ul>
+    </p>
+    <p>The following example shows how to send a cache request:</p>
+    <pre xml:space="preserve">
+cache_request_id = 12345
+        
+cache_request_outcome_listener = MyCacheRequestOutcomeListener()
+        
+direct_message_receiver.requestCached(cached_message_subscription_request, cache_request_id, cache_request_outcome_listener)</pre>
+    <p>After a cache request is made, your <code>MessageHandler</code> begins receiving messages, that can be cached, live or both depending on the cache request function used to configure your cache request. You can check whether a message is a cached message with the function <code>get_cache_status()</code>. This function returns a <code>CacheStatus</code>enum, which can be one of three values:</p>
+    <ul>
+      <li>
+        <p><code>LIVE</code>—The message was retrieved directly from a  <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker and not from a cache instance.</p>
+      </li>
+      <li>
+        <p><code>CACHED</code>—The message was retrieved from a cache instance.</p>
+      </li>
+      <li>
+        <p><code>SUSPECT</code>—The message was retrieved from a suspected cache instance.<MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput"> **This means your cache instance may not have every cached message**</MadCap:conditionalText></p>
+      </li>
+    </ul>
+    <p>You can get the cache request identifier from a cached message with the <code>get_cache_request_id()</code> function. The example below shows a <code>MessageHandler</code> implementation that checks the cache status of inbound messages and retrieves the cache request ID from cached messages:</p>
+    <pre xml:space="preserve">
+class MessageHandlerExample(MessageHandler):
+    def __init__(self, direct_receiver: DirectMessageReceiver):
+        self.receiver: DirectMessageReceiver = direct_receiver		
+			
+    def on_message(self, message: InboundMessage):
+        message_type = message.get_cache_status()
+        if message_type == CacheStatus.LIVE:
+            print("Message is not cached.")
+        elif message_type == CacheStatus.CACHED:
+            print("Message is cached.")
+            cache_request_id = message.get_cache_request_id()
+        else:
+            print("Message is from a suspected cache instance. Check your cache instance.")
+							
+# Register an asynchronous message receiver on the DirectMessageReceiver instance.			
+direct_receiver.receive_async(MessageHandlerExample())		</pre>
+    <p class="Note">If an error occurs during a cache request or if the message receiver or <code>MessagingService</code> is terminated, the API cancels all outstanding cache requests.  This termination process blocks your application until the API has passed notifications to the application for all canceled cache requests.</p>
+    <p>For more information, see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a></a>.</p>
+    <h2><a name="Correlat"/>Creating an Event Listener Using the CacheRequestOutcomeListener Class</h2>
+    <p>This class is a callback for listening for the results of a cache request, with cache request identifier support. It notifies your application when a cache request is complete. It must contain one function, <code>on_completion()</code>: </p>
+    <p>
+      <code>on_completion (result: CacheRequestOutcome, cache_request_id: int, exception: Union[Exception,None])</code>
+      <ul>
+        <li><code>result</code>—the outcome of the cache request, can be one of the following enums:
+				<ul><li><code>OK</code>—cached data was returned in a cache reply, or the cache request was fulfilled by live data.</li><li><code>NO_DATA</code>—there was no data in the cache reply.</li><li><code>SUSPECT_DATA</code>—there was suspect data in the cache reply.</li><li><code>FAILED</code>—The request failed for some reason, such as a timeout. This is the only <code>CacheRequestOutcome</code> that results in an exception being set on the <code>on_completion()</code> callback.</li></ul></li>
+        <li><code>cache_request_id</code>—the cache request identifier associated with the given completed computation unit. This ID can be used for response callback correlation purposes, to correlate cache requests with their associated messages.</li>
+        <li><code>exception</code>—an <code>Exception</code> if the cache request fails. The exception is <code>None</code> if you get a result other than <code>FAILED</code>.</li>
+      </ul>
+    </p>
+    <p>The following example shows a simple example implementation of a <code>CacheRequestOutcomeListener</code>: </p>
+    <pre xml:space="preserve">
+class MyCacheRequestOutcomeListener(CacheRequestOutcomeListener):
+    def on_completion(result: <span>CacheRequestOutcome</span>, cache_request_id: int, exception: Exception):
+        print("Completed!")	</pre>
+    <p>For more information, see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a></a>.</p>
+    <h2><a name="Consider"/>Considerations When Receiving Cached Messages</h2>
+    <p>There are considerations to be aware of when you receive cached messages with the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API. The following two sections explain what can happen you have overlapping topic subscriptions and provide additional information about how <code>cache_access_timeout</code> works.</p>
+    <h3>Avoid Overlapping topic subscriptions when possible</h3>
+    <p>When you use the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API to consume cached messages, we recommend that you do not have overlapping topic subscriptions. Overlapping topic subscriptions occur when you use the same or overlapping topic subscriptions across one or more message consumers connected to the same <code>MessagingService</code> instance. If you have overlapping topic subscriptions, it is important to understand how cache requests can affect your applications. </p>
+    <h4>Multiple Message Consumers with Topic Subscription Overlap</h4>
+    <p>The table below explains what happens when a cache request is made by a message consumer when</p>
+    <ul>
+      <li>
+        <p> more than one message consumer is connected to the same <code>MessagingService</code> instance<br/><b>AND</b></p>
+      </li>
+      <li>
+        <p>the topic subscription used in the cache request overlaps with a topic subscription used by one or more of those message consumers.</p>
+      </li>
+    </ul>
+    <table style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 100%;margin-left: 0;margin-right: auto;" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="text-align: left;">Function used to configure cache request</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1" style="border-left-style: solid;border-left-width: 1px;border-right-style: solid;border-right-width: 1px;border-bottom-style: solid;border-bottom-width: 1px;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;text-align: left;" colspan="2">Result<br/></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="font-weight: bold;text-align: left;">
+            <code>as_available()</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1" style="text-align: left;" colspan="2">The cache response delivers cached messages to <b>all</b> message consumers connected to the <code>MessagingService</code> instance that have a matching topic subscription.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="font-weight: bold;text-align: left;">
+            <code>live_cancels_cached()</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1" style="text-align: left;" colspan="2">The cache response delivers cached messages to <b>all</b> message consumers connected to the <code>MessagingService</code> instance that have a matching topic subscription.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="font-weight: bold;text-align: left;">
+            <code>cached_first()</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1" style="text-align: left;" colspan="2">
+            <p colspan="2">The cache response delivers cached messages to <b>all</b> message consumers connected to the <code>MessagingService</code> instance that have a matching topic subscription.</p>
+            <p colspan="2">
+              <b>AND</b>
+            </p>
+            <p>All consumers with live data subscriptions will stop receiving live data until all cached messages are received for any overlapping topic subscriptions.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1" style="font-weight: bold;text-align: left;">
+            <code>cached_only()</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1" style="text-align: left;" colspan="2">The cache response delivers cached messages to <b>all</b> consumers that have a matching topic subscription.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h4>Single Message Consumer with Topic Overlap</h4>
+    <p>If you use the <code>cached_only()</code> function in your cache message request, and your application meets the following two conditions:</p>
+    <ol>
+      <li>
+        <p> Only one message consumer is connected to the <code>MessagingService</code> instance.<br/></p>
+      </li>
+      <li>
+        <p>The topic subscription used in the cache request matches any of the message consumer's live topic subscriptions.</p>
+      </li>
+    </ol>
+    <p>Your message consumer receives duplicates of any cached messages on those overlapping topic subscriptions. To avoid message duplication in this scenario, use the <code>as_available()</code> or <code>cached_first()</code> functions.</p>
+    <p>For more information, see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a></a>.</p>
+    <h3><a name="Appropriate-Cache-Timeout"/>Assign an Appropriate cache_access_timeout Value</h3>
+    <p>There is no default value for <code>cache_access_timeout</code>. In most cases, a value of 10,000 (equal to 10 seconds) is sufficient. This value  specifies a timer for the internal requests that occur between the Python API and a <MadCap:variable name="Product-Names.pubsub_brand_only"/> cache instance. A single call to <code>request_cached()</code> can lead to one or more of these internal requests. As long as each of these internal requests complete before the specified <code>cache_access_timeout</code> value, a timeout does not occur.</p>
+    <p>For example, if you specify a <code>cache_access_timeout</code> of 3000 milliseconds and there are 10 internal requests that each take 2000 milliseconds to complete, the time that it takes the <code>request_cached()</code> function to return is the sum of the those requests, which is 20,000 milliseconds. Because none of the <i>individual</i> requests took longer than 3000 milliseconds no timeout occurs in this scenario.
+</p>
+    <p> In some scenarios, such as high-network latency and which back-pressure strategy your application uses, increases to the <code>cache_access_timeout</code> value may be required. For example, if you use the default back-pressure strategy of <code>on_back_pressure_elastic()</code>, where you have an unlimited internal message buffer, this back-pressure can cause delays in the API that affect how long it takes internal requests to complete. You may need to increase your <code>cache_access_timeout</code> value to account for these delays. </p>
+  </body>
+</html>

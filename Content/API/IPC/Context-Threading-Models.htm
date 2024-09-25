@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Context Threading Models</h1>
+    <p>The threading model that you use for IPC depends on whether TCP, shared memory, or both transport types are used within the context.</p>
+    <h2 class="with-rule"><a name="Threadin">
+            </a>Threading Model for TCP Transport</h2>
+    <p>When an IPC session uses TCP communications, the normal context thread is utilized for the message receive processing function and for the dispatching of received messages to the message receive callback function.</p>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">This context thread is used for all TCP communications receive processing, whether the connection is for communications over IPC or to an event broker.</p>
+    <p>The preferred model for the context thread is for the application to request that the API create and control the context thread internally.</p>
+    <p>Alternatively, a C application can create the context thread, in which case the application context thread must then call <code>solClient_context_processEvents<br/>(opaqueContext_p)</code> in a loop. You can set whether the C API or the application creates and controls the context thread through the context property <code>SOLCLIENT_CONTEXT_PROP_CREATE_THREAD</code>.</p>
+    <h2 class="with-rule"><a name="Threading-Model">
+            </a>Threading Model for Shared Memory Transport</h2>
+    <p>When one or more shared memory channels are active within a context, the API automatically creates an internal shared memory context thread to receive and dispatch messages from shared memory channels. This thread runs in addition to the normal TCP context thread.</p>
+    <p>Two context threads are needed because shared memory communications do not involve sockets or file descriptors like TCP communications, and the normal TCP context thread, which waits on a set of sockets, cannot be used to wait on one or more shared memory channels for traffic.</p>
+    <h2 class="with-rule"><a name="Spinning-Blocking">
+            </a>Spinning and Blocking Shared Memory Threads</h2>
+    <p>You can configure the shared memory context thread to hard-spin for extremely low-latency receive processing or to block to preserve CPU resources when waiting for incoming messages. You can also configure a combination of these two actions.</p>
+    <p>When configured to always spin, the shared memory thread continuously polls all shared memory channels that it is handling to look for new incoming messages. The use of spinning avoids operating system calls, and it avoids the scheduling overhead and latency incurred with block waiting for incoming messages. It provides the lowest possible receive latency, but it also requires that the application dedicate a CPU core for incoming message processing.</p>
+    <p>When configured to block, the internal shared memory context thread blocks on an operating system synchronization call and waits until new messages arrive on one of the shared memory channels being handled.</p>
+    <p>The other option is for the shared memory context thread to spin a set number times while waiting for new incoming messages, and then if no messages arrive, it enters the operating system to block. It is up to the application to tune the number of times to spin before blocking. This allows for low-latency receive processing when messages are constantly arriving, but the thread can also fall back into a blocking behavior when there is a lull in incoming message traffic.</p>
+    <p>When two applications communicate over a shared memory channel, each application independently decides if it will block or spin to receive message from that channel.</p>
+    <h2 class="with-rule"><a name="Mixing-Transport-Modes">
+            </a>Mixing Transport Modes</h2>
+    <p>Separate context and shared context memory threads exist within a context, and the two different threads can dispatch received messages to the application when TCP and shared memory transports are used at the same time within a single context.</p>
+    <p>When a single session is used within the context, the API only allows one thread at a time to dispatch messages to the application. This protects the application so that the message receive logic in the application does not have to be re-entrant. Therefore a message cannot be simultaneously dispatched from a TCP transport and a shared memory transport at the same time. However, it is possible for a message to be delivered from a shared memory thread for one session, while another session is processing a message for a TCP session dispatched from the context thread.</p>
+    <p>If the application uses the timer service offered by the API, time-out events are only dispatched from the context thread, not from the internal shared memory context thread. Session events are dispatched as follows:</p>
+    <ul>
+      <li>If the session only has a TCP transport, session events are dispatched from the context thread.</li>
+      <li>If the session only has a SHM transport, session events are dispatched from the shared memory thread.</li>
+      <li>If the session has mixed TCP/SHM transport, session events may dispatched from both the context and shared memory threads.</li>
+    </ul>
+  </body>
+</html>

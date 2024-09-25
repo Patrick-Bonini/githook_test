@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="Default.OnlyForPDF">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Failing Back to a VM-Based <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h1>
+    <p MadCap:conditions="Default.HideFromAllOutput">NOTE: This has not been included.</p>
+    <p>You may want to failback (switch the replication state back) to your VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/>. Onlu failback validation of service for your client applications fail. If you have configured the <MadCap:variable name="Product-Names.broker_cloud_short"/> correctly, this procedure is not necessary.</p>
+    <p>The following is the procedure to failback to your original VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/>:</p>
+    <ol>
+      <li>
+        <MadCap:xref href="#get-message-former-active"> Display the Internal IDs of Messages on the Formerly Active Site</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#get-message-id-new-active">Display the Internal IDs of Messages on the Active Site</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#delete-messages-former-active-site">Delete Messages on the Formerly Active Site</MadCap:xref>
+      </li>
+    </ol>
+    <h2 class="with-rule"><a name="verify-propogation-acks"/>Verify if the Endpoint is Configured to Propagate Consumer Acknowledgments to the Replication Standby Site</h2>
+    <p>On the newly Active site, check if the endpoint is configured to propagate consumer acknowledgments. To perform this, run the following USER command:</p>
+    <pre xml:space="preserve">SolaceCLI &gt; show queue &lt;queue-name&gt; message-vpn &lt;Message VPN name&gt; detail</pre>
+    <p>where:</p>
+    <ul>
+      <li><code>&lt;Message VPN name&gt;</code> is the Message VPN that is the same between your replication pair.</li>
+      <li><code>&lt;queue-name&gt;</code> the name of the endpoint to check. </li>
+    </ul>
+    <p>For example, on the newly Active site (<code>nano-production-89il3uubs0c-solace-primary-0</code>), for a queue named <code>myFirstQueue</code> and for the Message VPN <code>myfirstservice</code>: </p>
+    <pre xml:space="preserve">nano-production-89il3uubs0c-solace-primary-0&gt; show queue myFirstQueue message-vpn myfirstservice detail
+
+Name                                 : myFirstQueue
+Message VPN                          : myfirstservice
+Durability                           : Durable
+Id                                   : 7
+Type                                 : Primary
+Admin Ingress                        : Up
+Admin Egress                         : Up
+...
+...
+Consumer Ack Propagation             : Yes
+Reject Low-Priority-Msg              : No
+Reject Low-Priority-Msg Limit        : 0
+Low-Priority-Msg Congestion State    : Disabled
+...
+...
+Event Threshold                           Set Value      Clear Value
+---------------------------------- ---------------- ----------------
+Bind count                                 80%(800)         60%(600)
+Spool usage (MB)                          25%(1250)         18%(900)
+Reject Low-Priority-Msg Limit                80%(0)           60%(0)
+
+Egress Flows
+
+nano-production-azzn9vsqdk5-solace-primary-0#
+</pre>
+    <p>Move on to the next endpoint if <code>Consumer Ack Propagation</code> is not enabled (<code>Yes</code>). Deduplication is required  only for endpoints when <code>Consumer Ack Propagation</code> is enabled.</p>
+    <h2 class="with-rule"><a name="get-message-former-active"/>Display the Internal IDs of Messages on the Formerly Active Site</h2>
+    <p>On the Restored site (previously the Failed site), enter the following command to find the message identifiers of all messages that were unsent.</p>
+    <p><a name="formerly-active-example"/>For example, to see the details of the Message VPN:</p>
+    <pre xml:space="preserve">nano-production-azzn9vsqdk5-solace-primary-0&gt; show queue myFirstQueue message-vpn myfirstservice messages detail
+
+Message Id: 2852
+  Priority:                     n/a
+  Date spooled:                 Nov  2 2022 21:00:28 UTC
+  Publisher Id:                 1150
+  Replication Group Message Id: rmid1:1b093-ce1bbc2b385-00000000-00010550
+  Sequence Number:              n/a
+  Expiry Time:                  never
+  Delivery Eligible Time:       now
+  Dead Message Queue Eligible:  no
+  Content:                      0.0000 MB
+  Attachment:                   0.0000 MB
+  Replicated:                   yes
+  Replicated Mate Message Id:   n/a
+  Sent:                         no
+  Redeliveries:                 0
+
+Message Id: 2853
+  Priority:                     n/a
+  Date spooled:                 Nov  2 2022 21:03:22 UTC
+  Publisher Id:                 1150
+  Replication Group Message Id: rmid1:1b093-ce1bbc2b385-00000000-000105de
+  Sequence Number:              n/a
+  Expiry Time:                  never
+  Delivery Eligible Time:       now
+  Dead Message Queue Eligible:  no
+  Content:                      0.0000 MB
+  Attachment:                   0.0000 MB
+  Replicated:                   yes
+  Replicated Mate Message Id:   n/a
+  Sent:                         no
+  Redeliveries:                 0
+
+Message Id: 2901
+  Priority:                     n/a
+  Date spooled:                 Nov  2 2022 21:03:25 UTC
+  Publisher Id:                 1150
+  Replication Group Message Id: rmid1:1b093-ce1bbc2b385-00000000-000105df
+  Sequence Number:              n/a
+  Expiry Time:                  never
+  Delivery Eligible Time:       now
+  Dead Message Queue Eligible:  no
+  Content:                      0.0000 MB
+  Attachment:                   0.0000 MB
+  Replicated:                   yes
+  Replicated Mate Message Id:   n/a
+  Sent:                         no
+  Redeliveries:                 0
+
+Message Id: 2903
+  Priority:                     n/a
+  Date spooled:                 Nov  2 2022 21:03:30 UTC
+  Publisher Id:                 1150
+  Replication Group Message Id: rmid1:1b093-ce1bbc2b385-00000000-000105e8
+  Sequence Number:              n/a
+  Expiry Time:                  never
+  Delivery Eligible Time:       now
+  Dead Message Queue Eligible:  no
+  Content:                      0.0000 MB
+  Attachment:                   0.0000 MB
+  Replicated:                   yes
+  Replicated Mate Message Id:   n/a
+  Sent:                         no
+  Redeliveries:                 0
+
+Message Id: 2944
+  Priority:                     n/a
+  Date spooled:                 Nov  2 2022 21:09:46 UTC
+  Publisher Id:                 1150
+  Replication Group Message Id: rmid1:1b093-ce1bbc2b385-00000000-00010718
+  Sequence Number:              n/a
+  Expiry Time:                  never
+  Delivery Eligible Time:       now
+  Dead Message Queue Eligible:  no
+  Content:                      0.0000 MB
+  Attachment:                   0.0000 MB
+  Replicated:                   yes
+  Replicated Mate Message Id:   2919
+  Sent:                         no
+  Redeliveries:                 0
+
+Message Id: 2945
+  Priority:                     n/a
+  Date spooled:                 Nov  2 2022 21:11:48 UTC
+  Publisher Id:                 1150
+  Replication Group Message Id: rmid1:1b093-ce1bbc2b385-00000000-0001077d
+  Sequence Number:              n/a
+  Expiry Time:                  never
+  Delivery Eligible Time:       now
+  Dead Message Queue Eligible:  no
+  Content:                      0.0000 MB
+  Attachment:                   0.0000 MB
+  Replicated:                   yes
+  Replicated Mate Message Id:   2921
+  Sent:                         no
+  Redeliveries:                 0
+
+
+nano-production-azzn9vsqdk5-solace-primary-0
+
+</pre>
+    <h2 class="with-rule"><a name="get-message-id-new-active"/>Display the Internal IDs of Messages on the Active Site</h2>
+    <p>To see which messages have been replicated, you must run the following command on the newly Active site.</p>
+    <pre xml:space="preserve">SolaceCLI # show queue &lt;queue-name&gt; message-vpn &lt;Message VPN name&gt; messages oldest
+</pre>
+    <p>where:</p>
+    <ul>
+      <li><code>&lt;Message VPN name&gt;</code> is the Message VPN that is the same between your replication pair.</li>
+      <li><code>&lt;queue-name&gt;</code> the name of the endpoint to check. </li>
+    </ul>
+    <p><a name="previous-example"/>For example, to see the oldest message in the queue:</p>
+    <pre xml:space="preserve">nano-production-89il3uubs0c-solace-primary-0&gt; show queue myFirstQueue message-vpn myfirstservice messages oldest
+
+Name: myFirstQueue 
+
+
+Message VPN: myfirstservice
+
+Message Id                          Replicated Mate Message Id          Sent
+2840                                2852                                 yes
+2841                                2853                                 yes
+2919                                n/a                                   no
+2921                                n/a                                   no
+</pre>
+    <h2 class="with-rule"><a name="delete-messages-former-active-site"/>Delete Messages on the Formerly Active Site</h2>
+    <p>Delete messages on the formerly Active site  that match ALL of the following conditions:
+</p>
+    <ul>
+      <li>
+			The message must have a Replicated flag set to <code>yes</code>.
+			</li>
+      <li>The message must have a Replicated Mate Message Id of <code>n/a</code>.
+			</li>
+      <li>The Message must not match any Replicated Mate Message Id on the newly Active site (<code>nano-production-89il3uubs0c-solace-primary-0</code> in the example in the <a href="#previous-example" class="link-internal">previous section</a>).
+</li>
+    </ul>
+    <p>			In the example, for the messages from the formerly Active site listed <a href="#formerly-active-example" class="link-internal">in that example</a>:</p>
+    <ul>
+      <li>Messages 2901 and 2903 can be deleted.</li>
+      <li>Messages 2852 and 2853 cannot be deleted because their Message Ids exist in the <code>Replicated Mate Message Id</code> field of the newly Active site (<code>nano-production-89il3uubs0c-solace-primary-0</code>).
+
+			</li>
+      <li>Messages 2944 and 2945 cannot be deleted because the Replicated Mate Message Id field is not <code>n/a</code>.
+
+		</li>
+    </ul>
+    <p>Enter the following ADMIN command by navigating to the message-spool for the Message VPN where you want to delete the messages:</p>
+    <pre xml:space="preserve">SolaceCLI (admin/message-spool)# delete-messages queue &lt;queue-name&gt; message &lt;msg-id&gt;
+</pre>
+    <p>Where:</p>
+    <ul>
+      <li><code>&lt;queue-name&gt;</code> the name of the endpoint to check. </li>
+      <li><code>&lt;msg-id&gt;</code> is the identifier on the restore site (formerly Active site).</li>
+    </ul>
+    <p>For example, to delete message 2901 from the queue named <code>myFirstQueue</code> in the example above using the ADMIN command on the message spool for the Message VPN called <code>myfirstservice</code>:</p>
+    <pre xml:space="preserve">
+nano-production-azzn9vsqdk5-solace-primary-0&gt; enable
+nano-production-azzn9vsqdk5-solace-primary-0# admin
+nano-production-azzn9vsqdk5-solace-primary-0(admin)# message-spool message-vpn myfirstservice
+nano-production-azzn9vsqdk5-solace-primary-0(admin/message-spool)# delete-messages queue myFirstQueue message 2901 
+This will delete spooled message 2901 in myFirstQueue
+Do you want to continue (y/n)? y
+
+nano-production-azzn9vsqdk5-solace-primary-0(admin/message-spool)#
+</pre>
+  </body>
+</html>

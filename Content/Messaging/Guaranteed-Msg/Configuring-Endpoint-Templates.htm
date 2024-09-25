@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Configuring Endpoint Templates</h1>
+    <p>Endpoint templates are configurable objects that administrators can use to specify custom attributes and parameters for any new client-created endpoints. When client-created endpoints are created dynamically using an API, the endpoint name can be matched to the endpoint template. All custom attributes that are configured in the endpoint template are copied to the client-created endpoint. For more information, see <MadCap:xref href="Endpoints.htm#Endpoint" target="_blank">Endpoints Overview</MadCap:xref>.</p>
+    <p>Client profiles have an optional <code>copy-from-template-on-create</code> command for both queues and topic endpoint templates. You can use the <code>copy-from-template-on-create</code> command to specify a CLI-provisioned endpoint template, and those template values are applied to any new client-created endpoints. For more information, see <MadCap:xref href="../../Security/Configuring-Client-Profiles.htm#Config-Defaults-for-Endpoints" target="_blank">Configuring Initial Values for Client-Created Endpoints</MadCap:xref>.</p>
+    <p>You can configure endpoint templates using <MadCap:variable name="Product-Names.solace_cli"/> or <MadCap:variable name="Product-Names.pubsubmanager_long"/>.This section describes how to configure endpoint templates using the <MadCap:variable name="Product-Names.solace_cli"/>.</p>
+    <h2 class="with-rule"><a name="Configur"/>Configuring Queue Templates</h2>
+    <p>To configure a queue template in a given Message VPN, enter the following commands:</p>
+    <pre class="Code" xml:space="preserve">solace(configure)# message-spool message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-spool)# create queue-template &lt;name&gt;
+solace(configure/message-spool/queue-template)# 
+</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the queue template name of up to 255 characters. </p>
+    <p>The no version of the command, <code>no queue-template &lt;name&gt;</code>, deletes the specified queue template from the Message VPN.</p>
+    <p>From here, you can now assign custom attributes and parameters to the queue template that can be copied to any client created queues. You can start by setting up a <code>name-filter</code> that can be used to match a queue name with a queue template.</p>
+    <h3><a name="Setting"/>Setting Name Filters to Match Queue Names </h3>
+    <p>Administrators can use name filters to match a queue name with a queue template. More precisely, name filter is a wildcard pattern that is used to determine which queues use settings from a given template. Following two types of wildcards are supported: <code>*</code> and <code>&gt;</code>.</p>
+    <p>Rules governing the use of the wildcards:</p>
+    <ul>
+      <li><code>*</code> matches zero or more characters but never a slash (<code>/</code>). It can be present only at the end, after a <code>/</code> (as in,<code> animals/domestic/*</code>).<![CDATA[                ]]><p><u>Example</u>: <code>animals/domestic/*</code> matches the queues <code>animals/domestic/cats</code> and <code>animals/domestic/dogs</code>, but it doesn't match the queue <code>animals/domestic/dogs/beagles</code>.</p></li>
+      <li><code>&gt;</code> matches anything with identical prefixes to the name-filter, but only when it's placed at the end (as in,<code> animals/domestic/&gt;</code>). It is considered a wildcard only when placed at the end, after a <code>/</code>.<p><u>Example</u>: <code>animals/domestic/&gt;</code> matches the queues <code>animals/domestic/cats</code>, <code>animals/domestic/dogs</code> and <code>animals/domestic/dogs/beagles</code>, but it doesn't match the queue <code>animals/domestic</code>.</p></li>
+    </ul>
+    <p>To configure a <code>name-filter</code> that can be used to match a queue name with a queue template, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">solace(configure/message-spool/queue-template)# name-filter &lt;name&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>name</code> is the value to be used for the name-filter.</p>
+    <p>The no version of the command, <code>no name-filter &lt;name&gt;</code>, returns its value to the default.</p>
+    <p class="Tip">When configuring name filters, the best practice is to avoid overlapping name filters. If you do use overlapping name filters, the event broker takes the longest non-wildcarded prefix when resolving multiple matches.</p>
+    <h3><a name="Setting2"/>Setting Durability Override</h3>
+    <p> The <code>durability-override</code> command allows to control the durability of client created well-known durable queues. When a client’s API-created queues are created, with <code>durability-override non-durable</code> specified in the queue template, the client created well-known durable queue is converted to a well-known non-durable queue. The created queue will be non-durable, regardless of what the client requested during queue creation.</p>
+    <p>To configure <code>durability-override</code> to controls the durability of a queue created from a given template, enter the following CONFIG command:</p>
+    <pre class="Code" xml:space="preserve">solace(configure/message-spool/queue-template)# durability-override {none | non-durable}</pre>
+    <p><u>Where</u>:</p>
+    <p><code>none</code> is the durability of the queue as requested on create.</p>
+    <p><code>non-durable</code> is the durability of the created queue, which will be non-durable, regardless of the specified durability.</p>
+    <p>The no version of the command, <code>no durability-override {none | non-durable}</code>, returns its value to the default (none).</p>
+    <p class="Note">Durability override is not support for MQTT queues.</p>
+    <p>For more information, see <MadCap:xref href="Queues.htm#well-known">Well-Known Queues</MadCap:xref>.</p>
+    <h3><a name="Setting3"/>Setting Access Types</h3>
+    <p>To configure the client access type for durable message queues, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-spool/queue-template)# access-type {exclusive | non-exclusive}</p>
+    <p><u>Where</u>:</p>
+    <p><code>exclusive</code> specifies that multiple subscriber flows established by clients can be bound to the queue, but only one flow out of all the bound flows is able to receive messages at a time. (That is, only one flow can be active.) The first flow to bind to the queue can consume messages from it, and when that Flow disconnects, the next oldest Flow to bind becomes active and can begin receiving messages, and so on.</p>
+    <p><code>non-exclusive</code> specifies that all bound Flows are able to receive messages, and when multiple Flows are bound to a non‑exclusive Queue, they receive messages in a round-robin  (if the partition count is zero) or partitioned (if the partition count is non-zero) fashion, see <MadCap:xref href="#Configur4">Configuring Partitioned Queues</MadCap:xref>. This provides  load-balancing; however, if a connection fails, then unacknowledged messages are delivered to another Flow with the redelivered indicator set. In this way, messages can be delivered to clients out of order. </p>
+    <p>The no version of this command, <code>no access-type</code>, reverts the setting back to the default (exclusive).</p>
+    <p>For more information about client access type configuration for durable queues, see <MadCap:xref href="Configuring-Queues.htm#Configur12">Configuring Access Types</MadCap:xref>.</p>
+    <h3><a name="Setting4"/>Setting Consumer Ack Propagation</h3>
+    <p>Following configurations in the queue template will enable or disable the propagation of consumer acks received on the active Replication Message VPN to the Standby Replication Message VPN:</p>
+    <p>To prevent the queue from propagating consumer acks to the standby Replication Message VPN, enter the following CONFIG command: 
+			<p class="Code">solace(configure/message-spool/queue-template)# no consumer-ack-propagation</p></p>
+    <p>If the queue was allowed to propagate consumer acks to the standby Replication Message VPN, enter the following CONFIG command to allow it to do so:
+			<p class="Code">solace(configure/message-spool/queue-template)# consumer-ack-propagation</p></p>
+    <p>For more information, see <MadCap:xref href="Configuring-Queues.htm#Enabling">Enabling / Disabling Propagating Consumer Acks to Replicated VPNs</MadCap:xref>.</p>
+    <h3><a name="Setting5"/>Setting Queue Event Thresholds</h3>
+    <p>To configure the thresholds that control when message spool-related events are generated for a queue, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-spool/queue-template)# event</p>
+    <p>The CLI is now at a level from which you can configure the set and clear thresholds for various message spool events using a queue template.</p>
+    <p>For more information about setting and clearing thresholds for generating those events for a queue using a queue template, see <MadCap:xref MadCap:unresolvedLink="import-link:configuring_event_output_and_thresholds_3996511907_74834" href="../../Monitoring/Configuring-VPN-M-Spool-Event-Thresholds.htm#Queue">Configuring Queue Event Thresholds Using Templates</MadCap:xref>.</p>
+    <h3><a name="Setting6"/>Setting Max Number of Flows That May Bind</h3>
+    <p>
+		To configure the maximum number of  flows that can bind to a queue, enter the following CONFIG command.</p>
+    <p class="Code">solace(configure/message-spool/queue-template)# max-bind-count &lt;value&gt;
+		</p>
+    <p style="text-decoration: underline;">Where:</p>
+    <p><code>&lt;value&gt;</code> is the integer value specifying the maximum number of flows that can bind to a durable message queue. The valid range is 0 to 10,000. The default value is 1,000.</p>
+    <p>The no version of this command, <code>no max-bind-count</code>, resets the maximum number of flows that can bind to a queue template back to the default.
+</p>
+    <p>For more information, see <MadCap:xref href="Configuring-Queues.htm#Configur14">Configuring Max Number of Flows That May Bind</MadCap:xref>.</p>
+    <h3><a name="Setting7"/>Setting Max Permitted Number of Delivered Unacked Messages</h3>
+    <p>To configure a limit for maximum outstanding number of delivered but unacknowledged messages per flow, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-spool/queue-template)# max-delivered-unacked-msgs-per-flow &lt;max&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;max&gt;</code> is an integer value specifying the maximum number of messages that can be delivered to a client on a subscriber flow but remain unacknowledged by the client. The valid range is 1 to the maximum value supported by the event broker. The maximum value depends on the type of <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker used. The default value is 10000. If the maximum number of delivered but unacknowledged messages amongst all clients is reached, the event broker will stop delivering messages to all clients until some clients return acknowledgments back to the event broker.</p>
+    <p>The no version of this command, <code>no max-delivered-unacked-msgs-per-flow</code>, resets the maximum number unacknowledged messages back to the default value.</p>
+    <p>For more information  on <code>max-delivered-unacked-msgs-per-flow</code>, or to review any performance impact that you may want to consider, see <MadCap:xref href="Configuring-Queues.htm#managing_guaranteed_messaging_1810020758_455709">Configuring Max Permitted Number of Delivered Unacked Messages</MadCap:xref>.</p>
+    <h3><a name="Setting8"/>Setting Max Permitted Message Sizes</h3>
+    <p>To configure the maximum message size for the given durable queue, enter the following CONFIG command.</p>
+    <p class="Code">solace(configure/message-spool/queue-template)# max-message-size &lt;size&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;size&gt;</code> is an integer value specifying the maximum message size (in bytes) permitted for the queue. </p>
+    <p>The no version of this command, <code>no max-message-size</code>, resets the permitted message size available for use by the queue back to the default.</p>
+    <h3><a name="Setting9"/>Setting Max Redelivery Attempts</h3>
+    <p>To configure the maximum number of times a queue can attempt to redeliver a message to a client, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-spool/queue-template)# max-redelivery &lt;count&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;count&gt;</code> is the maximum message redelivery attempts possible. The valid range is 0 to 255. 0 means try forever. The default is 0.</p>
+    <p>The no version of this command, <code>no max-redelivery</code>, resets the max-redelivery value back to the default value.</p>
+    <p>For more information about max-message-size configuration, see <MadCap:xref href="Configuring-Queues.htm#Configur15">Configuring Max Redelivery Attempts</MadCap:xref>. </p>
+    <h3><a name="Setting34"/>Setting a Message Redelivery Delay</h3>
+    <p>To configure a message redelivery delay, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">solace(configure/message-spool/queue-template)# redelivery-delay</pre>
+    <p>The CLI is now at a level where you can configure the initial interval, maximum interval, and delay interval multiplier the queue uses when it attempts to redeliver a message to a client following an application-initiated local transaction rollback.</p>
+    <ul>
+      <li>
+        <p>To configure the initial interval, enter the following command:</p>
+        <pre class="Code" xml:space="preserve">solace(.../message-spool/queue-template/redelivery-delay)# initial-interval &lt;value&gt;</pre>
+        <p><u>Where</u>:</p>
+        <p><code>&lt;value&gt;</code> is an integer value specifying the delay between the first two delivery attempts, in milliseconds. The valid range of values is 1 to 3600000. The default  is 1000.</p>
+        <p>The no form of this command, <code>no inital-interval</code>, resets the value to the default. </p>
+      </li>
+      <li>
+        <p>To configure the maximum interval, enter the following command:</p>
+        <pre class="Code" xml:space="preserve">solace(.../message-spool/queue-template/redelivery-delay)# max-interval &lt;value&gt;</pre>
+        <p><u>Where</u>:</p>
+        <p><code>&lt;value&gt;</code> is an integer value specifying the maximum delay to be used between any two redelivery attempts, in milliseconds. The valid range of values is 1 to 10800000. The default is 64000. </p>
+        <p>The no form of this command, <code>no max-interval</code>, resets the value to the default. </p>
+      </li>
+      <li>
+        <p>To configure the delay interval multiplier, enter the following command:</p>
+        <pre class="Code" xml:space="preserve">solace(.../message-spool/queue-template/redelivery-delay)# multiplier &lt;value&gt;</pre>
+        <p><u>Where</u>:</p>
+        <p><code>&lt;value&gt;</code> is a floating point value specifying the amount that each delay interval is multiplied by after each failed delivery attempt. The valid range of values is 1.00 to 5.00. The default is 2.00.</p>
+        <p>The no form of this command, <code>no multiplier</code>, resets the value to the default. </p>
+      </li>
+    </ul>
+    <p>To enable the message redelivery delay configuration, enter the following command:</p>
+    <pre xml:space="preserve">solace(.../message-spool/queue-template/redelivery-delay)# no shutdown</pre>
+    <p>To disable the message redelivery delay configuration, enter the following command:</p>
+    <pre xml:space="preserve">solace(.../message-spool/queue-template/redelivery-delay)# shutdown</pre>
+    <p>For more information about configuring a message redelivery delay, see <MadCap:xref href="Configuring-Queues.htm#Configur3">Configuring a Message Redelivery Delay</MadCap:xref>.</p>
+    <h3><a name="Setting32"/>Disabling Message Redelivery</h3>
+    <p>By default, the maximum number of times the queue can attempt to redeliver a message to a client is controlled by the <code>max-redelivery</code> command. For more information, see <MadCap:xref href="#Setting9">Setting Max Redelivery Attempts</MadCap:xref>. </p>
+    <p>You can instead disable this functionality. When
+                                                  message redelivery is disabled, a given message will
+                                                  only be attempted to be delivered from the
+                                                  queue  once.</p>
+    <div class="Caution">
+      <p>Disabling message redelivery is a Controlled Availability (CA) feature. Please <a href="../../get-support.htm" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a> to find out if this feature is supported for your use case.</p>
+    </div>
+    <p>To disable message redelivery attempts, enter the following CONFIG command:</p>
+    <pre class="Code" xml:space="preserve">solace(configure/message-spool/queue-template)# no redelivery</pre>
+    <p>To enable message redelivery attempts, enter the following CONFIG command.</p>
+    <pre class="Code" xml:space="preserve">solace(configure/message-spool/queue-template)# redelivery</pre>
+    <h3><a name="Setting10"/>Setting a Delivery Delay</h3>
+    <p>By default, messages published to queues are immediately published to connected consumers. There are many use cases in which published messages must not be delivered to consumers immediately, but  delivered only after a fixed delay. One example is a retry mechanism within a payment processing system. After receiving a customer order, you may want to implement a  delivery delay to retry credit card transactions when the processing of the transaction fails for any reason.  For more information, see <MadCap:xref href="Endpoints.htm#Delayed">Delayed Delivery</MadCap:xref>.</p>
+    <p>You can use the <code>delivery-delay</code> option to   configure a delivery delay for a queue, such that all messages destined to a queue are not eligible to be delivered for a fixed period of time.</p>
+    <p class="Note">If you are currently using DMQs to implement a delivery delay, <a href="../../get-support.htm" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a> for guidance on migrating your implementation to use  the <code>delivery-delay</code> option instead.</p>
+    <p>To configure a delivery delay on the queue,  enter the following CONFIG command:</p>
+    <pre class="Code" xml:space="preserve">solace(configure/message-spool/queue-template)# delivery-delay &lt;delay&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;delay&gt;</code> is the delay, in seconds, to apply to messages arriving on the queue before the messages are eligible for delivery. The valid range is 0 to 4294967295. The default is 0. </p>
+    <p>The no version of this command, <code>no delivery-delay</code>,  resets the <code>delivery-delay</code> value back to the default.</p>
+    <h3><a name="max-spool-usage-queue-template"/>Setting Max Spool Usage Values</h3>
+    <p>To configure the maximum amount of message spool that the given queue may use, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-spool/queue-template)# max-spool-usage &lt;size&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;size&gt;</code> is an integer value specifying the maximum amount of message spool disk space permitted for the queue in MB.</p>
+    <p>The no version of this command, <code>no max-spool-usage</code>, resets the permitted message spool usage quota available for use by the queue back to the default.</p>
+    <p>For information about configuring <code>max-spool-usage</code> size for queues, see <MadCap:xref href="Configuring-Queues.htm#Configur16">Configuring Max Spool Usage Values</MadCap:xref>.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/link-to-max-spool-values.flsnp"/>
+    <h3><a name="Setting11"/>Setting Permissions for Non-Owner Clients</h3>
+    <p>To configure the permission levels for all clients other than the owner of the given durable queue, enter the following CONFIG command:</p>
+    <p class="Note">Client access to the durable message queue must first be disabled before queue permissions can be configured. For more information, see <MadCap:xref href="Configuring-Queues.htm#enable-disable-access" target="_blank">Configuring Queues</MadCap:xref>.</p>
+    <p class="Code">solace(configure/message-spool/queue-template)# permission all {no-access | read-only | consume | modify-topic | delete}</p>
+    <p><u>Where</u>:</p>
+    <p><code>no-access </code> disallows all access.</p>
+    <p><code>read-only</code> provides clients with read-only access permission to messages spooled to the queue.</p>
+    <p><code>consume</code> provides clients with read-only permission and the ability to delete messages from the queue.</p>
+    <p><code>modify-topic</code> provides clients with consume permission and the ability to modify the topic or selector assigned to the queue.</p>
+    <p><code>delete</code> provides clients with modify-topic permission and the ability to either delete messages from the queue, or delete the queue altogether. Note that clients cannot delete a queue if it was created using the CLI or SEMP by a management user.</p>
+    <p>The no version of this command, <code>no permission</code>, resets the permission levels for all clients other than the owner of the queue to none; that is, no access. A client access level of none is the default permission level.</p>
+    <p>For more information, see <MadCap:xref href="Configuring-Queues.htm#Configur19">Configuring Permissions for Non-Owner Clients</MadCap:xref>.</p>
+    <h3><a name="Setting12"/>Setting Rejection of Low-Priority Messages</h3>
+    <p>To enable the reject low‑priority message feature for a for a queue, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-spool/queue-template)# reject-low-priority-msg </p>
+    <p>The no version of this command, <code>no reject-low-priority-msg</code>, configures the client created queues to not perform reject low‑priority message limit checking on published messages (default configuration).</p>
+    <p>For more information, see <MadCap:xref href="Configuring-Queues.htm#Enabling2">Enabling Rejection of Low-Priority Messages</MadCap:xref>. </p>
+    <h3><a name="Setting13"/>Setting Reject Low‑Priority Message Limits</h3>
+    <p>To configure a reject low‑priority message limit for a queue, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-spool/queue-template)# reject-low-priority-msg-limit &lt;limit&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;limit&gt;</code> is the total number of low- and high‑priority messages spooled. When this value is exceeded, the queue discards any further published low-priority messages but spools published high-priority messages. Valid values are from 0 through 4294967295. If value of 0 is set, the queue only spools high-priority messages are spooled.</p>
+    <h3><a name="Setting14"/>Setting Message Discard Handling</h3>
+    <p>To enable the <code>reject-msg-to-sender-on-discard</code> option for a durable queue, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-spool/queue-template)# reject-msg-to-sender-on-discard [including-when-shutdown]</p>
+    <p><u>Where</u>:</p>
+    <p><code>including-when-shutdown</code> specifies to return Nacks to clients publishing messages topics if the endpoint has a matching subscription but is shutdown. Note that this parameter specifically targets messages published to topics because messages published to a queue are always nacked when reject-msg-to-sender is enabled and the queue is shutdown.</p>
+    <p>The no version of this command, <code>no reject-msg-to-sender-on-discard</code>, disables the <code>reject-msg-to-sender-on-discard</code> option on a durable queue.</p>
+    <p>For more information about the conditions that cause ingress messages discards and the impact on transacted sessions, see <MadCap:xref href="Configuring-Queues.htm#Message-Discard-Handling">Configuring Message Discard Handling</MadCap:xref>.</p>
+    <h3><a name="Setting15"/>Setting Max Message TTLs</h3>
+    <p>To define a maximum TTL for the endpoint to apply to messages to be spooled, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-spool/queue)# max-ttl &lt;ttl&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;ttl&gt;</code> is maximum number of seconds that messages can stay on a queue that has the Respect TTL option enabled.</p>
+    <p>The no version of this command, <code>no max-ttl</code>, sets the default Max TTL value to 0 (Disabled), which means that no expiry time is applied to any received messages spooled to that endpoint.</p>
+    <p>For more information about the conditions when Max TTL value is applied, TTL &amp; Message VPN bridges, and the impact on performance, see <MadCap:xref href="Configuring-Queues.htm#Configur21">Configuring Max Message TTLs</MadCap:xref></p>
+    <h3><a name="Setting16"/>Setting Respect TTLs</h3>
+    <p>To configure a durable queue to respect message TTLs, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-spool/queue-template)# respect-ttl</p>
+    <p>The no version of this command, <code>no respect-ttl</code>, configures a durable endpoint to ignore message TTL expiry times (the default configuration).</p>
+    <p>For more information see <MadCap:xref href="Configuring-Queues.htm#Enforcin">Enforcing Whether to Respect TTLs</MadCap:xref>.</p>
+    <h3><a name="Setting17"/>Setting Respect Message Priority Values</h3>
+    <p>To configure a durable queue to respect message priority values, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-spool/queue-template)# respect-message-priority</p>
+    <p>The no version of this command, <code>no respect-message-priority</code>, configures a durable queue to ignore message priority values (the default configuration).</p>
+    <p>For more information, see <MadCap:xref href="Configuring-Queues.htm#Enforcing-Priority">Enforcing Whether to Respect Message Priority Values</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Configur2"/>Configuring Topic Endpoint Templates</h2>
+    <p>To configure a topic endpoint template in a given Message VPN, enter the following commands:</p>
+    <pre class="Code" xml:space="preserve">solace(configure)# message-spool message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-spool)# create topic-endpoint-template &lt;name&gt;
+solace(configure/message-spool/topic-endpoint-template)# 
+</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the topic endpoint template name of up to 255 characters. </p>
+    <p>The no version of the command, <code>no topic-endpoint-template &lt;name&gt;</code>, deletes the specified topic endpoint template from the Message VPN.</p>
+    <p>From here, you can now assign custom attributes and parameters to the topic endpoint template that will be copied to any client created topic endpoints. Lets start by setting up a name filter that can be used to match a topic endpoint name with a topic endpoint template.</p>
+    <h3><a name="Setting19"/>Setting Name Filters to Match Topic Endpoint Names</h3>
+    <p>Administrators can use name filters to match a topic endpoint name with a topic endpoint template. More precisely, name filter is a wildcard pattern that is used to determine which queues use settings from a given template. Following two types of wildcards are supported: <code>*</code> and <code>&gt;</code>.</p>
+    <p>Rules governing the use of the wildcards:</p>
+    <ul>
+      <li><code>*</code> matches zero or more characters but never a slash (<code>/</code>). It can be present only at the end, after a <code>/</code> (as in,<code> animals/domestic/*</code>).                <p><u>Example</u>: <code>animals/domestic/*</code> matches the topic endpoints <code>animals/domestic/cats</code> and <code>animals/domestic/dogs</code>, but it doesn't match the topic endpoint <code>animals/domestic/dogs/beagles</code>.</p></li>
+      <li><code>&gt;</code> matches anything with identical prefixes to the name-filter, but only when it's placed at the end (as in,<code> animals/domestic/&gt;</code>). It is considered a wildcard only when placed at the end, after a <code>/</code>.<p><u>Example</u>: <code>animals/domestic/&gt;</code> matches the topic endpoints <code>animals/domestic/cats</code>, <code>animals/domestic/dogs</code> and <code>animals/domestic/dogs/beagles</code>, but it doesn't match the topic endpoint <code>animals/domestic</code>.</p></li>
+    </ul>
+    <p>To configure a <code>name-filter</code> that can be used to match a topic endpoint name with a topic endpoint template, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">solace(configure/message-spool/topic-endpoint-template)# name-filter &lt;name&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>name</code> is the value to be used for the name-filter.</p>
+    <p>The no version of the command, <code>no name-filter &lt;name&gt;</code>, returns its value to the default.</p>
+    <p class="Tip">When configuring name filters, the best practice is to avoid overlapping name filters. If you do use overlapping filters, the event broker takes the longest non-wildcarded prefix when resolving multiple matches.</p>
+    <h3><a name="Setting18"/>Setting Access Types</h3>
+    <p>To configure the client access type for durable topic endpoints, enter the following CONFIG command.</p>
+    <p class="Code">solace(configure/message-spool/topic-endpoint-template)# access-type {exclusive | non-exclusive}</p>
+    <p><u>Where</u>:</p>
+    <p><code>exclusive</code> specifies that only one client can bind to and be serviced by the topic endpoint; if other consumers attempt to bind, they will be rejected.</p>
+    <p><code>non-exclusive</code> specifies that all bound flows are able to receive messages, and when multiple flows are bound to a non‑exclusive topic endpoint, they receive messages in a round-robin fashion. </p>
+    <p>The no version of this command, <code>no access-type</code>, reverts the setting back to the default (exclusive).</p>
+    <p>For more information about client access type configuration for durable queues, see <MadCap:xref href="Configuring-Queues.htm#Configur12">Configuring Access Types</MadCap:xref>.</p>
+    <h3><a name="Setting20"/>Setting Consumer Acknowledgment (ACKs)</h3>
+    <p>By default, endpoints on an active replication Message VPN propagate consumer acks that they received to the standby replication Message VPN. </p>
+    <p>To prevent a client created topic endpoint from propagating consumer acks to the standby replication Message VPN, enter the following CONFIG command: 
+			<p class="Code">solace(configure/message-spool/topic-endpoint-template)# no consumer-ack-propagation</p></p>
+    <p>To allow topic endpoint to propagate consumer acks to the standby replication Message VPN, enter the following CONFIG command to allow it to do so:
+			<p class="Code">solace(configure/message-spool/topic-endpoint-template)# consumer-ack-propagation</p></p>
+    <h3><a name="Setting21"/>Setting Topic Endpoint Event Thresholds</h3>
+    <p>To configure the thresholds that control when message spool-related events are generated for a given topic endpoint, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-spool/topic-endpoint-template)# event</p>
+    <p>The CLI is now at a  level at which you can configure the set and clear thresholds for various message spool events for a given topic endpoint template.</p>
+    <p>For information on the available Message VPN-level message spool events that are generated for a topic endpoint template and how to set and clear thresholds for generating those events, refer to <MadCap:xref MadCap:unresolvedLink="import-link:configuring_event_output_and_thresholds_3996511907_74834" href="../../Monitoring/Configuring-VPN-M-Spool-Event-Thresholds.htm#Topic">Topic Endpoint Event Thresholds Using Templates</MadCap:xref>.</p>
+    <h3>Setting Max Number of Flows That May Bind</h3>
+    <p>To configure the maximum number of flows that can bind to a non-exclusive durable topic endpoint, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-spool/topic-endpoint-template)# max-bind-count &lt;value&gt;
+		</p>
+    <p style="text-decoration: underline;">Where:</p>
+    <p><code>&lt;value&gt;</code> is an integer value specifying the maximum number of flows that can bind to a non-exclusive durable topic endpoint. If the topic endpoint's access type has been set to exclusive, the value of <code>max-bind-count</code> is considered to be 1 regardless of the set value. The valid range is 0 to 10,000. The default value is 1.</p>
+    <p>The no version of this command, <code>no max-bind-count</code>, resets the maximum number of flows that can bind to a durable topic endpoint back to the default.
+</p>
+    <p>For more additional information, see <MadCap:xref href="Configuring-DTEs.htm#Configure_Max_Bind">Configuring Max Number of Flows That May Bind</MadCap:xref>.</p>
+    <h3><a name="Setting24"/>Setting Max Permitted Number of Delivered Unacked Messages</h3>
+    <p>To configure a limit for maximum outstanding number of delivered but unacknowledged messages per flow, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-spool/topic-endpoint-template)# max-delivered-unacked-msgs-per-flow &lt;max&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;max&gt;</code> is an integer value specifying the maximum number of messages that can be delivered to a client on a subscriber flow but remain unacknowledged by the client. The valid range is 1 to the maximum value supported by the event broker. The maximum value depends on the type of event broker used. The default value is 10000. If the maximum number of delivered but unacknowledged messages amongst all clients is reached, the <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker will stop delivering messages to all clients until some clients return acknowledgments back to the event broker.</p>
+    <p>The no version of this command, <code>no max-delivered-unacked-msgs-per-flow</code>, resets the maximum number unacknowledged messages back to the default value.</p>
+    <p>For more information about <code>max-delivered-unacked-msgs-per-flow</code>, or to review any performance impact that you may want to consider, see <MadCap:xref href="Configuring-DTEs.htm#Configur22">Configuring Max Number of Delivered Unacked Messages</MadCap:xref> .</p>
+    <h3><a name="Setting23"/>Setting Max Permitted Message Sizes</h3>
+    <p>To configure the maximum message size for a given topic endpoint, enter the following CONFIG command.</p>
+    <p class="Code">solace(configure/message-spool/topic-endpoint-template)# max-message-size &lt;size&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;size&gt;</code> is an integer value specifying the maximum message size (in bytes) permitted for the topic endpoint. The valid range is 0 to 30000000. The default value is 10000000.</p>
+    <p>The no version of this command, <code>no max-message-size</code>, resets the permitted message size available for use by the topic endpoint back to its default value.</p>
+    <h3><a name="Setting22"/>Setting Max Redelivery Attempts</h3>
+    <p>To configure the maximum number of times a topic endpoint can attempt to redeliver a message to a client, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-spool/topic-endpoint-template)# max-redelivery &lt;count&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;count&gt;</code> is the maximum message redelivery attempts possible. The valid range is 0 to 255. 0 means try forever. The default is 0.</p>
+    <p>The no version of this command, <code>no max-redelivery</code>, resets the max-redelivery value back to the default value.</p>
+    <p>For more information on max-message-size configuration, refer to <MadCap:xref href="Configuring-DTEs.htm#Configur24">Configuring Max Permitted Redelivery Attempts</MadCap:xref>. </p>
+    <h3><a name="Setting35"/>Setting a Message Redelivery Delay</h3>
+    <p>To configure a message redelivery delay, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">solace(configure/message-spool/topic-endpoint-template)# redelivery-delay</pre>
+    <p>The CLI is now at a level where you can configure the initial interval, maximum interval, and delay interval multiplier the topic endpoint uses when it attempts to redeliver a message to a client following an application-initiated local transaction rollback.</p>
+    <ul>
+      <li>
+        <p>To configure the initial interval, enter the following command:</p>
+        <pre class="Code" xml:space="preserve">solace(.../message-spool/topic-endpoint-template/redelivery-delay)# initial-interval &lt;value&gt;</pre>
+        <p><u>Where</u>:</p>
+        <p><code>&lt;value&gt;</code> is an integer value specifying the delay between the first two delivery attempts, in milliseconds. The valid range of values is 1 to 3600000. The default  is 1000.</p>
+        <p>The no form of this command, <code>no inital-interval</code>, resets the value to the default. </p>
+      </li>
+      <li>
+        <p>To configure the maximum interval, enter the following command:</p>
+        <pre class="Code" xml:space="preserve">solace(.../message-spool/topic-endpoint-template/redelivery-delay)# max-interval &lt;value&gt;</pre>
+        <p><u>Where</u>:</p>
+        <p><code>&lt;value&gt;</code> is an integer value specifying the maximum delay to be used between any two redelivery attempts, in milliseconds. The valid range of values is 1 to 10800000. The default is 64000. </p>
+        <p>The no form of this command, <code>no max-interval</code>, resets the value to the default. </p>
+      </li>
+      <li>
+        <p>To configure the delay interval multiplier, enter the following command:</p>
+        <pre class="Code" xml:space="preserve">solace(.../message-spool/topic-endpoint-template/redelivery-delay)# multiplier &lt;value&gt;</pre>
+        <p><u>Where</u>:</p>
+        <p><code>&lt;value&gt;</code> is a floating point value specifying the amount that each delay interval is multiplied by after each failed delivery attempt. The valid range of values is 1.00 to 5.00. The default is 2.00.</p>
+        <p>The no form of this command, <code>no multiplier</code>, resets the value to the default. </p>
+      </li>
+    </ul>
+    <p>To enable the message redelivery delay configuration, enter the following command:</p>
+    <pre xml:space="preserve">solace(.../message-spool/topic-endpoint-template/redelivery-delay)# no shutdown</pre>
+    <p>To disable the message redelivery delay configuration, enter the following command:</p>
+    <pre xml:space="preserve">solace(.../message-spool/topic-endpoint-template/redelivery-delay)# shutdown</pre>
+    <p>For more information, see <MadCap:xref href="Configuring-DTEs.htm#Configur3">Configuring a Message Redelivery Delay</MadCap:xref>.</p>
+    <h3><a name="Setting33"/>Disabling Message Redelivery</h3>
+    <p>By default, the maximum number of times the topic endpoint can attempt to redeliver a message to a client is controlled by the <code>max-redelivery</code> command. For more information, see <MadCap:xref href="#Setting22">Setting Max Redelivery Attempts</MadCap:xref>. </p>
+    <p>You can instead disable this functionality. When
+                                                  message redelivery is disabled, a given message will
+                                                  only be attempted to be delivered from the
+                                                  topic endpoint once.</p>
+    <div class="Caution">
+      <p>Disabling message redelivery is a Controlled Availability (CA) feature. Please <a href="../../get-support.htm" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a> to find out if this feature is supported for your use case.</p>
+    </div>
+    <p>To disable message redelivery attempts, enter the following CONFIG command:</p>
+    <pre class="Code" xml:space="preserve">solace(configure/message-spool/topic-endpoint-template)# no redelivery</pre>
+    <p>To enable message redelivery attempts, enter the following CONFIG command.</p>
+    <pre class="Code" xml:space="preserve">solace(configure/message-spool/topic-endpoint-template)# redelivery</pre>
+    <h3><a name="Setting25"/>Setting a Delivery Delay</h3>
+    <p>By default, messages published to topic endpoints are immediately published to connected consumers. There are many use cases in which published messages must not be delivered to consumers immediately, but  delivered only after a fixed delay. One example is a retry mechanism within a payment processing system. After receiving a customer order, you may want to implement a  delivery delay to retry credit card transactions when the processing of the transaction fails for any reason.  For more information,see <MadCap:xref href="Endpoints.htm#Delayed">Delayed Delivery</MadCap:xref>.</p>
+    <p>You can use the <code>delivery-delay</code> option to   configure a delivery delay for a topic endpoint, such that all messages destined to a topic endpoint are not eligible to be delivered for a fixed period of time.</p>
+    <p class="Note">If you are currently using DMQs to implement a delivery delay, <a href="../../get-support.htm" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a> for guidance on migrating your implementation to use  the <code>delivery-delay</code> option instead.</p>
+    <p>To configure a delivery delay on the topic endpoint,  enter the following CONFIG command:</p>
+    <pre class="Code" xml:space="preserve">solace(configure/message-spool/topic-endpoint-template)# delivery-delay &lt;delay&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;delay&gt;</code> is the delay, in seconds, to apply to messages arriving on the topic endpoint before the messages are eligible for delivery. The valid range is 0 to 4294967295. The default is 0. </p>
+    <p>The no version of this command, <code>no delivery-delay</code>,  resets the <code>delivery-delay</code> value back to the default.</p>
+    <h3><a name="max-spool-usage-topic-endpoint-template"/>Setting Max Spool Usage Values</h3>
+    <p>To configure the maximum message spool usage for durable topic endpoints on the <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker on a per-topic endpoint basis, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-spool/topic-endpoint-template)# max-spool-usage &lt;size&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;size&gt;</code> is an integer value specifying the maximum amount of message spool disk space permitted for the topic endpoint in MB.Setting the value to 0 is not recommended for topic endpoints.</p>
+    <p>The no version of this command, <code>no max-spool-usage</code>, resets the default.</p>
+    <p>For information about configuring <code>max-spool-usage</code> size for topic endpoints, see <MadCap:xref href="Configuring-DTEs.htm#max-spool-usage">Configuring Max Spool Usage Values</MadCap:xref>.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/link-to-max-spool-values.flsnp"/>
+    <h3>Setting Permissions for Non-Owner Clients</h3>
+    <p>To configure the permission levels for all clients other than the owner of the given durable topic endpoints, enter the following CONFIG command:</p>
+    <p class="Code" xml:space="preserve">solace(configure/message-spool/topic-endpoint-template)# permission all {no-access | read-only | consume | modify-topic | delete}</p>
+    <p><u>Where</u>:</p>
+    <p><code>no-access </code> disallows all access.</p>
+    <p><code>read-only</code> provides clients with read-only access permission to messages spooled to the topic endpoint</p>
+    <p><code>consume</code> provides clients with read-only permission and the ability to delete messages from the topic endpoint</p>
+    <p><code>modify-topic</code> provides clients with consume permission and the ability to modify the topic or selector assigned to the topic endpoint</p>
+    <p><code>delete</code> provides clients with modify-topic permission and the ability to either delete messages from the topic endpoint, or delete the topic endpoint altogether. Note that clients cannot delete a topic endpoint if it was created using the CLI or SEMP by a management user.</p>
+    <p>The no version of this command, <code>no permission</code>, resets the permission levels for all clients other than the owner of the topic endpoint to none; that is, no access. A client access level of none is the default permission level.</p>
+    <p>For more information, see <MadCap:xref href="Configuring-DTEs.htm#Configur26">Configuring Permissions for Non-Owner Clients</MadCap:xref>.</p>
+    <h3><a name="Setting27"/>Setting Reject Low‑Priority Message Limits</h3>
+    <p>To configure a reject-low-priority-msg-limit for a topic endpoint, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-spool/topic-endpoint-template)# reject-low-priority-msg-limit &lt;limit&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;limit&gt;</code> is the total number of low- and high‑priority messages spooled. When this value is exceed, the topic endpoint discards any further published low-priority messages, but spools published high-priority messages. Valid values are from 0 through 4294967295. If value of 0 is set, the topic endpoint only spools high-priority messages are spooled. The default value is 0. </p>
+    <h3><a name="Setting26"/>Setting Rejection of Low-Priority Messages</h3>
+    <p>To enable the reject low‑priority message feature for a topic endpoint, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-spool/topic-endpoint-template)# reject-low-priority-msg </p>
+    <p>The no version of this command, <code>no reject-low-priority-msg</code>, configures the durable topic endpoint to not perform reject low‑priority message limit checking on published messages (the default configuration).</p>
+    <p>For more information, see <MadCap:xref href="Configuring-DTEs.htm#Enabling5">Enabling Rejection of Low‑Priority Messages</MadCap:xref>. </p>
+    <h3><a name="Setting28"/>Setting Max Message TTLs        </h3>
+    <p>To define a maximum TTL for the topic endpoint to apply to messages to be spooled, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-spool/topic-endpoint-template)# max-ttl &lt;ttl&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;ttl&gt;</code> is maximum number of seconds that messages can stay on the topic endpoint when it has respect-ttl enabled.</p>
+    <p>The no version of this command, <code>no max-ttl</code>, sets the default Max TTL value 0 (disabled), which means that no expiry time is applied to any received messages spooled to that endpoint.</p>
+    <p>For more information, see <MadCap:xref href="Configuring-Queues.htm#Configur21">Configuring Max Message TTLs.</MadCap:xref></p>
+    <h3><a name="Setting29"/>Setting Message Discard Handling</h3>
+    <p>To enable the reject-msg-to-sender-on-discard option for a durable topic endpoint, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-spool/topic-endpoint-template)# reject-msg-to-sender-on-discard </p>
+    <p>The no version of this command, <code>no reject-msg-to-sender-on-discard</code>, disables the reject-msg-to-sender-on-discard option on a durable topic endpoint.</p>
+    <p> For more information about the conditions that cause ingress messages discards and the impact on transacted sessions, see <MadCap:xref href="Configuring-DTEs.htm#Configur30">Configuring Message Discard Handling</MadCap:xref>.</p>
+    <h3><a name="Setting30"/>Setting Respect TTLs</h3>
+    <p>To configure a topic endpoint to respect message TTLs, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-spool/topic-endpoint-template)# respect-ttl</p>
+    <p>The no version of this command, <code>no respect-ttl</code>, configures a durable topic endpoint to ignore message TTL expiry times (the default configuration).</p>
+    <p>For more information, see <MadCap:xref href="Configuring-DTEs.htm#Enforcin2">Enforcing Whether to Respect Message TTLs</MadCap:xref>.</p>
+    <h3><a name="Setting31"/>Setting Respect Message Priority Values</h3>
+    <p>To configure a topic endpoint to respect message priority values, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-spool/topic-endpoint-template)# respect-message-priority</p>
+    <p>The no version of this command, <code>no respect-message-priority</code>, configures a durable topic endpoint to ignore message priority values (the default configuration).</p>
+    <p>For more information, see <MadCap:xref href="Configuring-DTEs.htm#Enforcing-Priority">Enforcing Whether to Respect Message Priority Values</MadCap:xref>.</p>
+  </body>
+</html>

@@ -1,0 +1,446 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+    <title/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Azure Kubernetes Service Deployment Details</h1>
+    <p>The following diagrams and component descriptions describe a typical <MadCap:variable name="Product-Names.cloud_product_firstuse_initialcase"/> deployment in Azure Kubernetes Service (AKS).</p>
+    <h2>AKS Deployment</h2>
+    <p>
+      <img src="../../Resources/Images/Cloud/diagrams/deployment-aks.png" alt=""/>
+    </p>
+    <h2>Azure Network Connectivity</h2>
+    <p>This diagram shows the network connections for the various components. </p>
+    <p>
+      <img src="../../Resources/Images/Cloud/diagrams/deployment-aks-network-connections.png" alt=""/>
+    </p>
+    <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Component</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Managed Identity</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li><b>Name:</b> &lt;datacenter-name&gt;-aks-managed-id</li>
+              <li><b>Details:</b> Managed identity provides the AKS Cluster with access to the subnet’s route tables to update them with kubenet routes.</li>
+              <li>
+                <b>Role Assignment:</b>
+                <ul>
+                  <li><b>Scope:</b> The &lt;datacenter-name&gt;-infra-rg resource group.</li>
+                  <li><b>Role:</b> Contributor</li>
+                </ul>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Resource Group</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p><b>Name:</b> &lt;datacenter-name&gt;-infra-rg</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Route Table</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li><b>Name:</b> &lt;datacenter-name&gt;-rt-private</li>
+              <li><b>Details:</b> Used by the private subnet. Instances use the AKS public load balancer for public access. Theroute table is also under the control of kubenet AKS plugin.</li>
+              <li><b>Route:</b> &lt;VNET-CIDR&gt; to vnetlocal</li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>VNET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <ul>
+              <li><b>Name:</b>  &lt;datacenter-name&gt;-vnet</li>
+              <li><b>Default CIDR:</b> 10.0.0.0/16</li>
+              <li><b>Details:</b> The VNET is the virtual network that encapsulates the entire AKS Datacenter deployment.</li>
+              <li>
+                <b>Contains Private Subnet:</b>
+                <ul>
+                  <li><b>Name:</b> &lt;datacenter-name&gt;-sn-private-0</li>
+                  <li><b>Details:</b> The subnet used by the AKS Cluster.</li>
+                  <li><b>Default</b> CIDR: 10.0.0.0/16</li>
+                </ul>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Bastion Host</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li><b>Name:</b>  &lt;datacenter-name&gt;-bastion</li>
+              <li><b>OS Image:</b> Ubuntu 18.04-LTS</li>
+              <li><b>VM Size:</b> Standard_DS1_v2</li>
+              <li>
+                <b>Storage_os_disk</b>
+                <ul>
+                  <li><b>name:</b> &lt;datacenter-name&gt;-bastion</li>
+                  <li><b>Caching:</b> ReadWrite</li>
+                  <li><b>create_option:</b> FromImage</li>
+                  <li><b>managed_disk_type:</b> Standard_LRS</li>
+                </ul>
+              </li>
+              <li><b>Authentication:</b> SSH keypair generated by Terraform and stored in Terraform state.</li>
+              <li>
+                <b>Network Security Rule:</b>
+                <ul>
+                  <li>Only allow SSH port inbound.</li>
+                  <li>Associated with Bastion Host NIC</li>
+                </ul>
+              </li>
+              <li><b>Static Public IP Name:</b> &lt;datacenter-name&gt;-bastion-ip</li>
+              <li>
+                <b>NIC</b>
+                <ul>
+                  <li><b>Name:</b> &lt;datacenter-name&gt;-bastion-nic</li>
+                  <li><b>Subnet association:</b> &lt;datacenter-name&gt;-sn-private-0</li>
+                  <li><b>Configuration Name:</b> &lt;datacenter-name&gt;-bastion-nic-cfg<ul><li><b>Dynamic Private IP</b></li><li><b>Public IP Assigned:</b> &lt;datacenter-name&gt;-bastion-ip</li></ul></li>
+                </ul>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>AKS Cluster</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li><b>Name:</b> &lt;datacenter-name&gt;-aks</li>
+              <li><b>K8S API Endpoint:</b> Private</li>
+              <li>
+                <b>Network Profile</b>
+                <ul>
+                  <li><b>Plugin:</b> Either kubenet or azure</li>
+                  <li><b>Docker Bridge CIDR:</b> 172.17.0.1/16</li>
+                  <li><b>DNS Service IP:</b> 10.2.0.10</li>
+                  <li><b>Service CIDR:</b> 10.2.0.0/16</li>
+                  <li><b>Load Balancer SKU:</b> Standard<ul><li>1 Outgoing Public IP</li><li><b>Outbound ports allocated:</b> 1032 (Allows up to 62 worker nodes in the cluster).</li></ul></li>
+                </ul>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Default Node Pool</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li><b>Name:</b> default</li>
+              <li><b>Node count:</b> 2</li>
+              <li><b>VM Size:</b> Standard_D2s_v3</li>
+              <li><b>OS Disk Size:</b> 48 GB</li>
+              <li><b>OS Disk Type:</b> Ephemeral</li>
+              <li><b>Subnet:</b> &lt;datacenter-name&gt;-sn-private-0</li>
+              <li><b>Availability Zones:</b> AZ 3</li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Prod1k Node Pool</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <ul>
+              <li><b>Name:</b> prod1k</li>
+              <li><b>Node count:</b> 0</li>
+              <li><b>Max count:</b> 50</li>
+              <li><b>VM Size:</b> Standard_E2s_v3</li>
+              <li><b>OS Disk Size:</b> 48 GB</li>
+              <li><b>OS Disk Type:</b> Ephemeral</li>
+              <li><b>Subnet:</b> &lt;datacenter-name&gt;-sn-private-0</li>
+              <li><b>Availability Zones:</b> AZ 1 or AZ 2 or AZ 3 (<a href="#one-az-per-node" class="link-internal">see note</a>)</li>
+              <li>
+                <b>Node Labels:</b>
+                <ul>
+                  <li>serviceClass = prod1k</li>
+                  <li>nodeType = messaging</li>
+                </ul>
+              </li>
+              <li>
+                <b>Node Taints:</b>
+                <ul>
+                  <li>serviceClass = prod1k:NoExecute</li>
+                  <li>nodeType = messaging:NoExecute</li>
+                </ul>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Prod10k Node Pool</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li><b>Name:</b> prod10k</li>
+              <li><b>Node count:</b> 0</li>
+              <li><b>Max count:</b> 50</li>
+              <li><b>VM Size:</b> Standard_E4s_v3</li>
+              <li><b>OS Disk Size:</b> 48 GB</li>
+              <li><b>OS Disk Type:</b> Ephemeral</li>
+              <li><b>Subnet:</b> &lt;datacenter-name&gt;-sn-private-0</li>
+              <li><b>Availability Zones:</b> AZ 1 or AZ 2 or AZ 3 (<a href="#one-az-per-node" class="link-internal">see note</a>)</li>
+              <li>
+                <b>Node Labels:</b>
+                <ul>
+                  <li>serviceClass = prod10k</li>
+                  <li>nodeType = messaging</li>
+                </ul>
+              </li>
+              <li>
+                <b>Node Taints:</b>
+                <ul>
+                  <li>serviceClass = prod10k:NoExecute</li>
+                  <li>nodeType = messaging:NoExecute</li>
+                </ul>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Prod100k Node Pool</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li><b>Name:</b> prod100k</li>
+              <li><b>Node count:</b> 0</li>
+              <li><b>Max count:</b> 50</li>
+              <li><b>VM Size:</b> Standard_E8s_v3</li>
+              <li><b>OS Disk Size:</b> 48 GB</li>
+              <li><b>OS Disk Type:</b> Ephemeral</li>
+              <li><b>Subnet:</b> &lt;datacenter-name&gt;-sn-private-0</li>
+              <li><b>Availability Zones:</b> AZ 1 or AZ 2 or AZ 3 (<a href="#one-az-per-node" class="link-internal">see note</a>)</li>
+              <li>
+                <b>Node Labels:</b>
+                <ul>
+                  <li>serviceClass = prod100k</li>
+                  <li>nodeType = messaging</li>
+                </ul>
+              </li>
+              <li>
+                <b>Node Taints:</b>
+                <ul>
+                  <li>serviceClass = prod100k:NoExecute</li>
+                  <li>nodeType = messaging:NoExecute</li>
+                </ul>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Monitoring Node Pool</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li><b>Name:</b> monitoring</li>
+              <li><b>Node count:</b> 0</li>
+              <li><b>Max count:</b> 50</li>
+              <li><b>VM Size:</b> Standard_E2s_v3</li>
+              <li><b>OS Disk Size:</b> 48 GB</li>
+              <li><b>OS Disk Type:</b> Ephemeral</li>
+              <li><b>Subnet:</b> &lt;datacenter-name&gt;-sn-private-0</li>
+              <li><b>Availability Zones:</b> AZ 1 or AZ 2 or AZ 3 (<a href="#one-az-per-node" class="link-internal">see note</a>)</li>
+              <li>
+                <b>Node Labels:</b>
+                <ul>
+                  <li>nodeType = monitoring</li>
+                </ul>
+              </li>
+              <li>
+                <b>Node Taints:</b>
+                <ul>
+                  <li>nodeType = monitoring:NoExecute</li>
+                </ul>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Resource Group (Managed by AKS)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <ul>
+              <li><b>Name:</b> MC_&lt;datacenter-name&gt;-infra-rg_&lt;datacenter-name&gt;-aks_eastus2<br/>The name is derived from both the resource group name and the AKS cluster name.</li>
+              <li><b>Details:</b> The resource group is generated by AKS automatically and contains all the resources created by AKS to host the AKS Cluster.</li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Public Load Balancer</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li><b>Name:</b> kubernetes</li>
+              <li><b>Details:</b> Provides NAT to the kubernetes worker nodes over a public IP and provides public endpoint over public IPs to public access brokers running in AKS. There is only one public load balancer for the cluster. Rules are added to this load balancer as public access brokers are created.</li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Public IP Address for load balancer outgoing rules</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li><b>Name:</b> &lt;GUID&gt;</li>
+              <li><b>Details:</b> Used by the public load balancer to provide NAT to its backend and internet access to brokers running in AKS. There is at least one public IP. Additional public IPs could be added to the outgoing rule pool to increase the possible number of instances.</li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Public IP Address for broker public access and load balancer ingress rules</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li><b>Name:</b> kubernetes-&lt;GUID&gt;</li>
+              <li><b>Details:</b> Used by the public load balancer to provide a public IP to ingress rules that get traffic to a public access broker. There is is one public IP for each public access broker deployed in the AKS cluster.</li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Internal Load Balancer </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <ul>
+              <li><b>Name:</b> kubernetes-internal</li>
+              <li><b>Details:</b> An internal load balancer is used only when private access broker are deployed. It provides a private endpoint in the AKS private subnet for each private access broker. Private endpoints are dynamically assigned a private IP from the subnet to the load balancer’s front end. There is only one internal load balancer for the cluster. This load balancer is present only if there is at least one private access broker deployed in AKS.</li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Network Security Group</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li><b>Name:</b> aks-agentpool-&lt;id&gt;-nsg</li>
+              <li><b>Details:</b> Secures the Virtual Machine Scale Sets managed by AKS. It covers all worker nodes VMs. Inbound access is allowed only to the load balancers and to the VNET. Outbound access is allowed only to the VNET and Internet.</li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Network Interface</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li><b>Name:</b> kube-apiserver.nic.7549c48b-e241-4e2f-8c21-426e534b2ba0</li>
+              <li><b>Details:</b> This network interface gives the AKS API private endpoint its private IP on the subnet.</li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Private Endpoint</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li><b>Name:</b> kube-apiserver</li>
+              <li><b>Details:</b> This private endpoint gives access to AKS’s API REST endpoint. It is attached to a network interface connected to the private subnet. kubectl and other kubernetes management tools use this endpoint to manage the cluster.</li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Private DNS Zone</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <ul>
+              <li><b>Name:</b> c5acc6ae-98f2-4a0d-ae75-80ae51f161ff.privatelink.eastus2.azmk8s.io</li>
+              <li><b>Details:</b> The private DNS zone gives a privately resolvable hostname to the private endpoint’s NIC.</li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Virtual Machine Scale Set (Default Node Pool)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li><b>Name:</b> aks-default-18672195-vmss</li>
+              <li><b>Details:</b> Node pool for the cloud-agent and other system pods</li>
+              <li><b>Instance Size:</b> Standard_D2s_v3</li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Virtual Machine Scale Set (Prod1k Node Pool)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li><b>Details:</b> Node pool for the messaging pods of service plans using the Prod1k tier:<ul><li>Developer 100, <MadCap:variable name="Product-Names.class_250"/> and <MadCap:variable name="Product-Names.class_1k"/> (Kilo)</li></ul></li>
+              <li><b>Instance Size:</b> Standard_E2s_v3</li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Virtual Machine Scale Set (Prod10k NodePool)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li><b>Name:</b> aks-prod10k-18672195-vmss</li>
+              <li><b>Details:</b> Node pool for the messaging pods of service plans using the Prod10k tier:<ul><li><MadCap:variable name="Product-Names.class_5k"/> (Mega) and <MadCap:variable name="Product-Names.class_10k"/> (Giga)</li></ul></li>
+              <li>I<b>nstance Size:</b> Standard_E4s_v3</li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Virtual Machine Scale Set (Prod100k Node Pool)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <ul>
+              <li><b>Name:</b> aks-prod100k-18672195-vmss</li>
+              <li><b>Details:</b> Node pool for the messaging pods of service plans using the Prod100k tier:<ul><li><MadCap:variable name="Product-Names.class_50k"/> (Tera 50k) and <MadCap:variable name="Product-Names.class_100k"/> (Tera)</li></ul></li>
+              <li><b>Instance Size:</b> Standard_E8s_v3</li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Virtual Machine Scale Set (Monitoring Node Pool)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <ul>
+              <li><b>Name:</b> aks-monitoring-18672195-vmss</li>
+              <li><b>Details:</b> Node pool for the monitoring pod of HA service plans:<ul><li><MadCap:variable name="Product-Names.class_250"/> and <MadCap:variable name="Product-Names.class_1k"/> (Kilo), <MadCap:variable name="Product-Names.class_5k"/> (Mega), <MadCap:variable name="Product-Names.class_10k"/> (Giga), <MadCap:variable name="Product-Names.class_50k"/> (Tera 50k) and <MadCap:variable name="Product-Names.class_100k"/> (Tera)</li></ul></li>
+              <li><b>Instance Size:</b> Standard_E2s_v3</li>
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="Note"><a name="one-az-per-node"/>For high-availability <MadCap:variable name="Product-Names.broker_cloud_short"/>s, each node pool hosting an <MadCap:variable name="Product-Names.broker_cloud_short"/> must be locked to a single availability zone. This allows the cluster autoscaler to function properly. <MadCap:variable name="Variables.CompanyName"/> uses pod anti-affinity against the node pools' zone label to ensure that each pod in a high-availability <MadCap:variable name="Product-Names.broker_cloud_short"/> is in a separate availability zone. See <MadCap:xref href="installing-ps-cloud-k8s-aks-specific-req.htm#aks-node-pool">Node Pool Requirements</MadCap:xref> for more information.</p>
+  </body>
+</html>

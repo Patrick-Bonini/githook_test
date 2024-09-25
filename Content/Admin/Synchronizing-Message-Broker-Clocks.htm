@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Synchronizing Clocks with NTP Servers</h1>
+    <p>You can synchronize an event broker’s clock with a networked Network Time Protocol (NTP) server. This is especially helpful for event brokers that are using redundancy and replication. For example, if your event brokers are synchronized with the same NTP server, message expiry times will be consistent across all of them.</p>
+    <p>The procedure for  synchronizing with an NTP server differs for appliances and software event brokers.</p>
+    <p class="Note">At any point, use the <code>show clock</code> command to display the current date and time on <MadCap:variable name="Product-Names.broker_appliance_short"/>s or <MadCap:variable name="Product-Names.broker_sw_short"/>s.</p>
+    <h2 class="with-rule"><a name="Solace"/>Appliances</h2>
+    <p>An appliance can be time synchronized using either the setup commands explained in <MadCap:xref href="../Appliance/Appliance-Set-Up/Initializing-Appliances.htm">Initializing Appliances</MadCap:xref>, or the clock synchronization CLI commands shown below:</p>
+    <pre xml:space="preserve">
+enable 
+   configure 
+      clock 
+         synchronization 
+            [create|no] ntp-source &lt;host&gt;
+               [no] nts 
+               [no] shutdown 
+            [no] protocol {ntp | ptp}
+            [no] shutdown </pre>
+    <p xml:space="preserve">
+<u>Where</u>:</p>
+    <p><code>[create|no] ntp-source &lt;host&gt;</code> allows you to configure up to eight NTP sources (if you're using NTP).</p>
+    <p><code>[no] nts</code> allows you to enable or disable NTS (Network Time Security) on any or all of these protocols.</p>
+    <p><code>[no] protocol {ntp | ptp}</code> allows you to select the synchronization protocol (NTP or PTP).</p>
+    <p class="Note"> Using mixed authentication modes for clock synchronization is not recommended. In scenarios where mixed authentication modes are required (for example, if you have multiple NTP servers where some use authenticated connections with NTS and some do not), Solace uses the chrony implementation of NTP, which uses the <code>mix</code> mode for authentication selection and favors NTP servers that use authenticated connections with NTS. For more information, see the <a href="https://chrony-project.org/documentation.html" class="link-offsite">Chrony Project Documentation</a>.</p>
+    <div class="Note">
+      <p> For appliances using SolOS 10.6.0 or earlier, the <code>ntp-server</code> command is used as shown below:</p>
+      <pre>solace(configure)# clock
+solace(configure/clock)# synchronization
+solace(configure/clock/synchronization)# shutdown
+solace(configure/clock/synchronization)# protocol ntp
+solace(configure/clock/synchronization)# ntp-server &lt;ip-addr&gt;
+solace(configure/clock/synchronization)# no shutdown</pre>
+      <p>Where:</p>
+      <p><code>ip-addr</code> is the IP address or fully qualified domain name (FQDN) of a reachable NTP server.</p>
+      <p>The <code>no</code> version of this command, <code>no ntp-server</code>, removes the NTP server information.</p>
+      <p>The <code>ntp-server</code> command configures only one non-authenticated NTP server connection. In this way, it replaces existing configuration (no matter how many sources you have previously configured).</p>
+    </div>
+    <h2 class="with-rule"><a name="Solace2"/>Software Event Brokers</h2>
+    <p>Software event broker clocks can be synchronized with one of the three methods shown in the following list.</p>
+    <p class="Note">With the PubSub+ AWS AMI, clock synchronization is preconfigured to use AWS time servers. Use <code>chronyd</code> to change the clock server.</p>
+    <ol>
+      <li><u>In your hypervisor or cloud environment</u>:<p>Use DHCP to configure NTP. This requires no host configuration.</p></li>
+      <li><u>For software event broker machine images</u>:				<p>Set up NTP through the event broker host.</p><p>To do so, perform the following steps:</p><ol><li> Log in to your event broker's host as the root user.					</li><li>Edit the <code>/etc/ntp.conf</code> file and enter the following configuration.
+					<p class="Code">tinker panic 0<br/>disable monitor<br/>restrict default ignore<br/>restrict 127.0.0.1<br/>restrict ::1<br/>server <i>&lt;server-ip&gt;</i><br/>restrict <i>&lt;server-ip&gt;</i></p></li><li>Enable <code>ntpd</code>.</li><p class="Code">systemctl enable ntpd</p><li>Then reboot the event broker.</li><p class="Code">reboot</p><li>In the event broker host shell, enter the following command to check whether the NTPD status is working: 
+				
+				<p class="Code">systemctl status ntpd</p><p>In the displayed output, to confirm ntpd is active, check for a line that looks like this:</p><p class="Code">"Active: active (running)" portion.</p></li><li>Once NTPD is confirmed active, wait several minutes and enter the following command to verify that the event broker is now in sync.<p class="Code">ntpstat</p><p>In the displayed output, to confirm that the event broker is in sync, check the output for a line that looks like this:</p><p class="Code">synchronised to NTP server (192.168.40.80) at stratum 3</p></li></ol></li>
+      <li><u>Use Cloud-Init</u>:
+				<p>Set up NTP with the same configuration information provided in steps 2.2 and 2.3 above.</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre>write_files:
+ - path: /etc/ntp.conf
+   permissions: 0600
+   owner: root:root
+   content: |
+     tinker panic 0
+     disable monitor
+     restrict default ignore
+     restrict 127.0.0.1
+     restrict ::1
+     server &lt;server-ip&gt;
+     restrict &lt;server-ip&gt;
+runcmd:
+ - systemctl enable ntpd
+ - systemctl start ntpd</pre></MadCap:dropDownBody></MadCap:dropDown></li>
+    </ol>
+  </body>
+</html>

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><MadCap:concept term="Cloud;Appliance;Software"/>Guaranteed Messaging Operation</h1>
+    <p>The following figure shows the basic steps of how Guaranteed messages move from a publishing client, through an event broker, to a consuming client.</p>
+    <p>
+      <img src="../../Resources/Images/Guaranteed-Msg/Basic_GD_Message_Flow.png" alt="Diagram showing the concepts described in the surrounding text."/>
+    </p>
+    <ol>
+      <li>
+        <p>A client application that is connected to a Message VPN publishes a Guaranteed message  to a topic or queue destination.</p>
+      </li>
+      <li>
+        <p>The ingress message received by the event broker is spooled to a queue or topic endpoint.</p>
+      </li>
+      <li>
+        <p>The event broker sends an acknowledgment that the message has been successfully spooled  back to the publishing client. </p>
+      </li>
+      <li>
+        <p>The event broker delivers the spooled message to a consuming client if that client:<ul><li>has successfully established a connection to the same Message VPN</li><li>is authorized to receive Guaranteed messages</li><li>has created a consumer flow in that session to bind to the endpoint</li><li> has an active flow bound to the endpoint that can deliver messages. For more information about access types refer to <MadCap:xref href="Queues.htm#queue-access-types">Queue Access Types</MadCap:xref> and <MadCap:xref href="Topic-Endpoints.htm">Topic Endpoints</MadCap:xref>.</li></ul></p>
+      </li>
+      <li>
+        <p>When the consuming client receives the message, it sends an acknowledgment that the message has been successfully delivered back to the event broker.</p>
+      </li>
+      <li>
+        <p>The event broker deletes the message from the message spool.</p>
+      </li>
+    </ol>
+    <p>For more information about the message spooling and acknowledgment mechanism, see <MadCap:xref href="Message-Spooling.htm">Message Spooling</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="sessions-flows"/>Sessions and Consumer Flows</h2>
+    <p>When applications use Solace APIs, a session is used to provide a client connection between an application and an event broker. A session uses a single TCP connection to the event broker. A session is required for all client messaging operations: for example, a session is required to publish Guaranteed messages, and a session is required to create a consumer flow through which Guaranteed messages can be received.</p>
+    <p>A consumer flow can be created in a session to establish a one‑to‑one mapping of a consumer to a queue or topic endpoint. Consumer flows provide a means of transport for Guaranteed messages from the event broker to the consumer. One or more consumer flows can be created in a session.</p>
+    <p>
+      <img src="../../Resources/Images/Guaranteed-Msg/Guaranteed_Message_Flows.png" alt="Diagram showing the concepts described in the surrounding text."/>
+    </p>
+    <p>Consumer flows are not used to receive Direct messages. Instead, clients receive Direct messages published to a topic that matches their client subscriptions directly from the event broker’s message bus through sessions.</p>
+    <h2><a name="publishing"/>Publishing Guaranteed Messages</h2>
+    <p>When clients publish Guaranteed messages, they can either:</p>
+    <ul>
+      <li>
+        <u>Publish the messages to a topic</u>
+      </li>
+      <ul>
+        <li>Used for publish and subscribe models.</li>
+        <li>A Guaranteed message published to a topic is acknowledged by the event broker's message bus to indicate that the system has received the message. A message that is published to a topic can be received by no clients, a single client, or multiple clients. If there is no subscriber for a message, that message is discarded because in this paradigm the producer and subscriber are decoupled.</li>
+      </ul>
+      <li>
+        <u>Publish the messages to a queue</u>
+      </li>
+      <ul>
+        <li>Used for point-to-point models.</li>
+        <li>The event broker's message bus also acknowledges a Guaranteed message published to a queue to indicate that the system has received the message. However, messages published to a queue are more tightly coupled than those published to a topic. Therefore, if the queue doesn't exist, or is unable to spool the message (for example, if ingress is disabled or it's over quota), then the message bus rejects the message, and the publishing client application has this immediate feedback. A message that is published to a queue can be consumed by a single consumer.</li>
+      </ul>
+    </ul>
+    <p>When a client publishes a Guaranteed messages in a session, a publisher flow to the host event broker is automatically established. The published messages have persistence because they are spooled (that is, they are written to persistent storage) to one of the following types of endpoints provisioned on the event broker:</p>
+    <ul>
+      <li>A queue that matches the messages’ queue destination.</li>
+      <li>A topic endpoint that is assigned a topic subscription that matches the message’s topic destination.</li>
+    </ul>
+    <h3>Messages Published with a Direct Delivery Mode</h3>
+    <p> It's also possible for messages published with a Direct delivery mode to be spooled to an endpoint when there is a match between the message’s topic destination and the topic subscription set for the endpoint. In this case, when the message is spooled to the endpoint, it's given a non-persistent delivery mode so that a client can consume the message over its established Guaranteed message flow. For more information, see <MadCap:xref href="Topic-Matching-and-Delivery-Modes.htm">Topic Matching and Message Delivery Modes</MadCap:xref>.</p>
+    <h3>Messages Larger Than the Event Broker's Maximum Message Size</h3>
+    <p>All Solace Message Format (SMF) Guaranteed messages larger than the event broker's maximum guaranteed message size—30MB  in most cases—are discarded. The publishing client will be disconnected<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">, and <code><a href="https://docs.solace.com/Solace-PubSub-Event-Reference/event_ref_boiler.html#CLIENT_CLIENT_MESSAGE_TOO_BIG" class="link-internal">CLIENT_CLIENT_MESSAGE_TOO_BIG</a></code> event is raised</MadCap:conditionalText>.</p>
+    <h2><a name="receiving"/>Receiving Guaranteed Messages</h2>
+    <p>To receive published Guaranteed messages, a client must create a consumer flow to bind to a queue endpoint or a topic endpoint provisioned on the event broker with the spooled published messages. Once the consumer is bound to the endpoint and it has an active consumer flow (that is, a flow through which messages are being delivered), it can consume Guaranteed messages spooled to that endpoint.</p>
+    <ul>
+      <li>
+        <u>Client binds to a queue</u>
+      </li>
+      <p>The client can be an exclusive or non-exclusive consumer of messages spooled to that endpoint. For information on exclusive and non-exclusive consumers, refer to <MadCap:xref href="Endpoints.htm#Queue_Access_Types">Queue Access Types</MadCap:xref>.</p>
+      <li>
+        <u>Client binds to a topic endpoint</u>
+      </li>
+      <p>The client provides the topic subscription that it wants the endpoint to spool messages for. The topic subscription that a topic endpoint will spool messages for is not specified when a topic endpoint is provisioned.</p>
+    </ul>
+    <p>When a consuming client successfully receives a Guaranteed message, a corresponding application acknowledgment is required to indicate to the event broker that the client application received the message, so then the message can be removed from the endpoint.</p>
+    <h2><a name="Queuing_Limits"/>Guaranteed Message Queuing Limits</h2>
+    <p>The maximum number of Guaranteed messages that <MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers can queue at one time for delivery is cumulatively reduced by the following factors:</p>
+    <ul>
+      <li>the number of messages that provisioned endpoints receive—If a single published message is queued for delivery on <i>n</i> endpoints, that counts as <i>n</i> messages queued for delivery, even though only one copy of the message is stored by the event broker.</li>
+      <li>whether data from the event broker is being replicated—When the replication facility is used, a copy of a message in the replication queue counts as another message queued for delivery. That is, if a message is queued for delivery on <span class="Emphasis">n</span> endpoints, and it is to be replicated, that counts as <span class="Emphasis">n </span>+1 messages queued for delivery.</li>
+      <li>whether the event broker is processing transactions—When transactions are used, the event broker has to maintain extra information for each message in a transaction until the transaction is committed or rolled back. </li>
+      <li>whether there are provisioned endpoints configured to respect published messages’ TTL expiry times—When an endpoint respects a message’s TTL, the TTL is recorded and maintained until the message is consumed or discarded.</li>
+    </ul>
+  </body>
+</html>

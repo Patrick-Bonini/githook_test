@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="Default.ConnectorSpecific">
+  <head>
+    <link href="../../../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Modifying the Container Configuration</h1>
+    <MadCap:snippetBlock src="../../../../Resources/Snippets/API/Connectors/common/container-intro.flsnp"/>
+    <h2>
+      <a name="prerequisites"/>
+      <MadCap:conditionalText MadCap:conditions="Default.ConnectorSpecific">Prerequisites</MadCap:conditionalText>
+    </h2>
+    <p>Using the <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector_for_solacemsgproc"/> with containers requires:</p>
+    <ul>
+      <li>
+        <p><a href="https://www.docker.com/" target="_blank" class="link-offsite">Docker</a> or <a href="https://podman.io/" target="_parent" class="link-offsite">Podman</a></p>
+      </li>
+      <li>
+        <p>
+          <a href="https://solace.com/products/event-broker/" target="_blank" class="link-internal"><MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/> Event Broker</a>
+        </p>
+      </li>
+    </ul>
+    <h2><a name="overview-using"/>Getting Started Using Connectors With Containers</h2>
+    <p>You can run the connector in a container with the minimal configuration. Optionally, you can specify <a href="#connecting-to-services-on-host" class="link-internal">connecter services on the host</a> or a <a href="#configure-healthcheck" class="link-internal">health check</a>. Perform the following steps to start the connector with a minimal configuration in a container:</p>
+    <ol>
+      <li>
+        <p>Create an <code>application.yml</code> or <code>application.properties</code> file in the config directory containing the properties needed for your connector. For an example of an configuration file, see the <code> samples/config</code> directory in the archive (ZIP) file you downloaded for this connector.</p>
+      </li>
+      <li>
+        <p>Run the container with minimal configuration as follows:</p>
+        <p>In Docker, use the following command:</p>
+        <pre MadCap:conditions="Default.ConnectorSpecific" xml:space="preserve">docker run -d --name my-connector \
+-v `pwd`/libs/:/app/external/libs/:ro \
+-v `pwd`/config/:/app/external/spring/config/:ro \
+solace/<MadCap:variable name="Manifest-Products-Connectors.connector-solacemsgproc-package-name-docker"/>:&lt;version&gt;</pre>
+        <p>In Podman, use the following command:</p>
+        <pre xml:space="preserve" MadCap:conditions="Default.ConnectorSpecific">podman run -d --name my-connector \
+-v `pwd`/libs/:/app/external/libs/:ro \
+-v `pwd`/config/:/app/external/spring/config/:ro \
+solace/<MadCap:variable name="Manifest-Products-Connectors.connector-solacemsgproc-package-name-docker"/>:&lt;version&gt;</pre>
+      </li>
+    </ol>
+    <p>Where <code>&lt;version&gt;</code> is the version of the connector you are using, such as <MadCap:variable name="Manifest-Products-Connectors.connector-solacemsgproc-latest-version" MadCap:conditions="Default.ConnectorSpecific"/>.</p>
+    <h3><a name="connecting-to-services-on-host"/>Connecting to Services on the Host</h3>
+    <p>If services (such as the <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker) are exposed on the localhost, they can be referenced using the container platform’s special DNS name using <code>SOLACE_JAVA_HOST</code>, which resolves to the internal IP address that's used by the host.</p>
+    <p>For example in Docker, use the following command:</p>
+    <pre MadCap:conditions="Default.ConnectorSpecific">docker run -d --name my-connector \
+-v `pwd`/libs/:/app/external/libs/:ro \
+-v `pwd`/config/:/app/external/spring/config/:ro \
+--env SOLACE_JAVA_HOST=host.docker.internal:55555 \
+solace/<MadCap:variable name="Manifest-Products-Connectors.connector-solacemsgproc-package-name-docker"/>:<MadCap:variable name="Manifest-Products-Connectors.connector-solacemsgproc-latest-version"/></pre>
+    <p>For example in Podman, use the following command:</p>
+    <pre xml:space="preserve" MadCap:conditions="Default.ConnectorSpecific">podman run -d --name my-connector \
+-v `pwd`/libs/:/app/external/libs/:ro \
+-v `pwd`/config/:/app/external/spring/config/:ro \
+--env SOLACE_JAVA_HOST=host.containers.internal:55555 \
+solace/<MadCap:variable name="Manifest-Products-Connectors.connector-solacemsgproc-package-name-docker"/>:<MadCap:variable name="Manifest-Products-Connectors.connector-solacemsgproc-latest-version"/></pre>
+    <h2><a name="configure-healthcheck"/>Configuring a Health Check</h2>
+    <p>You can configure the health to  perform the following things:</p>
+    <ul>
+      <li>Creates a regular read-only user called <code>healthcheck</code> with a password using <code>SOLACE_CONNECTOR_SECURITY_USERS_0_NAME</code> and <code>SOLACE_CONNECTOR_SECURITY_USERS_0_PASSWORD</code>.</li>
+      <li>Uses the <code>healthcheck</code> user as the user to poll the management health endpoint in the container’s <code>healthcheck</code> command and fails it if the connector is unhealthy.</li>
+    </ul>
+    <p>Here’s a basic example command of how to configure the healthcheck for container:</p>
+    <p>For example in Docker, use the following command:</p>
+    <pre MadCap:conditions="Default.ConnectorSpecific">docker run -d --name my-connector \
+-v `pwd`/libs/:/app/external/libs/:ro \
+-v `pwd`/application.yml:/app/external/spring/config/application.yml:ro \
+--env SOLACE_CONNECTOR_SECURITY_USERS_0_NAME=healthcheck \
+--env SOLACE_CONNECTOR_SECURITY_USERS_0_PASSWORD=healthcheck \
+--healthcheck-command="curl -X GET -u healthcheck:healthcheck --fail
+localhost:8090/actuator/health" \
+solace/<MadCap:variable name="Manifest-Products-Connectors.connector-solacemsgproc-package-name-docker"/>:<MadCap:variable name="Manifest-Products-Connectors.connector-solacemsgproc-latest-version"/></pre>
+    <p>For example in Podman, use the following command::</p>
+    <pre xml:space="preserve" MadCap:conditions="Default.ConnectorSpecific">podman run -d --name my-connector \
+-v `pwd`/libs/:/app/external/libs/:ro \
+-v `pwd`/application.yml:/app/external/spring/config/application.yml:ro \
+--env SOLACE_CONNECTOR_SECURITY_USERS_0_NAME=healthcheck \
+--env SOLACE_CONNECTOR_SECURITY_USERS_0_PASSWORD=healthcheck \
+--healthcheck-command="curl -X GET -u healthcheck:healthcheck --fail
+localhost:8090/actuator/health" \
+solace/<MadCap:variable name="Manifest-Products-Connectors.connector-solacemsgproc-package-name-docker"/>:<MadCap:variable name="Manifest-Products-Connectors.connector-solacemsgproc-latest-version"/></pre>
+    <h2><a name="config-spring-configuration"/>Specifying Configuration Using Spring Configuration Properties</h2>
+    <MadCap:snippetBlock src="../../../../Resources/Snippets/API/Connectors/common/containers-specifying-spring.flsnp"/>
+  </body>
+</html>

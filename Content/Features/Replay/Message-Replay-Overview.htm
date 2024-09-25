@@ -1,0 +1,315 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+    <script type="text/javascript" async="1" src="https://play.vidyard.com/embed/v4.js">
+        </script>
+  </head>
+  <body>
+    <h1>Message Replay<MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"> Overview</MadCap:conditionalText></h1>
+    <p>Message replay allows event brokers to resend messages to new or existing clients that request them hours (or even days) after those messages were first received by the event broker. When message replay is enabled, event brokers store the persistent messages in a replay log. These messages are retained in  the replay log unit its spool usage reaches 90% of its configured quota, after which the oldest messages are removed from the replay log to make space for new messages through a process called <i>trimming</i>. </p>
+    <p>Message replay can be performed on a non-partitioned queue or topic endpoint. Replay can be initiated from the event broker management interfaces (<MadCap:variable name="Product-Names.pubsubmanager_long"/>, <MadCap:variable name="Product-Names.solace_cli"/>, and SEMP), or from client applications using the <MadCap:variable name="Manifest-Products-APIs.PubSub-GenericAll-Messaging-API"/>s. When initiating replay, you can request all messages in the replay log, all messages following a specified replication group message ID, or all messages starting from a requested replay start time. The event broker delivers the messages from the replay log that match any subscription on that queue or topic endpoint, from the specified start point to the end of the replay log. The messages from the replay stream then join the stream of live messages without requiring any action from the consuming application.</p>
+    <p class="Note">Message replay is not supported for partitioned queues.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/replay_replication_unsupported.flsnp" MadCap:conditions="SAP.SapHideFromOutput"/>
+    <p>For more information about message replay, see:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Key">Understanding Message Replay</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Walk-thr">Message Replay Walkthrough</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Use-Case">Use Cases</MadCap:xref>
+      </li>
+      <li MadCap:conditions="SAP.SapHideFromOutput">
+        <MadCap:xref href="Msg-Replay-Monitoring.htm">Monitoring Message Replay</MadCap:xref>
+      </li>
+      <li MadCap:conditions="SAP.SapHideFromOutput">
+        <MadCap:xref href="#Message">Message Replay / PubSub+ Cache Comparison</MadCap:xref>
+      </li>
+    </ul>
+    <p MadCap:conditions="SAP.SapHideFromOutput">If you're ready to use message replay, you can learn how to configure and use it by jumping to <MadCap:xref href="Msg-Replay-Concepts-Config.htm">Message Replay Configuration</MadCap:xref>. Alternatively, you can watch the <MadCap:xref href="Msg-Replay-Video.htm">Message Replay Configuration Video</MadCap:xref> on how to get message replay set up quickly using <MadCap:variable name="Product-Names.pubsubmanager_long"/>.		</p>
+    <h2 class="with-rule"><a name="Key"/>Understanding Message Replay</h2>
+    <p MadCap:conditions="SAP.SapHideFromOutput">You can configure which Message VPNs are configured with message replay.</p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">Message replay consumes resources on the <MadCap:variable name="Product-Names.broker_cloud_short"/>. You can choose to configure which  <MadCap:variable name="Product-Names.broker_cloud_short"/>s use message replay. Do accomplish this, you configure a replay log.</p>
+    <h3>Message Storage </h3>
+    <p>The following summary describes how message replay uses message storage:</p>
+    <ul>
+      <li>You can configure how many megabtyes (MB) of spool usage the replay log consumes  <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">on each Message VPN by  by configuring the replay log's <code>max-spool-usage</code></MadCap:conditionalText>. We refer to this as the message replay's configured quota <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">for <code>max-spool-usage</code></MadCap:conditionalText>.</li>
+      <li>
+        <p> By default,  all Guaranteed messages that are not rejected to the publisher are stored in the replay log. You can use topic filters, including wildcard subscriptions and topic exceptions, to select which messages are added to the replay log. The replay log maintains the original publication order across many topics. <MadCap:conditionalText MadCap:conditions="SAP.SAPTempHide">For more information, see <MadCap:xref href="Msg-Replay-Config.htm#topic-filters">Configuring the Messages Stored to the Message Replay Log Using Topic Filters</MadCap:xref></MadCap:conditionalText>.  </p>
+      </li>
+      <li>
+        <p>The event broker automatically trims the oldest messages from the replay log to make room for new messages as they arrive. Trimming occurs when the message replay spool reaches 90% of its configured quota. Optionally, you can choose to manually trim the replay log to reduce the frequency of automatic trimming. <MadCap:conditionalText MadCap:conditions="SAP.SAPTempHide">For more information, see <MadCap:xref href="Msg-Replay-Concepts-Config.htm#Trimming">Trimming the Replay Log</MadCap:xref>.</MadCap:conditionalText></p>
+        <p class="Tip"><MadCap:variable name="Variables.CompanyName"/> recommends that you monitor the replay log to ensure that the replay log  does not exceed 90% of its configured quota<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> for <code>max-spool-usage</code></MadCap:conditionalText>. For more information, see <MadCap:xref href="Msg-Replay-Monitoring.htm">Monitoring Message Replay</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>
+          <span>If the replay log reaches 100% of its configured quota</span>
+          <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">
+            <span> for <code>max-spool-usage</code></span>
+          </MadCap:conditionalText>
+          <span>, the following occurs:</span>
+        </p>
+        <ul>
+          <li>
+            <p>Messages are rejected and the event broker sends a negative acknowledgment (NACK)   to the publishing client, which causes back-pressure on the publishing clients.</p>
+          </li>
+          <li>
+            <p>Rejected messages are not added to the replay log to ensure that the replay log spool usage does not exceed its quota.</p>
+          </li>
+        </ul>
+      </li>
+      <li MadCap:conditions="Default.HideFromAllOutput">
+        <p>If the replay log spool usage reaches 100% of its configured quota,  the event broker back-pressures the publishing clients as necessary to ensure the replay log spool usage does not exceed its quota.</p>
+      </li>
+    </ul>
+    <h3>Replaying Messages</h3>
+    <ul>
+      <li>
+        <p>A replay can begin from a specific time, after a specific replication group message ID, or from the beginning of the message replay log.</p>
+      </li>
+      <li>
+        <p>When a replay begins, all logged messages from the playback starting point are processed and the event broker replays logged message that match the replaying endpoint's subscriptions. The event broker sends the original message as it was initially received, without modification, including the original topic, content, and message ID.  The event broker doesn't mark the message as redelivered in any way.</p>
+      </li>
+      <li>
+        <p>Messages are replayed in the original order they would have been sent to the client, even across different topics.</p>
+      </li>
+      <li>
+        <p>Message replay can be performed for any consumer, no matter what protocol or API they are using, including AMQP, MQTT, REST/WebHooks, and <MadCap:variable name="Manifest-Products-APIs.PubSub-GenericAll-Messaging-API"/>s.</p>
+      </li>
+      <li>
+        <p>Messages are replayed only to the endpoint for which they are requested. If you initiate message replay from <MadCap:variable name="Product-Names.pubsubmanager_short"/> or <MadCap:variable name="Product-Names.solace_cli"/> you have to specify the endpoint that you want to replay messages to.</p>
+      </li>
+      <li>
+        <p>If a replay is initiated to an endpoint that has no clients connected to consume and acknowledge messages, replay sends a maximum 1000 messages to the endpoint to ensure that the unacknowledged resources of the endpoint are not completely consumed.<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> For more information, see <MadCap:xref href="../../Admin/Managing-Consumption-of-Event-Broker-Resources.htm">Resource Consumption</MadCap:xref></MadCap:conditionalText>. After a client connects and begins to consume messages from the endpoint, any remaining messages in the log are replayed to the endpoint.</p>
+      </li>
+      <li>
+        <p>If the endpoint has connected clients, the number of messages replayed is  limited only by the Maximum Delivered Unacknowledged Messages per Flow <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">(<code>max-delivered-unacked-msgs-per-flow</code>)</MadCap:conditionalText> setting on the endpoint (up to 100,000 messages).</p>
+      </li>
+      <li>
+        <p>Initiating a replay on an endpoint already under replay cancels the previous replay and starts a new one.</p>
+      </li>
+      <li>
+        <p>Live messages received while an endpoint is under replay are processed as usual, including being written to the replay log, except that they are not sent to the endpoint under replay. The endpoint receives the messages from the replay log in sequence. When replay completes, the endpoint begins receiving live messages.</p>
+      </li>
+      <li>
+        <p>A replication group message ID is an attribute of <MadCap:variable name="Variables.CompanyName"/> messages, assigned by the event broker delivering the messages to the queue and topic endpoints, that uniquely identifies a message on a particular queue or topic endpoint within a high availability (HA) group and replication group of event brokers.</p>
+      </li>
+    </ul>
+    <p class="Note">A replication group message ID only uniquely identifies a message within a high-availability (HA) group or replication group. In an event mesh, when event brokers are interconnected using either Dynamic Message Routing (DMR) or VPN bridges, a given message is assigned a different replication group message ID in each  replication group in the mesh. When replaying after a specific replication group message ID, the replay request fails if the message ID specified can't be found in the replay log.</p>
+    <h2 class="with-rule"><a name="Walk-thr"/>Message Replay Walk-Through</h2>
+    <p>The following diagram shows a simplified example of how  message replay works on   an event brokers and to help you understand the flow of messages.</p>
+    <h3><a name="Basic"/>Basic Message Flow</h3>
+    <p> </p>
+    <p>
+      <img src="../../Resources/Images/Replay/message-replay-flow.png" alt="Diagram showing the flow described in the surrounding text"/>
+    </p>
+    <p>This walkthrough follows the journey of messages from a publisher, through an event broker, to finally a subscriber to show you how messages are logged for replay and played back at a later time.</p>
+    <ol>
+      <li>
+        <p>A publisher application connects to the event broker and publishes messages. </p>
+      </li>
+      <li>
+        <p>The event broker performs the following actions:</p>
+        <ol style="list-style-type: lower-alpha;">
+          <li>
+            <p>Gives unique replication group message IDs to each message</p>
+          </li>
+          <li>
+            <p> Writes each message to persistent storage</p>
+          </li>
+          <li>
+            <p>Adds a reference to each message to the appropriate subscribing queues</p>
+          </li>
+          <li>
+            <p>Adds a reference to each  message to the replay log</p>
+          </li>
+        </ol>
+      </li>
+      <li>
+        <p>The subscriber performs the following actions:</p>
+        <ol style="list-style-type: lower-alpha;">
+          <li>
+            <p>Consumes each message from their queue.</p>
+          </li>
+          <li>
+            <p>Processes each message.<MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput"> If processing includes writing the data to a database, the application may extract the replication group message ID from the message, and write that ID to the database along with the message data.</MadCap:conditionalText></p>
+          </li>
+          <li>
+            <p>Sends an acknowledgment for each message to the event broker.</p>
+          </li>
+        </ol>
+      </li>
+      <li>
+        <p>After receiving an acknowledgment, the event broker deletes the acknowledged message from the subscriber's queue.</p>
+      </li>
+      <li>
+        <p>The message remains in the replay log until it is the oldest message in the log and needs to be trimmed to make space for newer messages.</p>
+      </li>
+      <li>
+        <p>Some time later the subscriber experiences a system error and loses recent data. To retrieve messages that were delivered but lost, the subscriber requests a replay in one of two ways:</p>
+        <ul>
+          <li>
+            <p>The subscribing application directly requests message replay using a <MadCap:variable name="Manifest-Products-APIs.PubSub-GenericAll-Messaging-API"/>.</p>
+          </li>
+          <li>
+            <p>An administrator  initiates message replay using <MadCap:variable name="Product-Names.pubsubmanager_long"/>,<MadCap:variable name="Product-Names.solace_cli"/>, or SEMP.</p>
+          </li>
+        </ul>
+        <p>The subscriber requests one of the following replay options:</p>
+        <ul>
+          <li>
+            <p>Replay messages from a specific time if time of the data loss is known.</p>
+          </li>
+          <li>
+            <p>Replay messages following a specific replication group message ID if the last message ID that was retained is known.</p>
+          </li>
+          <li>
+            <p>Replay all messages available in the replay log, starting from the oldest message.</p>
+          </li>
+        </ul>
+      </li>
+    </ol>
+    <h2 class="with-rule"><a name="Use-Case"/>Use Cases</h2>
+    <p>Message replay can restore or recreate messages in the application databases in several situations.</p>
+    <h3><a name="Corruption_Recovery"/>Application Corruption Recovery</h3>
+    <p>Consider an application that's connected to one or more queues, receives messages, processes them, updates its own persistent database to reflect message content, including the replication group message ID retrieved from the message, and acknowledges receipt of the message. This acknowledgment deletes the messages from the queues. If the application experiences some form of crash that results in the corruption of its own database, the application may be restarted with a known good database, perhaps from earlier in the day, but any work it has done in the meantime has been lost.</p>
+    <p>In this situation, the application might request message replay to its queues, starting from the replication group message ID stored in the last record in the database, redoing the work it had already done. During replay, new live messages will be added to the replay log. Once all logged messages have been replayed, the application automatically rejoins the live data stream.</p>
+    <p>The administrator can also initiate replay of a queue on the client’s behalf through <MadCap:variable name="Product-Names.solace_cli"/>, <MadCap:variable name="Product-Names.pubsubmanager_short"/>, or SEMP commands.</p>
+    <h3><a name="Misconfig_Recovery"/>Application Misconfiguration Recovery</h3>
+    <p>Consider an application where a set of administrator-configured topic-to-queue mappings is used to attract messages to the application’s queues. If a mistake is made in the configuration and the set of topics on the queue is not correct,  the error may not be noticed right away.</p>
+    <p>In this case, the administrator corrects the topic-to-queue mappings on the queue, and restarts the application with a known good state or empty state. The administrator or application requests message replay to its queues, redoing its work with the now corrected set of topic-to-queue mappings. After all old messages, including messages that were missed due to the incorrect topic-to-queue-mapping, have been replayed to the application, it automatically rejoins the live data stream.</p>
+    <h3><a name="Late_Join"/>Application Late-Join</h3>
+    <p>In this use-case, an application that did not have queues or subscriptions on the event broker at the time the data was published may wish to connect to the event broker, create its queues and subscriptions, and then use message replay to consume the previously published data. Typical applications for this use-case include bringing on-line a new analytics or trading algorithm that requires some amount of historical data to make decisions on the subsequent live data.</p>
+    <h3><a name="Event"/>Event Sourcing and On-Demand Analytics</h3>
+    <p>In this use-case, an enterprise may wish to replay the data that was sent to an application  to capture the entire history of message flow to an application so that it can be reviewed or analyzed at a later date.</p>
+    <h2 class="with-rule" MadCap:conditions="SAP.SapHideFromOutput"><a name="Message"/>Message Replay / <MadCap:variable name="Product-Names.pubsub_cache"/> Comparison</h2>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Message replay isn't a replacement for <MadCap:variable name="Product-Names.pubsub_cache"/>. There are a number of differences between the two, and they're listed in the following table. Whether you choose  message replay or PubSub+ Cache depends on your use cases.</p>
+    <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0" MadCap:conditions="SAP.SapHideFromOutput">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Attribute</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Message Replay</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">
+            <MadCap:variable name="Product-Names.pubsub_cache"/>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Use Case</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Message Log</p>
+            <p>Records all Guaranteed messages published to the Message VPN.
+ 
+						</p>
+            <p>Automatically trims oldest messages from log when the replays log exceeds 90% of its configured quota for <code>max-spool-usage</code></p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Last Value Cache</p>
+            <p>Typically keeps only the last message published on each topic. </p>
+            <p>While <MadCap:variable name="Product-Names.pubsub_cache"/> can be configured to keep more than one message per topic, it is a less common use case.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Message QoS</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Logs Guaranteed (or persistent) messages.</p>
+            <p>Logs any messages that get promoted to Guaranteed messages.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Intended for caching Direct (or non-persistent) messages.</p>
+            <p>Connects to the event broker using Direct messaging. If any Guaranteed messages match <MadCap:variable name="Product-Names.pubsub_cache"/> subscriptions, those messages are demoted to Direct when sent to <MadCap:variable name="Product-Names.pubsub_cache"/>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Interactions With Client API
+                    </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>All interactions with client APIs use Guaranteed messaging.
+                    </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>All interactions with client APIs use Direct messaging.
+                    </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Topics Recorded</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Logs all Guaranteed messages published in the Message VPN by default. You can also configure message replay to log messages that match a set of wildcard subscriptions and filters.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>Administrator configures the wildcard topics that are to be stored in the cache.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Message Delivery Order</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Replays messages in original published order. </p>
+            <p>Publish order between topics is preserved.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Cache requests are fulfilled topic-by-topic. </p>
+            <p>Order is preserved within a topic (if depth is greater than 1), but original publishing order between topics is not preserved.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Replay Request Mechanism</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p><MadCap:variable name="Manifest-Products-APIs.PubSub-GenericAll-Messaging-API"/>s						</p>
+            <p>Management interface
+					</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1"><MadCap:variable name="Manifest-Products-APIs.PubSub-GenericAll-Messaging-API"/>s</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Deployment Model</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Integrated feature of the <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker.</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Software application that runs on an external Linux server.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">Message Storage</td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">Uses the Guaranteed messaging infrastructure to persistently store messages.</td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">Stores cached messages in RAM.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Redundancy Model</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Leverages the event broker’s active-standby high-availability (HA ) model.</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Deploy multiple instances for N+1 redundancy.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Performance and Scaling</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Built for logging messages at Guaranteed messaging rates. </p>
+            <p>Add more <MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers to horizontally scale Guaranteed messaging and message replay.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Built for very high rate Direct messaging use-cases like market data distribution. </p>
+            <p>Supports deploying multiple instances to horizontally scale.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">Availability</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Integrated into the <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker; no extra license.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>Optional add-on product that requires purchased license.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

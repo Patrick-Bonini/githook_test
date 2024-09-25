@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+    <MadCap:changeData>
+      <MadCap:RemoveChange MadCap:userName="GilYu" MadCap:initials="GI" MadCap:id="2" MadCap:timestamp="2022-10-04T09:43:00.8721257-04:00"/>
+    </MadCap:changeData>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Data Protection<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> in <MadCap:variable name="Product-Names.cloud_product_titlecase"/></MadCap:conditionalText></h1>
+    <p>Management, monitoring, and messaging data are the types of data that flow through  <MadCap:variable name="Product-Names.cloud_product_firstuse"/>. Each of these types of data  take separate and  well-defined paths. Logically, <MadCap:variable name="Product-Names.cloud_product_short"/> is split into two data planes called the <i>control plane</i> (for management and monitoring data) and a <i>messaging plane</i> (for messaging data). For more information, see <MadCap:xref href="#control-plane-management-data">Control Plane Data</MadCap:xref> and <MadCap:xref href="#messaging-plane-messaging-data">Messaging Plane  Data</MadCap:xref>. </p>
+    <p>All data  is secure and encrypted while stationary or in transit. For more information about data encryption, see <MadCap:xref href="#encryption-overview">Encryption</MadCap:xref>.</p>
+    <p>The following diagram shows how the planes logically look in a typical deployment: </p>
+    <p>
+      <div class="thumbnail-container">
+        <img class="solacethumbnail" src="../../Resources/Images/Cloud-Security/Cloud_Security_Planes.png" alt="Architecture diagram highlighting the Home Clod, Mission Control Agent and Central Monitoring Service in the Control Plane and client applications in the Messaging Plane. Event Broker Services are within both Planes."/>
+      </div>
+    </p>
+    <p> There is a clear separation between the control plane data [management and monitoring (metadata and logs) data]  and the messaging plane [messaging data (events, messages, files, any artifacts that are part of event payload)]. The diagram shows the  <MadCap:variable name="Product-Names.broker_cloud_short"/>s within both planes in a <MadCap:variable name="Product-Names.customer-controlled_region"/> as an example, but the separation of control plane and messaging plane data is the same in any type of deployment. </p>
+    <p MadCap:conditions="Default.HideFromAllOutput"> If you use a customer-controlled private network  where there's no public Internet access required; it also ensures that all messaging data stays within the defined perimeter of the customer-controlled private network. In this deployment environment, the <MadCap:variable name="Product-Names.broker_cloud_short"/>s are deployed on the customer's Kubernetes cluster within a VPC/VNet - referred to as VPC/VNet isolation. For more information about how VPC/VNet isolation fits into the <MadCap:variable name="Product-Names.cloud_product_short"/> architecture, see <MadCap:xref href="vpc-isolation.htm">VPC/VNet Isolation</MadCap:xref>. </p>
+    <p MadCap:conditions="Default.HideFromAllOutput">VPC/VNet, peering technology or VPN connections are used to establish connectivity between the <MadCap:variable name="Product-Names.broker_cloud_short"/>s t and the client applications when they are not in the same private network. </p>
+    <p> The diagram also shows a Kubernetes clusters and depicts how the <MadCap:variable name="Product-Names.cloud_agent_short"/> handles management data between  the <MadCap:variable name="Product-Names.broker_cloud_short"/>s and <MadCap:variable name="Product-Names.home_cloud_long"/>.  This architecture keeps the management/monitoring data separate from the messaging data. For information about the various data flows,   see <MadCap:xref href="#data-leaving-customer-environment">Data Leaving the Customer Environment</MadCap:xref>.</p>
+    <p>One important aspect to consider regarding messaging data is the sovereignty of the data. This comes down to the where the data resides in a geographical location. Since the <MadCap:variable name="Product-Names.cloud_product_short"/> platform can be geographically diverse, it's a good idea to consider this as part of your overall security and data strategy. To address this, you can deploy to a <MadCap:variable name="Product-Names.dedicated_region"/> based on geography. For more information, see <MadCap:xref href="#data-soverignty">Data Sovereignty</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="data-leaving-customer-environment"/>Data Flows within a Customer Environment</h2>
+    <p>The data involved in a deployment of <MadCap:variable name="Product-Names.broker_cloud_short"/>s can be categorized into these types:</p>
+    <dl>
+      <dt>Management Data</dt>
+      <dd> Management data  is sent between the <MadCap:variable name="Product-Names.cloud_agent_short"/>, <MadCap:variable name="Product-Names.home_cloud_long"/>, and <MadCap:variable name="Product-Names.broker_cloud_short"/>s.  Management data includes configuration information for <MadCap:variable name="Product-Names.broker_cloud_short"/>s and metadata that is sent back to <MadCap:variable name="Variables.CompanyName"/> through secure ports. For more information, see <MadCap:xref href="#control-plane-management-data"> Control Plane and Management Data</MadCap:xref>.</dd>
+      <dt>Monitoring Data</dt>
+      <dd> Monitoring data (statistics and event broker logs) are sent to a central monitoring service (Datadog) through secure ports. Transmission of monitoring data is via secure HTTP. Datadog agents use SEMP-based calls to collect statistics and logs from the <MadCap:variable name="Product-Names.broker_cloud_short"/>s.  In most cases, monitoring data is one-way, but for users that use dashboards in Datadog, the monitoring data is configurable via a connection – hence it is shown as two-way data flow. For more information, see <MadCap:xref href="#control-plane-management-data"> Control Plane and Management Data</MadCap:xref>.</dd>
+      <dt>Messaging  Data</dt>
+      <dd>Messaging  data (which includes events, payloads of messages) refers to the information between the <MadCap:variable name="Product-Names.broker_cloud_short"/>s and the publishing and subscribing client applications. No customer data leaves the customer environment if the client applications connect from within the same VPC/VNet. Messaging data is resident within the customer's perimeter (in their VPC/VNet). For more information, see <MadCap:xref href="#messaging-plane-messaging-data">Messaging Plane and Data</MadCap:xref>.</dd>
+      <dd>Any messages transmitted between client applications and the <MadCap:variable name="Product-Names.broker_cloud_short"/>s are secured using encryption, by default. Data stored in the VPC/VNet is encrypted. For about data encryption, see <MadCap:xref href="#encryption-overview">Encryption</MadCap:xref>.</dd>
+    </dl>
+    <h2 class="with-rule"><a name="control-plane-management-data"/>Control Plane  Data</h2>
+    <p>The control plane consists of both management and monitoring data. Management data uses secure SEMP calls to perform tasks such as configuring <MadCap:variable name="Product-Names.broker_cloud_short"/>s,  configuring certificates for <MadCap:variable name="Product-Names.cloud_product_short"/>, and communicating with the <MadCap:variable name="Product-Names.cloud_agent_short"/>. Monitoring data encompasses gather monitoring statistics and logs, which is done using Datadog agents on each event broker (this means there are three Datadog agents in a High-Availability service). The statistics and logs that Datadog agents collect use SEMPv2 based interfaces. </p>
+    <p>The Control Plane uses secure HTTPS calls to make API calls to cloud vendors to configure DNS records and manage compute instances (EC2 Instances, Virtual Machines, etc.).</p>
+    <p>
+      <div class="thumbnail-container">
+        <img src="../../Resources/Images/Cloud-Security/cloud_security_planes_control.png" class="solacethumbnail" alt="Architecture diagram highlighting Control Plane."/>
+      </div>
+    </p>
+    <p>The management data from the control plane travels within a secured communication channel with the <MadCap:variable name="Product-Names.home_cloud_long"/> and the central monitoring service. <MadCap:variable name="Variables.CompanyName"/> uses this data to manage and monitor the health of the <MadCap:variable name="Product-Names.broker_cloud_short"/>s. Management data comes from various functions, including:</p>
+    <ul>
+      <li>User interactions with the <MadCap:variable name="Product-Names.console_ui_long"/> to create and manage <MadCap:variable name="Product-Names.broker_cloud_short"/>s. The creation of an <MadCap:variable name="Product-Names.broker_cloud_short"/> is handled ultimately by the <MadCap:variable name="Product-Names.cloud_agent_short"/> deployed in the same VPC/VNet.</li>
+      <li>User interactions from the  <MadCap:variable name="Product-Names.pubsubmanager_short"/>, which directly  connects to an <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li>
+      <li>Collection of metadata and logs that are sent to the central monitoring service. The monitoring information is sent between <MadCap:variable name="Product-Names.home_cloud_long"/> and the user.</li>
+    </ul>
+    <p>Information from <MadCap:variable name="Product-Names.broker_cloud_short"/>s is collected to monitor the health of the <MadCap:variable name="Product-Names.broker_cloud_short"/>s. For information on the logs collected, see <MadCap:xref href="security-audit.htm#eb-logs">Event Broker Service Logs</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="messaging-plane-messaging-data"/>Messaging Plane Data</h2>
+    <p>The messaging plane contains the events, data, and payload of the messages that are transported between the <MadCap:variable name="Product-Names.broker_cloud_short"/>s and client applications. Messaging data exists in its own plane and is not accessible from the control plane.  </p>
+    <p>
+      <div class="thumbnail-container">
+        <img src="../../Resources/Images/Cloud-Security/cloud_security_planes_message.png" class="solacethumbnail" alt="Architecture diagram highlighting Messaging Plane."/>
+      </div>
+    </p>
+    <ul>
+      <li> For more information, see <MadCap:xref href="event-broker-security.htm">Understanding Security on Event Broker Services</MadCap:xref>.</li>
+      <li MadCap:conditions="SAP.SAPTempHide">For more information about the protocols and APIs used for messaging, see <MadCap:xref href="../../API/Open-APIs-Protocols.htm">Open APIs &amp; Protocols</MadCap:xref>.</li>
+    </ul>
+    <h2 class="with-rule"><a name="encryption-overview"/>Encryption</h2>
+    <p>All data in <MadCap:variable name="Product-Names.cloud_product_short"/> is encrypted. Encryption occurs to data that is in transit (transmitted via events and messages) and at rest (stored in persistent storage for queues). Any logs, management data, or statistics collected are also encrypted.</p>
+    <p>
+      <div class="thumbnail-container">
+        <img src="../../Resources/Images/Cloud-Security/Cloud_Security_Encryption.png" class="solacethumbnail" alt="Architecture diagram showing that all data in transit is encrypted."/>
+      </div>
+    </p>
+    <p>Encryption is a consideration for data  in transit and when it's stored. Sensitive data is treated with additional care on <MadCap:variable name="Product-Names.cloud_product_short"/>.</p>
+    <h3><a name="encryption-of-data-in-transit"/>Encryption of Data in Transit</h3>
+    <p>Data that is transmitted between the client applications (both publishers and subscribers) and the <MadCap:variable name="Product-Names.broker_cloud_short"/>s is secure.  By default, the messaging data that is brokered by the <MadCap:variable name="Product-Names.broker_cloud_short"/>s between publishers (producers) and subscribers (consumers)  is secured in the following manner:</p>
+    <ul>
+      <li><MadCap:variable name="Product-Names.broker_cloud_short"/>s use messaging protocols and ports that are secured with TLS 1.2 (default)<ul><li> non-encrypted protocols (plain-text ports) are available for configuration to support legacy applications, but are disabled by default; plain-text, non-encrypted protocols are not recommended for production environments</li></ul></li>
+      <li>certificates are regularly updated and whenever Security Advisory concerns require resolution</li>
+    </ul>
+    <h3><a name="encryption-data-at-rest"/>Data at Rest</h3>
+    <p MadCap:conditions="Default.HideFromAllOutput">Data at rest is any data that is stored on message spools (virtual storage, persistent storage, external persistent storage). Encryption occurs on disks online and used as backups to provide a layered approach of encryption to ensure that the data remains protected at all times. All disks are encrypted. Any storage services (<MadCap:change MadCap:changes="2">for example, </MadCap:change>S3, databases, etc.) use server-side encryption.</p>
+    <p MadCap:conditions="Default.HideFromAllOutput">On <MadCap:variable name="Product-Names.public_region"/>s and <MadCap:variable name="Product-Names.dedicated_region"/>s, all data at rest is  encrypted using AES-256 and is provided by the cloud vendor's Key Management Service (KMS). Data that is stored follow these principles:
+</p>
+    <ul>
+      <li MadCap:conditions="Default.HideFromAllOutput">Use cloud vendor Key Management Service (KMS) to achieve disk encryption using AES-256</li>
+      <li MadCap:conditions="Default.HideFromAllOutput">
+At-rest encryption is always enabled and is not optional</li>
+      <li>
+        <p MadCap:conditions="Default.HideFromAllOutput">Sensitive data is always encrypted before storage using AES-256</p>
+      </li>
+      <li>
+        <p MadCap:conditions="Default.HideFromAllOutput">Messaging data is only stored on encrypted spool disks in the same cloud region as the <MadCap:variable name="Product-Names.broker_cloud_short"/></p>
+      </li>
+    </ul>
+    <p MadCap:conditions="Default.HideFromAllOutput">For <MadCap:variable name="Product-Names.customer-controlled_region"/>s, <MadCap:variable name="Variables.CompanyName"/> recommends that you use encrypted storage for data at rest.</p>
+    <p>Data at rest is any data stored on message spools (virtual, persistent, and external persistent storage). By default, <MadCap:variable name="Variables.CompanyName"/> applies encryption to all persistent data at rest. We apply encryption to all online and backup disks to ensure data remains protected. We use server-side encryption for storage services (S3, databases, etc.).</p>
+    <p>In <a href="../Deployment-Considerations/deployment-options-ownership.htm#public-cloud" target="_blank" class="link-internal"><MadCap:variable name="Product-Names.public_region"/></a>s and <a href="../Deployment-Considerations/deployment-options-ownership.htm#solace-owned-vnet" target="_blank" class="link-internal"><MadCap:variable name="Product-Names.dedicated_region"/></a>s, we encrypt data at rest using AES-256 and the Key Management Service (KMS) of your chosen cloud provider. <MadCap:variable name="Variables.CompanyName"/> uses the following principles when storing data:</p>
+    <ul>
+      <li>
+        <p>Encrypt by default; encryption is not optional.</p>
+      </li>
+      <li>
+        <p>Use cloud vendor KMS to encrypt disks using AES-256 encryption.</p>
+      </li>
+      <li>
+        <p>Encrypt sensitive data on the <a href="#control-plane-management-data" alt="Link to Control Plane Data information" class="link-internal">Control Plane</a> before storage using AES-256 encryption.</p>
+      </li>
+      <li>
+        <p>Encrypted disks store messaging data reside in the same cloud region as the event broker service.</p>
+      </li>
+    </ul>
+    <h4><a name="self-managed-encryption-key"/>Self-Managed Encryption Keys for <MadCap:variable name="Product-Names.dedicated_region"/>s</h4>
+    <p><MadCap:variable name="Variables.CompanyName"/> supports self-managed encryption keys for some <MadCap:variable name="Product-Names.dedicated_region"/> cloud providers. With a self-managed encryption key, you control access to your data and can revoke the key at any time. <MadCap:variable name="Variables.CompanyName"/> currently supports the following self-managed encryption keys:</p>
+    <ul>
+      <li>
+        <p>
+          <a href="https://aws.amazon.com/kms/" target="_blank" alt="AWS Key Management Service" class="link-offsite">AWS Key Management Service</a>
+        </p>
+      </li>
+      <li>
+        <p>
+          <a href="https://azure.microsoft.com/en-us/products/key-vault/" target="_blank" alt="Azure Key Vault" class="link-offsite">Azure Key Vault</a>
+        </p>
+      </li>
+    </ul>
+    <p>When choosing to encrypt the data at rest in your <MadCap:variable name="Product-Names.broker_cloud_short"/>'s message spools, you must provide the self-managed key to <MadCap:variable name="Variables.CompanyName"/>. </p>
+    <h3><a name="encryption-sensitive-data"/>Encryption of Sensitive Data</h3>
+    <p>Sensitive data, like passwords are hashed using <i>BCrypt</i> and credentials are encrypted using AES-256.</p>
+    <h2 class="with-rule"><a name="data-soverignty"/>Data Sovereignty</h2>
+    <p>Data sovereignty refers to the laws and governance that the collection and storage of data adheres to, which is based on the nation where the data resides or is collected. Since the data is separated into two planes, the sovereignty of the data is as follows:</p>
+    <ul>
+      <li>
+        <p>Messaging data remains with the <MadCap:variable name="Product-Names.broker_cloud_short"/>s, it  adheres to the laws of the geographical region where the <MadCap:variable name="Product-Names.broker_cloud_short"/>s are deployed. The sovereignty of messaging data is a common use case for security regulations and this can be decided by the customer.</p>
+        <p>To address messaging data sovereignty requirements, <MadCap:variable name="Variables.CompanyName"/> recommends the <MadCap:variable name="Product-Names.broker_cloud_short"/>s be installed in a private network (e.g., Kubernetes cluster in a VPC/VNet) in the region where the data must be. For example, if the data must stay within a particular geographical region, deploy the <MadCap:variable name="Product-Names.broker_cloud_short"/>s in that geographical region using private network. For more information about VPC/VNet isolation, see <MadCap:xref href="vpc-isolation.htm">VPC/VNet Isolation</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>Management data comprises of logs, statistics, and metadata. The metadata is utilized and stored by the <MadCap:variable name="Product-Names.home_cloud_long"/> and <MadCap:variable name="Product-Names.console_ui_long"/> (including <MadCap:variable name="Product-Names.eventportal_product_short"/>, <MadCap:variable name="Product-Names.insights_short"/>, and <MadCap:variable name="Product-Names.cluster_mgr"/>), which is referred to as the regional site. A third-party <span href="security-centralized-monitoring-service.htm">central monitoring service</span> (Datadog) collects and stores operational logs, metrics, and statistics that are used for central monitoring from the <MadCap:variable name="Product-Names.home_cloud_short"/>.</p>
+        <p MadCap:conditions="SAP.SapOnlyOutput">At this time, both the <MadCap:variable name="Product-Names.home_cloud_short"/> and central monitoring service are stored in the United States of America and therefore adhere to the laws in the United States of America.</p>
+        <p MadCap:conditions="SAP.SapHideFromOutput">Though less common is the sovereignty of management data, but if this is a requirement, <MadCap:variable name="Variables.CompanyName"/> offers different regional sites from which you can choose.</p>
+        <MadCap:snippetBlock src="../../Resources/Snippets/CloudSecurity/solacecloudsites.flsnp" MadCap:conditions="SAP.SapHideFromOutput"/>
+        <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+          <col class="TableStyle-Table_Num-Column-Column1"/>
+          <col class="TableStyle-Table_Num-Column-Column1"/>
+          <col class="TableStyle-Table_Num-Column-Column1"/>
+          <thead>
+            <tr class="TableStyle-Table_Num-Head-Header1">
+                        </tr>
+          </thead>
+          <tbody>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+                        </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+                        </tr>
+          </tbody>
+        </table>
+      </li>
+    </ul>
+  </body>
+</html>

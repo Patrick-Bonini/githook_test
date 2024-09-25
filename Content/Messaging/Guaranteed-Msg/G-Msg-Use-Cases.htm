@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="Default.HideFromAllOutput">
+  <head/>
+  <body>
+    <h1>Guaranteed Messaging Use Cases</h1>
+    <p>This section provides examples of scenarios where Guaranteed messaging is commonly used:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#message_request_queues">Message Request Queues</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Slow_Consumers">Slow Consumers</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#request_reply">Request/Reply with Guaranteed Messages</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="message_request_queues"/>Message Request Queues</h2>
+    <p>If the queue is created with non-exclusive access mode, consumers can load balance the processing of the message requests. Alternatively, the queue can be made exclusive so that only the first consumer will process requests and the other customers that bind act as backup should the first consumer disconnect. The publishing client is decoupled from knowing how the message items are processed—they simply publish request messages to the queue.</p>
+    <p>The consumers can also configure their maximum window sizes and maximum unacked messages to set how many message items are pipelined to them in their flows. As each message item is processed, the consumer application triggers an acknowledgment back to the event broker to pull another message into its flow pipeline.</p>
+    <p>If you need to ensure that messages persist even if all consumers disconnect from the queue, use a durable queue instead of one that's temporary.</p>
+    <p>It you need to constrain access to the message queue to control which applications can subscribe to the request messages, set a specific user (for example, client user name <code>messageItemProcessor</code>) as the owner of the queue, and set the <code>others</code> permission to <code>none</code>.</p>
+    <h2 class="with-rule"><a name="Slow_Consumers"/>Slow Consumers</h2>
+    <p>Guaranteed messaging can be used to buffer messages for slow consumers. For example, a client application that uses a topic subscription to receive Direct messages and then writes them to a database may not be able to keep up with a large burst of messages from a publisher. </p>
+    <p>To handle such a scenario, the client could create a durable queue and add a topic subscription to it. The topic subscription would attract the messages, which would be changed to non-persistent and spooled to the queue. The client application can then consume and acknowledge without worrying about message rates that overwhelm its processing capabilities. The publisher is also able to publish as quickly as possible and does not need to account for potential slow consuming applications.</p>
+    <h2 class="with-rule"><a name="request_reply"/>Request/Reply with Guaranteed Messages</h2>
+    <p>From a high-level point-of-view, the following steps occur:</p>
+    <ol>
+      <li>The event broker is provisioned to support Guaranteed messaging.</li>
+      <li>The customer application uses a client to create a non-durable queue on the event broker, and then creates a consumer flow to bind to that queue.</li>
+      <li>The client publishes a (possibly Guaranteed) message with the request to a well-known topic, specifying that the reply to the request be sent to the newly created temporary queue.</li>
+      <li>The server listens to the topic (or binds to the queue if it has a topic subscription added to it) and responds to the request by publishing to the specified non‑durable queue.</li>
+      <li>The client consumes the reply message from the non-durable queue. Once it has finished processing the response(s), it closes the flow, which deletes the non-durable queue.</li>
+    </ol>
+  </body>
+</html>

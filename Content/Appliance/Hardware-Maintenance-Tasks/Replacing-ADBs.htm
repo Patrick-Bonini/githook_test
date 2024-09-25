@@ -1,0 +1,398 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><MadCap:concept term="Appliance"/>ADB Replacement</h1>
+    <p>This section describes how to replace ADBs in deployed standalone Solace PubSub+ appliances. It also describes how to replace ADBs in one or both appliances in a high-availability (HA) redundant appliance pair. These replacement procedures will preserve any spooled messages.</p>
+    <p class="Note">The replacement ADB must be the same model as that it is replacing or a newer model that is compatible with the appliance chassis type. Also, if the appliance belongs to an HA pair, the ADBs used by each appliance must be compatible models. For more information, <a href="../../get-support.htm" class="link-internal">contact Solace</a>.</p>
+    <h2 class="with-rule"><a name="ESD/Safe"/>ESD/Safety Precautions</h2>
+    <div class="Caution">
+      <p class="Tbl_Body">To prevent equipment damage from Electrostatic Discharge (ESD), always ensure that the appliance chassis is electrically connected to earth ground. Always follow ESD prevention procedures when removing and replacing power supplies. Use an anti-static wrist strap, or another anti-static device. If no wrist strap or mat is available, touch the metal housing of the chassis to ground yourself.</p>
+    </div>
+    <h2 class="with-rule"><a name="Tool"/>Tool and Equipment Requirements</h2>
+    <p>The following tools and equipment are required to replace an ADB in an appliance:</p>
+    <ul>
+      <li>Electrostatic discharge wrist strap</li>
+      <li>Anti-static mat</li>
+      <li>Anti-static packaging for ADB</li>
+      <li>No. 1 Phillips head screwdriver ( Solace PubSub+ 3260)</li>
+      <li>No. 2 Phillips head screwdriver (Solace PubSub+ 3530 and 3560)</li>
+      <li>A compatible replacement ADB (ordered from Solace)</li>
+    </ul>
+    <h2 class="with-rule"><a name="Standalone"/>Procedure for Standalone Appliances</h2>
+    <p>Perform the following steps to replace an ADB in a standalone appliance:</p>
+    <ol>
+      <li>Determine the current version of Solace PubSub+ software that is running and ensure that it is compatible with the replacement ADB you will be installing:<p class="Code">solace&gt; show version</p><p class="Note">You may need to upgrade the appliance's version depending on the model of the replacement ADB.<MadCap:conditionalText MadCap:conditions="Default.ADB_NAB_4"> For example, if you are replacing an ADB-000000-02 or an ADB‑04210M-01 with an ADB‑000004-01, the appliance must use software version 8.0.0 or greater.</MadCap:conditionalText></p></li>
+      <li>As a protective measure, make a copy of the current Solace PubSub+ configuration in the <code>/configs</code> subdirectory:
+        
+        
+        <p class="Code">solace&gt; enable<br/>solace# copy current-config<br/>/configs/&lt;version&gt;_preBladeReplacementCfg</p><p><u>Where</u>: </p><p><code>&lt;version&gt;</code> is the version number of current Solace PubSub+ software as seen in the output of the, <code>show version</code>, User EXEC command.</p></li>
+      <li>Upgrade the version if necessary.
+                <p>For upgrading information, refer to the <MadCap:xref href="../Appliance-Upgrade/Appliance-Upgrade.htm">Upgrade Procedures</MadCap:xref> for the version you want to upgrade to.</p></li>
+      <li>Ensure that the internal disks are in a redundant state.
+                <p class="Code">solace&gt; show disk</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code">solace&gt; show disk
+Reload required:               No
+ 
+Attribute                        Disk 1               Disk 2
+------------------ -------------------- --------------------
+Device Model                ST3250310NS          ST3250310NS
+Capacity (MB)                    238475                38475
+Admin State                     enabled              enabled
+Operational State                    up                   up
+RAID in fully redundant state: Yes</pre></MadCap:dropDownBody></MadCap:dropDown><div class="Caution"><p class="Tbl_Body">If the displayed output shows the RAID disk drives to be in a non‑redundant state, <a href="../../get-support.htm" class="link-internal">contact Solace</a>, and stop this hardware replacement procedure immediately to prevent software corruption on the appliance.</p></div></li>
+      <li>Enter the following command to verify the event broker is correctly configured. 
+                <p class="Code">solace&gt; show message-spool</p><p>The primary event broker should show <code>Config Status:</code> <code>Enabled (Primary)</code>, <code>Operational Status:</code> <code>AD-Active</code>, and a <code>Datapath Status</code>: <code>Up</code>. </p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code" xml:space="preserve">solace&gt; show message-spool<span style="color: #ff0000;">
+Config Status:                            Enabled (Primary)</span>
+Maximum Spool Usage:                      60000 MB
+
+. . .
+                            <span style="color: #ff0000;">
+Operational Status:                       AD-Active
+Datapath Status:                          Up</span>
+
+. . .
+                                          ADB       Disk      Total
+Current Persistent Store Usage (MB)    0.1200     0.0600     0.1800
+Number of Messages Currently Spooled      579        128        707</pre></MadCap:dropDownBody></MadCap:dropDown></li>
+      <li>Determine whether routing is enabled:
+        <p class="Code">solace&gt; show routing</p></li>
+      <li>Shut down routing if it is enabled:
+        <p class="Code">solace# configure<br/>solace(configure)# routing<br/>solace(configure/routing)# shutdown<br/>solace(configure/routing)# exit</p></li>
+      <li>Shut down messaging services:
+        <p class="Code">solace(configure)# service msg-backbone<br/>solace(configure/service/msg-backbone)# shutdown<br/>All SMF, WEB, and REST clients will be disconnected<br/>Do you want to continue (y/n)? y<br/>solace(configure/service/msg-backbone)# exit</p></li>
+      <li>
+        <p class="SWStep">If the appliance is handling transacted sessions, wait until all transacted sessions time-out and the count drops to 0. This could take up to three minutes.</p>
+        <p>Enter the following command to view the transacted sessions in use (the following example only shows the relevant transacted session usage lines):</p>
+        <p class="Code">solace# show message-spool detail</p>
+        <MadCap:dropDown>
+          <MadCap:dropDownHead>
+            <MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot>
+          </MadCap:dropDownHead>
+          <MadCap:dropDownBody>
+            <pre class="Code" xml:space="preserve">solace# show message-spool detail
+
+. . .
+
+                                  Currently Used   Max Allowed
+                                  --------------   -----------
+Queue and Topic-endpoint Spools:              35         16000
+                         Queues:              32
+                Topic-endpoints:               3
+            Transacted Sessions:               0         16000
+                          Local:               0
+                             XA:               0
+                   Transactions:               0         50000
+                          Local:               0
+                             XA:               0
+
+. . .
+</pre>
+          </MadCap:dropDownBody>
+        </MadCap:dropDown>
+      </li>
+      <li>Shut down the message spool:
+        <p class="Code">solace(configure)# hardware message-spool<br/>solace(configure/hardware/message-spool)# shutdown<br/>All message spooling will be stopped.<br/>Do you want to continue (y/n)? y<br/>solace(configure/hardware/message-spool)# exit<br/>solace(configure)# exit</p></li>
+      <li>Enter the following command to view the total number of spooled messages, and for reference, write down the total number of spooled message:        <p class="Code">solace&gt; show message-spool</p></li>
+      <li>Backup the ADB configuration to the event broker internal disk and export any currently spooled messages from the Guaranteed message spool to the configured internal disk or external disk array.
+            
+                <p class="Code">solace# admin<br/>solace(admin)# system<br/>solace(admin/system)# message-spool<br/>solace(admin/system/message-spool)# backup-adb-to-disk<br/>On the next system startup, the backed-up ADB state on disk will overwrite<br/>the current ADB state.<br/>Do you want to continue (y/n)? y</p></li>
+      <li>Once the CLI output indicates that the ADB backup operation has completed, enter the following command to display the message spool contents. Ensure that there are no messages spooled on the ADB and all messages are spooled to disk.
+        <p class="Code">solace(admin/system/message-spool)# end<br/>solace# show message-spool</p><p class="Note">If there are messages spooled to the ADB, or the number of messages spooled to disk is not the same as the total number of messages recorded earlier, do not continue. <a href="../../get-support.htm" class="link-internal">Contact Solace</a> for assistance. </p></li>
+      <li>Turn off the event broker:
+        <p class="Code">solace# power-down</p></li>
+      <li>Physically replace the ADB with the new ADB:
+        <ul><li>If you are replacing an ADB-000000-01, refer to <MadCap:xref href="Physically-Replacing-Bla.htm#hardware_maintenance_tasks_3613430003_431162">Replacing Blades in FEC CHS-FC1040-01-C or CHS-FC0140-01-B</MadCap:xref>.</li><li>If you are replacing an ADB-000000-02, ADB-04210M-01<MadCap:conditionalText MadCap:conditions="Default.ADB_NAB_4">, or ADB-000004-01</MadCap:conditionalText>, refer to <MadCap:xref href="Physically-Replacing-Bla.htm">Physically Replacing Blades in 3260s</MadCap:xref> or <MadCap:xref href="Physically-Replacing-Bla-1.htm">Physically Replacing Blades in 3530/3560s</MadCap:xref>.</li></ul></li>
+      <li>After the new ADB has been installed in the chassis, power up the appliance.
+        <ul><li>For a Solace PubSub+ 3230 or 3260, use a paper clip to press the (<img src="Images/standby_button.png" style="width: 13.29216px;height: 15.50688px;margin-left: 1.86264px;margin-top: 1.70568px;margin-right: 2.394px;margin-bottom: 0.200159px;vertical-align: text-bottom;" alt=""/>) on/standby button on the front panel of the appliance.</li><li>For a Solace PubSub+ 3530 or 3560, press the (<img src="Images/standby_button.png" style="width: 13.29216px;height: 15.50688px;margin-left: 1.86264px;margin-top: 1.70568px;margin-right: 2.394px;margin-bottom: 0.200159px;vertical-align: text-bottom;" alt=""/>) on/standby button on the rear panel of the appliance.</li></ul><p>Alternately, use WOL to turn power back on to the appliance through a WOL magic packet (refer to <MadCap:xref href="../Turn-Off-Power.htm#Turn_Off_WOL">Turning On Power to Routers Using Wake On LAN</MadCap:xref> for details).</p></li>
+      <li>Wait for the supercapacitor on the ADB to fully charge. This could take up to 15 minutes. To determine its charge level, enter the following command:
+                <p class="Code">solace&gt; show hardware detail</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p class="Note">Only relevant lines from the output are shown.</p><pre class="Code" xml:space="preserve">solace&gt; show hardware detail
+. . .<br/>Power Module Details:<br/>      State:                               Ok<br/>      Charge Level:                        100%<br/>      Estimated Time Until Fully Charged:  0 minutes<br/>. . .</pre></MadCap:dropDownBody></MadCap:dropDown></li>
+      <li>Start the message spool that was shut down:
+        <p class="Code">solace&gt; enable<br/>solace# configure<br/>solace(configure)# hardware message-spool<br/>solace(configure/hardware/message-spool)# no shutdown primary<br/>solace(configure/hardware/message-spool)# exit</p></li>
+      <li>Start the messaging services that were shut down:
+        <p class="Code">solace(configure)# service msg-backbone<br/>solace(configure/service/msg-backbone)# no shutdown<br/>solace(configure/service/msg-backbone)# exit</p></li>
+      <li>If routing was shut down in step 7,  start routing:
+        <p class="Code">solace# configure<br/>solace(configure)# routing<br/>solace(configure/routing)# no shutdown<br/>solace(configure/routing)# end</p></li>
+      <li>To ensure that the message spool is in an AD‑Active state, enter the following command :
+            <p class="Code">solace# show message-spool detail</p></li>
+    </ol>
+    <h2 class="with-rule"><a name="HA-Procedures"/>Procedures for Redundant Appliances</h2>
+    <p>For appliances configured in an HA redundant pair, you can either:</p>
+    <ul>
+      <li>Replace the ADB in one of the appliances in the HA pair. Refer to <MadCap:xref href="#Replace-One-ADB">Replacing One ADB in a Redundant Pair</MadCap:xref>.</li>
+      <li>Replace the ADBs in both appliances if you want to upgrade the versions of ADBs used (for example, replacing ADB‑000000-01 or -02 ADBs with ADB‑04210M-01<MadCap:conditionalText MadCap:conditions="Default.ADB_NAB_4"> or ADB-000004-01</MadCap:conditionalText> ADBs). Refer to <MadCap:xref href="#Replace-Both-ADBs">Replacing Both ADBs in a Redundant Pair</MadCap:xref>.</li>
+    </ul>
+    <p class="Note">When appliances are configured in HA redundant pairs, the ADBs used by each appliance must be compatible models. </p>
+    <h3><a name="Replace-One-ADB"/>Replacing One ADB in a Redundant Pair</h3>
+    <p>When appliances are configured in an HA redundant pair, you can replace the ADB used in one of the appliances with an ADB that is compatible with the one used by its mate. For example, this can be done when an ADB failure has occurred and one of the appliances in the HA redundant pair is handling all messaging activity. </p>
+    <p class="Note">In the example command line snippets provided below, the ADB replacement is performed for the appliance, <code>solace1</code>, which is configured as primary event broker in the redundant pair. However, the ADB can be replaced in an appliance serving as either the active or backup event broker in the HA pair.</p>
+    <p>To replace the ADB of one of the appliances that belongs to an HA redundant pair, perform the following steps:</p>
+    <ol>
+      <li>As a protective measure, for the appliance for which you are replacing the ADB, make a copy of the current Solace PubSub+ configuration in the <code>/configs</code> subdirectory:            
+        <p class="Code">solace1&gt; enable<br/>solace1# copy current-config /configs/&lt;version&gt;_preBladeReplacementCfg</p><p><u>Where</u>: </p><p><code>&lt;version&gt;</code> is the version number of current Solace PubSub+ software as seen in the output of the <code>show version</code> User EXEC command.</p></li>
+      <li>On the appliance that you are replacing the ADB for, enter the following  command to ensure that it surrenders activity for its virtual router VRIDs to its mate appliance:
+        <p class="Code">solace1(configure)# redundancy<br/>solace1(configure/redundancy)# release-activity<br/>solace1(configure/redundancy)# exit</p></li>
+      <li>On the appliance that you are replacing the ADB for, confirm that the backup appliance has taken activity:
+                <p class="Code">solace1# show redundancy</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p class="Note">Output may vary by appliance version. </p><pre class="Code" xml:space="preserve">solace1# show redundancy
+Configuration Status :    Enabled-Released
+Redundancy Status:        Down
+Auto Revert :             No
+Redundancy Mode :         Active/Active
+Mate Router Name :        solace2
+ADB Link To Mate :        Up
+ADB Hello To Mate :       Down
+                              Primary Virtual Router  Backup Virtual Router
+                              ----------------------  ---------------------
+Activity Status               Mate Active             Mate Active
+Routing Interface             1/6/lag1:1              1/6/lag1:2
+VRRP VRID                     50                      197
+Routing Interface Status      Up                      Up
+VRRP Status                   Backup                  Backup
+VRRP Priority                 0                       0
+Message Spool Status          AD-Disabled             AD-Standby
+Priority Reported By Mate     Active                  Active</pre></MadCap:dropDownBody></MadCap:dropDown><p class="Note">If the mate appliance has not taken activity, do NOT proceed with the replacement procedure. Instead, <a href="../../get-support.htm" class="link-internal">contact Solace</a> for further instructions. </p></li>
+      <li>Power down the appliance:
+        <p class="Code">solace1# power-down</p></li>
+      <li>Physically replace the ADB with the new ADB:
+        <ul><li>If you are replacing an ADB-000000-01-A, refer to <MadCap:xref href="Physically-Replacing-Bla.htm#hardware_maintenance_tasks_3613430003_431162">Replacing Blades in FEC CHS-FC1040-01-C or CHS-FC0140-01-B</MadCap:xref>.</li><li>If you are replacing an ADB-000000-02-A, ADB-04210M-01<MadCap:conditionalText MadCap:conditions="Default.ADB_NAB_4">, or ADB-000004-01</MadCap:conditionalText>, refer to <MadCap:xref href="Physically-Replacing-Bla.htm">Physically Replacing Blades in 3260s</MadCap:xref> or <MadCap:xref href="Physically-Replacing-Bla-1.htm">Physically Replacing Blades in 3530/3560s</MadCap:xref>.</li></ul></li>
+      <li>After the new ADB has been installed in the chassis, power up the appliance.        <ul><li>For a Solace PubSub+ 3230 or 3260, use a paper clip to press the (<img src="Images/standby_button.png" style="width: 13.29216px;height: 15.50688px;margin-left: 1.86264px;margin-top: 1.70568px;margin-right: 2.394px;margin-bottom: 0.200159px;vertical-align: text-bottom;" alt=""/>) on/standby button on the front panel of the appliance.</li><li>For a Solace PubSub+ 3530 or 3560, press the (<img src="Images/standby_button.png" style="width: 13.29216px;height: 15.50688px;margin-left: 1.86264px;margin-top: 1.70568px;margin-right: 2.394px;margin-bottom: 0.200159px;vertical-align: text-bottom;" alt=""/>) on/standby button on the rear panel of the appliance.</li></ul><p class="SWResultLineNHS">Alternately, use WOL to turn power back on to the appliance through a WOL magic packet (refer to <MadCap:xref MadCap:unresolvedLink="import-link:general_router_admin_tasks_2612439345_91392"><MadCap:xref href="../Turn-Off-Power.htm#Turn_Off_WOL">Turning On Power to Routers Using Wake On LAN</MadCap:xref></MadCap:xref> for details).</p></li>
+      <li>Wait for the supercapacitor on the ADB to fully charge. This could take up to 15 minutes. To determine its charge level, enter the following command:
+                <p class="Code">solace&gt; show hardware detail</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p class="Note">Only relevant lines from the output are shown.</p><pre class="Code" xml:space="preserve">solace&gt; show hardware detail
+. . .<br/>Power Module Details:<br/>      State:                               Ok<br/>      Charge Level:                        100%<br/>      Estimated Time Until Fully Charged:  0 minutes<br/>. . .</pre></MadCap:dropDownBody></MadCap:dropDown></li>
+      <li> To allow activity to return back to the event broker, enter the following commands:
+        <p class="Code">solace1&gt; enable<br/>solace1# configure<br/>solace1(configure)# redundancy<br/>solace1(configure-redundancy)# no release-activity<br/>solace1(configure-redundancy)# end</p></li>
+      <li><u>Optional</u>: Enter the following commands on the mate event broker to force it back to its original redundancy state:
+        <p class="Code">solace2&gt; enable<br/>solace2# admin<br/>solace2(admin)# redundancy revert-activity<br/>solace2(admin)# end</p></li>
+      <li>On the appliance that you replaced the ADB, enter the following command to confirm that activity status for each virtual router is correct.
+                <p class="Code">solace1# show redundancy</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p class="Note">Output may vary by appliance version. </p><pre class="Code" xml:space="preserve">solace1# show redundancy
+Configuration Status      : Enabled
+Redundancy Status         : Up
+Auto Revert               : No
+Redundancy Mode           : Active/Active
+Mate Router Name          : solace2
+ADB Link To Mate          : Up
+ADB Hello To Mate         : Up
+                                Primary Virtual Router Backup Virtual Router
+                                ---------------------- --------------------
+Activity Status                 Local Active           Mate Active
+Routing Interface               1/6/lag1:1             1/6/lag1:2
+VRRP VRID                       50                     197
+Routing Interface Status        Up                     Up
+VRRP Status                     Master                 Backup
+VRRP Priority                   250                    100
+Message Spool Status            AD-Active              AD-Disabled
+Priority Reported By Mate       Standby                Active</pre></MadCap:dropDownBody></MadCap:dropDown></li>
+    </ol>
+    <h3><a name="Replace-Both-ADBs"/>Replacing Both ADBs in a Redundant Pair</h3>
+    <p>To replace the ADBs in both the primary and backup appliances of a redundant pair, follow this procedure:</p>
+    <ol>
+      <li>Enter the following commands for both the primary and backup appliance to determine the current version of Solace PubSub+ software that they are running:
+        <p class="Code">solace1&gt; show version</p><p> </p><p class="Code">solace2&gt; show version</p><p class="Note">You may need to upgrade the applianceʼs version depending on the model of the replacement ADB.<MadCap:conditionalText MadCap:conditions="Default.ADB_NAB_4"> For example, if you are replacing an ADB-000000-02 or an ADB‑04210M-01 with an ADB‑000004-01, the appliance must use version 8.0.0 or greater.</MadCap:conditionalText></p></li>
+      <li>As a protective measure, copy the current configuration of both appliances.
+            <p class="Code">solace1&gt; enable<br/>solace1# copy current-config /configs/&lt;version&gt;_preBladeReplacementCfg</p><p> </p><p class="Code">solace2&gt; enable<br/>solace2# copy current-config /configs/&lt;version&gt;_preBladeReplacementCfg</p><p class="SWResultLineNHS"><u>Where</u>: </p><p class="SWResultLineNHS"><code>&lt;version&gt;</code> is the version number of current Solace PubSub+ software as seen in the output of the <code>show version</code> command.</p></li>
+      <li>Upgrade the version if necessary.
+                <p>For upgrading information, refer to the <MadCap:xref href="../Appliance-Upgrade/Appliance-Upgrade.htm">Upgrade Procedures</MadCap:xref> for the version you want to upgrade to.</p></li>
+      <li>Ensure that the primary appliance is in the correct redundancy state:
+    <p class="Code">solace1# show redundancy</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p class="Note">Output may vary by appliance version. </p><pre class="Code" xml:space="preserve">solace1# show redundancy
+Configuration Status : Enabled
+Redundancy Status    : Up
+Auto Revert          : No
+Redundancy Mode      : Active/Active
+Mate Router Name     : solace2
+ADB Link To Mate     : Up
+ADB Hello To Mate    : Up
+                              Primary Virtual Router Backup Virtual Router
+                              ---------------------- ----------------------
+Activity Status               Local Active           Mate Active
+Routing Interface             1/6/lag1:1             1/6/lag1:2
+VRRP VRID                     50                     197
+Routing Interface Status      Up                     Up
+VRRP Status                   Master                 Backup
+VRRP Priority                 250                    100
+Message Spool Status          AD-Active              AD-Disabled
+Priority Reported By Mate     Standby                Active</pre></MadCap:dropDownBody></MadCap:dropDown></li>
+      <li>Ensure that the backup appliance is in the correct redundancy state:                <p class="Code">solace2# show redundancy</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p class="Note">Output may vary by appliance version. </p><pre class="Code" xml:space="preserve">solace2# show redundancy
+Configuration Status : Enabled
+Redundancy Status    : Up
+Auto Revert          : No
+Redundancy Mode      : Active/Active
+Mate Router Name     : solace1
+ADB Link To Mate     : Up
+ADB Hello To Mate    : Up
+                              Primary Virtual Router Backup Virtual Router
+                               ---------------------- ----------------------
+Activity Status               Local Active           Mate Active
+Routing Interface             1/6/lag1:1             1/6/lag1:2
+VRRP VRID                     197                    50
+Routing Interface Status      Up                     Up
+VRRP Status                   Master                 Backup
+VRRP Priority                 250                    100
+Message Spool Status          AD-Disabled            AD-Standby
+Priority Reported By Mate     Standby                Active</pre></MadCap:dropDownBody></MadCap:dropDown></li>
+      <li>Check to see if the Solace routing protocols are running on either appliance: 
+                
+        <p class="Code">solace1# show routing</p><p> </p><p class="Code">solace2# show routing</p><p> If routing is enabled on either appliance, you'll see a line that looks like this in the command's output:</p><p class="Code">Enabled:      Yes</p><p> If you see <code>Yes</code> in the output, stop the Solace routing protocols on the appropriate appliance:</p><p class="Code">solace1# configure<br/>solace1(configure)# routing<br/>solace1(configure/routing)# shut<br/>solace1(configure/routing)# exit</p><p> </p><p class="Code">solace2# configure<br/>solace2(configure)# routing<br/>solace2(configure/routing)# shut<br/>solace2(configure/routing)# exit</p></li>
+      <li>Shut down messaging services on both appliances:
+        
+        <p class="Code">solace1(configure)# service msg-backbone<br/>solace1(configure/service/msg-backbone)# shutdown<br/>All clients will be disconnected.<br/>Do you want to continue (y/n)? y<br/>solace1(configure/service/msg-backbone)# exit<br/>solace1(configure/service)# exit</p><p> </p><p class="Code">solace2(configure)# service msg-backbone<br/>solace2(configure/service/msg-backbone)# shutdown<br/>All clients will be disconnected.<br/>Do you want to continue (y/n)? y<br/>solace2(configure/service/msg-backbone)# exit<br/>solace2(configure/service)# exit</p></li>
+      <li>Ensure that auto-revert is not enabled for either appliance:
+        <p class="Code">solace1(configure)# redundancy<br/>solace1(configure/redundancy)# no auto-revert<br/>solace1(configure/redundancy)# end</p><p> </p><p class="Code">solace2(configure)# redundancy<br/>solace2(configure/redundancy)# no auto-revert<br/>solace2(configure/redundancy)# end</p></li>
+      <li>If the appliances are using transacted sessions, wait until all transacted sessions time-out and the count drops to 0. This could take up to three minutes. 
+            <p>Enter the following command to view the transacted sessions in use (the following example only shows the relevant transacted session usage lines):</p><p class="Code">solace1# show message-spool detail</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code" xml:space="preserve">solace1# show message-spool detail
+
+. . .
+
+                                  Currently Used   Max Allowed
+                                  --------------   -----------
+Queue and Topic-endpoint Spools:              35         16000
+                         Queues:              32
+                Topic-endpoints:               3
+            Transacted Sessions:               0         16000
+                          Local:               0
+                             XA:               0
+                   Transactions:               0         50000
+                          Local:               0
+                             XA:               0
+
+. . .
+</pre></MadCap:dropDownBody></MadCap:dropDown></li>
+      <li>Shut down the message spools on both appliances:
+        <p class="Code">solace1# configure<br/>solace1(configure)# hardware message-spool<br/>solace1(configure/hardware/message-spool)# shutdown<br/>All message spooling will be stopped.<br/>Do you want to continue (y/n)? y<br/>solace1(configure/hardware/message-spool)# end</p><p> </p><p class="Code">solace2# configure<br/>solace2(configure)# hardware message-spool<br/>solace2(configure/hardware/message-spool)# shutdown<br/>All message spooling will be stopped.<br/>Do you want to continue (y/n)? y<br/>solace2(configure/hardware/message-spool)# end</p></li>
+      <li>Enter the following command on the primary appliance to release activity to the backup appliance:
+        <p class="Code">solace1# configure<br/>solace1(configure)# redundancy<br/>solace1(configure/redundancy)# release-activity<br/>solace1(configure/redundancy)# end<br/>solace1#</p></li>
+      <li>Enter the following command on the primary appliance to confirm that the primary appliance has released activity for both virtual routers:
+                <p class="Code">solace1# show redundancy</p><p>The Activity Status for both virtual routers should be “Mate Active”.</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p class="Note">Output may vary by appliance version. </p><pre class="Code" xml:space="preserve">solace1# show redundancy
+Configuration Status:     Enabled-Released
+Redundancy Status:        Down
+Auto Revert :             No
+Redundancy Mode :         Active/Active
+Mate Router Name :        solace2
+ADB Link To Mate :        Up
+ADB Hello To Mate :       Down
+                              Primary Virtual Router  Backup Virtual Router
+                              ----------------------  ---------------------
+Activity Status               Mate Active             Mate Active
+Routing Interface             1/6/lag1:1              1/6/lag1:2
+VRRP VRID                     50                      197
+Routing Interface Status      Up                      Up
+VRRP Status                   Backup                  Backup
+VRRP Priority                 0                       0
+Message Spool Status          AD-Disabled             AD-Disabled
+Priority Reported By Mate     Active                  Active</pre></MadCap:dropDownBody></MadCap:dropDown><p class="Note">If the primary does not indicate "Mate Active" for all configured virtual routers,  DO NOT proceed with the upgrade. <a href="../../get-support.htm" class="link-internal">Contact Solace</a> for further instructions.</p></li>
+      <li>Enter the following command on the primary appliance to view the total number of spooled messages, and, for reference, write down the total number of spooled messages:        <p class="Code">solace1# show message-spool</p></li>
+      <li> Enter the following commands on the primary appliance to backup the ADB to disk:<br/><p class="Code">solace1# admin<br/>solace1(admin)# system<br/>solace1(admin/system)# message-spool<br/>solace1(admin/system/message-spool)# backup-adb-to-disk<br/>On the next system startup, the backed-up ADB state on disk will overwrite<br/>the current ADB state.<br/>Do you want to continue (y/n)? y<br/>Moving ADB messages to disk: 100%<br/>Backing up ADB config to disk: 100%<br/>solace1(admin/system/message-spool)# end</p></li>
+      <li>Turn off the primary appliance:
+        <p class="Code">solace1# power-down</p></li>
+      <li>Physically replace the ADB with the new, Solace provided ADB:
+        <ul><li>If you are replacing an ADB-000000-01, refer to <MadCap:xref href="Physically-Replacing-Bla.htm#hardware_maintenance_tasks_3613430003_431162">Replacing Blades in FEC CHS-FC1040-01-C or CHS-FC0140-01-B</MadCap:xref>.</li><li>If you are replacing an ADB-000000-02, ADB-04210M-01<MadCap:conditionalText MadCap:conditions="Default.ADB_NAB_4">, or ADB-000004-01</MadCap:conditionalText>, refer to <MadCap:xref href="Physically-Replacing-Bla.htm">Physically Replacing Blades in 3260s</MadCap:xref> or <MadCap:xref href="Physically-Replacing-Bla-1.htm">Physically Replacing Blades in 3530/3560s</MadCap:xref>.</li></ul></li>
+      <li>After the new ADB has been properly installed in the chassis, power up the appliance:
+        <ul><li>For a Solace PubSub+ 3230 or 3260, use a paper clip to press the (<img src="Images/standby_button.png" style="width: 13.29216px;height: 15.50688px;margin-left: 1.86264px;margin-top: 1.70568px;margin-right: 2.394px;margin-bottom: 0.200159px;vertical-align: text-bottom;" alt=""/>) on/standby button on the front panel of the appliance.</li><li>For a Solace PubSub+ 3530 or 3560, press the (<img src="Images/standby_button.png" style="width: 13.29216px;height: 15.50688px;margin-left: 1.86264px;margin-top: 1.70568px;margin-right: 2.394px;margin-bottom: 0.200159px;vertical-align: text-bottom;" alt=""/>) on/standby button on the rear panel of the appliance.</li></ul><p class="SWResultLineNHS">Alternately, use WOL to turn power back on to the appliance through a WOL magic packet (refer to <MadCap:xref MadCap:unresolvedLink="import-link:general_router_admin_tasks_2612439345_91392"><MadCap:xref MadCap:unresolvedLink="import-link:general_router_admin_tasks_2612439345_91392" href="../Turn-Off-Power.htm#Turn_Off_WOL">Turning On Power to Routers Using Wake On LAN</MadCap:xref></MadCap:xref> for details).</p></li>
+      <li>Wait for the supercapacitor on the ADB to fully charge. This could take up to 15 minutes. To determine its charge level, enter the following command:
+                <p class="Code">solace1&gt; show hardware detail</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p class="Note">Only relevant lines from the output are shown.</p><pre class="Code" xml:space="preserve">solace1&gt; show hardware detail
+. . .<br/>Power Module Details:<br/>      State:                               Ok<br/>      Charge Level:                        100%<br/>      Estimated Time Until Fully Charged:  0 minutes<br/>. . .</pre></MadCap:dropDownBody></MadCap:dropDown></li>
+      <li>Enter the following commands to release activity to the primary appliance from the backup appliance:</li>
+      <ol style="list-style-type: lower-alpha;">
+        <li>Enter the following commands on the primary appliance to allow activity to return back to it:
+        <p class="Code">solace1# configure<br/>solace1(configure)# redundancy<br/>solace1(configure/redundancy)# no release-activity<br/>solace1(configure/redundancy)# end</p></li>
+        <li>Enter the following commands on the backup appliance to administratively force it to give up service:
+        <p class="Code">solace2# configure<br/>solace2(configure)# redundancy<br/>solace2(configure/redundancy)# release-activity<br/>solace2(configure/redundancy)# end</p></li>
+      </ol>
+      <li>Confirm that the backup appliance has released activity for both virtual routers:
+                <p class="Code">solace2# show redundancy</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p class="Note">Output may vary by appliance version. </p><pre class="Code" xml:space="preserve">solace2# show redundancy
+Configuration Status    : Enabled-Released
+Redundancy Status       : Down
+Auto Revert             : No
+Redundancy Mode         : Active/Active
+Mate Router Name        : solace1
+ADB Link To Mate        : Up
+ADB Hello To Mate       : Down
+                              Primary Virtual Router Backup Virtual Router
+                              ---------------------- ----------------------
+Activity Status               Mate Active            Mate Active
+Routing Interface             1/6/lag1:1             1/6/lag1:2
+VRRP VRID                     197                    50
+Routing Interface Status      Up                     Up
+VRRP Status                   Backup                 Backup
+VRRP Priority                 0                      0
+Message Spool Status          AD-Disabled            AD-Disabled
+Priority Reported By Mate     Active                 Active</pre></MadCap:dropDownBody></MadCap:dropDown><p class="Note">If the backup appliance is not Mate Active for both virtual routers, DO NOT proceed with the card replacement. Instead, <a href="../../get-support.htm" class="link-internal">contact Solace</a> for further instructions.</p></li>
+      <li>Power down the backup appliance:
+        <p class="Code">solace2# power-down</p></li>
+      <li>Physically replace the ADB with the new ADB:
+        <ul><li>If you are replacing an ADB-000000-01, refer to <MadCap:xref href="Physically-Replacing-Bla.htm#hardware_maintenance_tasks_3613430003_431162">Replacing Blades in FEC CHS-FC1040-01-C or CHS-FC0140-01-B</MadCap:xref>.</li><li>If you are replacing an ADB-000000-02, ADB-04210M-01<MadCap:conditionalText MadCap:conditions="Default.ADB_NAB_4">, or ADB-000004-01</MadCap:conditionalText>, refer to <MadCap:xref href="Physically-Replacing-Bla.htm">Physically Replacing Blades in 3260s</MadCap:xref> or <MadCap:xref href="Physically-Replacing-Bla-1.htm">Physically Replacing Blades in 3530/3560s</MadCap:xref>. </li></ul></li>
+      <li>After the new ADB has been installed in the chassis, power up the appliance:
+        <ul><li>For a Solace PubSub+ 3230 or 3260, use a paper clip to press the (<img src="Images/standby_button.png" style="width: 13.29216px;height: 15.50688px;margin-left: 1.86264px;margin-top: 1.70568px;margin-right: 2.394px;margin-bottom: 0.200159px;vertical-align: text-bottom;" alt=""/>) on/standby button on the front panel of the appliance.</li><li>For a Solace PubSub+ 3530 or 3560, press the (<img src="Images/standby_button.png" style="width: 13.29216px;height: 15.50688px;margin-left: 1.86264px;margin-top: 1.70568px;margin-right: 2.394px;margin-bottom: 0.200159px;vertical-align: text-bottom;" alt=""/>) on/standby button on the rear panel of the appliance.</li></ul><p class="SWResultLineNHS">Alternately, use WOL to turn power back on to the appliance through a WOL magic packet (refer to <MadCap:xref MadCap:unresolvedLink="import-link:general_router_admin_tasks_2612439345_91392"><MadCap:xref MadCap:unresolvedLink="import-link:general_router_admin_tasks_2612439345_91392" href="../Turn-Off-Power.htm#Turn_Off_WOL">Turning On Power to Routers Using Wake On LAN</MadCap:xref></MadCap:xref> for details).</p></li>
+      <li>Wait for the supercapacitor on the ADB to fully charge. This could take up to 15 minutes. To determine its charge level, enter the following command:
+                <p class="Code">solace2&gt; show hardware detail</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p class="Note">Only relevant lines from the output are shown.</p><pre class="Code" xml:space="preserve">solace2&gt; show hardware detail
+. . .<br/>Power Module Details:<br/>      State:                               Ok<br/>      Charge Level:                        100%<br/>      Estimated Time Until Fully Charged:  0 minutes<br/>. . .</pre></MadCap:dropDownBody></MadCap:dropDown></li>
+      <li> On the backup appliance, enter the following commands to prepare it to accept activity:
+        <p class="Code">solace2# configure<br/>solace2(configure)# redundancy<br/>solace2(configure/redundancy)# no release-activity<br/>solace2(configure/redundancy)# end</p></li>
+      <li> On the primary appliance, enter the following commands to force it back to its original redundancy state:
+        <p class="Code">solace1# admin<br/>solace1(admin)# redundancy revert-activity<br/>solace1(admin)# end</p></li>
+      <li>On the primary event broker, enter the following command to confirm that it is active for the primary virtual router and the backup event broker is active for the backup virtual router. The Activity Status line should read “Subscriptions pending” for the primary virtual router and “Mate Active” for the backup virtual router:
+                <p class="Code">solace1# show redundancy</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p class="Note">Output may vary by appliance version. </p><pre class="Code" xml:space="preserve">solace1# show redundancy
+Configuration Status      : Enabled
+Redundancy Status         : Up
+Auto Revert               : No
+Redundancy Mode           : Active/Active
+Mate Router Name          : solace2
+ADB Link To Mate          : Up
+ADB Hello To Mate         : Down
+                                Primary Virtual Router Backup Virtual Router
+                                ---------------------- --------------------
+Activity Status                 Subscriptions pending  Mate Active
+Routing Interface               1/6/lag1:1             1/6/lag1:2
+VRRP VRID                       50                     197
+Routing Interface Status        Up                     Up
+VRRP Status                     Master                 Backup
+VRRP Priority                   250                    100
+Message Spool Status            AD-Disabled            AD-Disabled
+Priority Reported By Mate       None                   Active</pre></MadCap:dropDownBody></MadCap:dropDown><p class="Note">If the activity status is not correct, DO NOT proceed with the upgrade. Contact Solace technical support for further instructions.</p></li>
+      <li>On both appliances, start the message spools that were shut down:
+        <p class="Code">solace1# configure<br/>solace1(configure)# hardware message-spool<br/>solace1(configure/hardware/message-spool)# no shutdown primary<br/>solace1(configure/hardware/message-spool)# exit<br/>solace1(configure/hardware)# exit</p><p> </p><p class="Code">solace2# configure<br/>solace2(configure)# hardware message-spool<br/>solace2(configure/hardware/message-spool)# no shutdown backup<br/>solace2(configure/hardware/message-spool)# exit<br/>solace2(configure/hardware)# exit</p></li>
+      <li>On both appliances, start the messaging services that were shut down:
+        
+        <p class="Code">solace1(configure)# service msg-backbone<br/>solace1(configure/service/msg-backbone)# no shutdown<br/>solace1(configure/service/msg-backbone)# end</p><p> </p><p class="Code">solace2(configure)# service msg-backbone<br/>solace2(configure/service/msg-backbone)# no shutdown<br/>solace2(configure/service/msg-backbone)# end</p></li>
+      <li>If routing was previously enabled on both appliances, start the Solace routing protocols:
+        
+        <p class="Code">solace1# configure<br/>solace1(configure)# routing<br/>solace1(configure/routing)# no shut<br/>solace1(configure/routing)# end</p><p> </p><p class="Code">solace2# configure<br/>solace2(configure)# routing<br/>solace2(configure/routing)# no shut<br/>solace2(configure/routing)# end</p></li>
+      <li>Ensure that the primary appliance is in the correct redundancy state:
+                <p class="Code">solace1# show redundancy</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p class="Note">Output may vary by appliance version. </p><pre class="Code" xml:space="preserve">solace1# show redundancy
+Configuration Status      : Enabled
+Redundancy Status         : Up
+Auto Revert               : No
+Redundancy Mode           : Active/Active
+Mate Router Name          : solace2
+ADB Link To Mate          : Up
+ADB Hello To Mate         : Up
+                               Primary Virtual Router Backup Virtual Router
+                               ---------------------- ---------------------
+Activity Status                Local Active           Mate Active
+Routing Interface              1/6/lag1:1             1/6/lag1:2
+VRRP VRID                      50                     197
+Routing Interface Status       Up                     Up
+VRRP Status                    Master                 Backup
+VRRP Priority                  250                    100
+Message Spool Status           AD-Active              AD-Disabled
+Priority Reported By Mate      Standby                Active</pre></MadCap:dropDownBody></MadCap:dropDown></li>
+      <li>Ensure that the backup appliance is in the correct redundancy state:                <p class="Code">solace2# show redundancy</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p class="Note">Output may vary by appliance version. </p><pre class="Code" xml:space="preserve">solace2# show redundancy
+Configuration Status    : Enabled
+Redundancy Status       : Up
+Auto Revert             : No
+Redundancy Mode         : Active/Active
+Mate Router Name        : solace1
+ADB Link To Mate        : Up
+ADB Hello To Mate       : Up
+                             Primary Virtual Router Backup Virtual Router
+                             ---------------------- ----------------------
+Activity Status              Local Active           Mate Active
+Routing Interface            1/6/lag1:1             1/6/lag1:2
+VRRP VRID                    197                    50
+Routing Interface Status     Up                     Up
+VRRP Status                  Master                 Backup
+VRRP Priority                250                    100
+Message Spool Status         AD-Disabled            AD-Standby
+Priority Reported By Mate    Standby                Active</pre></MadCap:dropDownBody></MadCap:dropDown></li>
+    </ol>
+  </body>
+</html>

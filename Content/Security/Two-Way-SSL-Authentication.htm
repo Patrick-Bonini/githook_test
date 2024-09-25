@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <style>
+			img {
+			max-width:700px;
+			}
+		</style>
+  </head>
+  <body>
+    <h1>Two-way SSL Authentication for REST</h1>
+    <p>In this tutorial, we will set up two-way SSL authentication for REST in the PubSub+ event broker using self-signed certificates. As we guide you through the steps, we will show you how to generate self-signed certificates, configure the certificates in the event broker instance, and validate the SSL communication.</p>
+    <h2 class="with-rule"><a name="Overview"/>Overview</h2>
+    <p>
+      <b>One-way SSL / Server Certificate Authentication</b>
+    </p>
+    <p>In one-way SSL authentication (Server Certificate Authentication), only the client validates the server; the server does not verify the client application. When implementing one-way SSL authentication, the server application shares its public certificate with the client.</p>
+    <p>
+      <img src="../Resources/Images/Security/oneway_SSL.png" alt=""/>
+    </p>
+    <p>
+      <b>Two-way SSL/ Client Authentication</b>
+    </p>
+    <p>In two-way SSL authentication, the client application verifies the identity of the server application, and then the server application verifies the identity of the client application. Both parties share their public certificates, and then validation is performed. Two-way SSL authentication works with a mutual handshake by exchanging the certificates. You can also authenticate through a username or Common Name injection.</p>
+    <p>
+      <img src="../Resources/Images/Security/twoway_SSL.png" alt=""/>
+    </p>
+    <h3 class="with-rule">Prerequisites</h3>
+    <ul>
+      <li>Install <a href="https://www.openssl.org/" target="_blank" class="link-offsite">OpenSSL</a> to generate self-signed certificates.</li>
+      <li>Install <a href="https://www.postman.com/" target="_blank" class="link-offsite">Postman</a> to test client authentication.</li>
+      <li>Create <a href="../Admin/Configuring-File-Transfer-User-Accounts.htm" class="link-internal">FTP user</a> through the Solace CLI to transfer files.</li>
+      <li>Create a <a href="Configuring-Client-Usernames.htm" class="link-internal">client username</a> in the event broker which will be assigned as a common name (CN) to the client key file</li>
+    </ul>
+    <h3>Assumptions</h3>
+    <ul>
+      <li>Admin access to configure certificates in the PubSub+ event broker </li>
+      <li>Possess working knowledge of the Solace CLI.</li>
+    </ul>
+    <h2 class="with-rule"><a name="Configur"/>Configuring Two-Way SSL Authentication for REST</h2>
+    <p>To configure a two-way SSL authentication, we will generate self-signed certificates using OpenSSL, configure the certificates in the event broker instance, and validate client authentication using Postman.</p>
+    <h3><a name="Step"/>Step 1: Generate SSL server certificate</h3>
+    <p>You can generate a self-signed certificate using the methods described below or get one from your organization's certificate authority.</p>
+    <p>To generate a self-signed SSL server certificate, perform the following steps:</p>
+    <ol>
+      <li>Create TLS key for the event broker:<pre class="Code">openssl genrsa -des3 -out root.key 4096</pre><p>Enter the pass phrase in the prompt.</p></li>
+      <li>Create a server certificate and generate a signing request:<pre class="Code" xml:space="preserve">openssl req -new -x509 -days 1000 -key root.key -out <b>server.pem</b> -subj "/C=/ST=/L=/O=/OU=/CN=root"</pre></li>
+      <li>Create a pem file by concatenating the private key and server certificate:<pre class="Code" xml:space="preserve">cat root.key &gt; server_cert.pem
+cat server.pem &gt;&gt; <b>server_cert.pem</b></pre></li>
+      <li>Place the certificate in the <code>/usr/sw/jail/certs</code>directory using the “SCP” service:<pre class="Code" xml:space="preserve">scp -P2222 /home/&lt;username&gt;/server_cert.pem &lt;Solace FTP User&gt;@&lt;Host&gt;:/certs/</pre><p class="Note">Ensure to create the <a href="../Admin/Configuring-File-Transfer-User-Accounts.htm" class="link-internal">FTP user</a> through the Solace CLI.</p></li>
+    </ol>
+    <h3>Step 2: Enable SSL on the event broker</h3>
+    <p>To enable SSL for REST on the event broker, do the following:</p>
+    <ol>
+      <li>Log into the Solace CLI.</li>
+      <li>	Enable SSL for the Message VPN:<pre class="Code" xml:space="preserve">solace(configure)# message-vpn &lt;vpn-name&gt;
+solace(configure/message-vpn)# service rest
+solace(configure/message-vpn/service/rest)# incoming
+solace(...ure/message-vpn/service/rest/incoming)# listen-port 9443 ssl
+solace(...ure/message-vpn/service/rest/incoming)# no ssl shutdown</pre><p class="Tip">You can also enable SSL using <MadCap:xref href="../Admin/Broker-Manager/PubSub-Manager-Overview.htm"><MadCap:variable name="Product-Names.pubsubmanager_long"/></MadCap:xref>. </p></li>
+      <li>Set the server certificate that you created in <a href="#Step" class="link-internal">Step 1</a> for the event broker to use:<pre class="Code">solace(configure)# ssl<br/>solace(configure/ssl)# server-certificate &lt;filename&gt;</pre><p><u>Where</u>:</p><p><code>&lt;filename&gt;</code> is the filename of the certificate. This file must be located in the <code>/usr/sw/jail/certs</code> directory on the event broker. In this case, <i>server_cert.pem</i> is the filename of the certificate.</p><p>For more information about using server certificates, see <MadCap:xref href="Managing-Server-Certs.htm#Setting">Setting Server Certificates To Use</MadCap:xref>.</p></li>
+    </ol>
+    <h3>Step 3: Verify REST over SSL </h3>
+    <ol>
+      <li>Access the URL with https and SSL port:<pre class="Code">https://&lt;host&gt;:&lt;9443&gt;/</pre></li>
+      <li>
+        <p>Verify that the configured certificates are loaded in the browser.</p>
+      </li>
+    </ol>
+    <h3>Step 4: Generate client-specific certificates</h3>
+    <p>In this step, we will generate client key and client pem files based on the root key and server certificates.</p>
+    <ol>
+      <li>Create client key and csr file:<pre class="Code" xml:space="preserve">openssl req -nodes -new -newkey rsa:4096 -keyout <b>client.key</b> -out <b>client.csr</b> -subj "/C=/ST=/L=/O=/OU=/CN=<b>Client_User</b>"</pre><p>In the above script, <code>Client_User</code> is a Solace client username.</p></li>
+      <li>Generate the client pem file and signing request for REST Client:<pre class="Code">openssl x509 -req -in client.csr -CA server.pem -CAkey root.key -CAcreateserial -out <b>client.pem</b> -days 1825 -sha256</pre><p>The <code>root.key</code> and <code>server.pem</code> files were generated in <MadCap:xref href="#Step">Step 1: Generate SSL server certificate</MadCap:xref>.</p></li>
+      <li>Create the server certificate pem file:<pre class="Code">cat root.key &gt; server_cert.pem
+cat server.pem &gt;&gt; server_cert.pem</pre></li>
+    </ol>
+    <h3>Step 5: Configure the CAs in the event broker</h3>
+    <p>We will now configure the CAs and enable client certificate authentication for the given Message VPN.</p>
+    <ol>
+      <li>Create a certificate authority (CA) and assign the certificate created in the previous step: <pre class="Code" xml:space="preserve">solace&gt; enable<br/>solace# configure<br/>solace(configure)# authentication<br/>solace(configure/authentication)# create certificate-authority &lt;ca-name&gt;<br/>solace(.../authentication/certificate-authority)# certificate file &lt;ca-certificate&gt;</pre><p>Where:</p><p><code>&lt;ca-name&gt;</code> is the name of the CA. You can use a maximum of 64 characters for a <code>ca-name</code>. Acceptable characters are alpha-numeric characters, period (.), hyphen (-), and under score (_).</p><p><code>&lt;ca-certificate&gt;</code>is the filename of the CA certificate. This file must be located in the <code>/usr/sw/jail/certs</code> directory on the event broker. In this case, <i>server.pem</i> is the CA certificate.</p><p>Take a look at <MadCap:xref href="Managing-Certificate-Authorities.htm#configure-client-ca-list">Configuring Certificate Authorities</MadCap:xref> for additional configuration and event broker's version-specific information.</p></li>
+      <li>Assign a username source for the Message VPN:<pre class="Code" xml:space="preserve">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# authentication<br/>solace(configure/message-vpn/authentication)# client-certificate<br/>solace(...vpn/authentication/client-certificate)# username-source common-name<br/>solace(...vpn/authentication/client-certificate)# no shutdown</pre><p>In this case, <i>Client_User</i> is the common name that we will use for authentication.</p><p>For more information on username source, see <a href="Configuring-Client-Authentication.htm#Username-Source" class="link-internal">Client Client Username Sources</a>.</p></li>
+    </ol>
+    <h3>Step 6: Validate client authentication </h3>
+    <p>Finally, we will perform client authentication using Postman. (Version 7.14).</p>
+    <ol>
+      <li>Open Postman, navigate to <b>Preference</b> and click on <b>Certificate</b> to add the client certificates  </li>
+      <li>As shown in the example below, provide the host, port, client.pem and client.key file. <p><p><img src="../Resources/Images/Broker-Security/PostmanTest2.png" alt=""/></p></p><p><img src="../Resources/Images/Security/PostmanTest3.png" alt=""/></p></li>
+      <li>You can now validate client authentication on the browser (https://&lt;host&gt;:9443/TOPIC/test) with No Auth configuration. You should be able to post the message without credentials with 200 OK response.<p><img src="../Resources/Images/Security/PostmanTest4.png" alt=""/></p></li>
+      <li>Optionally, you can also perform negative validation by disabling the &lt;Client_User&gt; and posting the message. It should fail with the “Client Username Is Shutdown” error message in Postman. <p class="Note">Ensure the default user is disabled.</p></li>
+    </ol>
+  </body>
+</html>

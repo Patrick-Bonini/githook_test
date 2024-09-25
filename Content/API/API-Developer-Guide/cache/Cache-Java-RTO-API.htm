@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Using <MadCap:variable name="Product-Names.pubsub_cache"/> With the Java RTO API</h1>
+    <p>When a session has been established with a Solace PubSub+ event broker, a client application using the Solace messaging application programming interface (API) for Java RTO can create a cache session and then make requests for cached messages (that is, cache requests).</p>
+    <p>The basic steps to make a cache request in a session are:</p>
+    <ol>
+      <li>Create a cache session. Refer to <MadCap:xref href="#Creating">Creating Cache Sessions</MadCap:xref>.</li>
+      <li>Send a cache request. Refer to <MadCap:xref href="#Sending">Sending Cache Requests</MadCap:xref>.</li>
+      <li>Receive requested cached messages. Refer to <MadCap:xref href="#Receivin">Receiving Cached Messages</MadCap:xref>.</li>
+      <li>Destroy the cache session. Refer to <MadCap:xref href="#Destroyi">Destroying Cache Sessions</MadCap:xref>.</li>
+    </ol>
+    <h2 class="with-rule"><a name="Creating"/>Creating Cache Sessions</h2>
+    <p>A cache session contains static cache properties and cache state information, and it allows multiple outstanding cache requests and synchronizes those requests.</p>
+    <p>To create a cache session in a connected session, call the <code>sessionHandle.createCacheSessionForHandle(...)</code> function and pass in the cache session properties listed below. A single session can have many cache sessions.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">Cache Session Properties</p>
+      </caption>
+      <col width="25%" class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 75%;"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Parameter</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_BodyCode">CacheSessionHandle.PROPERTIES.CACHE_NAME</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">The identifying name of the Distributed Cache, Cache Cluster, or PubSub+ Cache Instance to send the cache requests to.</p>
+            <p class="Note">Specifying the Distributed Cache is the preferred method because specifying a PubSub+ Cache Instance bypasses redundancy and load balancing of cache requests.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_BodyCode">CacheSessionHandle.PROPERTIES.MAX_AGE</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">The maximum age (in seconds) of the messages to retrieve. Messages that have been cached for more than this amount of time are not retrieved.</p>
+            <p class="Note">A value of 0 returns all possible messages for the topic, as defined by <code>CacheSessionHandle.PROPERTIES.MAX_MSGS</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_BodyCode">CacheSessionHandle.PROPERTIES.MAX_MSGS</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">The maximum number of cached messages to retrieve for any one topic. If more messages are cached for a topic than the maximum value, the newest messages are returned.</p>
+            <p class="Note">A value of 0 retrieves all messages newer than <code>CacheSessionHandle.PROPERTIES.MAX_AGE</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_BodyCode">CacheSessionHandle.PROPERTIES.REQUESTREPLY_TIMEOUT_MS</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">The amount of time (in milliseconds) to wait for a response to the cache request from the cache. This is a per-request timeout where each request sent by the application could result in multiple underlying requests.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="Sending"/>Sending Cache Requests</h2>
+    <p>To send a blocking or a non-blocking cache request for messages published to a specific topic, call <code>cacheSessionHandle.sendCacheRequest(...)</code> and pass in the parameters listed in the table below.</p>
+    <p class="Note">It is up to the client to deal with request timeouts as it is possible that Cache Clusters, event brokers, or individual PubSub+ Cache Instances may fail or disconnect in the middle of cache request processing. The cache response indicates whether the PubSub+ Cache Instance is in a lost message state. Refer to <MadCap:xref href="../../../Additional-Products/Solace-PubSub-Cache/Monitoring-PubSub-Cache-Conf.htm#Lost-Msg-State">Lost Message State</MadCap:xref> for details.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">Cache Request Message Parameters</p>
+      </caption>
+      <col style="width: 25%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <col style="width: 75%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Parameter</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_BodyCode">requestId</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">A 64-bit integer provided by the application that is returned to the application in the cache request response. The request ID is also available in every cached message returned.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_BodyCode">topic</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">The topic for which messages are requested from the cache. Use of <code>#noexport</code> is not supported in the topic.</p>
+            <p class="Note">Wildcard cache requests are only supported for <code>FLOWTHRU</code> cache requests. When a wildcard request matches multiple cached subjects, there are no temporal ordering guarantees between the individual topics returned (although temporal ordering will still be preserved amongst the messages for a specific topic).</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_BodyCode">cacheRequestFlags</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Flags that are used to further define the cache request behavior.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_BodyCode">liveDataAction</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body">Additional flags that can be used to define what happens when live data is received during a cache request.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_BodyCode">subscribeFlags</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">The subscription flags for a subscription made through a cache request are the same as those made through a regular topic subscription. For more information, refer to the documentation provided for <code>SolEnum.SubscribeFlags</code> in <i class="Emphasis"><MadCap:xref href="../../Messaging-APIs/JavaRTO-API/java-rto-home.htm" style="font-style: normal;">Java RTO API</MadCap:xref></i>.</p>
+            <p class="Note">When the cache request flag <code>SolEnum.CacheRequest.NO_SUBSCRIBE</code> is set, subscription flags are ignored.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>The table below lists the optional flags that can be set on a cache request with the <code>cacheRequestFlags</code> parameter.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">Cache Request Flags</p>
+      </caption>
+      <col width="25%" class="TableStyle-Table_Num-Column-Column1"/>
+      <col width="75%" class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Parameter</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_BodyCode">SolEnum.CacheRequest.NO_<br/>SUBSCRIBE</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">If this flag is set, do not include a subscription to the event broker with the cache request. Only send a cache request to the Cache Cluster.</p>
+            <p class="Tbl_Body">By default, a subscription is automatically added for the topic then the cache request is added. By adding the subscription, the client will receive relevant live data messages after it has received all of the cached messages.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_BodyCode">SolEnum.CacheRequest.NO_WAIT_<br/>REPLY</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">If this flag is set, the cache request returns immediately with the <code>SolEnum.ReturnCode.IN_PROGRESS</code> event; when the cache request completes, its status is returned through a callback.</p>
+            <p class="Tbl_Body">By default, this flag is not set, and the send cache request function blocks until the cache request is complete.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>The table below lists the optional flags that can be set on a cache request with the <code>liveDataAction</code> parameter.</p>
+    <p class="Note">When sending cache requests you must always specify one and only one of the CacheLiveDataAction flag options (there is no default).</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">Live Data Action Flags</p>
+      </caption>
+      <col width="25%" class="TableStyle-Table_Num-Column-Column1"/>
+      <col width="75%" class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Parameter</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>SolEnum.CacheLiveDataAction.FULFILL</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>If this flag is set, when live data that matches the outstanding cache request topic arrives before the cache response, allow the live data to fulfill the cache request. Any subsequent matching cached data messages are discarded.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>SolEnum.CacheLiveDataAction.QUEUE</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>If this flag is set, queue received live data messages that match the cache request topic until the cache request completes.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <code>SolEnum.CacheLiveDataAction.FLOWTHRU</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>If this flag is set, received live data messages that match the cache request topic are passed through to the application. A cache request can remain outstanding while live data messages are being passed through. The subsequent matching cached data messages are also delivered to the application.</p>
+            <p class="Note">The <code>SolEnum.CacheLiveDataAction.FLOWTHRU</code> flag must be set for wildcard cache requests.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="Receivin"/>Receiving Cached Messages</h2>
+    <p>When using the Java RTO API, cached messages are received through the message callback defined in the <code>SessionHandle</code> from which the current <code>CacheSessionHandle</code> was created. For more information on receiving direct messages, refer to <MadCap:xref href="../Receiving-Direct-Message.htm" class="MCXref xref" data-mc-unresolved-link="import-link:publishing_direct_messages_2796366838_41099">Receiving Direct Messages</MadCap:xref>.</p>
+    <p class="Note">Messages in cache responses may be bundled together by the cache, but they are delivered to applications individually by the messaging API.</p>
+    <p>If an application registers an event callback with cache requests flagged as <code>SolEnum.CacheRequest.NO_WAIT_REPLY</code> (that is, non-blocking), the cache request status is returned through a callback.</p>
+    <div class="Note">
+      <p>The Java RTO API supports topic dispatch on cache requests. However, if topic dispatch is enabled for a session, messages returned as part of a cache request are only delivered to the session receive callback if the session has a matching subscription.</p>
+    </div>
+    <p>The following table lists the return codes that can be returned. Although these codes are also returned for non-cache request API calls for clients connecting to an event broker, the provided descriptions indicate what the events signify for a cache request.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">Cache Request Events</p>
+      </caption>
+      <col style="width: 25%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <col style="width: 75%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Event</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_BodyCode">SolEnum.ReturnCode.OK</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Indicates that:</p>
+            <ul>
+              <li>the cache replies were all received before the timer expired</li>
+              <li>none of the received cached messages were suspect</li>
+              <li>at least one cache reply had data</li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_BodyCode">SolEnum.ReturnCode.INCOMPLETE</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Indicates that incomplete data has been returned. Reasons might include:</p>
+            <p class="Tbl_Bullet">all of the cache replies contained no data</p>
+            <p class="Tbl_Bullet">at least one message was suspect</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_BodyCode">SolEnum.ReturnCode.FAIL</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">Indicates that an error occurred during the initial cache request. Possible reasons include:</p>
+            <ul>
+              <li>timeout waiting for a cache response</li>
+              <li>a cache error response</li>
+              <li>an add subscription error response</li>
+              <li>a transport error when communicating with the event broker</li>
+            </ul>
+            <p class="Note">If an error occurs after the initial cache request (for example, when communicating with other PubSub+ Cache instances in the Cache Cluster), then <code>SolEnum.ReturnCode.INCOMPLETE</code> is returned.</p>
+            <p class="Note">If a failure occurs, the API does not automatically retry any outstanding cache requests. In addition, if there is a loss of connection with the event broker, any outstanding cache requests are canceled.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="Destroyi"/>Destroying Cache Sessions</h2>
+    <p>To cancel all outstanding requests and destroy the cache session, call the <code>CacheSessionHandle.destroy()</code> function. It is safe to call this function from any thread.</p>
+    <p>When <code>CacheSessionHandle.destroy()</code> is called, the following occurs:</p>
+    <ul>
+      <li>all outstanding cache requests are canceled</li>
+      <li>live messages that have been queued are delivered</li>
+      <li>all blocked synchronous cache requests return immediately with an <code>INCOMPLETE</code> return code, a <code>PARAM_NULL_PTR</code> subcode, and a “Cache session has been destroyed” error string</li>
+      <li>no event is generated for in-progress asynchronous cache requests</li>
+    </ul>
+    <h3><a name="Cancelin"/>Canceling Cache Requests</h3>
+    <p>To cancel all outstanding requests, without destroying the cache session, call the <code>CacheSessionHandle.cancelCacheRequests()</code> function. It is safe to call this function from any thread, and it can be called repeatedly.</p>
+    <p>When <code>CacheSessionHandle.cancelCacheRequests()</code> is called, the following occurs:</p>
+    <ul>
+      <li>all outstanding cache requests are canceled</li>
+      <li>all live messages that have been queued are delivered</li>
+      <li>all blocked synchronous cache requests return immediately with an <code>INCOMPLETE</code> return code and a <code>CACHE_REQUEST_CANCELLED</code> subcode</li>
+      <li>a <code>REQUEST_COMPLETED_NOTICE</code> cache event with a subcode of <code>CACHE_REQUEST_CANCELLED</code> is generated for each in‑progress asynchronous cache request</li>
+    </ul>
+  </body>
+</html>

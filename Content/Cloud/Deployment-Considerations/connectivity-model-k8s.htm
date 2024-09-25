@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Connectivity Model for Kubernetes Deployments</h1>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/deployment-connectivity-models.flsnp"/>
+    <p>For more information, see <MadCap:xref href="#understand-types-of-connectivity">Understanding the Types of Connectivity to Configure</MadCap:xref>.</p>
+    <p class="note">Configuring the external connectivity is important. Incorrect configuration causes issues when installing the <MadCap:variable name="Product-Names.cloud_agent_short"/> later. Ensure that you review and implement the configuration changes required.</p>
+    <p>In environments that restrict access to the public Internet, you <b>must</b> configure the external connectivity for the workloads in the Kubernetes cluster  and we recommend you  consider configuring the broker connectivity as well at the same time. The steps are:</p>
+    <ol>
+      <li>
+        <p>Configure the hosts, IP addresses, and ports to allow access in environments where external connectivity is required for workloads in the cluster. For a complete list, see <MadCap:xref href="connectivity-model-k8s.htm#connection-details-kubernetes">Summary of Connection Details for [%=Product-Names.cloud_product_titlecase%] Components in Kubernetes</MadCap:xref>.</p>
+        <p>Networks that restrict public Internet often use an HTTP proxy, but you can explicitly choose to use an allow list. For more information, see <MadCap:xref href="#proxy-server">Options when External Connectivity Is Limited</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p><a name="gcr-setup"/>Provide access to the <MadCap:variable name="Product-Names.solace_container_registry"/>, in either <code>gcr.io</code> or in the Azure China registry. If you require access to the Azure China registry, <a href="../../get-support.htm" target="_blank" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a>. Access to the <MadCap:variable name="Product-Names.solace_container_registry"/> is required for deployment. If direct access to the <MadCap:variable name="Product-Names.solace_container_registry"/> is not possible, you can proxy it via your own container registry. <MadCap:variable name="Variables.CompanyName"/> will configure the <MadCap:variable name="Product-Names.cloud_agent_short"/> to use your proxy registry. Credentials for the <MadCap:variable name="Product-Names.solace_container_registry"/> can be obtained through the <MadCap:variable name="Product-Names.console_ui_short"/>, see <MadCap:xref href="installing-ps-cloud-k8s-get-secret.htm" target="_blank">Downloading the Registry Credentials for the [%=Product-Names.solace_container_registry%]</MadCap:xref>.</p>
+      </li>
+      <li>Also, consider configuring the ports required for the messaging connectivity. For more information, see <MadCap:xref href="connectivity-model-k8s.htm#event-broker-connectivity">[%=Product-Names.broker_cloud_short_title%] Connectivity for Messaging and Outbound Connections</MadCap:xref>.<ul><li>We recommend that you use a <a href="k8s-using-loadbalancer.htm" class="link-internal">LoadBalancer</a>, but other connectivity options are available such as  NodePort and External IP. If static IPs for outbound connections from <MadCap:variable name="Product-Names.broker_cloud_short"/>s are required, use a NAT. For more information, see <MadCap:xref href="deployment-exposecluster-k8s.htm">Exposing [%=Product-Names.broker_cloud_short_title%]s to External Traffic</MadCap:xref>.</li></ul></li>
+    </ol>
+    <p>After you have completed the necessary connectivity configuration and installed your Kubernetes cluster, you are ready to move to the <a href="deployment-k8s-overview.htm#validate" class="link-internal">next step</a>.</p>
+    <h2><a name="understand-types-of-connectivity"/>Understanding the Types of Connectivity to Configure</h2>
+    <p>The following diagram shows the correct configuration of operational traffic (external connectivity of workloads from the cluster) and messaging traffic (event broker outbound connections and client application connectivity to the <MadCap:variable name="Product-Names.broker_cloud_short"/>s) that need to flow in your data center. Management traffic (SEMP, <MadCap:variable name="Product-Names.solace_cli"/>, and <MadCap:variable name="Product-Names.pubsubmanager_short"/>) is not shown, but could follow the path labeled "Event Broker Service Traffic."</p>
+    <p>
+      <div class="thumbnail-container">
+        <img src="../../Resources/Images/Cloud-Deployment-Guides/private-datacenter-connectivity-k8s.png" class="solacethumbnail" alt="Diagram showing that external clients send event broker service traffic into a private network. The load balancer divides the traffic through software event broker pods and the Mission Control Agent Pod. Using Network Address Translation, both groups of pods can forward the traffic through three different routes. Route one, sends traffic through H T T P S Port 443 to the Central monitoring service. The port can also send the traffic to an S three bucket in the home cloud, or to a Docker repository like G C R dot I O . Route two, sends traffic in Solace message format over TLS encrypted Port 55443 to the home cloud. Route three sends the event broker service traffic to external hosts."/>
+      </div>
+    </p>
+    <p><MadCap:variable name="Product-Names.cloud_product_short_initialcase"/> must be configured to support the following:</p>
+    <dl>
+      <dt>Operational Connectivity</dt>
+      <dd>This traffic carries communication required for proper functioning of the Kubernetes cluster and permits components of <MadCap:variable name="Product-Names.cloud_product_short"/> to install, operate, and monitor <MadCap:variable name="Product-Names.broker_cloud_short"/>s). The installation of the <MadCap:variable name="Product-Names.cloud_agent_short"/> requires this connectivity for communication with  <MadCap:variable name="Product-Names.home_cloud_long"/>.</dd>
+      <dd>For more information, see <MadCap:xref href="#connection-management-configuration">[%=Product-Names.operational_connectivity%]</MadCap:xref>.</dd>
+      <dt>Management Connectivity</dt>
+      <dd>Management connectivity enables the transmission of commands to directly administer <MadCap:variable name="Product-Names.broker_cloud_short"/>s, for example, to configure queues, subscriptions, client profiles, and other settings. These commands can be sent over SSH to the <MadCap:variable name="Product-Names.solace_cli"/>, from a browser to <MadCap:variable name="Product-Names.pubsubmanager_short"/>, and from applications to the <MadCap:variable name="Product-Names.broker_cloud_short"/>s using SEMP. Management traffic requires that the correct ports be enabled. This management connectivity is required for the components that are external to the Kubernetes cluster.</dd>
+      <dt>Messaging Connectivity</dt>
+      <dd>Messaging traffic refers to the transmission of events and messages between different <MadCap:variable name="Product-Names.broker_cloud_short"/>s and between applications and event broker services. It also includes outbound connections initiated by the <MadCap:variable name="Product-Names.broker_cloud_short"/>s, for example,  REST Delivery Points (RDPs). <MadCap:variable name="Variables.CompanyName"/> recommends that you configure the messaging traffic for your <MadCap:variable name="Product-Names.broker_cloud_short"/>s at the time you request the IP addresses and ports required for the workloads in your Kubernetes cluster.</dd>
+      <dd>You can specify the client ports used to connect to <MadCap:variable name="Product-Names.broker_cloud_short"/>s and any ports for outbound connections initiated by the <MadCap:variable name="Product-Names.broker_cloud_short"/>s to your VPC/VNet. For more information, see <MadCap:xref href="#event-broker-connectivity">Messaging Connectivity for  Outbound Connections and Client Applications</MadCap:xref>.</dd>
+    </dl>
+    <p>For security details about the <MadCap:variable name="Product-Names.cloud_agent_short"/>, see <MadCap:xref href="../Security/mission-control-agent-security.htm">Understanding the [%=Product-Names.cloud_agent_short%] and Security</MadCap:xref>.</p>
+    <p>For details about the specific connections required by various components, see <MadCap:xref href="#connection-details-kubernetes">Connection Details for Deployments to Kubernetes</MadCap:xref>.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/Cloud/link-to-default-port.flsnp"/>
+    <h2>
+      <a name="connection-management-configuration"/>
+      <MadCap:variable name="Product-Names.operational_connectivity"/>
+    </h2>
+    <p>You must configure your Kubernetes cluster to allow the required control traffic to deploy <MadCap:variable name="Product-Names.cloud_product_short"/>.</p>
+    <p>The connection details are required to install the <MadCap:variable name="Product-Names.cloud_agent_short"/> (for the management of <MadCap:variable name="Product-Names.broker_cloud_short"/>s and connecting to the <MadCap:variable name="Product-Names.home_cloud_long"/>) and to monitor the <MadCap:variable name="Product-Names.broker_cloud_short"/>s (via Datadog). For a complete summary of the hosts and ports, see <MadCap:xref href="#connection-details-kubernetes">Summary of Connection Details for [%=Product-Names.cloud_product_titlecase%] Components in Kubernetes</MadCap:xref>. For more information about Datadog, see <MadCap:xref href="#data-dog-connectivity">Connectivity for Datadog (for [%=Product-Names.insights_long%] and Monitoring of [%=Product-Names.broker_cloud_short_title%]s)</MadCap:xref>.</p>
+    <h3><a name="proxy-server"/>Options When External Connectivity Is Limited</h3>
+    <p>If your networking policies for your VPC/VNet prevent connectivity to the public Internet, <MadCap:variable name="Variables.CompanyName"/> recommends that you configure your Kubernetes cluster and network using one of the  following options:</p>
+    <dl>
+      <dt>HTTP Proxy Server and Open Ports for <MadCap:variable name="Product-Names.home_cloud_long"/></dt>
+      <dd><a name="review-me"/>Use an HTTP proxy server <b>and</b> explicitly<a href="connectivity-model-k8s.htm#connection-details-kubernetes" class="link-internal"> allow the required IP addresses and ports of <MadCap:variable name="Product-Names.home_cloud_long"/></a>. In this case, you (the customer) must also provide details (URL, username, and password) of the HTTP/HTTPS proxy server to <MadCap:variable name="Variables.CompanyName"/> when you're ready to install the <MadCap:variable name="Product-Names.cloud_agent_short"/>. You must explicitly allow the IP addresses and ports for the <MadCap:variable name="Product-Names.home_cloud_long"/> because it uses Solace Message Format (SMF) as the protocol–not HTTP/HTTPS.  For information, see <MadCap:xref href="k8s-using-proxyservers.htm#operational-proxy" target="_blank">Considerations When Using a Proxy for [%=Product-Names.operational_connectivity%] between [%=Product-Names.cloud_agent_short%] and [%=Product-Names.home_cloud_short%]</MadCap:xref>.</dd>
+      <dt>Only Open Ports Required For <MadCap:variable name="Product-Names.cloud_product_short"/>:</dt>
+      <dd>Explicitly allow only the IP addresses and ports as described in <MadCap:xref href="connectivity-model-k8s.htm#connection-details-kubernetes">Connection Details for [%=Product-Names.cloud_product_titlecase%] Components in Kubernetes</MadCap:xref>.</dd>
+    </dl>
+    <h3><a name="connection-details-kubernetes"/>Connection Requirements for <MadCap:variable name="Product-Names.cloud_product_titlecase"/> Components </h3>
+    <p>You must configure the connectivity for the Kubernetes cluster to allow the deployment of <MadCap:variable name="Product-Names.cloud_product_short"/> components. This operational traffic is required to install the <MadCap:variable name="Product-Names.cloud_agent_short"/> (for the management of <MadCap:variable name="Product-Names.broker_cloud_short"/>s and connecting to the <MadCap:variable name="Product-Names.home_cloud_long"/>), to monitor <MadCap:variable name="Product-Names.broker_cloud_short"/>s (Datadog), and to retrieve container images from Solace's Container Registry (<code>gcr.io</code>).</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/kubernetes_connection_details.flsnp"/>
+    <h3><a name="S3bucketname"/>S3 Bucket Names for Gathered Diagnostics
+        </h3>
+    <p>As detailed in the <MadCap:xref href="#connection-details-kubernetes">Summary of Connection Requirements for [%=Product-Names.cloud_product_titlecase%] Components</MadCap:xref> table above, a host address to an Amazon S3 bucket is required for gathering diagnostics. Replace <code>{bucket_name}</code> in the <code>${bucket_Name}.s3.amazonaws.com</code> string with the appropriate value from the S3 Bucket Name column in the table below. When selecting the S3 bucket, choose the one that is geographically closest to the region where your <MadCap:variable name="Product-Names.broker_cloud_short"/>s are being deployed.
+        </p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/Cloud/S3_Buckets_table.flsnp"/>
+    <h3><a name="data-dog-connectivity"/>Connectivity for the Monitoring of <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</h3>
+    <p>Datadog connectivity is required for the monitoring of <MadCap:variable name="Product-Names.broker_cloud_short"/>s and if you plan to use <MadCap:variable name="Product-Names.insights_long"/>. </p>
+    <p>As shown in the diagram below,  a proxy parameter (containing the proxy server to use) is added to the  Helm chart (in the <b>values.yaml</b> file). When the <MadCap:variable name="Product-Names.cloud_agent_short"/> is installed, its Datadog's sidecar container is created and configured to use that proxy server. The <MadCap:variable name="Product-Names.cloud_agent_short"/> also receives the proxy server parameters via its properties files. Because the <MadCap:variable name="Product-Names.cloud_agent_short"/> has this parameter configured, it configures every <MadCap:variable name="Product-Names.broker_cloud_short"/> it launches to use the proxy server as well:</p>
+    <ul>
+      <li>The Datadog sidecar containers in each <MadCap:variable name="Product-Names.broker_sw_short"/> pod are configured to use the proxy server.</li>
+      <li>The <code>init.sh</code> entry point script in each <MadCap:variable name="Product-Names.broker_sw_short"/> pod is configured to download certificates via the proxy server.</li>
+    </ul>
+    <p>
+      <img src="../../Resources/Images/Cloud-Deployment-Guides/enable-proxy-k8s.png" alt="Diagram showing the components described in the surrounding text."/>
+    </p>
+    <p>The <MadCap:variable name="Product-Names.cloud_agent_short"/> gets its properties files from a ConfigMap instead of from the Solution-Config-Server.</p>
+    <h2><a name="management-connectivity"/><MadCap:variable name="Product-Names.management_connectivity"/> for <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</h2>
+    <p>Your network must permit management traffic  to allow the administration of your <MadCap:variable name="Product-Names.broker_cloud_short"/>s, for example, to configure system-wide features such as clustering and guaranteed messaging. Management traffic can flow:</p>
+    <ul>
+      <li>over SSH to the <MadCap:variable name="Product-Names.solace_cli"/></li>
+      <li> from a browser to <MadCap:variable name="Product-Names.pubsubmanager_short"/></li>
+      <li>from applications to the <MadCap:variable name="Product-Names.broker_cloud_short"/>s using SEMP</li>
+    </ul>
+    <p>For more information about the protocols and ports, see <MadCap:xref href="../Security/security-client-connectivity.htm#client-apps-management">Client Applications  for Management</MadCap:xref>.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/BrokerManager/broker-manager-connectivity.flsnp"/>
+    <p>You may need to configure your network to allow the ports used by management traffic. For details about the port configuration of <MadCap:variable name="Product-Names.broker_cloud_short"/>s, see <MadCap:xref href="../create-service.htm#Configure-Custom-Ports">Configuring Client Port Connections</MadCap:xref>.</p>
+    <h2><a name="event-broker-connectivity"/><MadCap:variable name="Product-Names.messaging_connectivity"/> for  Outbound Connections and Client Applications</h2>
+    <p>You must configure your network to allow  outbound connections initiated by <MadCap:variable name="Product-Names.broker_cloud_short"/> and client applications. Although this connectivity is not required during deployment, we recommend that you configure it because:</p>
+    <ul>
+      <li>Much  of your network connectivity architecture is being defined during deployment</li>
+      <li>You can define all the necessary ports at one time with your security team. </li>
+    </ul>
+    <p>You should ensure that your network architecture takes into account the following types of connectivity:</p>
+    <dl>
+      <dt>Connectivity to permit messaging traffic between <MadCap:variable name="Product-Names.broker_cloud_short"/>s and client applications external to the Kubernetes cluster</dt>
+      <dd>The messaging traffic includes various messaging patterns (point-to-point, publish-subscribe, request-reply) for event messaging. The ports used depend on the protocol and typically go through a public load balancer for external clients. For example, client applications that connect to <MadCap:variable name="Product-Names.broker_cloud_short"/>s to publish and subscribe to event data would use this type of traffic. For more information, see <MadCap:xref href="../Security/event-broker-security.htm#using-event-broker-services">Connectivity Between Event Broker Services and Client Applications</MadCap:xref>.</dd>
+      <dd>If you are using a load balancer to expose your <MadCap:variable name="Product-Names.broker_cloud_short"/>s to external client applications, <MadCap:variable name="Variables.CompanyName"/> recommends setting the <code>externalTrafficPolicy</code> to <code>local</code>. For more information see our traffic policy recommendation in <a href="k8s-using-loadbalancer.htm#traffic_policy_recommendation" target="_blank" class="link-internal">Using an Integrated Load Balancer Solution</a>.</dd>
+      <dd>Messaging client applications can connect   from other VPCs/VNets or from the public Internet. Alternatively, you may decide not to permit clients from external IP address to connect, for example if your messaging client applications reside in the same Kubernetes cluster. For details about these options, see <MadCap:xref href="deployment-exposecluster-k8s.htm">Exposing Event Broker Services to External Traffic</MadCap:xref>. </dd>
+      <dt>Connectivity for outbound traffic from <MadCap:variable name="Product-Names.broker_cloud_short"/>s to hosts outside the Kubernetes cluster</dt>
+      <dd> Outbound traffic to external hosts refers to where the connection is initiated by the <MadCap:variable name="Product-Names.broker_cloud_short"/>s. For private networks that require outbound traffic to external hosts, customers must use  a  NAT configured with a public-facing, static IP address.</dd>
+      <dd> For more details on the networking architecture, see using <MadCap:xref href="k8s-connectivity-outbound.htm">Using NAT with Static IP addresses for Outbound Connections</MadCap:xref>. </dd>
+      <dd>For information about outbound connections, see <MadCap:xref href="../Security/event-broker-security.htm#outbound">Outbound Connections Initiated by  [%=Product-Names.broker_cloud_short_title%]s  </MadCap:xref>.</dd>
+    </dl>
+  </body>
+</html>

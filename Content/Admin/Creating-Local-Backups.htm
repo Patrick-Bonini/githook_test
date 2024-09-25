@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Creating Local Backups of Configuration Files</h1>
+    <p>Manually creating a local backup of a configuration file saves the latest configuration file pertaining to your user account in <code>/configs/backup</code>.</p>
+    <p class="Warning">Do not use this procedure for <MadCap:variable name="Product-Names.broker_cloud_short"/>s in <MadCap:variable name="Product-Names.cloud_product_short"/>. Using this procedure in <MadCap:variable name="Product-Names.cloud_product_short"/>  may result in a degradation of service. Instead, see <MadCap:xref href="../Cloud/backup-brokers-messaging.htm">Backing Up [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref> for more information.</p>
+    <p class="Note">For <MadCap:variable name="Product-Names.broker_sw_short"/>s and <MadCap:variable name="Product-Names.broker_appliance_short"/>s, <MadCap:variable name="Variables.CompanyName"/> recommends that you always create a local backup of your configuration file after the event broker configuration is changed to ensure the most recent backup file available is always current. </p>
+    <MadCap:snippetBlock src="../Resources/Snippets/broker-config-not-backed-up.flsnp"/>
+    <p>To create a local backup of your configuration file, follow this procedure:</p>
+    <ol>
+      <li>Enter the following commands:
+        <pre>solace&gt; enable
+solace# backup</pre><p class="Note">CLI <code>show</code> commands may fail if run while a local backup is being created.</p></li>
+      <li>To confirm your local backup was created successfully, enter the following command:
+        <pre>solace# show backup</pre><p>An example response is:</p><pre xml:space="preserve">Schedule            : Never
+Max Backups         : N/A
+Previous Autobackup : N/A
+Previous Backup     : Fri Jun 08 10:07:18 EDT
+Backup Status       : Unchanged since previous backup</pre></li>
+    </ol>
+    <h2 class="with-rule"><a name="system_and_software_maint_tasks_Sched_backups"/>Scheduling Local Backups of Configuration Files</h2>
+    <p>You can schedule a local backup of configuration files on an event broker and automate the backup to occur regularly at a preset date, time and location. No manual interfacing is necessary to initiate the backup.</p>
+    <h3><a name="system_and_software_maint_tasks_Sched_backups_when_to"/>When to Schedule Local Backups</h3>
+    <div class="Caution">
+      <p class="Tbl_Body">Scheduling or performing a local backup on the event broker during peak use hours within periods of heavy subscription message activity may cause a brief traffic outage.</p>
+    </div>
+    <p>It is best to schedule backups at a time when people are not normally using the system. Often, system administrators choose to perform backups at the close of the workday or later in the evening. It is also a good idea to schedule the backup for the same time every day so users know when to expect it and can plan ahead.</p>
+    <p>Backup can be scheduled daily or weekly. The frequency of changes to information is a good indicator of how often you need to back up data. If the frequency of data revisions is high, then a backup should be scheduled daily so that potential loss of data is minimal.</p>
+    <p class="Note">By default, no configuration file backups are scheduled on event brokers.</p>
+    <h3><a name="system_and_software_maint_tasks_Sched_backups_scheduling"/>Scheduling Local Backups</h3>
+    <div class="Caution">
+      <p class="Tbl_Body">Never rename or move local backup configuration files on the event broker. This ensures that if the event broker needs to automatically restore the backup configuration file, the correct backup file is available.</p>
+    </div>
+    <p>To schedule automatic local backups of configuration files on the event broker, follow this procedure:</p>
+    <ol>
+      <li>Enter the following Solace CLI commands:
+        <pre>solace&gt; enable
+solace# configure
+solace(configure)# schedule backup [days &lt;days-of-week&gt;] times &lt;times-of-day&gt; [max-backups &lt;max-backups&gt;]</pre><p><u>Where</u>:</p><p><code>&lt;days-of-week&gt;</code> is either the entry “daily”, or a list of named days from Sunday to Saturday separated by commas with no spaces, or a list of numbers from 0 to 6 representing the named days separated by commas with no spaces, where 0 is Sunday, 1 is Monday, on through to 6 for Saturday. Default is “daily”.</p><p><code>&lt;times-of-day&gt;</code> is either the entry “hourly”, or a list of up to four times of day in the format hh:mm separated by commas without spaces, where hh is 0 to 23 representing hours, and mm is 0 to 59 representing minutes.</p><p><code>&lt;max-backups&gt;</code> is the maximum number of scheduled backups to keep from 1 to 25. When a new scheduled backup causes the number of backups to exceed the set maximum, the oldest backup file is deleted. The default value is 5 backups if this parameter is not provided.</p><p class="Note">The <code>no</code> version of this command deletes all automatic file backup schedules and returns the event broker to its default (that is, no scheduled backups).</p><p>For example, to schedule an automatic local backup weekly for every Tuesday and Friday at 3:15 am and 8:10 pm, and then backup your configuration changes, enter:</p><pre>solace(configure)# schedule backup days 2,friday times 3:15,20:10
+solace(configure)# end
+solace#</pre></li>
+      <li>To confirm your scheduled local backup was assigned successfully, enter the following User EXEC command.
+        <pre>solace# show backup</pre><p>An example response is:</p><pre>Schedule            : Tue,Fri 3:15,20:10
+Max Backups         : 5
+Previous Autobackup : N/A
+Previous Backup     : Fri Mar 13 13:06:40 EST
+Backup Status       : Changed since previous backup</pre></li>
+      <li><b>Optional: </b>To confirm your scheduled local backup was created at the assigned time, enter the following command:
+        <pre>solace# dir configs</pre><p>An example response is:</p><pre>-rw-rw-rw-     root     root 25749320 Mar 24 03:15 autobackup
+-rw-rw-rw-     root     root 25749348 Mar 24 20:10 autobackup.1
+-rw-rw-rw-     root     root 25749348 Mar 31 03:15 autobackup.2
+-rw-rw-rw-     root     root 25749348 Mar 31 20:10 autobackup.3</pre></li>
+    </ol>
+  </body>
+</html>

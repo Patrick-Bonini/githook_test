@@ -1,0 +1,553 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><MadCap:variable name="Manifest-Products-Connectors.connector_manager_long"/> for <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector_titlecase"/>s</h1>
+    <p>As you have your <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/>s running, managing and monitoring them is crucial to ensure the smooth functioning of your data pipeline. <MadCap:variable name="Manifest-Products-Connectors.connector_manager_long"/>  fills in this gap to facilitate this. The <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>:</p>
+    <ul>
+      <li>
+        <p>acts as a central configuration source for all  <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/> instances, making it easier to manage  them in a consistent manner. </p>
+      </li>
+      <li>
+        <p>provides real-time monitoring and reporting on   <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/> performance. This includes all metrics configured and shared through the management interface, such as data throughput, latency, and error rates. You can use this information to identify potential issues in a  <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/> deployment and troubleshoot and resolve them.</p>
+      </li>
+      <li>
+        <p>provides configuration version control by maintaining the version history of each  <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/>'s configuration, allowing you to identify changes and roll back to previous versions if needed. This ensures that changes are made in a controlled and traceable manner.</p>
+      </li>
+    </ul>
+    <p>To understand how to use <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>, see the following sections: </p>
+    <ul>
+      <li>
+        <p>
+          <MadCap:xref href="#installing-the-connector-manager">Installing the [%=Manifest-Products-Connectors.connector_manager_short%]</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#configuring-the-connector-manager">Configuring [%=Manifest-Products-Connectors.connector_manager_long%]</MadCap:xref>
+        </p>
+      </li>
+    </ul>
+    <p class="Note">The following sections show how to use  <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector_for_IBM_MQ"/> as an example (that is provided in the  archive file (ZIP) in the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> package) as a reference example. </p>
+    <h2 class="with-rule"><a name="installing-the-connector-manager"/>Installing the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/></h2>
+    <p>To set up and install the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>, you must download the  package from  the <a href="[%=Manifest-Products-Links.CompanyProductsWebsitePSConnectorMgr%]" class="link-offsite"><MadCap:variable name="Variables.CompanyName"/> product website</a>. The <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> is available with a subscription to a support plan from <MadCap:variable name="Variables.CompanyName"/>. The  <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> download is an archive file (ZIP) of a Docker (or Podman) container. </p>
+    <h3><a name="starting-the-connector-manager"/>Starting the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/></h3>
+    <p>The extracted archive has the following structure:</p>
+    <pre xml:space="preserve">.
+├──pubsubplus-connector-manager-<MadCap:variable name="Manifest-Products-Connectors.connector-manager-latest-version"/>
+├── LICENSE.pdf
+├── README.md
+├── licenses.txt
+├── pubsubplus-connector-manager-<MadCap:variable name="Manifest-Products-Connectors.connector-manager-latest-version"/>.jar
+└── samples
+	├── connectors
+	│   ├── connector.sh
+	│   ├── applications
+	│   ├── connectors-configs
+	│   │   └── ibmmq
+	│   │       └── application.yml
+	│   ├── libs
+	│   └── security
+	│       └── demo.jks
+	└── manager
+	    ├── README.md
+	    ├── config
+	    │   ├── application-operator.yml
+	    │   └── application.yml
+           ├── cloud-configs
+           │   └── ibmmq.yml
+	    ├── docker
+	    │   ├── README.md
+	    │   └── docker-compose.yml
+	    └── start.sh</pre>
+    <p>This bundle contains a nested <code>samples</code> folder, which includes various examples of <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> configurations, along with shell scripts to initiate their operation. In this folder, there are two subfolders:</p>
+    <ul>
+      <li>
+        <p><code>connectors-&lt;description&gt;</code> contains all the necessary example configurations and startup script for sample <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/>s that are meant to be started with the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> (with the <code>connector.sh</code> shell script).</p>
+      </li>
+      <li>
+        <p><code>manager</code> contains the initial configuration for the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> (with the <code>start.sh</code> shell script).</p>
+      </li>
+    </ul>
+    <p>Before you use the accompanying scripts, you must verify and set the appropriate permissions. If the execution bit is missing, you can fix it by running these commands:</p>
+    <pre>chmod +x ./manager/start.sh
+chmod +x ./connectors/connector.sh</pre>
+    <p>Other subfolders in the samples directory contain necessary configuration files, as well as a security keystore. For example, the provided <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> archive has a pre-generated keystore called <code>demo.jks</code>, which is used solely for demonstration purposes.</p>
+    <h4><a name="starting_the_connector_manager_with_shell_script"/>Starting the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> with Shell Script</h4>
+    <p>The shell script to start the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> allows you to initiate a <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> instance and pre-configure it with essential parameters (see <a href="#parameters-to-use-with-shell-script-for-the-connector-manager">Script Shell Parameters</a>). This script is stored in the <code>samples/manager</code> folder. </p>
+    <p>To start the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> with shell script, run:</p>
+    <pre># working directory is set to: [./samples/manager]
+
+$&gt; ./start.sh -j ../../pubsubplus-connector-manager-<MadCap:variable name="Manifest-Products-Connectors.connector-manager-latest-version"/>.jar</pre>
+    <p>The previous command:</p>
+    <ul>
+      <li>
+        <p>sets the configuration folder for the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> to <code>samples/manager/config</code></p>
+      </li>
+      <li>
+        <p>sets the remote configurations folder to <code>samples/manager/cloud-configs</code> and initializes it as a Git repository</p>
+      </li>
+      <li>
+        <p>initiates the Java JAR artifact with the name <code>pubsubplus-connector-manager-<MadCap:variable name="Manifest-Products-Connectors.connector-manager-latest-version"/>.jar</code></p>
+      </li>
+    </ul>
+    <p>You can now access the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> on the local machine at port <code>9500</code> with the default credentials (<code>user</code> as the username and <code>pass</code> as the password):</p>
+    <pre>java -jar &lt;...ABSOLUTE_PATH...&gt;/pubsubplus-connector-manager-<MadCap:variable name="Manifest-Products-Connectors.connector-manager-latest-version"/>.jar  \
+      --spring.config.additional-location=./config/ \
+      --spring.cloud.config.server.git.uri=file://&lt;...ABSOLUTE_PATH...&gt;/samples/manager/cloud-configs/</pre>
+    <p>This is a full list of the parameters that you can use with shell script for the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>:</p>
+    <table style="width: 100%;mc-table-style: url('../../../../Resources/TableStyles/Table_Num.css');margin-left: 0;margin-right: auto;" class="TableStyle-Table_Num" cellspacing="0">
+      <caption style="text-align: left;">
+        <a name="parameters-to-use-with-shell-script-for-the-connector-manager"/>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 25%;"/>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 75%;"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="text-align: center;">Parameter</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1" style="text-align: center;">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p><code>-p</code> or <code>--profile</code></p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The profile to be used with the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> configuration. The <code>application-&lt;profile&gt;.yml</code>configuration file  is used. The default value is empty, which means that the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> will look for a configuration file called <code>application.yml</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p><code>-U</code> or <code>--username</code></p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Defines a username for authentication purposes. If not provided, it is set to <code>user</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p><code>-P</code> or <code>--password</code></p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Defines a password for authentication purposes. If not provided, it is set to <code>pass</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1"><code>-c</code> or <code>--config</code></td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>The path to the folder that contains the configuration files to be applied during  <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/> startup for the chosen profile. By default, it is set to the current folder and automatically looks in nested and sibling <code>config</code> folders (if any), as well as in the current and parent folders.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p><code>-C</code> or <code>--configs</code></p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>A link to the remote storage with configuration. This should include a reference to the protocol used to access resources (for example, <code>file://</code>, <code>ssh://</code>, or <code>http://</code>). If the prefix is not defined, it will be treated as a local file with an appropriate protocol.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p><code>-H</code> or <code>--host</code></p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Predefined host value to be passed into the <code>server.host</code> application parameter.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p><code>-P</code> or <code>--port</code></p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>	Predefined port value to be passed into the <code>server.port</code> application parameter.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p><code>-j</code> or <code>--jar</code></p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>The path to the specified JAR file to start the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>. If not specified, the default JAR file from the current folder is used.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p><code>-o</code> or <code>--options</code></p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies the JVM options that are used when starting the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> (for example, <code>-Xms64M -Xmx1G</code>). Use single/double quotes to specify parameters.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p><code>-b</code> or <code>--background</code></p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Runs the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> in the background. No logs are displayed, and the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> continues to run in detached mode.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p><code>-s</code> or <code>--show</code></p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Prints the start CLI command in raw format and exits.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p><code>-h</code> or <code>--help</code></p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>Prints this help page and exits.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-weight: bold;"> Examples</p>
+    <p>These examples show how to start the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> with various configurations and options. All scripts must be run from the <code>samples/manager</code> folder for the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> and from the <code>samples/connectors</code> folder for the <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/>s.</p>
+    <p style="font-weight: normal;">To start the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> with different credentials:</p>
+    <pre>$&gt; ./start.sh -j ../../pubsubplus-connector-manager-<MadCap:variable name="Manifest-Products-Connectors.connector-manager-latest-version"/>.jar -U admin -P admin</pre>
+    <p style="font-weight: normal;">To start the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> on a different port:</p>
+    <pre>$&gt; ./start.sh -j ../../pubsubplus-connector-manager-<MadCap:variable name="Manifest-Products-Connectors.connector-manager-latest-version"/>.jar --port 9100</pre>
+    <p style="font-weight: normal;">To start the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> with a different profile:</p>
+    <pre>$&gt; ./start.sh -j ../../pubsubplus-connector-manager-<MadCap:variable name="Manifest-Products-Connectors.connector-manager-latest-version"/>.jar -p operator</pre>
+    <p style="font-weight: normal;">To start the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> with a different config folder:</p>
+    <pre>$&gt; ./start.sh -j ../../pubsubplus-connector-manager-<MadCap:variable name="Manifest-Products-Connectors.connector-manager-latest-version"/>.jar -c different/config/folder</pre>
+    <p style="font-weight: normal;">To start the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> with a different cloud config repository:</p>
+    <pre>$&gt; ./start.sh -j ../../pubsubplus-connector-manager-<MadCap:variable name="Manifest-Products-Connectors.connector-manager-latest-version"/>.jar -C different/config/repo</pre>
+    <p>The cloud config repository must be initiated as a Git repository. By default, this script initializes the provided folder as a Git repository (if it doesn't contain the <code>.git</code> folder)  and commits all changes as an initial commit. However, it does this only for folders that can be accessed locally (not through SSH or HTTP/HTTPS protocols).</p>
+    <p style="font-weight: bold;">Show start CLI command:</p>
+    <p>This script prints the CLI commands to be executed during the script run. To do this, add <code>-s</code> as a parameter to the script input:</p>
+    <pre>$&gt; ./start.sh -j ../../pubsubplus-connector-manager-<MadCap:variable name="Manifest-Products-Connectors.connector-manager-latest-version"/>.jar -p operator -C different/config/repo -U admin -P admin -H 10.0.0.100 --port 8000 -s</pre>
+    <p>This command doesn't start the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>, but prints out the following CLI command:</p>
+    <pre>java -Dspring.profiles.active=operator -jar &lt;...ABSOLUTE_PATH...&gt;/pubsubplus-connector-manager-<MadCap:variable name="Manifest-Products-Connectors.connector-manager-latest-version"/>.jar  --spring.cloud.config.server.git.uri=file://&lt;...ABSOLUTE_PATH...&gt;/samples/manager/different/config/repo/ --solace.connector-manager.security.users[0].name=admin --solace.connector-manager.security.users[0].password=admin --server.host=10.0.0.100 --server.port=8000 --spring.config.additional-location=./config/</pre>
+    <p>This might be useful if you want to use your own generated keystore file to encrypt values but not leave that functionality enabled permanently.</p>
+    <h4><a name="starting_the_connector_manager_as-a-docker-image"/>Starting the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> as a Docker (or Podman) Container </h4>
+    <p>The  <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> Docker (or Podman) container contains all necessary dependencies as well as the archive. Before you start the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> as a container, you must bind a volume with the configuration file and provide access to the folder containing configurations for the <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/>s.</p>
+    <p>To start the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> as a container, run:</p>
+    <pre>docker run -p 9500:9500 \
+-v &lt;CONNECTOR MANAGER CONFIGURATION&gt;:/config \
+-v &lt;CONFIGURATION STORAGE FOLDER&gt;:&lt;CONFIGURATION STORAGE FOLDER&gt; \
+pubsubplus-connector-manager:<MadCap:variable name="Manifest-Products-Connectors.connector-manager-latest-version"/>;</pre>
+    <p>The previous command starts the container and binds two volumes: </p>
+    <ul>
+      <li>
+        <p>One volume contains the configuration file (which is mapped to an internal folder called <code>config</code>) for the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>,  where the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> reads your configuration. </p>
+      </li>
+      <li>
+        <p>One volume is the folder that contains the configuration files for the <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/>s.</p>
+      </li>
+    </ul>
+    <p>If the configuration folder with the configuration files is stored remotely, the container might need to access it via the <code>ssh</code> protocol. In this case, you must generate a separate key pair using the <code>ssh-keygen</code> command and provide access to it:</p>
+    <pre>docker run -p 9500:9500 \
+-v &lt;CONNECTOR MANAGER CONFIGURATION&gt;:/config \ # mandatory
+-v &lt;FOLDER WITH SSH KEYS&gt;:/root/.ssh \           # optional
+pubsubplus-connector-manager:<MadCap:variable name="Manifest-Products-Connectors.connector-manager-latest-version"/></pre>
+    <h4><a name="starting_the_connector_manager_using-docker-compose"/>Starting the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> Using Docker Compose</h4>
+    <p>You can use Docker Compose to start the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>. An example of the <code>docker-compose.yml</code> file can be found in the <code>samples/manager/docker/</code> folder. By default, it uses:</p>
+    <ul>
+      <li>
+        <p><code>../config/application.yml</code> as the configuration file for the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>.</p>
+      </li>
+    </ul>
+    <ul>
+      <li>
+        <p><code>../cloud-configs</code> as the main configuration storage.</p>
+      </li>
+    </ul>
+    <p>Before you start the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> using Docker Compose, you must initiate a Git repository in the configuration storage and commit  configuration files for  <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/>s that are used.</p>
+    <p>To start the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> using Docker Compose, run:</p>
+    <pre xml:space="preserve"># change folder  
+cd ../cloud-configs  
+  
+# initiate git repository  
+git init  
+  
+# commit changes  
+git add .
+git commit -m "initial commit" 
+  
+# go back to this folder  
+cd -</pre>
+    <h2 class="with-rule"><a name="configuring-the-connector-manager"/>Configuring the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/></h2>
+    <p>To allow the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> to start and serve different <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/>s properly, you must configure some parameters in the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> configuration file. By default, Solace provides an example of the configuration file, which can be found in a zip archive in the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> package under the <code>samples/manager/config</code> folder.</p>
+    <h3><a name="creating-users"/>Creating Users</h3>
+    <p>As the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> currently supports Basic Authentication, it requires a username and a password.</p>
+    <p>To configure authentication, create the following section in the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>'s  config file:</p>
+    <pre>solace:
+  connector-manager:
+    security:
+      users:
+        - name: user
+          password: pass
+          roles:
+            - user</pre>
+    <p>Where <code>user</code> is the username and <code>pass</code> is the password. You can create more than one user by assigning different roles. </p>
+    <h3><a name="setting-up-the-configuration-storage"/>Setting up Configuration Storage</h3>
+    <p>Configuration storage is the folder that contains all configuration files for the <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/>s that run with the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>. You must make this folder path accessible to the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>, although  <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/>s don't need to access it.</p>
+    <p>You can set up configuration storage in a few different ways with the relevant Git commands. However, it must be a Git repository. </p>
+    <p>To set up configuration storage (for a local or self-hosted git repository): </p>
+    <ul>
+      <li>
+        <p>Run <code>git init</code> after you create a folder anywhere on your local or remote system.</p>
+      </li>
+      <li>
+        <p>Add  necessary configurations for the  <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/>s, and include them in the commit (so that the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> has access to them).</p>
+      </li>
+    </ul>
+    <p>To set up configuration storage as a hosted repo (on GitHub, Gitlab, BitBucket, and so on), see <a href="https://docs.spring.io/spring-cloud-config/docs/current/reference/html/#_git_backend" class="link-offsite">Git Backend for Configuration Storage</a>.</p>
+    <p>To point the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> to the configuration storage folder, expose its path using one of the following mechanisms: </p>
+    <ul>
+      <li>
+        <p>A configuration file:</p>
+        <pre>spring:
+  cloud:
+    config:
+      server:
+        git:
+          uri: 'file:///${user.home}/configurations'</pre>
+      </li>
+    </ul>
+    <ul>
+      <li>
+        <p>over SSH:</p>
+        <pre>spring:
+  cloud:
+    config:
+      server:
+        git:
+          uri: 'ssh://server:/home/server/configurations'</pre>
+      </li>
+    </ul>
+    <ul>
+      <li>
+        <p>over HTTP/HTTPS:</p>
+        <pre>spring:
+  cloud:
+    config:
+      server:
+        git:
+          uri: 'https://server.com:/home/server/configurations'</pre>
+      </li>
+    </ul>
+    <p>In case you are providing access to configuration storage over SSH or HTTP/HTTPS for the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>, you must configure key pairs. The <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> uses the system SSH configuration, or provides credentials in the connection string.</p>
+    <h3><a name="using-HTTPS-connection"/>Using HTTPS Connections</h3>
+    <p>By default, the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> works over HTTP. You can configure the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> to switch to HTTP/HTTPS to secure communication between the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> and the <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/>s served by it, and between the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> and your browser view.</p>
+    <p>To enable security, configure this key in the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>:</p>
+    <pre>server:
+  ssl:
+    enabled: true</pre>
+    <p>Enabling TLS might require configuring other parameters such as protocol type, keystore, and trust store. In this example, a custom configuration is provided for the keystore (in the zip archive under samples) and a default configuration is provided for the trust store (under the cert location that was generated, because  TLS connection is set up using a self-signed certificate:</p>
+    <pre>server:  
+  ssl:  
+    enabled: true  
+    protocol: TLS  
+    key-store-type: PKCS12  
+    key-store: 'file:./operator/security/server.p12'  
+    key-store-password: 'configserver'  
+    
+    trust-store: 'file:/Library/Java/JavaVirtualMachines/jdk-17.0.3.1.jdk/Contents/Home/lib/security/cacerts'  
+    trust-store-type: PKCS12  
+    trust-store-password: 'changeit'</pre>
+    <p>This is the default configuration for any Spring Boot application. For more information, see <a href="https://docs.spring.io/spring-boot/docs/3.0.6/reference/htmlsingle/#howto.webserver.configure-ssl" class="link-offsite">Configure SSL</a>.</p>
+    <h3><a name="encrypting-values-for-cloud-configuration"/>Encrypting Values for Cloud Configurations</h3>
+    <p>To create encrypted values for cloud configuration files, you must start the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>  in <code>local</code> mode (completely isolated from any production environment with the keystore file that is generated for this purpose) with enabled encryption, or as a localhost. Solace recommends using the Cloud server encryption and decryption until this functionality is provided by Solace (Versions after 2.7.10 of Sprint CLI and Spring Cloud CLI don't have this functionality). </p>
+    <p>You can encrypt any value using the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>, as it provides  two API endpoints by default:  <code>/encrypt</code> for encrypting messages, and <code>/decrypt</code> for decrypting messages.</p>
+    <p>To encrypt any value,  send a POST request to the appropriate API with these parameters:</p>
+    <pre>curl --location --request POST 'http://10.0.0.100:9500/config/encrypt' \
+--header 'Content-Type: text/plain' \
+--data-raw '&lt;...something to encrypt...&gt;'</pre>
+    <p>Where <code>&lt;...data to be encrypted...&gt;</code> is the request body. The response is an encrypted value that can be used as a configuration parameter. </p>
+    <p>At this point,  all dependencies must be already pre-configured in the <code>application.yml|properties</code> file, so the Spring Cloud Config Server knows which ciphers to use for encryption.</p>
+    <p>By default, the encryption and decryption functionality  is disabled in the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> (to provide security for publicly accessed values). You can enable these endpoints at start time by providing these CLI parameters to the application: </p>
+    <pre>--encrypt.keyStore.location=file://&lt;...path to keystore file...&gt; 
+--encrypt.keyStore.password=password 
+--encrypt.keyStore.alias=configserver 
+--encrypt.keyStore.secret=password</pre>
+    <p>These parameters are not configurable through the startup script for security reasons. </p>
+    <p class="Note">Solace recommends using the Cloud server encryption and decryption until this functionality is provided by Solace (Versions after 2.7.10 of Sprint CLI and Spring Cloud CLI don't have this functionality).</p>
+    <p>To start the local instance of the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>: </p>
+    <ul>
+      <li>
+        <p>Use the <code>-s</code> configuration option (to obtain the shell CLI command and use it together with the parameters above):</p>
+        <pre># use script to generate CLI command
+./start.sh -j ../../pubsubplus-connector-manager-<MadCap:variable name="Manifest-Products-Connectors.connector-manager-latest-version"/>.jar -s</pre>
+        <p>The expected result (command) is:</p>
+        <pre>java -jar &lt;...ABSOLUTE_PATH...&gt;/pubsubplus-connector-manager-<MadCap:variable name="Manifest-Products-Connectors.connector-manager-latest-version"/>.jar --spring.cloud.config.server.git.uri=file://&lt;...ABSOLUTE_PATH...&gt;/samples/manager/cloud-configs/ --spring.config.additional-location=config/</pre>
+      </li>
+    </ul>
+    <ul>
+      <li>
+        <p>Add the encryption parameters, so the full command looks this:</p>
+        <pre>$&gt; java -jar &lt;...ABSOLUTE_PATH...&gt;/pubsubplus-connector-manager-<MadCap:variable name="Manifest-Products-Connectors.connector-manager-latest-version"/>.jar --spring.cloud.config.server.git.uri=file://&lt;...ABSOLUTE_PATH...&gt;/samples/manager/cloud-configs/ --spring.config.additional-location=config/ \
+    --encrypt.keyStore.location=file:security/demo.jks \
+    --encrypt.keyStore.password=password \
+    --encrypt.keyStore.alias=configserver \
+    --encrypt.keyStore.secret=password</pre>
+        <p>The <code>demo.jks</code> file that is provided in the <code>samples/connectors/security</code> is generated with this command:</p>
+        <pre>$&gt; keytool -genkeypair -alias configserver -keyalg RSA \
+-dname "CN=CM,OU=CM,O=Solace,L=Kanata,S=ON,C=Canada" \
+-keypass password -keystore demo.jks -storepass password</pre>
+        <p>Because the <code>demo.jks</code> file is generated with this command, some encrypted variables are taken from configuration. Having these parameters enables the <code>/encrypt</code> and <code>/decrypt</code> endpoints and allows you to encrypt and decrypt your sensitive information using the key pair under <code>alias</code>, which is stored in the keystore called <code>demo.jks</code>.</p>
+      </li>
+    </ul>
+    <p>After generating encrypted values for cloud configurations, it is important to stop this <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> instance and start it normally in production mode. This is so it doesn't  have a pointer to the keystore file and all secrets stay safe without the possibility to decrypt them on the server side.</p>
+    <h4><a name="obtaining-logfiles-from-remote-connectors"/>Obtaining Logfiles from Remote <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector_titlecase"/>s </h4>
+    <p>Currently, remotely running <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/>s provide data about the relative local path of their logfiles to enable reading, and the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> has limited access to these logfiles. To address this limitation, one option is to mount the remote filesystem onto the local filesystem and grant access to the logfile.</p>
+    <h3><a name="connector-configuration"/><MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector_titlecase"/> Configuration</h3>
+    <p>After starting the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>, you must make your  <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/>'s configuration adjustable with the Connector Framework. To do this: </p>
+    <ul>
+      <li>
+        <p>Move your  <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/> config file to the configuration repository on the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> side.</p>
+      </li>
+    </ul>
+    <ul>
+      <li>
+        <p>Include the parameters needed to connect to the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> in the local configuration file.</p>
+      </li>
+    </ul>
+    <p>
+      <img src="../../../../Resources/Images/Connectors/connector-manager.png" alt=""/>
+    </p>
+    <p> </p>
+    <p>You can  store the current configuration of your <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/> in the Git repository, which should be used as a configuration storage after that. Remember to commit the changes that you made because the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> operates on the Git repository.</p>
+    <p>The file name must be equal to the value of the <code>spring.application.name</code> configuration parameter (see <MadCap:xref href="#configuring-minimal-requirements">Configuring Minimal Requirements</MadCap:xref>).</p>
+    <p class="Note">Use encryption for any sensitive data on the remote configuration storage. </p>
+    <h3><a name="configuring-minimal-requirements"/>Configuring Minimal Requirements</h3>
+    <p>After setting up the configuration storage and moving <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/> configuration to it, you must change the local configuration for the  <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/>  (it should be empty). The  <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/> configuration stores the data needed to connect to the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> (see <MadCap:xref href="#connector-configuration"> Connector Configuration</MadCap:xref>).</p>
+    <p>This is an example of the  <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/> configuration file:</p>
+    <pre># parameters defying which config to get and where from.  
+# Must be enabled if application relies on <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>'s distributed configuration  
+# In case operator would like to ignore these parameters, full operator's configuration  
+# should be provided locally, withing this configuration file  
+spring.application.name: ibmmq
+spring.config.import: 'optional:configserver:http://127.0.0.1:9500/config/'  
+# credentials to connect to the config server and get configuration  
+# should be specified here, in operator's configuration as they  
+# are intended to be modified by operator  
+spring.cloud.config:  
+  import-check.enabled: true  
+  username: user  
+  password: pass  
+  # this section enables security and TLS for config-server together with the  
+  # new [BlockingRegistrationClient] used to register application in <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>  
+  # [BlockingRegistrationClient] should have access to thess fields directly  
+  # and should be instantiated before Spring Boot Admin native client  tls:  
+    enabled: false  
+#    key-store-type: PKCS12  
+#    key-store: 'file://connectors/ibmmq-connector/operators-data/keystore/server.p12'  
+#    key-store-password: configserver  
+#    key-password: configserver  
+#    trust-store: 'file:/Library/Java/JavaVirtualMachines/jdk-17.0.3.1.jdk/Contents/Home/lib/security/cacerts'  
+#    trust-store-type: PKCS12  
+#    trust-store-password: 'changeit'  
+  
+# these parameters are necessary to decrypt configuration from the server on the client  
+# please note that [encrypt.keyStore.location] should point out to the same file used  
+# for encryption otherwise the value won't be decrypted at all  
+encrypt.keyStore.location: "file:security/demo.jks"  
+encrypt.keyStore.password: password  
+encrypt.keyStore.alias: configserver  
+encrypt.keyStore.secret: password  
+
+# this section defines service URL used by <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> to back access the Connector  
+# in case it would be omitted, <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> will try to resolve it, however in case of enabled HTTPS  
+# it will do it improperly and specify a different port, not related to the [management.server.port] section  
+spring.boot.admin.client.instance:  
+  service-host-type: ip  
+  service-url: 'http://127.0.0.1:9009/'  
+  management-url: 'http://127.0.0.1:9009/actuator'  
+  health-url: 'http://127.0.0.1:9009/actuator/health'  
+# This section enables TLS for actuator endpoints used to be accessed from the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>  
+# They used to be enabled separately, as they secure only /actuator endpoint access. In case security  
+# is enabled, operator MUST specify separate port for this endpoint and configure access to it  
+# within the [spring.boot.admin.client.instance] section  
+management:  
+  server:  
+    # sets a different port to server the actuator endpoint  
+    port: 9009  
+    # if this parameter is present operator must have [enabled] set to false|true  
+    # otherwise this parameter should be disabled    #    ssl:  
+    # if ssl is enabled, all other parameters must also be configured  
+#      enabled: true  
+#      protocol: TLSv1.2  
+#      key-store-type: PKCS12  
+#      key-store: 'file:./keystore/server.p12'  
+#      key-store-password: configserver  
+#      key-password: configserver  
+#      trust-store: 'file:/Library/Java/JavaVirtualMachines/jdk-17.0.3.1.jdk/Contents/Home/lib/security/cacerts'  
+#      trust-store-type: PKCS12  
+#      trust-store-password: 'changeit'</pre>
+    <p>The <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> has two primary entry points for the management interface:</p>
+    <ul>
+      <li>
+        <p><code>/</code> for communication with the UI and the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>.</p>
+      </li>
+      <li>
+        <p><code>/config</code> for communication with the configuration storage.</p>
+      </li>
+    </ul>
+    <p>These APIs are secured using different security techniques, which requires separate security configurations. For the <code>/</code> API, authentication credentials are managed in <code>spring.boot.admin.client.instance</code>, and for the <code>/config</code> API, authentication credentials are configured through the <code>spring.cloud.config</code> section. In the example above, the two APIs have the same authentication credentials, but it's possible for the authentication credentials to be different.</p>
+    <p>The name of the configuration file (which is stored in the configuration storage) must match the <code>spring.application.name</code> parameter, with the addition of any profile name (if used) separated by a dash. In the example above, this might look like <code>ibmmq-operator.yml</code>, where the application name is set to <code>ibmmq</code> and the profile name is <code>operator</code>.</p>
+    <p>In the example above, port <code>9500</code> (which is set by default) is used for the management interface, and port <code>9009</code> is used for the data interface. It is important to keep all links updated according to this data:</p>
+    <pre># data interface URL and port to update
+spring.boot.admin.client.instance.service-url: 'http://127.0.0.1:9009/'
+spring.boot.admin.client.instance.management-url: 'http://127.0.0.1:9009/actuator'  
+spring.boot.admin.client.instance.health-url: 'http://127.0.0.1:9009/actuator/health'  
+
+# management interface URL and port to update
+spring.config.import: 'optional:configserver:http://127.0.0.1:9500/config/'  
+spring.boot.admin.client.url: "http://127.0.0.1:9500/"  </pre>
+    <p>The <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> uses some specific APIs to retrieve data from every  <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/>. Most of these APIs are standard Spring Boot Actuator APIs. However, to be able to properly manage workflows, you must enable a few additional APIs through the configuration file:</p>
+    <pre>management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,metrics,loggers,logfile,env,workflows,leaderelection,bindings,channels"</pre>
+    <h3><a name="enabling-TLS"/>Enabling TLS</h3>
+    <p>Enabling TLS for the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> happens on the <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/>'s side. TLS must be configured through these two ports:</p>
+    <ul>
+      <li>
+        <p><code>/</code> enables TLS for all requests circulating between the   <MadCap:variable name="Manifest-Products-Connectors.pubsub_self_contained_connector"/> and <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>, including UI.</p>
+      </li>
+      <li>
+        <p><code>/config</code> enables TLS for all configurations retrieved from configuration storage.</p>
+      </li>
+    </ul>
+    <p>For optimal security, enable TLS for both of these ports at the same time.</p>
+    <p>To configure the <code>/</code> and <code>/config</code> ports, use these configuration sections:</p>
+    <pre>spring.cloud.config:
+  tls:  
+    enabled: true  
+    key-store-type: PKCS12  
+    key-store: 'file:./keystore/server.p12'  
+    key-store-password: configserver  
+    key-password: configserver  
+    
+    trust-store: 'file:/Library/Java/JavaVirtualMachines/jdk-17.0.3.1.jdk/Contents/Home/lib/security/cacerts'  
+    trust-store-type: PKCS12  
+    trust-store-password: 'changeit'  
+
+management:  
+  server:  
+# sets a different port to server the actuator endpoint  
+    port: 9009  
+    ssl:
+      enabled: true  
+      key-store-type: PKCS12  
+      key-store: 'file:./keystore/server.p12'  
+      key-store-password: configserver  
+      key-password: configserver  
+      
+      trust-store: 'file:/Library/Java/JavaVirtualMachines/jdk-17.0.3.1.jdk/Contents/Home/lib/security/cacerts'  
+      trust-store-type: PKCS12  
+      trust-store-password: 'changeit'</pre>
+    <h3><a name="using-profiles"/>Using Profiles</h3>
+    <p>Configuration for the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/> can come in an <code>application.properties</code> or <code>application.yml</code> file. You can use profiling to start up the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>. In this case, the configuration file must follow the same name pattern and include the profile name as a suffix after the word <code>application</code> separated by a hyphen (for example, <code>application-operator.yml</code>).</p>
+    <p>If you want to use profiling to start up the <MadCap:variable name="Manifest-Products-Connectors.connector_manager_short"/>, you must also provide an additional parameter to the JAR file <code>--spring.profiles.active=&lt;PROFILE NAME&gt;</code>.</p>
+  </body>
+</html>

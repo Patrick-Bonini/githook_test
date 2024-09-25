@@ -1,0 +1,14 @@
+var xmlSynonymsData = "";
+xmlSynonymsData += '<?xml version=\"1.0\" encoding=\"utf-8\"?>';
+xmlSynonymsData += '<MadCapSynonyms xml:lang=\"en-us\">';
+xmlSynonymsData += '    <Groups />';
+xmlSynonymsData += '    <Directional>';
+xmlSynonymsData += '        <DirectionalSynonym From=\"Kubernetes\" To=\"kuberenet\" />';
+xmlSynonymsData += '        <DirectionalSynonym From=\"kuberenetes\" To=\"kubernet\" />';
+xmlSynonymsData += '        <DirectionalSynonym Stem=\"true\" From=\"upscaling\" To=\"scale\" FromStem=\"upscal\" />';
+xmlSynonymsData += '        <DirectionalSynonym Stem=\"true\" From=\"redundancy\" To=\"triplet\" FromStem=\"redund\" />';
+xmlSynonymsData += '        <DirectionalSynonym Stem=\"true\" From=\"microgateway\" To=\"microservic\" FromStem=\"microgateway\" />';
+xmlSynonymsData += '        <DirectionalSynonym Stem=\"true\" From=\"microgateways\" To=\"microservic\" FromStem=\"microgateway\" />';
+xmlSynonymsData += '    </Directional>';
+xmlSynonymsData += '</MadCapSynonyms>';
+MadCap.Utilities.Xhr._FilePathToXmlStringMap.Add('Synonyms', xmlSynonymsData);

@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Context Propagation for Distributed Tracing</h1>
+    <MadCap:snippetBlock src="../../Resources/Snippets/otel-library-intro.flsnp"/>
+    <div class="Note">
+      <ul>
+        <li>The PubSub+ OpenTelemetry API Libraries support W3C propagators only.</li>
+        <li>For information about configuring OpenTelemetry SDK environment variables see <a href="https://opentelemetry.io/docs/concepts/sdk-configuration/" class="link-offsite">OpenTelemetry SDK Configuration</a>.</li>
+        <li>By default, traces include command line parameters visible to backend applications like Jaeger.
+It is important to disable this feature for security purposes because these parameters may contain sensitive information such as your user name and password. For instructions, see <a href="https://github.com/open-telemetry/opentelemetry-java/blob/main/sdk-extensions/autoconfigure/README.md#resource-provider-spi" class="link-offsite">Disabling Automatic Resource Providers</a>	in the OpenTelemetry documentation in GitHub.	</li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="Instrumenting-JMS-Distributed-Tracing"/>Instrumenting JMS for Distributed Tracing</h2>
+    <p>There are two ways to integrate distributed tracing into an application using the <MadCap:variable name="Product-Names.pubsub_brand_only"/> JMS API:</p>
+    <ul>
+      <li><MadCap:xref href="#Automat">Automatic Instrumentation</MadCap:xref> allows your applications to inject and extract standard OpenTelemetry data without any modifications to your source code.
+            </li>
+      <li><MadCap:xref href="#Manual">Manual Instrumentation</MadCap:xref> involves making changes to your enterprise application's source code. These code modifications allow you to inject and extract additional context, such as Baggage and Trace States, into messages.
+            </li>
+    </ul>
+    <h3><a name="Automat"/> Automatic Instrumentation</h3>
+    <p>Automatic instrumentation does not require any application code changes to send telemetry data. You do not need to change the start up parameters in your application or implement any additional libraries. To use automatic instrumentation: </p>
+    <ol>
+      <li> Download the .jar files from the following locations, and place them in your project:</li>
+      <ul>
+        <li>
+          <a href="https://mvnrepository.com/artifact/io.opentelemetry.javaagent/opentelemetry-javaagent" class="link-offsite" target="_blank">OpenTelemetry Instrumentation for Java</a>
+        </li>
+        <li>
+          <a href="https://mvnrepository.com/artifact/com.solace/solace-opentelemetry-jms-integration" class="link-offsite" target="_blank">PubSub+ OpenTelemetry Integration for Solace JMS API</a>
+          <p>For OpenTelemetry version compatibility see <MadCap:xref href="../../Features/Distributed-Tracing/Distributed-Tracing-Receiver-Versions.htm">Distributed Tracing Version Compatibility</MadCap:xref>.</p>
+        </li>
+      </ul>
+      <li> At the command prompt, enter the following command to configure your publishing application to inject OpenTelemetry data into published messages. To allow your application to send trace data to an OTLP endpoint you’ll need to update the property <code>otel.exporter.otlp.endpoint=http://localhost:4317</code> to point to your collector's IP address:</li>
+      <pre xml:space="preserve">java -javaagent:<b>&lt;absolute-path-to-otel-jar&gt;</b>/opentelemetry-javaagent-all-<b>&lt;otel-java-version&gt;</b>.jar \
+-Dotel.javaagent.extensions=<b>&lt;absolute-path-to-solace-jar&gt;</b>/solace-opentelemetry-jms-integration-<b>&lt;solace-opentelementry-version&gt;</b>.jar \
+-Dotel.propagators=solace_jms_tracecontext \
+-Dotel.exporter.otlp.endpoint=<b>&lt;http://localhost:4317&gt;</b> \
+-Dotel.traces.exporter=otlp \
+-Dotel.metrics.exporter=none \
+-Dotel.instrumentation.jms.enabled=true \
+-Dotel.resource.attributes="service.name=SolaceJMSPublisher" \
+-jar <b>&lt;your-jms-publisher-application&gt;</b>.jar    </pre>
+      <p>Where :</p>
+      <ul>
+        <li><code>&lt;absolute-path-to-otel-jar&gt;</code>is the absolute file path to the directory containing your OpenTelemetry Java Agent JAR file.</li>
+        <li><code>&lt;absolute-path-to-solace-jar&gt;</code> is the absolute file path to the directory containing your <MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/> OpenTelemetry JMS Integration JAR file.</li>
+        <li><code>&lt;http://localhost:4317&gt;</code> is the URL of the <a href="https://opentelemetry.io/docs/collector/" class="link-offsite" target="_blank">Collector</a> you are using. The example <code>localhost:4317</code>is a default port for an OpenTelemetry Collector that is running locally.</li>
+        <li><code>&lt;your-jms-publisher-application&gt;</code> is the name of the JAR file associated with your JMS publisher application. </li>
+        <li><code>&lt;otel-java-version&gt;</code>	is the version OpenTelementry Instrumentation Java Library that is compatible with the <MadCap:variable name="Product-Names.pubsub_brand_only"/> OpenTelemetry Integration for Solace JMS API version(<code>&lt;solace-opentelementry-version&gt;</code>	). For information about the compatibility, see <MadCap:xref href="../../Features/Distributed-Tracing/Distributed-Tracing-Receiver-Versions.htm">Distributed Tracing Version Compatibility</MadCap:xref>.</li>
+        <li><code>&lt;solace-opentelementry-version&gt;</code> is the <MadCap:variable name="Product-Names.pubsub_brand_only"/> OpenTelemetry Integration for Solace JMS to use with the OpenTelementry Instrumentation Library (<code>&lt;otel-java-version&gt;</code>). For information about the compatibility, see <MadCap:xref href="../../Features/Distributed-Tracing/Distributed-Tracing-Receiver-Versions.htm">Distributed Tracing Version Compatibility</MadCap:xref>.</li>
+      </ul>
+      <li> At the command prompt, enter following command to configure your queue receiver application to extract OpenTelemetry data from received messages:
+</li>
+      <p>
+        <pre xml:space="preserve">
+java -javaagent:<b>&lt;absolute-path-to-otel-jar&gt;</b>/opentelemetry-javaagent-all-<b>&lt;otel-java-version&gt;</b>.jar \
+-Dotel.javaagent.extensions=<b>&lt;absolute-path-to-solace-jar&gt;</b>/solace-opentelemetry-jms-integration-<b>&lt;solace-opentelementry-version&gt;</b>.jar \
+-Dotel.propagators=solace_jms_tracecontext \
+-Dotel.traces.exporter=otlp \
+-Dotel.metrics.exporter=none \
+-Dotel.instrumentation.jms.enabled=true \
+-Dotel.resource.attributes="service.name=SolaceJMSQueueSubscriber" \
+-jar <b>&lt;your-jms-queue-receiver-application&gt;</b>.jar</pre>
+      </p>
+      <p>Where :</p>
+      <ul>
+        <li><code>&lt;absolute-path-to-otel-jar&gt;</code> is the absolute file path to the directory containing your OpenTelemetry Java Agent JAR file.</li>
+        <li><code>&lt;absolute-path-to-solace-jar&gt;</code> is the absolute file path to the directory containing your  <MadCap:variable name="Product-Names.pubsub_brand_only"/> OpenTelemetry JMS Integration JAR file.</li>
+        <li><code>&lt;your-jms-queue-receiver-application&gt;</code> is the name of the JAR file associated with your JMS queue receiver application.</li>
+        <li><code>&lt;otel-java-version&gt;</code>	is the version OpenTelementry Instrumentation Java Library (such as <MadCap:variable name="Manifest-Products-APIs.SDK-OTEL-JAVA-AUTOMATION-VERSION"/>.0) that is compatible with the <MadCap:variable name="Product-Names.pubsub_brand_only"/> OpenTelemetry Integration for Solace JMS API version(<code>&lt;solace-opentelementry-version&gt;</code>	). For information about the compatibility, see <MadCap:xref href="../../Features/Distributed-Tracing/Distributed-Tracing-Receiver-Versions.htm">Distributed Tracing Version Compatibility</MadCap:xref>.</li>
+        <li><code>&lt;solace-opentelementry-version&gt;</code> is the <MadCap:variable name="Product-Names.pubsub_brand_only"/> OpenTelemetry Integration for Solace JMS (such as 1.1.0) to use with the OpenTelementry Instrumentation Library (<code>&lt;otel-java-version&gt;</code>). For information about the compatibility, see <MadCap:xref href="../../Features/Distributed-Tracing/Distributed-Tracing-Receiver-Versions.htm">Distributed Tracing Version Compatibility</MadCap:xref>.</li>
+      </ul>
+    </ol>
+    <p class="Note">When you use automatic instrumentation, the latest version of the <code>opentelemetry-javaagent-all-<b>&lt;otel-java-version&gt;</b>.jar</code> and<code> solace-opentelemetry-jms-integration-<b>&lt;solace-opentelementry-version&gt;</b>.jar</code> should not be added as Maven or Gradle dependencies in your applications. For information about the compatibility, see Distributed Tracing Version Compatibility.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/otel-java-instrumentation-version.flsnp"/>
+    <p>For a more detailed example about how to set up automatic instrumentation in the JMS API see <a href="https://codelabs.solace.dev/codelabs/dt-otel/index.html?index=..%2F..index#0" class="link-offsite">Getting Started with Solace Distributed Tracing and Context Propagation</a>.</p>
+    <h3><a name="Manual"/>Manual Instrumentation</h3>
+    <p>Manual Instrumentation involves making changes to your enterprise application's source code, and allows you to inject and extract additional context, such as baggage and trace states, into messages. Context propagation makes it easy to debug and optimize your application.  For more information about context propagation in <MadCap:variable name="Variables.CompanyName"/> event messages, see <a href="../../Features/Distributed-Tracing/Distributed-Tracing-Context-Propagation.htm#top" class="link-internal">Distributed Tracing Context Propagation</a>. The following examples show you how to create spans using the OpenTelemetry API.</p>
+    <h4>Understanding How Context Propagation Enables Distributed Tracing in the JMS <MadCap:variable name="Product-Names.pubsub_brand_only"/> API</h4>
+    <p>In your client application, you can use the OpenTelemetry API to create a span, which contains metadata about an operation in a distributed system. This span is associated with a context, which includes a unique <code>TraceID</code>. Next, when you use a <MadCap:variable name="Product-Names.pubsub_brand_only"/> message producer to publish a message, the <MadCap:variable name="Variables.CompanyName"/> OTel integration package injects the context, which contains the <code>TraceID</code>, into the message. As the message travels through the event broker and is received by a consuming application, spans are generated at each step and have the same <code>TraceID</code> present in the original message context.  When each span is closed in the publishing or consuming application, the Java OpenTelemetry API sends it to an OpenTelemetry collector, which collects, processes and exports the spans to a backend application that correlates the spans using their unique <code>TraceID</code>. A backend application uses the correlated spans to create a <i>trace</i>, which is an end-to-end snapshot detailing how the message traveled through the distributed system. If you do not use context propagation, then backend applications cannot use a unique TraceID to link the spans, making it difficult to trace the flow of messages through the distributed system.</p>
+    <h4>Dependencies</h4>
+    <p>To enable context propagation for distributed tracing, you must first add the <a href="https://mvnrepository.com/artifact/com.solace/solace-opentelemetry-jms-integration" class="link-offsite" target="_blank">Solace PubSub+ OpenTelemetry Integration For Solace JMS API</a> as a dependency in your application. This library automatically adds the OpenTelemetry API and SDK libraries, which are required for context propagation.<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> For OpenTelemetry version compatibility see <MadCap:xref href="../../Features/Distributed-Tracing/Distributed-Tracing-Receiver-Versions.htm">Distributed Tracing Version Compatibility</MadCap:xref>.</MadCap:conditionalText> Adding the libraries gives you access to the following two interfaces:</p>
+    <ul>
+      <li><code>SolaceJmsW3CTextMapSetter</code>— This interface allows a <code>TextMapPropagator</code> to inject context into a message on the publisher side.
+			</li>
+      <li><code>SolaceJmsW3CTextMapGetter</code>—  This interface allows a <code>TextMapPropagator</code> to  extract context from a message on the receiver side. 
+			</li>
+    </ul>
+    <div class="Note">
+      <p>This guide assumes you are familiar with configuring an instance of the OpenTelemetry class. For instructions for configuring OpenTelemetry objects, see <a href="https://opentelemetry.io/docs/instrumentation/java/manual/" class="link-offsite" target="_blank">OpenTelemetry Manual Instrumentation in Java</a> in the OpenTelemetry documentation.</p>
+    </div>
+    <h4>Generating a Send Span on Message Publish</h4>
+    <p>Your publishing application can generate a send span and export it to the OpenTelemetry Collector. The following steps show you how to inject context into a message and generate a send span for a published message:</p>
+    <ol>
+      <li>Create a new span and set span attributes with the <code>setAttribute()</code> method. Next, set the current context as the parent of this span. Start the span with the <code>startSpan()</code> method:</li>
+      <pre xml:space="preserve">
+final Span sendSpan = tracer
+	.spanBuilder("mySolacePublisherApp" + " " + MessagingOperationValues.PROCESS)
+	.setSpanKind(SpanKind.CLIENT)
+	//Publish to a non-temporary topic endpoint
+	.setAttribute(SemanticAttributes.MESSAGING_DESTINATION_KIND, MessagingDestinationKindValues.TOPIC)
+	.setAttribute(SemanticAttributes.MESSAGING_TEMP_DESTINATION, false)
+	//Set more attributes as needed
+	//.setAttribute(...)
+	//.setAttribute(...)
+	.setParent(Context.current()) //Set the current context as the parent span
+	.startSpan();</pre>
+      <li>
+        <p>Set the created span from Step 1   (<code>sendSpan</code> in this example) as the new current context. Next, inject the current context into your message and then publish the message. Call the <code>end()</code> method on the span to export the span data:</p>
+      </li>
+      <pre xml:space="preserve">
+try (Scope scope = sendSpan.makeCurrent()) {
+	final SolaceJmsW3CTextMapSetter setter = new SolaceJmsW3CTextMapSetter();
+	final TextMapPropagator propagator = openTelemetry.getPropagators().getTextMapPropagator();
+	//Inject the current context with send span into the message
+	propagator.inject(Context.current(), message, setter);
+	//Publish the message to the given topic
+	messageProducer.send(messageDestination, message);
+} catch (Exception e) {
+	sendSpan.recordException(e);                          //Span can record an exception 
+	sendSpan.setStatus(StatusCode.ERROR, e.getMessage()); //Set span status as ERROR/FAILED
+} finally {
+	sendSpan.end(); //The span data is exported after you call end()
+}	</pre>
+    </ol>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example Function:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre class="Code" xml:space="preserve">
+package com.solace.samples.jms.snippets;
+
+import com.solace.opentelemetry.javaagent.jms.SolaceJmsW3CTextMapGetter;
+import com.solace.opentelemetry.javaagent.jms.SolaceJmsW3CTextMapSetter;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.context.Context;
+import io.opentelemetry.context.Scope;
+import io.opentelemetry.context.propagation.TextMapPropagator;
+import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
+import io.opentelemetry.semconv.trace.attributes.SemanticAttributes.MessagingDestinationKindValues;
+import io.opentelemetry.semconv.trace.attributes.SemanticAttributes.MessagingOperationValues;
+import java.util.function.Consumer;
+import javax.jms.Message;
+import javax.jms.MessageProducer;
+import javax.jms.Topic;
+
+public class HowToImplementManualInstrumentation {
+
+/**
+* Example how to inject a tracing context in the Solace Message and generate a SEND span for the
+* published message
+*
+* @param message            A Solace message that support tracing context propagation.
+* @param messageProducer    JMS Message producer that can publish messages
+* @param messageDestination message will be published to this topic
+* @param openTelemetry      The entry-point to telemetry functionality for tracing, metrics and
+*                           baggage.
+* @param tracer             Tracer is the interface for Span creation and interaction with the
+*                           in-process context.
+*/
+void howToCreateSpanOnMessagePublish(Message message, MessageProducer messageProducer,
+Topic messageDestination, OpenTelemetry openTelemetry, Tracer tracer) {
+
+//Create a new span with a current context as parent of this span
+final Span sendSpan = tracer
+	.spanBuilder("mySolacePublisherApp" + " " + MessagingOperationValues.PROCESS)
+	.setSpanKind(SpanKind.CLIENT)
+	// published to a topic endpoint (non temporary)
+	.setAttribute(SemanticAttributes.MESSAGING_DESTINATION_KIND, MessagingDestinationKindValues.TOPIC)
+	.setAttribute(SemanticAttributes.MESSAGING_TEMP_DESTINATION, false)
+	//Set more attributes as needed
+	//.setAttribute(...)
+	//.setAttribute(...)
+	.setParent(Context.current()) // set current context as parent
+	.startSpan();
+
+//set sendSpan as new current context
+try (Scope scope = sendSpan.makeCurrent()) {
+	final SolaceJmsW3CTextMapSetter setter = new SolaceJmsW3CTextMapSetter();
+	final TextMapPropagator propagator = openTelemetry.getPropagators().getTextMapPropagator();
+	//and then inject current context with send span into the message
+	propagator.inject(Context.current(), message, setter);
+	// message is being published to the given topic
+	messageProducer.send(messageDestination, message);
+} catch (Exception e) {
+	sendSpan.recordException(e); //Span can record exception if any
+	sendSpan.setStatus(StatusCode.ERROR, e.getMessage()); //Set span status as ERROR/FAILED
+} finally {
+	sendSpan.end(); //End sendSpan. Span data is exported when span.end() is called.
+	}
+}
+}			</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <h4>Generating a Receive Span on Message Receive</h4>
+    <p>Your consuming application can generate a receive span and then export it to the OpenTelemetry Collector. The following steps show you how to extract tracing context from a received message and generate a receive span:</p>
+    <ol>
+      <li>Use a <code>SolaceJmsW3CTextMapGetter</code> to extract any existing context from the received message:</li>
+      <pre xml:space="preserve">
+final SolaceJmsW3CTextMapGetter getter = new SolaceJmsW3CTextMapGetter();
+final Context extractedContext = openTelemetry.getPropagators().getTextMapPropagator()
+	.extract(Context.current(), message, getter);</pre>
+      <li>Set the extracted context as the current context with the <code>makeCurrent()</code> method. Next create a child span (<code>receiveSpan </code>in this example) and set the extracted context as the parent of that child span. Start the span using the <code>startSpan()</code> method:</li>
+      <pre xml:space="preserve">
+try (Scope scope = extractedContext.makeCurrent()) {
+	//Create a child span and set extracted/current context as parent of this span
+	final Span receiveSpan = tracer
+		.spanBuilder("mySolaceReceiverApp" + " " + MessagingOperationValues.RECEIVE)
+		.setSpanKind(SpanKind.CLIENT)
+		//If the message was received on a non temporary queue endpoint
+		.setAttribute(SemanticAttributes.MESSAGING_DESTINATION_KIND,
+		MessagingDestinationKindValues.QUEUE)
+		.setAttribute(SemanticAttributes.MESSAGING_TEMP_DESTINATION, false)
+		//Set more attributes as needed
+		//.setAttribute(...)
+		//.setAttribute(...)
+		.setParent(extractedContext) //Creates a parent-child relationship for a message publisher's application span 
+		.startSpan();
+//Try catch continues in next step...</pre>
+      <li>Accept and process the received message, then call the <code>end()</code> method on the receive span to export the span data:</li>
+      <pre xml:space="preserve">	try {
+		//Do something with the message in a callback function
+		messageProcessor.accept(receivedMessage);
+	} catch (Exception e) {
+		receiveSpan.recordException(e);                          //Span can record exception if any
+		receiveSpan.setStatus(StatusCode.ERROR, e.getMessage()); //and set span status as ERROR/FAILED
+	} finally {
+		receiveSpan.end(); //Span data is exported when you call span.end()
+	}
+}</pre>
+    </ol>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example Function:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre class="Code" xml:space="preserve">
+package com.solace.samples.jms.snippets;
+
+import com.solace.opentelemetry.javaagent.jms.SolaceJmsW3CTextMapGetter;
+import com.solace.opentelemetry.javaagent.jms.SolaceJmsW3CTextMapSetter;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.context.Context;
+import io.opentelemetry.context.Scope;
+import io.opentelemetry.context.propagation.TextMapPropagator;
+import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
+import io.opentelemetry.semconv.trace.attributes.SemanticAttributes.MessagingDestinationKindValues;
+import io.opentelemetry.semconv.trace.attributes.SemanticAttributes.MessagingOperationValues;
+import java.util.function.Consumer;
+import javax.jms.Message;
+import javax.jms.MessageProducer;
+import javax.jms.Topic;
+
+public class HowToImplementManualInstrumentation {
+
+/**
+* Example how to extract a tracing context from the Solace Message and generate a RECEIVE span
+* for the received message
+*
+* @param receivedMessage  A Solace message.
+* @param messageProcessor A callback function that user could use to process a message
+* @param openTelemetry    The OpenTelemetry class is the entry point to telemetry functionality
+*                         for tracing, metrics and baggage from OpenTelemetry Java SDK.
+* @param tracer           OpenTelemetry Tracer is the interface from OpenTelemetry Java SDK for
+*                         span creation and interaction with the in-process context.
+*/
+void howToCreateNewSpanOnMessageReceive(Message receivedMessage,
+	Consumer&lt;Message&gt; messageProcessor,
+	OpenTelemetry openTelemetry, Tracer tracer) {
+
+//Extract tracing context from message, if any using the SolaceJmsW3CTextMapGetter
+final SolaceJmsW3CTextMapGetter getter = new SolaceJmsW3CTextMapGetter();
+final Context extractedContext = openTelemetry.getPropagators().getTextMapPropagator()
+	.extract(Context.current(), receivedMessage, getter);
+
+//Set the extracted context as current context
+try (Scope scope = extractedContext.makeCurrent()) {
+	//Create a child span and set extracted/current context as parent of this span
+	final Span receiveSpan = tracer
+	.spanBuilder("mySolaceReceiverApp" + " " + MessagingOperationValues.RECEIVE)
+	.setSpanKind(SpanKind.CLIENT)
+	// for the case the message was received on a non temporary queue endpoint
+	.setAttribute(SemanticAttributes.MESSAGING_DESTINATION_KIND,
+	MessagingDestinationKindValues.QUEUE)
+	.setAttribute(SemanticAttributes.MESSAGING_TEMP_DESTINATION, false)
+	//Set more attributes as needed
+	//.setAttribute(...)
+	//.setAttribute(...)
+	// creates a parent child relationship to a message publisher's application span is any
+	.setParent(extractedContext)
+	// starts span
+	.startSpan();
+
+	try {
+		// do something with a message in a callback
+		messageProcessor.accept(receivedMessage);
+	} catch (Exception e) {
+		receiveSpan.recordException(e); //Span can record exception if any
+		receiveSpan
+		.setStatus(StatusCode.ERROR, e.getMessage()); //and set span status as ERROR/FAILED
+	} finally {
+		receiveSpan.end(); //End receiveSpan. Span data is exported when span.end() is called.
+		}
+		}
+	}
+	}		</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+  </body>
+</html>

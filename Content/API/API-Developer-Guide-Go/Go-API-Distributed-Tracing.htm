@@ -1,0 +1,435 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Context Propagation for Distributed Tracing in the Go API</h1>
+    <MadCap:snippetBlock src="../../Resources/Snippets/otel-library-intro.flsnp"/>
+    <div class="Note">
+      <ul>
+        <li>The PubSub+ OpenTelemetry API Libraries support W3C propagators only.</li>
+        <li>For information about configuring OpenTelemetry SDK environment variables see <a href="https://opentelemetry.io/docs/concepts/sdk-configuration/" class="link-offsite">OpenTelemetry SDK Configuration</a>.</li>
+        <li>By default, traces include command line parameters visible to backend applications like Jaeger.
+				It is important to disable this feature for security purposes because these parameters may contain sensitive information such as your user name and password. For instructions, see <a href="https://github.com/open-telemetry/opentelemetry-java/blob/main/sdk-extensions/autoconfigure/README.md#resource-provider-spi" class="link-offsite">Disabling Automatic Resource Providers</a>	in the OpenTelemetry documentation in GitHub.	</li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="Instrumenting-Go-Distributed-Tracing"/>Instrumenting Go for Distributed Tracing</h2>
+    <p>Manual Instrumentation involves making changes to your enterprise application's source code, and allows you to inject and extract additional context, such as baggage and trace states, into messages. Context propagation makes it easy to debug and optimize your application.  For more information about context propagation in <MadCap:variable name="Variables.CompanyName"/> event messages, see <a href="../../Features/Distributed-Tracing/Distributed-Tracing-Context-Propagation.htm#top" class="link-internal">Distributed Tracing Context Propagation</a>. The following examples show you how to create spans using the OpenTelemetry API.</p>
+    <h4>Understanding How Context Propagation Enables Distributed Tracing in the Go <MadCap:variable name="Product-Names.pubsub_brand_only"/> API</h4>
+    <p>In your client application, you can use the OpenTelemetry API to create a span, which contains metadata about an operation in a distributed system. This span is associated with a context, which includes a unique <code>TraceID</code>. Next, when you use a <MadCap:variable name="Product-Names.pubsub_brand_only"/> message producer to publish a message, the <MadCap:variable name="Variables.CompanyName"/> OTel integration package injects the context, which contains the <code>TraceID</code>, into the message. As the message travels through the event broker and is received by a consuming application, spans are generated at each step and have the same <code>TraceID</code> present in the original message context.  When each span is closed in the publishing or consuming application, the Go OpenTelemetry API sends it to an OpenTelemetry collector, which collects, processes and exports the spans to a backend application that correlates the spans using their unique <code>TraceID</code>. A backend application uses the correlated spans to create a <i>trace</i>, which is an end-to-end snapshot detailing how the message traveled through the distributed system. If you do not use context propagation, then backend applications cannot use a unique TraceID to link the spans, making it difficult to trace the flow of messages through the distributed system.</p>
+    <h4>Dependencies</h4>
+    <p>To enable context propagation for distributed tracing, you must first add the <a href="https://pkg.go.dev/solace.dev/go/messaging-trace/opentelemetry" class="link-offsite" target="_blank">Solace PubSub+ OpenTelemetry Integration For Solace Go API</a> as a dependency in your application. You can also add this package with the following command:</p>
+    <pre xml:space="preserve">
+go get solace.dev/go/messaging-trace/opentelemetry</pre>
+    <p>Then add the OpenTelemetry API and SDK libraries required for context propagation with the following commands:</p>
+    <pre xml:space="preserve">
+go get -u go.opentelemetry.io/otel
+go get -u go.opentelemetry.io/otel/sdk	</pre>
+    <p><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> For OpenTelemetry version compatibility, see <MadCap:xref href="../../Features/Distributed-Tracing/Distributed-Tracing-Receiver-Versions.htm">Distributed Tracing Version Compatibility</MadCap:xref>.</MadCap:conditionalText> Adding these libraries gives you access to the <code>TextMapCarrier</code> interface which gives your application access to:</p>
+    <ul>
+      <li><code>NewInboundMessageCarrier</code>—contains all of the functions that the OpenTelemetry API needs to inject and extract traces and baggage in inbound messages.</li>
+      <li><code>NewOutboundMessageCarrier</code>—contains all of the functions that the OpenTelemetry API needs to inject and extract traces and baggage in outbound messages.</li>
+    </ul>
+    <div class="Note">
+      <p>This guide presumes you are familiar with configuring an instance of the OpenTelemetry class. For instructions for configuring OpenTelemetry objects, see <a href="https://opentelemetry.io/docs/instrumentation/go/manual/" class="link-offsite" target="_blank">OpenTelemetry Manual Instrumentation in Go</a> in the OpenTelemetry documentation.</p>
+    </div>
+    <p>To use context propagation in the Go <MadCap:variable name="Product-Names.pubsub_brand_only"/> API, include the following packages in your application:</p>
+    <pre xml:space="preserve">
+import (
+       // ...
+       // ...	
+       "go.opentelemetry.io/otel/attribute"                      // Package for handling OpenTelemetry attributes	
+       semconv "go.opentelemetry.io/otel/semconv/v1.19.0"        // Semantic conventions for OpenTelemetry	
+       "go.opentelemetry.io/otel/trace"                          // Package for working with OpenTelemetry traces
+       "go.opentelemetry.io/otel/baggage"	                 // (Optional) Package for working with OpenTelemetry baggage
+       "go.opentelemetry.io/otel"                                // OpenTelemetry core library for instrumentation and APIs	
+       "go.opentelemetry.io/otel/exporters/stdout/stdouttrace"	 // An implementation of the console trace exporter
+       sdktrace "go.opentelemetry.io/otel/sdk/trace"		 // Gain access to the tracing functionality provided by the OpenTelemetry SDK
+       otel_propagation "go.opentelemetry.io/otel/propagation"   // Package for propagation of OpenTelemetry context. Use an alias to prevent conflicts.	
+       propagation "solace.dev/go/messaging-trace/opentelemetry" // <MadCap:variable name="Variables.CompanyName"/> PubSub+ Otel integration
+)</pre>
+    <h4>Generating a Send Span on Message Publish</h4>
+    <p>Your publishing application can generate a send span and export it to the OpenTelemetry Collector. The following steps show you how to inject context into a message and generate a send span for a published message:</p>
+    <ol>
+      <li>Initialize and create an exporter, which allows you to export your data to an OpenTelemetry backend. Then, set up a traceProvider, which manages the lifecycle of tracers in your application. A traceProvider needs to be initialized before your application can start receiving valid spanContext data.
+			</li>
+      <pre xml:space="preserve">
+exporter, _ := stdouttrace.New(stdouttrace.WithPrettyPrint())
+batchspanProcessor := sdktrace.NewSimpleSpanProcessor(exporter) // You should use a batch span processor in production
+traceProvider := sdktrace.NewTracerProvider(
+    sdktrace.WithSampler(sdktrace.AlwaysSample()),
+    sdktrace.WithSpanProcessor(batchspanProcessor), 
+)</pre>
+      <li>Initialize and create <code>TraceContext</code> and optional <code>Baggage</code> propagator instances, and register them with the <code>SetTextMapPropagator()</code>function. This function makes the <code>TraceContext</code> and <code>Baggage</code> structures available across your application. Register your global tracer provider with the SetTracerProvider() function, which ensures all tracers created in your code use the settings specified in traceProvider:</li>
+      <pre xml:space="preserve">
+otel.SetTextMapPropagator(otel_propagation.TraceContext{})
+otel.SetTracerProvider(traceProvider)
+								
+// If you use Baggage propagation:
+otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(otel_propagation.TraceContext{}, otel_propagation.Baggage{}))
+otel.SetTracerProvider(traceProvider)			</pre>
+      <li>
+        <p>Create an instance of <code>NewOutboundMessageCarrier</code>, a struct that allows <code>TraceContext</code>and <code>Baggage</code> to be propagated. </p>
+      </li>
+      <pre xml:space="preserve">
+outboundMessageCarrier := propagation.NewOutboundMessageCarrier(outboundMessage)	</pre>
+      <li>Set span attributes using an <code>attribute.KeyValue</code> slice, which lets you attach additional context and meta-data to a span in the form of key-value pairs. Then use a <code>trace.SpanStartOption</code> slice to define the new span options:</li>
+      <pre xml:space="preserve">
+attrsForPublishSpan := []attribute.KeyValue{
+    semconv.MessagingSystem("PubSub+"),                 // Messaging system to use
+    semconv.MessagingDestinationKindTopic,              // Publish to a topic
+    semconv.MessagingDestinationName(publishToTopic),   // topic name
+    semconv.MessagingOperationPublish,                  // message operation is 'publish'
+    semconv.MessagingMessageID(messageID.String()),     // ID of message to publish
+}
+optsForPublishSpan := []trace.SpanStartOption{
+    trace.WithAttributes(attrsForPublishSpan...),       // Include the span attributes
+    trace.WithSpanKind(trace.SpanKindProducer),         // Sets the span kind as 'producer'
+}</pre>
+      <li>(Optional) Create <code>Baggage</code> objects with key-value pairs. Add the <code>Baggage</code> to a context instance:</li>
+      <pre xml:space="preserve">
+contextWithBaggage:= context.Background()
+m0, _ := baggage.NewMember(string("myKey1"), "value1")
+m1, _ := baggage.NewMember(string("myKey2"), "value2")
+b, _ := baggage.New(m0, m1)
+contextWithBaggage = baggage.ContextWithBaggage(contextWithBaggage, b)		</pre>
+      <li>Create and initialize a <code>Tracer</code>, which is required to start spans, and then use that tracer to start a new span. This span enables the tracing of the message publication process with associated meta-data and attributes.</li>
+      <pre xml:space="preserve">
+publisherTracer := otel.GetTracerProvider().Tracer("myAppTracer", trace.WithInstrumentationVersion(Version()))
+publishCtx, publishSpan := publisherTracer.Start(context.Background(), fmt.Sprintf("%s publish", publishToTopic), optsForPublishSpan...)
+			
+// If propagating baggage, pass in the contextWithBaggage object created in step 4:
+publishCtx, publishSpan := publisherTracer.Start(<span style="font-weight: bold;">contextWithBaggage</span>, fmt.Sprintf("%s publish", publishToTopic), optsForPublishSpan...)			</pre>
+      <li>Use defer to call the <code>End()</code> function on the publish span right after you start the span. This line of code <i>always</i> executes right before the surrounding function ends, even if your application panics or has multiple returns. </li>
+      <pre xml:space="preserve">
+defer publishSpan.End()		</pre>
+      <li>Inject the context into the current span:</li>
+      <pre xml:space="preserve">
+otel.GetTextMapPropagator().Inject(publishCtx, outboundMessageCarrier)</pre>
+      <li>Publish the message:</li>
+      <pre xml:space="preserve">
+publishErr := persistentPublisher.Publish(outMessage, resource.TopicOf(publishToTopic), nil, nil)        
+if publishErr != nil {
+    panic(publishErr)
+}			</pre>
+    </ol>
+    <p>For a complete example of distributed tracing in a message publisher, see <a href="https://github.com/SolaceSamples/solace-samples-go/blob/main/patterns/otel-tracing/otel-publisher/publisher.go" class="link-offsite">publisher.go</a> on the <MadCap:variable name="Variables.CompanyName"/> Developers Hub.</p>
+    <MadCap:dropDown MadCap:conditions="Default.HideFromAllOutput">
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Publisher Example:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre class="Code" xml:space="preserve">
+package main
+
+import (
+    "context"
+    "fmt"
+    "go.opentelemetry.io/otel"
+    "go.opentelemetry.io/otel/attribute"
+    otel_propagation "go.opentelemetry.io/otel/propagation"
+    semconv "go.opentelemetry.io/otel/semconv/v1.19.0"
+    "go.opentelemetry.io/otel/trace"
+    sdktrace "go.opentelemetry.io/otel/sdk/trace"
+    "go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+    "os"
+    "os/signal"
+    "solace.dev/go/messaging"
+    "solace.dev/go/messaging/pkg/solace"
+    "solace.dev/go/messaging/pkg/solace/config"
+    "solace.dev/go/messaging/pkg/solace/message"
+    "solace.dev/go/messaging/pkg/solace/resource"
+    propagation "solace.dev/go/messaging-trace/opentelemetry"
+    "strings"
+    "time"
+)
+
+func InitTracing() {   
+    exporter, _ := stdouttrace.New(stdouttrace.WithPrettyPrint())
+    batchspanProcessor := sdktrace.NewSimpleSpanProcessor(exporter) // You should use a batch span processor in production
+    traceProvider := sdktrace.NewTracerProvider(
+        sdktrace.WithSampler(sdktrace.AlwaysSample()),
+        sdktrace.WithSpanProcessor(batchspanProcessor), 
+    )
+    tc := otel_propagation.TraceContext{}
+    // Register the TraceContext propagator globally; Solace only supports this format
+    otel.SetTextMapPropagator(tc)
+    otel.SetTracerProvider(traceProvider)
+    // more otel api globals can be configured
+}
+
+func main() {
+    brokerConfig := config.ServicePropertyMap{
+        config.TransportLayerPropertyHost:                "tcp://localhost:55555,tcp://localhost:55554",
+        config.ServicePropertyVPNName:                    "SOLACE_VPN",
+        config.AuthenticationPropertySchemeBasicPassword: "SOLACE_PASSWORD",
+        config.AuthenticationPropertySchemeBasicUserName: "SOLACE_USERNAME",
+    }
+
+    messagingService, err := messaging.NewMessagingServiceBuilder().FromConfigurationProvider(brokerConfig).Build()
+
+    if err != nil {
+        panic(err)
+    }
+
+    if err := messagingService.Connect(); err != nil {
+         panic(err)
+    }
+
+    persistentPublisher, builderErr := messagingService.CreatePersistentMessagePublisherBuilder().Build()
+    if builderErr != nil {
+        panic(builderErr)
+    }
+    startErr := persistentPublisher.Start()
+    if startErr != nil {
+        panic(startErr)
+    }
+
+    InitTracing()
+
+    publishToTopic := "solace/samples"
+    messageBuilder := messagingService.MessageBuilder()
+    outMessage, err := messageBuilder.BuildWithStringPayload("Here is my message")
+    if err != nil {
+        panic(err)
+    }
+
+    outboundMessageCarrier := propagation.NewOutboundMessageCarrier(outMessage)
+
+    attrsForPublishSpan := []attribute.KeyValue{
+        semconv.MessagingSystem("PubSub+"),
+        semconv.MessagingDestinationKindTopic,
+        semconv.MessagingDestinationName(publishToTopic),
+        semconv.MessagingOperationPublish,
+        semconv.MessagingMessageID(messageID.String()),
+    }
+    optsForPublishSpan := []trace.SpanStartOption{
+    trace.WithAttributes(attrsForPublishSpan...),
+    trace.WithSpanKind(trace.SpanKindProducer),
+    }
+    publisherTracer := otel.GetTracerProvider().Tracer("myAppTracer", trace.WithInstrumentationVersion(Version()))
+
+    publishCtx, publishSpan := publisherTracer.Start(context.Background(), fmt.Sprintf("%s publish", publishToTopic), optsForPublishSpan...)
+    defer publishSpan.End()
+
+    otel.GetTextMapPropagator().Inject(publishCtx, outboundMessageCarrier)
+
+    publishErr := persistentPublisher.Publish(outMessage, resource.TopicOf(publishToTopic), nil, nil)
+
+    if publishErr != nil {
+        panic(publishErr)
+    }
+
+    // Handle OS interrupts
+    c := make(chan os.Signal, 1)
+    signal.Notify(c, os.Interrupt)
+
+    // Block until an OS interrupt signal is received.
+    &lt;-c			
+
+    // Terminate the Direct Receiver
+    persistentPublisher.Terminate(1 * time.Second)
+    fmt.Println("\nDirect Publisher Terminated? ", persistentPublisher.IsTerminated())
+    // Disconnect the Message Service
+    messagingService.Disconnect()
+    fmt.Println("Messaging Service Disconnected? ", !messagingService.IsConnected())
+}
+</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <h4>Generating a Receive Span on Message Receive</h4>
+    <p>Your consuming application can generate a receive span and then export it to the OpenTelemetry Collector. The following steps show you how to extract tracing context from a received message and generate a receive span:</p>
+    <ol>
+      <li>Initialize and create an exporter, which allows you to export your data to an OpenTelemetry backend. Then, set up a traceProvider, which manages the lifecycle of tracers in your application. A traceProvider needs to be initialized before your application can start receiving valid spanContext data.
+			</li>
+      <pre xml:space="preserve">
+exporter, _ := stdouttrace.New(stdouttrace.WithPrettyPrint())
+batchspanProcessor := sdktrace.NewSimpleSpanProcessor(exporter) // You should use a batch span processor in production
+traceProvider := sdktrace.NewTracerProvider(
+    sdktrace.WithSampler(sdktrace.AlwaysSample()),
+    sdktrace.WithSpanProcessor(batchspanProcessor), 
+)</pre>
+      <li>Initialize and create <code>TraceContext</code> and optional <code>Baggage</code> propagator instances, and register them with the <code>SetTextMapPropagator()</code>function. This function makes the <code>TraceContext</code> and <code>Baggage</code> structures available across your application. Register your global tracer provider with the SetTracerProvider() function, which ensures all tracers created in your code use the settings specified in <code>traceProvider</code>:</li>
+      <pre xml:space="preserve">
+otel.SetTextMapPropagator(otel_propagation.TraceContext{})
+otel.SetTracerProvider(traceProvider)
+								
+// If you use Baggage propagation:
+otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(otel_propagation.TraceContext{}, otel_propagation.Baggage{}))
+otel.SetTracerProvider(traceProvider)			</pre>
+      <li>In a <code>MessageHandler</code> callback, create an instance of <code>NewInboundMessageCarrier</code>, a struct that allows <code>TraceContext</code>and <code>Baggage</code> to be propagated. Next, create your context instance, and use OpenTelemetry's <code>GetTextMapPropagator()</code> and <code>Extract()</code> functions to retrieve the trace context information from the <code>NewInboundMessageCarrier</code>. The extracted <code>TraceContext</code> can then be propagated with subsequent outbound messages. <code>context.Background()</code> creates a base context to which the extracted <code>TraceContext</code> is  added.</li>
+      <pre xml:space="preserve">
+var messageHandler solace.MessageHandler = func(message message.InboundMessage) {
+    inboundMessageCarrier := propagation.NewInboundMessageCarrier(message)
+    parentSpanContext := otel.GetTextMapPropagator().Extract(context.Background(), inboundMessageCarrier)			</pre>
+      <li>(Optional) Extract any <code>Baggage</code> from the current span with the <code>baggage.FromContext()</code> function:</li>
+      <pre xml:space="preserve">
+extractedBaggage := baggage.FromContext(parentSpanContext)</pre>
+      <li>Set span attributes using an <code>attribute.KeyValue</code> slice, which lets you attach additional context and meta-data to a span in the form of key-value pairs. Then use a <code>trace.SpanStartOption</code> slice to define the new span options:</li>
+      <pre xml:space="preserve">
+attrs := []attribute.KeyValue{
+    semconv.MessagingSystem("PubSub+"),                               // Messaging system to use
+    semconv.MessagingDestinationKindTopic,                            // Use topic subscriptions
+    semconv.MessagingDestinationName(message.GetDestinationName()),   // topic name
+    semconv.MessagingOperationReceive,                                // message operation is 'Receive'
+    semconv.MessagingMessageID(messageID.String()),                   // ID of message to publish
+}
+opts := []trace.SpanStartOption{
+    trace.WithAttributes(attrs...),                 // Include the span attributes
+    trace.WithSpanKind(trace.SpanKindConsumer),     // Sets the span kind as 'Consumer'
+}			</pre>
+      <li>Create and initialize a <code>Tracer</code>, required to start spans, and then use that tracer to start a new span. This span enables the tracing of the message process with associated meta-data and attributes.</li>
+      <pre xml:space="preserve">
+tracer := otel.GetTracerProvider().Tracer("myAppTracer", trace.WithInstrumentationVersion(Version()))
+receiveCtx, span := tracer.Start(parentSpanContext, fmt.Sprintf("%s receive", message.GetDestinationName()), opts...)	</pre>
+      <li>Use defer to call the <code>End()</code> function on the receive span right after you start the span. This line of code <i>always</i> executes right before the surrounding function ends, even if your application panics or has multiple returns. With <code>PersistentReceiverAutoAck</code> enabled, the default setting in the Go API, messages are acknowledged after the <code>End()</code> function returns.</li>
+      <pre xml:space="preserve">
+defer span.End()		</pre>
+      <li>Process the received message:</li>
+      <pre xml:space="preserve">var messageBody string
+if payload, ok := message.GetPayloadAsString(); ok {
+    messageBody = payload
+} else if payload, ok := message.GetPayloadAsBytes(); ok {
+    messageBody = string(payload)
+}
+fmt.Printf("Received Message Body %s \n", messageBody)</pre>
+    </ol>
+    <p>For a complete example of distributed tracing in a message subscriber, see <a href="https://github.com/SolaceSamples/solace-samples-go/blob/main/patterns/otel-tracing/otel-subscriber/subscriber.go" class="link-offsite">subscriber.go</a> on the <MadCap:variable name="Variables.CompanyName"/> Developers Hub.</p>
+    <MadCap:dropDown MadCap:conditions="Default.HideFromAllOutput">
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Receiver Example:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre class="Code" xml:space="preserve">
+package main
+
+import (
+    "context"
+    "fmt"
+    "go.opentelemetry.io/otel"
+    "go.opentelemetry.io/otel/attribute"
+    otel_propagation "go.opentelemetry.io/otel/propagation"
+    semconv "go.opentelemetry.io/otel/semconv/v1.19.0"
+    "go.opentelemetry.io/otel/trace"
+    sdktrace "go.opentelemetry.io/otel/sdk/trace"		
+    "os"
+    "os/signal"
+    "solace.dev/go/messaging"
+    "solace.dev/go/messaging/pkg/solace"
+    "solace.dev/go/messaging/pkg/solace/config"
+    "solace.dev/go/messaging/pkg/solace/message"
+    "solace.dev/go/messaging/pkg/solace/resource"
+    propagation "solace.dev/go/messaging-trace/opentelemetry"
+    "strings"
+    "time"
+)
+
+func InitTracing() {   
+    exporter, _ := stdouttrace.New(stdouttrace.WithPrettyPrint())
+    batchspanProcessor := sdktrace.NewSimpleSpanProcessor(exporter) // You should use a batch span processor in production
+    traceProvider := sdktrace.NewTracerProvider(
+        sdktrace.WithSampler(sdktrace.AlwaysSample()),
+        sdktrace.WithSpanProcessor(batchspanProcessor), 
+    )
+    tc := otel_propagation.TraceContext{}
+    // Register the TraceContext propagator globally; Solace only supports this format
+    otel.SetTextMapPropagator(tc)
+    otel.SetTracerProvider(traceProvider)
+    // more otel api globals can be configured
+}
+
+func main() {
+
+    brokerConfig := config.ServicePropertyMap{
+        config.TransportLayerPropertyHost:                "tcps://messaging.solace.cloud:55443",
+        config.ServicePropertyVPNName:                    "SOLACE_VPN",
+        config.AuthenticationPropertySchemeBasicPassword: "SOLACE_PASSWORD",
+        config.AuthenticationPropertySchemeBasicUserName: "SOLACE_USERNAME",
+    }
+
+    messagingService, err := messaging.NewMessagingServiceBuilder().FromConfigurationProvider(brokerConfig).Build()
+
+    if err != nil {
+        panic(err)
+    }
+
+    if err := messagingService.Connect(); err != nil {
+        panic(err)
+    }
+
+    InitTracing()
+    topic := resource.TopicSubscriptionOf("my/sample/topic")
+    queueName := "nondurable-queue.go.sample"
+    nonDurableExclusiveQueue := resource.QueueNonDurableExclusive(queueName)
+
+    persistentReceiver, err := messagingService.
+        CreatePersistentMessageReceiverBuilder().
+        WithMissingResourcesCreationStrategy("CREATE_ON_START").
+        WithSubscriptions(topic).
+        Build(nonDurableExclusiveQueue)
+					
+    if err := persistentReceiver.Start(); err != nil {
+        panic(err)
+    }
+
+    var messageHandler solace.MessageHandler = func(message message.InboundMessage) {
+        carrier := propagation.NewInboundMessageCarrier(message)
+        parentSpanContext := otel.GetTextMapPropagator().Extract(context.Background(), carrier)
+
+        messageID, _ := message.GetReplicationGroupMessageID()
+        attrs := []attribute.KeyValue{
+            semconv.MessagingSystem("PubSub+"),
+            semconv.MessagingDestinationKindTopic,
+            semconv.MessagingDestinationName(message.GetDestinationName()),
+            semconv.MessagingOperationReceive,
+            semconv.MessagingMessageID(messageID.String()),
+            // add more span attributes as needed...
+        }
+        opts := []trace.SpanStartOption{
+            trace.WithAttributes(attrs...),
+            trace.WithSpanKind(trace.SpanKindConsumer),
+        }
+
+        tracer := otel.GetTracerProvider().Tracer("myAppTracer", trace.WithInstrumentationVersion(Version()))
+
+        newCtx, span := tracer.Start(parentSpanContext, fmt.Sprintf("%s receive", message.GetDestinationName()), opts...)
+        defer span.End()
+
+        var messageBody string
+        if payload, ok := message.GetPayloadAsString(); ok {
+            messageBody = payload
+        } else if payload, ok := message.GetPayloadAsBytes(); ok {
+            messageBody = string(payload)
+        }
+        fmt.Printf("Received Message Body %s \n", messageBody)
+    }
+
+    // Register message callback handler to the message receiver
+    if regErr := persistentReceiver.ReceiveAsync(messageHandler); regErr != nil {
+        panic(regErr)
+    }
+
+    fmt.Printf("\n Bound to queue: %s\n", queueName)
+    fmt.Println("\n===Interrupt (CTR+C) to handle graceful terminaltion of the subscriber===\n")
+
+    // Run forever until an interrupt signal is received
+    // Handle interrupts
+
+    c := make(chan os.Signal, 1)
+    signal.Notify(c, os.Interrupt)
+
+    // Block until a signal is received.
+    &lt;-c
+
+    // Terminate the Persistent Receiver
+    persistentReceiver.Terminate(1 * time.Second)
+    fmt.Println("\nPersistent Receiver Terminated? ", persistentReceiver.IsTerminated())
+    // Disconnect the Message Service
+    messagingService.Disconnect()
+    fmt.Println("Messaging Service Disconnected? ", !messagingService.IsConnected())
+}
+</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+  </body>
+</html>

@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><a name="Publishing-Direct-Messages-Java-API"/>Publishing Direct Messages Using the Go API</h1>
+    <p>Direct messages are useful when high-throughput and low-latency is required. We recommend that you publish events using direct messages if some message loss can be tolerated without negatively impacting client applications. Message loss can occur  due to external factors, such as network congestion or client disconnection.  If your applications require guaranteed delivery and message acknowledgment, then we recommend using persistent messages instead. </p>
+    <p>To  handle direct messages using the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Go API, use the following steps:</p>
+    <ol>
+      <li><a href="#Creating-A-DirectMessagePublisher-Object" class="link-internal">Create a DirectMessagePublisher</a>.</li>
+      <li><a href="#Configuring-Messages" class="link-internal">Configure and Create an OutboundMessage</a>.</li>
+      <li><a href="#Configuring-Back-Pressure" class="link-internal">Handling Back-Pressure When Publishing Direct Messages</a>.</li>
+      <li><a href="#Publishing-A-Direct-Message" class="link-internal">Publish a Direct Message</a>.</li>
+      <li><a href="#Handling-Errors" class="link-internal">Handle Errors</a>.</li>
+    </ol>
+    <p>In some use cases, it's possible for your application to send messages faster than the messages can be transported. Messages can fill the API's internal buffers causing <i>back-pressure</i>. If this scenario is possible, we recommend that you consider changing the back-pressure settings to meet the requirements of your application. For more information, see  <MadCap:xref href="#Configuring-Back-Pressure">Configuring Back-pressure</MadCap:xref>.</p>
+    <p>For examples of applications  that publish direct messages, see  <a href="https://github.com/SolaceSamples/solace-samples-go/blob/main/patterns/direct_publisher.go" target="_blank" class="link-offsite">direct_publisher.go</a> on the <MadCap:variable name="Variables.CompanyName"/> GitHub page.</p>
+    <h2 class="with-rule"><a name="Creating-A-DirectMessagePublisher-Object"/>Creating a DirectMessagePublisher</h2>
+    <p>After a <code>MessagingService</code> instance has established a connection to an event broker, use a <code>DirectMessagePublisher</code> to publish direct messages.  You can use a <code>DirectMessagePublisherBuilder</code> to configure your <code>DirectMessagePublisher</code> to use certain features of the API, such as back-pressure strategies. Call the <code>Build()</code> function on your <code>DirectMessagePublisherBuilder</code> to return a <code>DirectMessagePublisher</code> instance. To enable your <code>DirectMessagePublisher</code> to start publishing messages, call <code>Start()</code> on it.</p>
+    <p>For more information, see the <a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Go reference</a>.</p>
+    <p>The following is an example that shows how to use  a direct message publisher to enable your application to publish messages to the event broker:</p>
+    <pre xml:space="preserve">/* Creates an instance of DirectMessagePublisherBuilder, which is used to create DirectMessagePublishers. */
+directPublisher, builderError := messagingService. 
+	CreateDirectMessagePublisherBuilder(). // Creates a DirectMessagePublisherBuilder that can be used to configure direct message publisher instances.
+	OnBackPressureReject().
+	Build()                                // Creates a new DirectMessagePublisher instance based on the configured properties.
+if builderErr != nil {
+	panic(builderErr)
+}
+
+startErr := directPublisher.Start()    // Start starts the publisher synchronously. Before this function is called, the publisher is considered off-duty.
+if startErr != nil {
+	panic(startErr)
+}</pre>
+    <h3>Asynchronous Publishers</h3>
+    <p>It is also possible to start a direct message publisher using a callback listener to allow for asynchronous notifications after the start operation is complete.</p>
+    <p>The following example shows how to start a <code>DirectMessagePublisher</code> asynchronously:</p>
+    <pre xml:space="preserve">
+func PublisherCallback(publisher solace.DirectMessagePublisher, err error) {
+	if err != nil {
+		panic(err) // Publisher started up with an error.
+	} else {
+		// Publisher started without issue.
+	}
+}
+// ...	
+// ...
+directPublisher.StartAsyncCallback(PublisherCallback) // Starts the publisher asynchronously. Calls the callback when started with an error if one occurred, otherwise nil if successful.</pre>
+    <p class="Note">Your publisher application is not operational until you call <code>Start()</code> or <code>StartAsyncCallback()</code> on it.</p>
+    <h2 class="with-rule"><a name="Configuring-Messages"/>Configuring and Creating Outbound Messages</h2>
+    <p>Your client applications explicitly create the outbound messages to publish. In the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Go API, when you publish messages you use <code>OutboundMessage</code> instances. To configure and create <code>OutboundMessage</code> instances, follow these steps: </p>
+    <ol>
+      <li>
+        <p>Call  <code>messagingService.MessageBuilder()</code> to return an <code>OutboundMessageBuilder</code> instance. For better performance, we recommend you use a single <code>OutboundMessageBuilder</code> to create multiple <code>OutboundMessage</code> instances. </p>
+        <pre xml:space="preserve">messageBuilder := messagingService.MessageBuilder()</pre>
+      </li>
+      <li>Configure your message with an <code>OutboundMessageBuilder</code> and then call the <code>Build()</code> function to return a message instance. You can configure message properties using either method below.
+			
+				<ul><li>Use <code>config.MessagePropertyMap</code> and the <code>config.MessageProperty*</code> functions. The following example shows how to set <code>MessagePropertyMap</code>  values for message ID, sender ID and message type constants, and then configure a message using the <code>FromConfigurationProvider()</code> function:		<pre xml:space="preserve">
+messageProperties := config.MessagePropertyMap{
+	config.MessagePropertyApplicationMessageID: "message ID",
+	config.MessagePropertySenderID:      "Sender ID",
+	config.MessagePropertyApplicationMessageType: "Message Type",
+	// For a complete list of MessageProperty constants see the <a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Go reference</a>.
+}	
+// ...						
+// ...						
+message, err := messageBuilder.FromConfigurationProvider(messageProperties)
+	.BuildWithStringPayload("my message payload")
+if err != nil {
+	panic(err)
+}</pre></li><li>Use the <code>OutboundMessageBuilder</code> interface and the <code>WithProperty(propertyName,propertyValue)</code> functions. Both Solace defined <code>config.MessageProperty</code> keys as well as arbitrary user-defined property keys are accepted. The following example shows how to set a custom key-value property on a message:<pre xml:space="preserve">
+messageBuilder := messagingService.MessageBuilder().
+	WithProperty("propertyName", "propertyValue")
+// ...							
+// ...							
+message, err := messageBuilder.BuildWithStringPayload("my message payload")
+if err != nil {
+	panic(err)
+}</pre></li></ul></li>
+    </ol>
+    <p>The following code example shows how to create a message builder, set message properties and create a message:</p>
+    <pre xml:space="preserve">
+/* Builder for creation of similarly configured messages */
+messageBuilder := messagingService.MessageBuilder()
+message, err := messageBuilder.
+	FromConfigurationProvider(messageProperties).     // For Sender ID, Sequence Number etc.  
+	WithExpiration(time.Now().Add(10 * time.Second)). // Expire the message in 10 seconds.
+	BuildWithStringPayload("my message payload")      // Builds the message.</pre>
+    <p>For more information about the functions, see the <a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Go reference</a></a>.</p>
+    <h2 class="with-rule"><a name="Configuring-Back-Pressure"/>Handling Back-Pressure When Publishing Direct Messages</h2>
+    <MadCap:snippetBlock src="../../Resources/Snippets/API-Guide/NG-API/backpressureintro-publisher-direct-messages.flsnp"/>
+    <p>In the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Go API, the <code>DirectMessagePublisher</code> has the following  mechanisms to handle back-pressure:</p>
+    <ul>
+      <li>
+        <a href="#reject" class="link-internal">reject messages when a specified limit is reached</a>
+      </li>
+      <li>
+        <a href="#throttle" class="link-internal">throttle the application  when a specified limit is reached</a>
+      </li>
+    </ul>
+    <h3><a name="reject"/>Rejecting Messages When A Specified Limit is Reached </h3>
+    <p>When back-pressure occurs, you can choose to reject the messages from the client application when a specified limit is reached in the internal buffer. You can use the <code>OnBackPressureReject(bufferSize uint)</code> function to specify a defined buffer capacity for a set number of messages to accumulate. After the specified capacity is reached, it is no longer possible to publish new messages and the API returns errors until the buffer has capacity again. On calls to publish, the value for <code>bufferSize</code> must be greater than or equal to zero. </p>
+    <pre xml:space="preserve">
+/* Creates an instance of DirectMessagePublisherBuilder, which is used to create DirectMessagePublishers. */
+directPublisher, builderError := messagingService. 
+	CreateDirectMessagePublisherBuilder(). // Creates a DirectMessagePublisherBuilder that can be used to configure direct message publisher instances.
+	OnBackPressureReject(500).             // Sets the pressure strategy to reject messages once the bufferSize, in number of messages, is reached.
+	Build()                                // Creates a new DirectMessagePublisher instance based on the configured properties.
+if builderErr != nil {
+	panic(builderErr)
+}
+
+startErr := directPublisher.Start()    // Start starts the publisher synchronously. Before this function is called, the publisher is considered off-duty.
+if startErr != nil {
+	panic(startErr)
+}</pre>
+    <h4>Using a Publisher Readiness Listener</h4>
+    <p>We recommend that you use a <code>PublisherReadinessListener</code> when you use the <code>OnBackPressureReject()</code> function because it lets your application known when there is capacity available in the buffer and it can resume publishing messages. The back pressure strategy of <code>OnBackPressureWait()</code> will <b>not</b> call a <code>PublisherReadinessListener</code>.</p>
+    <p>The following is an example of  registering an event handler <code>PublisherReadinessListener</code> instance: </p>
+    <pre xml:space="preserve">
+func PublisherReadinessListener(){
+// What you want your application to do when it can publish messages again.
+}
+// ...
+// ...
+directPublisher, builderError := messagingService. 
+	CreateDirectMessagePublisherBuilder(). // Creates a DirectMessagePublisherBuilder that can be used to configure direct message publisher instances.
+	OnBackPressureReject(500).	       // Sets the pressure strategy to reject messages once the bufferSize, in number of messages, is reached.
+	Build()                                // Creates a new DirectMessagePublisher instance based on the configured properties.
+if builderErr != nil {
+	panic(builderErr)
+}
+
+startErr := directPublisher.Start()    // Start starts the publisher synchronously. Before this function is called, the publisher is considered off-duty.
+if startErr != nil {
+	panic(startErr)
+}
+directPublisher.SetPublisherReadinessListener(PublisherReadinessListener);    // Registers a listener to be called when the publisher can send messages.       
+</pre>
+    <p class="Note"> For the best performance, we recommend you use <code>OnBackPressureReject(0)</code> with a<code> PublisherReadinessListener</code>.  A <code>bufferSize</code> of zero means the publisher application will not buffer messages before sending them to the broker, which reduces latency and improves performance. This prevents large numbers of messages accumulating on the publisher's internal buffer and is the most performant method of dealing with back pressure. </p>
+    <h3><a name="throttle"/>Throttling the Publisher When a Specified Limit is Reached</h3>
+    <p>You can choose to throttle the publishing application if a specified limit is reached in the internal buffer. The use of throttling is useful to free capacity to its internal buffers. You can use the <code>OnBackPressureWait(bufferSize uint)</code> function to set the maximum number of messages that can accumulate in the buffer. The default setting for the Go API is for the publisher application to wait with a <code>bufferSize</code> of 50. When this maximum capacity (<code>bufferSize</code>) is reached, the publisher routine pauses and waits for  available capacity in the internal buffer before letting the application publish any more messages.</p>
+    <p> This function should be used when you want application requests to take longer after the buffer's capacity has been reached. Using this mechanism effectively gives time for the API to empty the internal buffer. An additional benefit is that when you use persistent publishing, the API does not discard any messages. </p>
+    <p>The following shows an example of how to configure an internal buffer to accommodate up to one thousand messages:</p>
+    <pre xml:space="preserve">
+/* Creates an instance of DirectMessagePublisherBuilder, which is used to create DirectMessagePublishers. */
+directPublisher, builderError := messagingService. 
+	CreateDirectMessagePublisherBuilder(). // Creates a DirectMessagePublisherBuilder that can be used to configure direct message publisher instances.
+	OnBackPressureWait(1000).               // Sets back pressure strategy to wait and block until there is space in the buffer of size bufferSize.
+	Build()                                // Creates a new DirectMessagePublisher instance based on the configured properties.
+if builderErr != nil {
+	panic(builderErr)
+}
+
+startErr := directPublisher.Start()    // Start starts the publisher synchronously. Before this function is called, the publisher is considered off-duty.
+if startErr != nil {
+	panic(startErr)
+}</pre>
+    <h2 class="with-rule"><a name="Publishing-A-Direct-Message"/>Publishing a Direct Message</h2>
+    <p>After you have created the <code>DirectMessagePublisher</code>, you can start sending messages. When you send a message, there are two primary components:</p>
+    <ul>
+      <li>the topic to publish on  <a href="https://docs.solace.com/Get-Started/Understanding-Topics.htm" class="link-internal">(Understanding Topics)</a></li>
+      <li>the payload of the message (optional) </li>
+    </ul>
+    <p>The topic must be an instantiation of the <code>resource.Topic</code> class that follows the <MadCap:variable name="Variables.CompanyName"/> hierarchical format, for example: <code>solace/messaging/direct/pub</code>. The publish function currently supports simple string messages, byte arrays, as well as <code>OutboundMessage</code> instances, which can be obtained through an <code>OutboundMessageBuilder</code> via <code>MessagingService.MessageBuilder()</code>. The following are functions to publish a direct message:</p>
+    <ul>
+      <li>
+        <code>Publish(message message.OutboundMessage, destination *resource.Topic)</code>
+      </li>
+      <li>
+        <code>PublishWithProperties(message message.OutboundMessage, destination *resource.Topic, properties config.MessagePropertiesConfigurationProvider)</code>
+      </li>
+      <li>
+        <code>PublishBytes(message []byte, destination *resource.Topic)</code>
+      </li>
+      <li>
+        <code>PublishString(message string, destination *resource.Topic)</code>
+      </li>
+    </ul>
+    <p> See the <a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Go reference</a> for information about the publish functions that are available when you use a  <code>DirectMessagePublisher</code>.</p>
+    <p>Here's an example that shows how to publish a direct message:</p>
+    <pre xml:space="preserve">
+messageBody := "Hello from Go Direct Publisher Sample"
+messageBuilder := messagingService.MessageBuilder().     // Creates an OutboundMessageBuilder that can be used to build messages.
+WithProperty("application", "samples").                  // Sets an individual message property on the resulting message.
+WithProperty("language", "go")				  // Both Solace defined config.MessageProperty keys as well as user-defined property keys are accepted.
+
+go func() {
+	for directPublisher.IsReady() {                   // Checks if the publisher can publish messages.
+	message, err := messageBuilder.BuildWithStringPayload(messageBody)
+		if err != nil {
+			panic(err)
+		}
+
+		topic := resource.TopicOf("go/persistent/publisher/")
+
+		publishErr := directPublisher.Publish(message, topic)    // Publishes the message of type OutboundMessage to the specified destination
+		if publishErr != nil {
+			panic(publishErr)
+		}
+	}
+}()</pre>
+    <h2 class="with-rule"><a name="Handling-Errors"/>Handling Errors</h2>
+    <p>The Go API provides the <code>SetPublishFailureListener()</code> function that notifies the client if the API is unable to publish messages. A failed publish event could be due to an issue such as an invalid topic or a termination of the service.  See the example below:</p>
+    <pre xml:space="preserve">
+func PublishFailureListener(){
+// Handle a failed publish event
+}
+// ...
+// ...
+directPublisher, builderError := messagingService. 
+	CreateDirectMessagePublisherBuilder(). // Creates a DirectMessagePublisherBuilder that can be used to configure direct message publisher instances.
+	Build()                                // Creates a new DirectMessagePublisher instance based on the configured properties.
+if builderErr != nil {
+	panic(builderErr)
+}
+directPublisher.SetPublishFailureListener(PublishFailureListener) // Sets the listener to call if the publishing of a direct message fails.       </pre>
+  </body>
+</html>

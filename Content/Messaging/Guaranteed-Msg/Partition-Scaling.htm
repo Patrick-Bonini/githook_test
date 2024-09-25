@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Partition Scaling</h1>
+    <MadCap:snippetBlock src="../../Resources/Snippets/BrokerManager/partition-scaling.flsnp"/>
+    <p class="Caution">Partition scaling is service affecting. </p>
+    <h2 class="with-rule"><a name="partition-scaling-procedure"/>Adding and Removing Partitions</h2>
+    <p>When the partition count changes, the <a href="Queues.htm#key-to-partition-mapping" class="link-internal">key-to-partition mapping</a> changes. The effect is that consumers are delivered a different set of messages than before. There is no easy way to shield consumers
+from this change.</p>
+    <p>Because of the impact to consumers, we recommend that you disable ingress to the partitioned queue to allow messages to drain from all existing partitions before changing the number of partitions.</p>
+    <p>The exact effect on the publishing application depends on the choice of the <code>reject-msg-to-sender [including-when-shutdown]</code> setting of the queue. If published message loss is unacceptable, you must enable this setting (including when the queue is shut down). The default for this attribute, as for all queues, is to enable <code>reject-msg-to-sender</code> (but
+not when the queue is shut down). Therefore, if the default is not changed, you can expect message  loss when you follow the procedures below to change the partition count. For more information about this setting, see <MadCap:xref href="Configuring-Queues.htm#Message-Discard-Handling">Configuring Message Discard Handling</MadCap:xref>.</p>
+    <p>Changing the partition count has a significant impact on message delivery. The event broker does not maintain a history of key-to-partition mappings (the event broker calculates the mapping using a hash of the partition key). Because of this, when the partition count changes, subsequent messages with the same key will most likely be delivered to a different consumer, not because the partition-to-consumer mapping has changed, but because the key-to-partition mapping has changed.</p>
+    <p>When the partition count is increased, that new count comes into effect (key-to-partition mappings are recalculated) only after all the new partitions have been created.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/Queue-to-partioned-queue.flsnp"/>
+    <p class="Caution">Partition scaling is service affecting. Ensure that you follow the exact procedures provided below to add or remove partitions.</p>
+    <h3><a name="pq-add-partitions"/>Adding Partitions</h3>
+    <p>To add partitions (that is, to increase the partition count), do the following:</p>
+    <ol>
+      <li>
+        <p>Disable ingress for the queue. Egress (that is, delivery of messages to active consumers) continues for messages already in the queue.</p>
+      </li>
+      <li>
+        <p>Wait for all outstanding messages from all partitions of the queue to be fully delivered.</p>
+      </li>
+      <li>
+        <p>If the queue is replicated, wait for all messages on the DR-standby event broker to be <a href="../../Features/DR-Replication/Sync-Asynch-Replication.htm" class="link-internal">acknowledged or consumed</a>.</p>
+      </li>
+      <li>
+        <p>Increase the partition count of the queue.</p>
+      </li>
+      <li>
+        <p>Wait for the event broker to allocate new partitions and complete <MadCap:xref href="Partition-Rebalancing.htm">Partition Rebalancing</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>If the queue is replicated, wait for the DR-standby event broker to allocate its new partitions and complete the partition rebalancing process.</p>
+      </li>
+      <li>
+        <p>Enable ingress for the queue.</p>
+      </li>
+    </ol>
+    <h3><a name="pq-remove-partitions"/>Removing Partitions</h3>
+    <p>To remove partitions (that is, to decrease the partition count), do the following:</p>
+    <ol>
+      <li>
+        <p>Disable ingress for the queue. Egress (that is, delivery of messages to active consumers) continues for messages already in the queue.</p>
+      </li>
+      <li>
+        <p>Wait for all outstanding messages from all partitions of the queue to be fully delivered.</p>
+      </li>
+      <li>
+        <p>If the queue is replicated, wait for all messages on the DR-standby event broker to be <a href="../../Features/DR-Replication/Sync-Asynch-Replication.htm" class="link-internal">acknowledged or consumed</a>.</p>
+      </li>
+      <li>
+        <p>Decrease the partition count of the queue. </p>
+      </li>
+      <li>
+        <p>Wait for the event broker to de-allocate extra partitions and complete <MadCap:xref href="Partition-Rebalancing.htm">Partition Rebalancing</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>If the queue is replicated, wait for the DR-standby event broker to de-allocate its extra partitions and complete the partition rebalancing process.</p>
+      </li>
+      <li>
+        <p>Enable ingress for the queue.</p>
+      </li>
+    </ol>
+    <h2 class="with-rule">Partition Scaling Status</h2>
+    <p>A partitioned queue can have one of the following scaling statuses:</p>
+    <ul>
+      <li><code>Ready</code>—In this state, the queue has the expected number of partitions
+allocated.
+</li>
+      <li><code>ScalingUp</code>—The queue has too few partitions. The next partition
+must be created.
+New partitions are not assigned to a flow until all new partitions have been created.</li>
+      <li><code>ScalingDown</code>—The queue has too many partitions. The partition(s) created last must be deleted. The event broker immediately stops using the extra partitions (it unassigns them from their flows). Any messages in those partitions are lost.</li>
+    </ul>
+  </body>
+</html>

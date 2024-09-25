@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="Default.OnlyForPDF">
+  <head>
+    </head>
+  <body>
+    <h1>Setting Up CA Machine Images</h1>
+    <p>This tutorial walks you through the steps to set up a single <MadCap:variable name="Product-Names.pubsub_brand_only"/> software event broker CA machine image  instance in VMware ESXi.</p>
+    <ul>
+      <li>
+        <p>
+          <MadCap:xref href="#Before-Begin">Before you Begin</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Step-1-Get-Software-Broker">Step 1: Get a Software Event Broker</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Step-2-Import-Software-Broker">Step 2: Import the Software Event Broker</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Step-3-Configure-Storage">Step 3: Configure Storage</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Step-4-Configure-Hostname-Time-Synch">Step 4: Configure Hostname and Time Synchronization</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Step-5-Start-Software-Broker-Access-CLI">Step 5: Start the Broker and Access the Solace CLI</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Next-Steps">Next Steps</MadCap:xref>
+        </p>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Before-Begin"/>Before you Begin</h2>
+    <p>It's assumed that you have VMware ESXi installed on your host system.</p>
+    <h3>VMware Tools Support</h3>
+    <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> <MadCap:variable name="Product-Names.broker_sw_short"/> supports VMware Tools when running in a compatible hypervisor environment (ESXi or VMware Workstation Player) as follows:</p>
+    <ul>
+      <li>It supports VMware Tools functionality including Managed Power Settings, Enhanced Networking, Network Status, Time Synchronization, and Heartbeat.</li>
+      <li>It doesn't support memory ballooning.</li>
+    </ul>
+    <h3>System Requirements</h3>
+    <p>The number of CPUs and system memory required by your event broker depends on the configuration of the system scaling parameters. By default, fresh installations of the event broker allow up to 100 client connections.</p>
+    <p>You can increase certain system limits using System Scaling Parameters. Increasing these system limits also increases the system resources that are required. For more information, see <a href="https://docs.solace.com/Software-Broker/System-Scaling-Parameters.htm" target="_blank" class="link-offsite">Using System Scaling Parameters</a>. You can use The System Resource Calculator to create a target configuration for the event broker instance. The outputs of the tool will indicate the minimum set of resources required to run the event broker in terms of CPU cores, memory and storage.  Make sure that the instance being deployed has these resources available to it.  The virtual machine (VM) instance should have RAM assigned to it, equal to or greater than <code>Host Virtual Memory</code> output from the tool.  Once you have started the new instance, you can adjust the system scaling parameters  up via the <MadCap:variable name="Product-Names.solace_cli"/>.</p>
+    <p>For more information about configuring storage, see <MadCap:xref href="../Configuring-Storage-Machine-Cloud.htm">Managing Storage for Virtual Machine Images</MadCap:xref>. A production instance should have the storage-group assigned to a separate volume from the VM host’s root filesystem.</p>
+    <p>If you plan to scale your deployment above the 1,000 client connections level you will need to provision space on a drive to ensure proper functioning of your event broker. For production use, you must provision an additional drive for the storage-group. For instructions on provisioning additional storage space, see <MadCap:xref href="../Managing-Storage.htm">Managing Storage Volumes</MadCap:xref>, and for information on other defaults, see <a href="https://docs.solace.com/Software-Broker/SW-Broker-Configuration-Defaults.htm" target="_blank" class="link-offsite">Default Configuration for Software Event Brokers</a>.</p>
+    <p>The software event broker requires storage with medium to high bandwidth/IOPS and low latency. The VM image uses settings for the widest compatibility; these settings are not tuned for performance. For information about getting the best storage performance for your system, consult the <a href="https://docs.vmware.com/" target="_blank" class="link-offsite">VMWare documentation</a>.</p>
+    <h3>High Availability Considerations</h3>
+    <p>To deploy event brokers in high-availability (HA) redundancy groups, you must set up three separate event broker instances and then configure them as an HA group. For more information on how to configure existing event brokers into an HA group, see <a href="https://docs.solace.com/Features/HA-Redundancy/Configuring-HA-Groups.htm" target="_blank" class="link-offsite">HA Group Configuration</a>.</p>
+    <h2 class="with-rule"><a name="Step-1-Get-Software-Broker"/>Step 1: Get a Software Event Broker</h2>
+    <p>The first step is to download an edition of PubSub+ <MadCap:variable name="Product-Names.broker_sw_short"/>. For VMware ESXi, the event broker is distributed as an  Open Virtualization Archive (.ova) file.</p>
+    <ol>
+      <li>Go to the Solace Products site for <a href="https://products.solace.com/prods/PubSub_CA" target="_blank" class="link-offsite">PubSub+ Controlled Availability</a> customers.</li>
+      <li>Select the required edition of the software event broker.</li>
+      <li>Select the <code>solace-pubsub-enterprise-&lt;version&gt;.ova</code> file to download it.</li>
+    </ol>
+    <h2 class="with-rule"><a name="Step-2-Import-Software-Broker"/>Step 2: Import the Software Event Broker</h2>
+    <p>To create a new VM for the event broker, you must import the .ova file into the VMware ESXi host. Once it is imported, you can start the event broker instance.</p>
+    <p>To do this, follow these steps:</p>
+    <ol>
+      <li>Launch VMware ESXi.</li>
+      <li>On the main dashboard, select <b>Create/Register VM</b> to create a new VM.<br/><p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/OL9-ESXi/Import-Broker-ESXi-Create.png" class="img-border" alt=""/></p><p>The <b>New Virtual Machine Wizard</b> opens.</p></li>
+      <li>From the creation type menu, select to deploy your VM from an OVF or OVA file. Then, click <b>Next</b>.<p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/OL9-ESXi/Import-Broker-ESXi-Select-Type.png" class="img-border" alt=""/></p></li>
+      <li>Provide a name for your event broker instance and import the .ova file that you downloaded (by clicking the blue box or dragging the file into the box). Then, click <b>Next</b>. <p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/OL9-ESXi/Import-Broker-ESXi-OVF-VMDK.png" class="img-border" alt=""/></p></li>
+      <li>Select a location for the  event broker storage. Then, click <b>Next</b>.<p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/OL9-ESXi/Import-Broker-ESXi-Select-Storage.png" class="img-border" alt=""/></p></li>
+      <li>Select the format of the virtual disk that the  event broker will use (thick provisioning is recommended) and uncheck <b>Power on automatically</b>. Then, click <b>Next</b>. <p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/OL9-ESXi/Import-Broker-ESXi-Deployment-Options.png" class="img-border" alt=""/></p></li>
+      <li>Review the settings and then click <b>Finish</b>.
+     
+        <p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/OL9-ESXi/Import-Broker-ESXi-Complete.png" class="img-border" alt=""/></p></li>
+      <li>
+        <p>Configure the VM.</p>
+        <p>Right-click on the new event broker VM and select <b>Edit settings</b> .</p>
+        <p>
+          <img src="../../../Resources/Images/SW-Broker-Setup/Machine/OL9-ESXi/Import-Broker-ESXi-Edit-Settings.png" class="img-border" alt=""/>
+        </p>
+        <p>Adjust the number of CPUs and the amount of memory based on the outputs from the System Resource Calculator. Then select <b>Add hard disk</b>.</p>
+        <p>
+          <img src="../../../Resources/Images/SW-Broker-Setup/Machine/OL9-ESXi/Import-Broker-ESXi-Adjust-Resources.png" class="img-border" alt=""/>
+        </p>
+        <p>
+          <img src="../../../Resources/Images/SW-Broker-Setup/Machine/OL9-ESXi/Import-Broker-ESXi-Add-Disk.png" class="img-border" alt=""/>
+        </p>
+        <p>
+          <img src="../../../Resources/Images/SW-Broker-Setup/Machine/OL9-ESXi/Import-Broker-ESXi-New-Disk.png" class="img-border" alt=""/>
+        </p>
+        <p>The new hard disk will later be configured as the storage-group for the event broker.</p>
+        <p>Select <b>VM Options</b>.</p>
+        <p>
+          <img src="../../../Resources/Images/SW-Broker-Setup/Machine/OL9-ESXi/Import-Broker-ESXi-VM-Options.png" class="img-border" alt=""/>
+        </p>
+        <p>Then select <b>VMware Tools</b> and check <b>Synchronize guest time with host</b>.</p>
+        <p>
+          <img src="../../../Resources/Images/SW-Broker-Setup/Machine/OL9-ESXi/Import-Broker-ESXi-Synchronize-Time.png" class="img-border" alt=""/>
+        </p>
+        <p>Power on the new VM.</p>
+      </li>
+      <li>Open the console.<br/><p>Right-click the event broker VM and select <b>Open browser console</b> from the <b>Console</b> tab. Alternatively, If you know the IP address, you can  SSH to port 22 of the event broker VM.</p><p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/ESXi/esxi-image8.png" class="img-border" alt=""/></p><p>The event broker is successfully started when the login prompt appears.</p><p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/OL9-ESXi/Import-Broker-ESXi-Login-Prompt.png" class="img-border" alt=""/></p></li>
+      <li>Log in to the event broker.<p>The software event broker resides in a container that is wrapped within a Linux OS to make an event broker VM image.</p><p>To log into the event broker for the first time, you must log in as <code>sysadmin</code>, which is the default user account for the Linux host environment. On first login you will be prompted to change the password for the <code>sysadmin</code> user from the default (<code>sysadmin</code>).</p></li>
+    </ol>
+    <h2 class="with-rule"><a name="Step-3-Configure-Storage"/>Step 3: Configure Storage</h2>
+    <p>The event broker instance is launched with an external disk to hold all of the state associated with the event broker.  Perform the following steps to configure the event broker to use this storage:</p>
+    <ol>
+      <li>
+        <p>Use the <code>solacectl storage ls</code> command to find the device name of the secondary storage.</p>
+        <pre xml:space="preserve">[sysadmin@solace ~]$ sudo solacectl storage ls
+Block Devices:
+Name                  Size   Note
+sda                   30.0G  Main device
+└─sda1                0.5G
+└─sda2                29.5G
+sdb                   16.0G
+
+Storage Volumes:
+Name                  Size   Used   Available Path
+</pre>
+        <p MadCap:conditions="Default.HideFromAllOutput">
+          <img src="../../../Resources/Images/SW-Broker-Setup/Machine/OL9-ESXi/Configure-Storage-Find-Device.png" class="img-border" alt=""/>
+        </p>
+      </li>
+      <li>
+        <p>From the output of <code>solacectl storage ls</code> you can see device <code>sdb</code> is a secondary storage with a size of 16.0GB.  Next, use <code>solacectl</code> to provision the secondary storage.</p>
+        <pre>[sysadmin@solace ~]$ sudo solacectl storage configure sdb storage-group
+Creating new partition...
+Mounting /dev/sdb1
+Attempting to create new volume storage-group
+Volumes have been configured in the new block device.
+</pre>
+        <p MadCap:conditions="Default.HideFromAllOutput">
+          <img src="../../../Resources/Images/SW-Broker-Setup/Machine/OL9-ESXi/Configure-Storage-Provision-Secondary.png" class="img-border" alt=""/>
+        </p>
+        <p>Then check to see that the storage was provisioned correctly.</p>
+        <pre xml:space="preserve">[sysadmin@solace ~]$ sudo solacectl storage ls
+Block Devices:
+Name                  Size   Note
+sda                   30.0G  Main device
+└─sda1                0.5G
+└─sda2                29.5G
+sdb                   16.0G
+└─sdb1                16.0G
+
+Storage Volumes:
+Name                  Size   Used   Available Path
+/dev/sdb1             16G    33M    16G       /mnt/sdb1
+└─storage-group       16G    0      16G       /mnt/sdb1/storage-group
+</pre>
+        <p MadCap:conditions="Default.HideFromAllOutput">
+          <img src="../../../Resources/Images/SW-Broker-Setup/Machine/OL9-ESXi/Configure-Storage-Verify-Configuration.png" class="img-border" alt=""/>
+        </p>
+        <p>The secondary storage is mounted at <code>/mnt/sdb1/storage-group</code>.</p>
+      </li>
+    </ol>
+    <h2 class="with-rule"><a name="Step-4-Configure-Hostname-Time-Synch"/>Step 4: Configure the Hostname and Time Synchronization</h2>
+    <p>By default, the hostname for the VM  and the network is configured to use DHCP.  If you do not update the hostname via DHCP, you will need to change it  to avoid conflict with other broker instances.  </p>
+    <p>To change the hostname, enter the following command:</p>
+    <pre>[sysadmin@solace ~]$ solacectl hostname configure &lt;hostname&gt;</pre>
+    <p>The CA machine image includes VMware Tools and Chronyd to support time synchronization.  Chronyd is disabled by default and the easiest way to enable time synchronization is via VMware Tools (as in the previous steps where time synchronization was enabled in the VM configuration).  </p>
+    <p>To verify that VMware Tools time synchronization is enabled enter the following command:</p>
+    <pre>[sysadmin@solace ~]$ vmware-toolbox-cmd timesync status
+Enabled
+</pre>
+    <p>If you are not using VMware Tools for time synchronization, you can configure and enable Chronyd  to synchronize via NTP. For more information, see <a href="https://docs.oracle.com/en/operating-systems/oracle-linux/9/network/network-ConfiguringNetworkTime.html" target="_blank" class="link-offsite">Configuring Network Time</a> in the Oracle Linux 9 documentation.</p>
+    <h2 class="with-rule"><a name="Step-5-Start-Software-Broker-Access-CLI"/>Step 5: Start the Event Broker and Access the Solace CLI</h2>
+    <p>To start the event broker, enter the following <code>solacectl</code> command:</p>
+    <pre>[sysadmin@solace ~]$ solacectl service start     </pre>
+    <p>When you first access the <MadCap:variable name="Product-Names.solace_cli"/>, you should do the following:</p>
+    <ul>
+      <li>Set a password for the admin user, which has access to all CLI commands.</li>
+      <li>Determine the event broker’s IP address so that you can enable remote access.</li>
+    </ul>
+    <ol>
+      <li>To enter the <MadCap:variable name="Product-Names.solace_cli"/> from the console in the Linux host environment, enter the following command in the Linux host shell:<pre>[sysadmin@solace ~]$ solacectl cli</pre><p>A CLI banner and prompt appears.</p><p>At the <code>&gt;</code> prompt, you are at the User EXEC level of the <MadCap:variable name="Product-Names.solace_cli"/> command structure.</p></li>
+      <li> Within the <MadCap:variable name="Product-Names.solace_cli"/>, enter the following commands to create an admin user named <code>admin</code> (you can choose another name if you wish):<pre xml:space="preserve">solace&gt; enable
+solace# configure
+solace(configure)# create username admin password &lt;password&gt;
+solace(configure/username)# global-access-level admin</pre></li>
+      <li>To determine the IP address assigned to the event broker, enter the following command:<pre>solace&gt; show ip vrf management</pre><p>The displayed output lists the IP addresses assigned to the event broker (listed for <code>intf0:1</code>), which can be used to remotely manage it (that is, not from the VM console). </p><p><u>Example</u>:</p><pre xml:space="preserve">solace&gt; show ip vrf management
+VRF: management
+Number of interfaces: 1
+
+Interface    V Router   IP Address        Source
+-----------  ---------  ----------------  -------
+intf0:1      static     &lt;IP Address&gt;      system
+intf0:1      static     ::/0              system
+
+Number of active global routes: 5
+
+Destination       Gateway           Network Mask            Interface
+----------------  ----------------  ----------------------  ----------
+169.254.169.254   *                 255.255.255.255         N/A
+172.17.0.0        *                 255.255.0.0             N/A
+default           192.168.128.1     0.0.0.0                 intf0
+192.168.128.0     *                 255.255.240.0           intf0
+fe80::            *                 ffff:ffff:ffff:ffff::   intf0</pre></li>
+      <li>To remotely access the <MadCap:variable name="Product-Names.solace_cli"/> for the event broker, you can now ssh to port 2222 of the event broker’s IP address and login as the admin user.<pre>ssh -p 2222 admin@&lt;public_ip&gt;</pre></li>
+    </ol>
+    <p class="Tip">In addition to the admin CLI User, you can create additional CLI and file transfer users through the <MadCap:variable name="Product-Names.solace_cli"/>in the manner described in <a href="https://docs.solace.com/Admin/Configuring-Mgmt-and-Shell-Users.htm" target="_blank" class="link-offsite">Management &amp; Shell Users</a>.</p>
+    <h2 class="with-rule"><a name="Next-Steps"/>Next Steps</h2>
+    <p>You now have a software event broker container with a basic configuration that is ready for messaging tasks.</p>
+    <p>There are additional configuration tasks that you can make use of in the following topics:</p>
+    <ul>
+      <li><a href="https://docs.solace.com/Software-Broker/SW-Broker-Configuration-Defaults.htm" target="_blank" class="link-offsite">Default Configuration for Software Event Brokers</a>—Review the default port numbers for the services that run on the event broker.</li>
+      <li><MadCap:xref href="../Resource-Requirements-Machine-Images.htm">Resource Requirements for Virtual Machine Images</MadCap:xref>—Learn about resource requirements for software event brokers.</li>
+      <li><a href="https://docs.solace.com/Security/Security-Solace.htm" target="_blank" class="link-offsite">Security Overview</a>—Apply security features to secure your event broker, systems, and data.</li>
+    </ul>
+    <p> When you are comfortable with your event broker, you can test messaging using the Solace SDKPerf application. You can download SDKPerf from the <b>Other Software</b> section in the <a href="https://solace.com/downloads" class="link-offsite" target="_blank">Downloads</a> page.</p>
+    <p>For more information about working with your event brokers, see the following:</p>
+    <ul>
+      <li>
+        <a href="https://docs.solace.com/Admin/Broker-Manager/PubSub-Manager-Overview.htm" target="_blank" class="link-offsite">PubSub+ Broker Manager</a>
+      </li>
+      <li>
+        <a href="https://docs.solace.com/API/SDKPerf/SDKPerf.htm" target="_blank" class="link-offsite">SDKPerf</a>
+      </li>
+      <li>
+        <MadCap:xref href="../Gather-Diags-Sw-Msg-Broker-Machine-Images.htm">Gathering Diagnostics from Machine Images</MadCap:xref>
+      </li>
+    </ul>
+  </body>
+</html>

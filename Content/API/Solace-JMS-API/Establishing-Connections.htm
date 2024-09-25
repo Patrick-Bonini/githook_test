@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Establishing Connections</h1>
+    <p>This section describes how a JMS client can establish Java Naming and Directory Interface (JNDI) and JMS data connections. It also describes how a connected client can establish a Session through which a JMS client can produce and consume messages.</p>
+    <h2 class="with-rule"><a name="Working"/>Working with JMS-Administered Objects</h2>
+    <p>Client applications using the Solace JMS implementation can either look up the required JMS-administered objects in a JNDI store or programmatically create them to avoid relying on JNDI service.</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#establishing_connections_577400906_336926">Working with JNDI</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#establishing_connections_577400906_337783">Programmatically Creating JMS-Administered Objects</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="establishing_connections_577400906_336926"/>Working with JNDI</h3>
+    <p>The Solace implementation of the JMS API is JNDI-compliant. When JMS clients obtain JNDI service, they can look up Solace implementations of Connection Factory, XA Connection Factory, Queue, and Topic objects either in the JNDI store offered by the event broker or in an LDAP‑based JNDI store on a remote host.</p>
+    <p>JMS clients can use JNDI service to look up JMS-administered objects through common names. To obtain JNDI service, a JMS client must pass a set of environment properties to the Initial Context constructor, which is used to provide JNDI service.</p>
+    <p>The environment properties must provide the fully‑qualified class name of the default <code>InitialContextFactory</code> implementation for Solace JMS (<code>com.solacesystems.jndi.SolJNDIInitialContextFactory</code>) to create an Initial Context. A number of standard and Solace‑defined properties can also be optionally configured through the environment. (For information on the properties that can be set through the environment, refer to <MadCap:xref href="JMS-Properties-Reference.htm">JMS Properties Reference</MadCap:xref>.)</p>
+    <p>The <code>InitialContext</code> provides a network connection to a JNDI store from which JMS‑administered objects can be looked up. A JNDI connection between the JMS client and a JNDI store is created when a JNDI lookup is made with that <code>InitialContext</code>. </p>
+    <p>Clients can look up administered objects from an event broker, which provides a JNDI store, or from an LDAP-based store on another host. </p>
+    <p>For examples of the process used to look up JMS-administered objects from the Solace JNDI store and an LDAP-based JNDI store, refer to <MadCap:xref href="Obtaining-Connection-Fac.htm">Obtaining Connection Factories</MadCap:xref>.</p>
+    <h4>Working with JMS-Administered Objects on an Event Broker</h4>
+    <p>The process for configuring Connection Factory, Queue, and Topic JNDI objects on an LDAP store depends on the particular LDAP provider that is used. For an example of how to bind JMS-administered objects in an Open LDAP JNDI store, refer to the <code>SolJMSLDAPBind.java</code> sample. </p>
+    <h3><a name="establishing_connections_577400906_337783"/>Programmatically Creating JMS-Administered Objects</h3>
+    <p>Client applications can use the <code>SolConnectionFactory</code>, <code>SolXAConnectionFactory</code>, <code>SolQueue</code>, and <code>SolTopic</code> interfaces of the <code>SolJMSUtility</code> class to programmatically create JMS‑administered Connection Factory, XA Connection Factory, Queue, and Topic objects instead of relying on JNDI service to look them up. <code>SolConnectionFactory</code>, <code>SolXAConnectionFactory</code>, <code>SolQueue</code>, and <code>SolTopic</code> objects are Solace proprietary implementations of standard JNDI ConnectionFactory, XA Connection Factory, Queue, and Topic objects.</p>
+    <p>Programmatically-created JMS objects can be bound to an LDAP‑based JNDI Store so that JMS clients can reuse them. The process for configuring  objects on an LDAP store depends on the particular LDAP provider that is used. For an example of how to bind JMS-administered objects in an Open LDAP JNDI store, refer to the <code>SolJMSLDAPBind.java</code> sample.</p>
+    <h4>Programmatically Creating Connection Factory and XA Connection Factory Objects</h4>
+    <p>When programmatically creating a <code>SolConnectionFactory</code> or a  <code>SolXAConnectionFactory</code> object, predefined default Connection Factory properties are used unless they are specifically overwritten by property values set through a passed-in environment or through Set operations (for example, <code>SolConnectionFactory.setReconnectRetries</code> and <code>SolXAConnectionFactory.setReconnectRetries</code>). Refer to the <MadCap:xref href="jms-get-started-open.htm#API_Online_Helps">JMS API Reference</MadCap:xref> documentation for a list of the Get and Set operations that can be performed for <code>SolConnectionFactory</code> and <code>SolXAConnectionFactory</code> objects.</p>
+    <p>Host, username, password, and Message VPN properties must be specified for a <code>SolConnectionFactory</code> or <code>SolXAConnectionFactory</code> so that a JMS data connection to an event broker can be made. These properties can be provided through a number of JMS property sources (refer to <MadCap:xref href="JMS-Properties-Reference.htm#jms_properties_39190069_302024">JMS Property Sources</MadCap:xref>), or they can be provided when the <code>SolConnectionFactory</code> is created.</p>
+    <ul>
+      <li>To programmatically create a <code>SolConnectionFactory</code>, call one of the following methods:
+					<ul><li><code>SolJMSUtility.createConnectionFactory()</code><p>Creates a Connection Factory with the default Connection Factory properties.</p></li><li><code>SolJMSUtility.createConnectionFactory(java.util.Hashtable&lt;?,?&gt; environment)</code><p>Creates a Connection Factory with a given environment. Any connection properties specified by the passed-in environment overwrite the default Connection Factory properties.</p></li><li><code>SolJMSUtility.createConnectionFactory(java.lang.String host, java.lang.String username, java.lang.String password, java.lang.String vpn, java.util.Hashtable&lt;?,?&gt; environment)</code></li><p>Creates a Connection Factory with a given environment. The host, username, password, and Message VPN properties required to establish a connection to the event broker are also passed in.</p></ul></li>
+      <li>To programmatically create a <code>SolXAConnectionFactory</code>, call one of the following methods:<ul><li><code>SolJMSUtility.createXAConnectionFactory()</code><p>Creates an XA Connection Factory with the default XA Connection Factory properties.</p></li><li><code>SolJMSUtility.createXAConnectionFactory(java.util.Hashtable&lt;?,?&gt; environment)</code><p>Creates an XA Connection Factory with a given environment. Any connection properties specified by the passed-in environment overwrite the default XA Connection Factory properties.</p></li><li><code>SolJMSUtility.createXAConnectionFactory(java.lang.String host, java.lang.String username, java.lang.String password, java.lang.String vpn, java.util.Hashtable&lt;?,?&gt; environment)</code><p>Creates an XA Connection Factory with a given environment. The host, username, password, and Message VPN properties required to establish a connection to the event broker are also passed in.</p></li></ul></li>
+    </ul>
+    <p>For an overview on the process of programmatically creating a Connection Factory or an XA Connection Factory to establish a JMS connection to an event broker, refer to <MadCap:xref href="Obtaining-Connection-Fac.htm#establishing_connections_577400906_326490">Programmatically Creating Connection Factories</MadCap:xref>.</p>
+    <h4>Programmatically Creating Queue Objects</h4>
+    <p>To programmatically create a <code>SolQueue</code>, call <code>SolJMSUtility.createQueue(java.lang.String queueName)</code>.</p>
+    <h4>Programmatically Creating Topic Objects</h4>
+    <p>To programmatically create a <code>SolTopic</code>, call <code>SolJMSUtility.createTopic(java.lang.String topicName)</code>.</p>
+  </body>
+</html>

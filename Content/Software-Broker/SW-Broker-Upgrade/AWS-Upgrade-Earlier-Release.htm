@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="Default.HideFromAllOutput">
+  <head>
+    <link href="../../Resources/Stylesheets/Tabbed_Content.css" rel="stylesheet"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Software"/>AWS Upgrade</h1>
+    <p>On this page you'll find upgrade procedures for event broker AWS images.</p>
+    <ul class="nav tabs">
+      <li>
+        <a class="tab" href="#standlone-aws">Standalone AWS Cloud Image</a>
+      </li>
+      <li>
+        <a class="tab" href="#redundant-aws">HA Group AWS Cloud Image</a>
+      </li>
+    </ul>
+    <div id="standlone-aws">
+      <h2 class="with-rule">Upgrade a Standalone AWS Cloud Image</h2>
+      <p>Beginning with PubSub+ release 9.1.0, the Solace PubSub+ software event broker Amazon Machine Image (AMI) uses the Amazon Linux OS. Solace recommends an instance replacement upgrade if you're using the AWS AMI, which will result in a newly created AWS instance for the upgraded event broker. </p>
+      <h3 class="with-rule"><a name="Starting"/>Starting Versions &amp; Upgrade Paths</h3>
+      <p>The starting version of your event broker must be release 8.10.0 or newer to upgrade to release 9.1.0 or newer. If your current event broker is an older version, follow the instructions at <MadCap:xref href="Machine-Upgrade-Earlier-Release.htm">Machine Upgrade</MadCap:xref> to upgrade the broker to release 9.0.0 first before upgrading to release 9.1.0 or newer.</p>
+      <p>The procedure shown in this section describes an Enterprise to Enterprise upgrade.</p>
+      <p>On non-Enterprise event brokers running release 8.10.0 or newer, the following upgrades are also supported:</p>
+      <ul>
+        <li>from Evaluation to Enterprise</li>
+        <li>from Standard to Standard</li>
+        <li>from Standard to Enterprise</li>
+      </ul>
+      <p>For upgrades between other editions, launch the upgraded instance using the Solace AMI package for the corresponding event broker edition.</p>
+      <h3 class="with-rule"><a name="Prerequi"/>Prerequisites</h3>
+      <ol>
+        <li>In order to preserve configuration and spooled messages, all storage-elements must be on one or more external storage volumes. Each storage-element is described in <MadCap:xref href="../Configuring-Storage.htm#Storage-">Storage-Element Characteristics &amp; Requirements</MadCap:xref>. If any of your storage-elements aren't on an external storage volume, follow the instructions in <MadCap:xref href="../Cloud-And-Machine-Tasks/Managing-Storage.htm#Migratin">Migrating Storage-Elements to External Storage</MadCap:xref> to move them. As an example, this procedure assumes that the event broker has its storage-elements assigned to a single external storage volume.</li>
+        <p class="Tip">To review the list of available block devices and volumes, run the <code>solacectl storage ls</code> command, then check the block devices and storage volumes columns in the output.</p>
+        <li>The Cloud-Init user data that was used when the software event broker was initialized in  <MadCap:xref href="../Cloud-And-Machine-Tasks/Initializing-Machine-Image-With-Cloud-Init.htm#Config_AWS">AWS PubSub+ Initialization</MadCap:xref> are required for this procedure. All the Solace storage keys on external storage must be included. In the example below, the Cloud-Init user data is from <MadCap:xref href="../Cloud-And-Machine-Tasks/Initializing-Machine-Image-With-Cloud-Init.htm#Config_AWS">AWS PubSub+ Initialization</MadCap:xref>, and includes Solace storage keys on the <code>sdf</code> device.</li>
+        <pre class="Code" xml:space="preserve">#cloud-config<br/>solace:<br/>    configuration_keys:<br/>        username_admin_globalaccesslevel: admin<br/>        username_admin_password: adminpwd<br/>        service_ssh_port: 22<br/>        service_semp_port: 8080<br/>    storage:<br/>        adb:<br/>            device: sdf<br/>        adbBackup:<br/>            device: sdf<br/>        diagnostics:<br/>            device: sdf<br/>        internalSpool:<br/>            device: sdf<br/>        jail:<br/>            device: sdf<br/>        var:<br/>            device: sdf</pre>
+        <p class="Tip">The user data, excluding the Solace storage keys, can be retrieved from the instance by using the <code>http://&lt;broker-IP&gt;/latest/user-data</code> URI. For more information, refer to <a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html">Instance Metadata and User Data</a>.</p>
+        <li>You need a static IP or DNS name associated with the instance. This procedure assumes that the AWS instance is associated with an AWS elastic network interface. The network interface should have a name, and its termination behavior should be set to false. To associate an AWS instance with an elastic network interface that's associated with an elastic IP, refer to <a href="https://docs.aws.amazon.com/vpc/latest/userguide/vpc-eips.html">Elastic IP Addresses</a>.</li>
+      </ol>
+      <p class="Note">User accounts (username/passwords) for support/root container users aren't transferred during the upgrade procedure, and must be manually applied to the new event broker instance.</p>
+      <p class="Note">If applicable, SolGeneos and its dependencies must be manually re-installed on the new event broker instance.</p>
+      <h3 class="with-rule"><a name="Procedur"/>Procedure</h3>
+      <ol>
+        <li>Log into the event broker as sysadmin.</li>
+        <li>Switch to root user:</li>
+        <p class="Code">[sysadmin@solace ~]$ sudo su –</p>
+        <li>Stop the solace service:</li>
+        <p class="Code">[root@solace ~]$ solacectl service stop</p>
+        <li>Stop the Instance in the AWS Management Console.</li>
+        <li>Create a Snapshot of the Volume specified in the <MadCap:xref href="#Prerequi">Prerequisites</MadCap:xref> and give it a suitable description.</li>
+        <p>
+          <img src="../../Resources/Images/SW-Broker-Upgrade/AWS-CreateSnapshot.png" alt="Choose AMI" MadCap:mediastyle="@media print { max-width: 1000px; }" style="max-width: 1000px;"/>
+        </p>
+        <li>Launch a new Instance using the new AMI named <code>solace-pubsub-enterprise-&lt;version&gt;</code>.</li>
+        <ol style="list-style-type: lower-alpha;">
+          <li>Choose an Instance Type that is the same or larger.</li>
+          <li>On the Configure Instance Details screen, set the same Network, Subnet, and IAM role as before.</li>
+          <li>Under the Network interfaces section, select the elastic network interface specified in <MadCap:xref href="#Prerequi">Prerequisites</MadCap:xref>.</li>
+          <p>
+            <img src="../../Resources/Images/SW-Broker-Upgrade/AWS-NetworkInterfaces.png" alt="Choose AMI" MadCap:mediastyle="@media print { max-width: 1000px; }" style="max-width: 1000px;"/>
+          </p>
+          <li>Under the Advanced Details section, enter the user data specified in <MadCap:xref href="#Prerequi">Prerequisites</MadCap:xref> into the User data block.</li>
+          <p>
+            <img src="../../Resources/Images/SW-Broker-Upgrade/AWS-UserData.png" alt="Choose AMI" MadCap:mediastyle="@media print { max-width: 1000px; }" style="max-width: 1000px;"/>
+          </p>
+          <p class="Note">The device name for each storage-element must start with an “s”.</p>
+          <li>On the Add Storage screen, add an additional Volume, and set the Device specified in the user data in step 2, the Snapshot from step 5, and the Size to the same or larger Size.</li>
+          <p>
+            <img src="../../Resources/Images/SW-Broker-Upgrade/AWS-AddStorage.png" alt="Choose AMI" MadCap:mediastyle="@media print { max-width: 1000px; }" style="max-width: 1000px;"/>
+          </p>
+          <li>Review and Launch the new Instance. When the event broker restarts, it will be running the configuration and message-spool from the previous version.</li>
+        </ol>
+        <li>Log into the event broker as admin and confirm that it's running the new version:</li>
+        <p class="Code">solace&gt; show version</p>
+        <li>Terminate the stopped Instance from step 4 in the AWS Management Console.</li>
+      </ol>
+      <p>You have completed this procedure.</p>
+    </div>
+    <div id="redundant-aws">
+      <h2 class="with-rule">Upgrade a Redundant AWS Cloud Image Group</h2>
+      <p>Beginning with PubSub+ release 9.1.0, the Solace PubSub+ software event broker Amazon Machine Image (AMI) uses the Amazon Linux OS. Solace recommends an instance replacement upgrade for all members of a redundant HA group if the group is using the AWS AMI, which will result in newly created AWS instances for each group member.</p>
+      <h3 class="with-rule"><a name="Starting"/>Starting Versions &amp; Upgrade Paths</h3>
+      <p>The starting version of your event brokers must be release 8.10.0 or newer to upgrade to release 9.1.0 or newer. If your current event brokers are at an older version, follow the instructions at <MadCap:xref href="Machine-Upgrade-Earlier-Release.htm">Machine Upgrade</MadCap:xref> to upgrade the brokers to release 9.0.0 first before upgrading to release 9.1.0 or newer.</p>
+      <p>The procedure shown in this section describes an Enterprise to Enterprise upgrade.</p>
+      <p>On non-Enterprise event brokers running release 8.10.0+, the following upgrades are also supported:</p>
+      <ul>
+        <li>from Evaluation to Enterprise</li>
+        <li>from Standard to Standard</li>
+        <li>from Standard to Enterprise</li>
+      </ul>
+      <p>For upgrades between other editions, launch the upgraded instance using the Solace AMI package for the corresponding event broker edition.</p>
+      <h3 class="with-rule"><a name="Prerequi"/>Prerequisites</h3>
+      <ol>
+        <li>In order to preserve configuration and spooled messages, all storage-elements on each event broker in the group must be on one or more external storage volumes. Each storage-element is described in <MadCap:xref href="../Configuring-Storage.htm#Storage-">Storage-Element Characteristics &amp; Requirements</MadCap:xref>. If any of your storage-elements aren't on an external storage volume, follow the instructions in <MadCap:xref href="../Cloud-And-Machine-Tasks/Managing-Storage.htm#Migratin">Migrating Storage-Elements to External Storage</MadCap:xref> to move them. As an example, this procedure assumes that each event broker has its storage-elements assigned to its own, single external storage volume.</li>
+        <p class="Tip">To review the list of available block devices and volumes, run the <code>solacectl storage ls</code> command, then check the block devices and storage volumes columns in the output.</p>
+        <li>The Cloud-Init user data that was used when the software event brokers were initialized in  <MadCap:xref href="../Cloud-And-Machine-Tasks/Initializing-Machine-Image-With-Cloud-Init.htm#Config_AWS">AWS PubSub+ Initialization</MadCap:xref> are required for this procedure. All the Solace storage keys on external storage must be included. In the example below, the Cloud-Init user data is from <MadCap:xref href="../Cloud-And-Machine-Tasks/Initializing-Machine-Image-With-Cloud-Init.htm#Config_AWS">AWS PubSub+ Initialization</MadCap:xref>, and includes Solace storage keys on the <code>sdf</code> device.</li>
+        <pre class="Code" xml:space="preserve">#cloud-config<br/>solace:<br/>    configuration_keys:<br/>        username_admin_globalaccesslevel: admin<br/>        username_admin_password: adminpwd<br/>        service_ssh_port: 22<br/>        service_semp_port: 8080<br/>    storage:<br/>        adb:<br/>            device: sdf<br/>        adbBackup:<br/>            device: sdf<br/>        diagnostics:<br/>            device: sdf<br/>        internalSpool:<br/>            device: sdf<br/>        jail:<br/>            device: sdf<br/>        var:<br/>            device: sdf</pre>
+        <p class="Tip">The user data, excluding the Solace storage keys, can be retrieved from the instance by using the <code>http://&lt;broker-IP&gt;/latest/user-data</code> URI. For more information, refer to <a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html">Instance Metadata and User Data</a>.</p>
+        <li>You need a static IP or DNS name associated with each instance in the group. This procedure assumes that the AWS instance is associated with an AWS elastic network interface. The network interface should have a name, and its termination behavior should be set to false. To associate an AWS instance with an elastic network interface that's associated with an elastic IP, refer to <a href="https://docs.aws.amazon.com/vpc/latest/userguide/vpc-eips.html">Elastic IP Addresses</a>.</li>
+      </ol>
+      <p class="Note">User accounts (username/passwords) for support/root container users aren't transferred during the upgrade procedure, and must be manually applied to the new event broker instance.</p>
+      <p class="Note">If applicable, SolGeneos and its dependencies must be manually re-installed on the new event broker instance.</p>
+      <h2 class="with-rule"><a name="Procedur"/>Procedure</h2>
+      <p>In the following procedure, we refer to the primary node as <code>solace-primary</code>, the backup node as <code>solace-backup</code>, and the monitoring node as <code>solace-monitor</code>.</p>
+      <p class="Note">It is important to reboot the three software event brokers one at time. If the Monitoring and Backup Nodes are offline at the same time, the Primary Node will automatically reboot.</p>
+      <p>To upgrade a redundant AWS cloud image group from version 8.10.0+ to version 9.1.0, perform the following steps.</p>
+      <ol>
+        <li>Log into each node as an admin user.</li>
+        <li>Ensure the Redundancy Configuration Status is <code>Enabled</code>, and the Redundancy Status is <code>Up</code> on each node. On <code>solace-primary</code> the Message Spool Status should be <code>AD-Active</code>, and on <code>solace-backup</code> the Message Spool Status should be <code>AD-Standby</code>:</li>
+        <pre class="Code" xml:space="preserve">solace-primary&gt; <b>show redundancy</b> 
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Message Routing Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : Primary
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+		                Primary Virtual    Backup Virtual
+				Router             Router
+				---------------    ---------------
+Activity Status                Local Active       Shutdown
+Routing Interface              intf0:1            intf0:1
+Routing Interface Status       Up                 
+VRRP Status                    Initialize         
+VRRP Priority                  250                
+Message Spool Status           AD-Active          
+Priority Reported By Mate      Standby   
+
+solace-backup&gt; show redundancy 
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Message Routing Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : Backup
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+				Primary Virtual    Backup Virtual
+				Router             Router
+				---------------    ---------------
+Activity Status                Shutdown           Mate Active
+Routing Interface              intf0:1            intf0:1
+Routing Interface Status                          Up
+VRRP Status                                       Initialize
+VRRP Priority                                     100
+Message Spool Status                              AD-Standby
+Priority Reported By Mate                         Active
+
+solace-monitor&gt; show redundancy
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Monitoring Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+</pre>
+        <li>Log out and log back into <code>solace-monitor</code> as sysadmin.</li>
+        <li>Switch to root user:</li>
+        <p class="Code">[sysadmin@solace ~]$ sudo su –</p>
+        <li>Stop the solace service:</li>
+        <p class="Code">[root@solace ~]$ solacectl service stop</p>
+        <li>Stop the <code>solace-monitor</code> Instance in the AWS Management Console.</li>
+        <li>Create a Snapshot of the Volume specified in <MadCap:xref href="#Prerequi">Prerequisites</MadCap:xref> for <code>solace-monitor</code> and give it a suitable description.</li>
+        <p>
+          <img src="../../Resources/Images/SW-Broker-Upgrade/AWS-Redundant-Monitor-CreateSnapshot.png" alt="Choose AMI" MadCap:mediastyle="@media print { max-width: 1000px; }" style="max-width: 1000px;"/>
+        </p>
+        <li>Launch a new Instance for <code>solace-monitor</code> using the new AMI named <code>solace-pubsub-enterprise-&lt;version&gt;</code>.</li>
+        <ol style="list-style-type: lower-alpha;">
+          <li>Choose an Instance Type that is the same or larger.</li>
+          <li>On the Configure Instance Details screen, set the same Network, Subnet, and IAM role as before.</li>
+          <li>Under the Network interfaces section, select the elastic network interface specified in <MadCap:xref href="#Prerequi">Prerequisites</MadCap:xref> for <code>solace-monitor</code>.</li>
+          <p>
+            <img src="../../Resources/Images/SW-Broker-Upgrade/AWS-Redundant-Monitor-NetworkInterfaces.png" alt="Choose AMI" MadCap:mediastyle="@media print { max-width: 1000px; }" style="max-width: 1000px;"/>
+          </p>
+          <li>Under the Advanced Details section, enter the user data specified in <MadCap:xref href="#Prerequi">Prerequisites</MadCap:xref> into the User data block for <code>solace-monitor</code>.</li>
+          <p>
+            <img src="../../Resources/Images/SW-Broker-Upgrade/AWS-UserData.png" alt="Choose AMI" MadCap:mediastyle="@media print { max-width: 1000px; }" style="max-width: 1000px;"/>
+          </p>
+          <p class="Note">The device name for each storage-element must start with an “s”.</p>
+          <li>On the Add Storage screen, add an additional Volume and set the Device specified in the user data in step 2 of the <MadCap:xref href="#Prerequi">Prerequisites</MadCap:xref>, the Snapshot from step 7, and the Size to the same or larger Size.</li>
+          <p>
+            <img src="../../Resources/Images/SW-Broker-Upgrade/AWS-Redundant-Monitor-AddStorage.png" alt="Choose AMI" MadCap:mediastyle="@media print { max-width: 1000px; }" style="max-width: 1000px;"/>
+          </p>
+          <li>Review and Launch the new Instance. When <code>solace-monitor</code> restarts, it will be running the configuration and message-spool from the previous version.</li>
+        </ol>
+        <li>Log into <code>solace-monitor</code> and confirm that it's running the new version:</li>
+        <p class="Code">solace-monitor&gt; show version</p>
+        <li>Ensure Redundancy Status is <code>Up</code> on <code>solace-monitor</code>:</li>
+        <pre class="Code">solace-monitor&gt; <b>show redundancy</b> 
+Configuration Status     : Enabled
+Redundancy Status        : Up	</pre>
+        <li>Log into <code>solace-backup</code> as an admin user.</li>
+        <li>Ensure Redundancy Configuration Status is <code>Enabled</code> and Redundancy Status is <code>Up</code> on <code>solace-backup</code>:</li>
+        <pre class="Code">solace-backup&gt; <b>show redundancy</b> 
+Configuration Status     : Enabled
+Redundancy Status        : Up	</pre>
+        <li><u>Optional</u>: If using Config-Sync, ensure that it's in sync:</li>
+        <pre class="Code" xml:space="preserve">solace-backup&gt; <b>show config-sync</b>
+Admin Status            : Enabled
+Oper Status             : Up
+</pre>
+        <li>Terminate the stopped Instance from step 6 in the AWS Management Console.</li>
+        <li>Log out and log back into the <code>solace-backup</code> as sysadmin</li>
+        <li>Switch to root user:</li>
+        <p class="Code">[sysadmin@solace ~]$ sudo su –</p>
+        <li><u>Optional</u>: If you're using MQTT retained messages in your deployment, verify that your retain cache instances are synchronized. For more information, refer to <MadCap:xref href="../../Services/Managing-MQTT-Retained-Messages.htm#Verify_Caches_Sync">Verifying Retain Cache Redundancy</MadCap:xref>.</li>
+        <li>Stop the solace service:</li>
+        <p class="Code">[root@solace ~]$ solacectl service stop</p>
+        <li>Stop the <code>solace-backup</code> Instance in the AWS Management Console.</li>
+        <li>Create a Snapshot of the Volume specified in <MadCap:xref href="#Prerequi">Prerequisites</MadCap:xref> for <code>solace-backup</code> and give it a suitable description.</li>
+        <p>
+          <img src="../../Resources/Images/SW-Broker-Upgrade/AWS-Redundant-Backup-CreateSnapshot.png" alt="Choose AMI" MadCap:mediastyle="@media print { max-width: 1000px; }" style="max-width: 1000px;"/>
+        </p>
+        <li>Launch a new Instance for <code>solace-backup</code> using the new AMI named <code>solace-pubsub-enterprise-&lt;version&gt;</code>.</li>
+        <ol style="list-style-type: lower-alpha;">
+          <li>Choose an Instance Type that is the same or larger.</li>
+          <li>On the Configure Instance Details screen, set the same Network, Subnet, and IAM role as before.</li>
+          <li>Under the Network interfaces section, select the elastic network interface specified in <MadCap:xref href="#Prerequi">Prerequisites</MadCap:xref> for <code>solace-backup</code>.</li>
+          <p>
+            <img src="../../Resources/Images/SW-Broker-Upgrade/AWS-Redundant-Backup-NetworkInterfaces.png" alt="Choose AMI" MadCap:mediastyle="@media print { max-width: 1000px; }" style="max-width: 1000px;"/>
+          </p>
+          <li>Under the Advanced Details section, enter the user data specified in <MadCap:xref href="#Prerequi">Prerequisites</MadCap:xref> into the User data block for <code>solace-backup</code>.</li>
+          <p>
+            <img src="../../Resources/Images/SW-Broker-Upgrade/AWS-UserData.png" alt="Choose AMI" MadCap:mediastyle="@media print { max-width: 1000px; }" style="max-width: 1000px;"/>
+          </p>
+          <p class="Note">The device name for each storage-element must start with an “s”.</p>
+          <li>On the Add Storage screen, add an additional Volume and set the Device specified in the user data in step 2 of the <MadCap:xref href="#Prerequi">Prerequisites</MadCap:xref>, the Snapshot from step 20, and the Size to the same or larger Size.</li>
+          <p>
+            <img src="../../Resources/Images/SW-Broker-Upgrade/AWS-Redundant-Backup-AddStorage.png" alt="Choose AMI" MadCap:mediastyle="@media print { max-width: 1000px; }" style="max-width: 1000px;"/>
+          </p>
+          <li>Review and Launch the new Instance. When <code>solace-backup</code> restarts, it will be running the configuration and message-spool from the previous version.</li>
+        </ol>
+        <li>Log into <code>solace-backup</code> and confirm that it's running the new version:</li>
+        <p class="Code">solace-backup&gt; show version</p>
+        <li>Ensure Redundancy Status is <code>Up</code> on <code>solace-backup</code>:</li>
+        <pre class="Code" xml:space="preserve">solace-backup&gt; <b>show redundancy</b> 
+Configuration Status     : Enabled
+Redundancy Status        : Up</pre>
+        <li><u>Optional</u>: If using Config-Sync, ensure <code>solace-backup</code> is in sync:</li>
+        <pre class="Code" xml:space="preserve">solace-backup&gt; <b>show redundancy</b> 
+Message Spool Status             AD-Standby</pre>
+        <li>If <code>solace-backup</code> provides AD service, ensure the Message Spool Status is <code>AD-Standby</code>:</li>
+        <pre class="Code" xml:space="preserve">solace-backup&gt; <b>show redundancy</b> 
+Message Spool Status             AD-Standby	</pre>
+        <li>Terminate the stopped Instance from step 19 in the AWS Management Console.</li>
+        <li>Log into <code>solace-primary</code> as an admin user.</li>
+        <li>Release activity from <code>solace-primary</code> to <code>solace-backup</code>:</li>
+        <p class="Code">solace-primary&gt; enable<br/>solace-primary&gt; configure<br/>solace-primary&gt; redundancy release-activity</p>
+        <li>On <code>solace-primary</code>, ensure Redundancy Configuration Status is <code>Enabled-Released</code> and Redundancy Status is <code>Down</code>:</li>
+        <pre class="Code" xml:space="preserve">solace-primary&gt; <b>show redundancy</b> 
+Configuration Status     : Enabled-Released
+Redundancy Status        : Down	</pre>
+        <li>On <code>solace-backup</code>, ensure Redundancy Configuration Status is <code>Enabled</code>, Redundancy Status is <code>Down</code>, and the Activity Status on the Backup Virtual Router is <code>Local Active</code>.</li>
+        <pre class="Code">solace-backup&gt; <b>show redundancy</b> 
+Configuration Status     : Enabled
+Redundancy Status        : Down
+				Primary Virtual    Backup Virtual
+				Router             Router
+				---------------    ---------------
+Activity Status                Shutdown           Local Active
+</pre>
+        <li>Log out and log back into <code>solace-primary</code> as sysadmin.</li>
+        <li>Switch to root user:</li>
+        <p class="Code">[sysadmin@solace ~]$ sudo su –</p>
+        <li><u>Optional</u>: If you're using MQTT retained messages in your deployment, verify that your retain cache instances are synchronized. For more information, refer to <MadCap:xref href="../../Services/Managing-MQTT-Retained-Messages.htm#Verify_Caches_Sync">Verifying Retain Cache Redundancy</MadCap:xref>.</li>
+        <li>Stop the solace service:</li>
+        <p class="Code">[root@solace ~]$ solacectl service stop</p>
+        <li>Stop the <code>solace-primary</code> Instance in the AWS Management Console.</li>
+        <li>Create a Snapshot of the Volume specified in <MadCap:xref href="#Prerequi">Prerequisites</MadCap:xref> for <code>solace-primary</code> and give it a suitable description.</li>
+        <p>
+          <img src="../../Resources/Images/SW-Broker-Upgrade/AWS-CreateSnapshot.png" alt="Choose AMI" MadCap:mediastyle="@media print { max-width: 1000px; }" style="max-width: 1000px;"/>
+        </p>
+        <li>Launch a new Instance for <code>solace-primary</code> using the new AMI named <code>solace-pubsub-enterprise-&lt;version&gt;</code>.</li>
+        <ol style="list-style-type: lower-alpha;">
+          <li>Choose an Instance Type that is the same or larger.</li>
+          <li>On the Configure Instance Details screen, set the same Network, Subnet, and IAM role as before.</li>
+          <li>Under the Network interfaces section, select the elastic network interface specified in <MadCap:xref href="#Prerequi">Prerequisites</MadCap:xref> for <code>solace-primary</code>.</li>
+          <p>
+            <img src="../../Resources/Images/SW-Broker-Upgrade/AWS-NetworkInterfaces.png" alt="Choose AMI" MadCap:mediastyle="@media print { max-width: 1000px; }" style="max-width: 1000px;"/>
+          </p>
+          <li>Under the Advanced Details section, enter the user data specified in <MadCap:xref href="#Prerequi">Prerequisites</MadCap:xref> into the User data block for <code>solace-primary</code>.</li>
+          <p>
+            <img src="../../Resources/Images/SW-Broker-Upgrade/AWS-UserData.png" alt="Choose AMI" MadCap:mediastyle="@media print { max-width: 1000px; }" style="max-width: 1000px;"/>
+          </p>
+          <p class="Note">The device name for each storage-element must start with an “s”.</p>
+          <li>On the Add Storage screen, add an additional Volume and set the Device specified in the user data in step 2 of the <MadCap:xref href="#Prerequi">Prerequisites</MadCap:xref>, the Snapshot from step 36, and the Size to the same or larger Size.</li>
+          <p>
+            <img src="../../Resources/Images/SW-Broker-Upgrade/AWS-AddStorage.png" alt="Choose AMI" MadCap:mediastyle="@media print { max-width: 1000px; }" style="max-width: 1000px;"/>
+          </p>
+          <li>Review and Launch the new Instance. When <code>solace-primary</code> restarts, it will be running the configuration and message-spool from the previous version.</li>
+        </ol>
+        <li>Log into <code>solace-primary</code> and confirm that it's running the new version:</li>
+        <p class="Code">solace-primary&gt; show version</p>
+        <li>No release activity from <code>solace-primary</code>:</li>
+        <p class="Code">solace-primary&gt; enable<br/>solace-primary&gt; configure<br/>solace-primary&gt; no redundancy release-activity</p>
+        <li>Ensure Redundancy Status is <code>Up</code> on <code>solace-primary</code>:</li>
+        <pre class="Code">solace-primary&gt; <b>show redundancy</b> 
+Configuration Status     : Enabled
+Redundancy Status        : Up
+</pre>
+        <li><u>Optional</u>: If using Config-Sync, ensure that it's in sync:</li>
+        <pre class="Code">solace-primary&gt; <b>show config-sync</b>
+Admin Status            : Enabled
+Oper Status             : Up	</pre>
+        <li>If the node provides AD service, ensure the Message Spool Status is <code>AD-Standby</code>:</li>
+        <pre class="Code">solace-primary&gt; <b>show redundancy</b> 
+Message Spool Status             AD-Standby		</pre>
+        <li>Terminate the stopped Instance from step 35 in the AWS Management Console.</li>
+      </ol>
+      <p>You have completed this procedure.</p>
+      <p class="Note">The backup is now active and the primary is standby.</p>
+    </div>
+    <script type="text/javascript" src="../../Resources/Scripts/Tabbed_Content.js">
+        </script>
+  </body>
+</html>

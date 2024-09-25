@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><MadCap:concept term="Software;Appliance"/>Receiving Message Bus Events</h1>
+    <p><MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers can be configured to generate events that provide management and status information, and publish them as direct messages to well-known topics onto the event broker message bus.     </p>
+    <p>The following types of event messages can be published to the message bus:</p>
+    <ul>
+      <li>System—events that have an event broker- or system-wide scope (that is, they are events that concern the entire event broker—they are not limited to a Message VPN or particular client). Examples of system scope events are fan alarms, hardware failure events, and so on. Refer to <MadCap:xref href="#subscribing_to_message_bus_events_1651767527_328766">Publishing System Events</MadCap:xref>.</li>
+      <li>Message VPN—events pertain to a particular Message VPN. An example of a Message VPN event is a message rate event that is generated when the set message rate threshold for a given Message VPN is exceeded. (Refer to <MadCap:xref href="#subscribing_to_message_bus_events_1651767527_319778">Publishing Message VPN Events</MadCap:xref>.)</li>
+      <li>Client—events that pertain to client connections to particular Message VPN. These could be events such as client connects and disconnects. Client event messages are only sent out on the Message VPN in which the event occurred. (Refer to <MadCap:xref href="#subscribing_to_message_bus_events_1651767527_298557">Publishing Client Events</MadCap:xref>.)</li>
+      <li>Subscription—events that pertain to client topic subscriptions added to or removed from the Message VPN. Subscribe and unsubscribe event messages are only sent out on the Message VPN in which the event occurred. (Refer to <MadCap:xref href="#subscribing_to_message_bus_events_1651767527_298604">Publishing Subscription Events</MadCap:xref>.)</li>
+    </ul>
+    <p>Management applications using the <MadCap:variable name="Manifest-Products-APIs.PubSub-GenericAll-Messaging-API"/>s can receive these event messages by subscribing to specific topics that the events are published to (these topics are listed in the <MadCap:xref href="Subscribing-to-MBus-Events.htm#subscribing_to_message_bus_events_1651767527_308133">Summary of Standard Event Message Topics and Text</MadCap:xref> table).</p>
+    <p>For a detailed listing of the possible events and descriptions of each event, refer to  <MadCap:xref href="PubSub-Event-Reference.htm">SolOS Event Reference</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="subscribing_to_message_bus_events_1651767527_301887"/>Configuring Event Broker Event Publishing</h2>
+    <p>To be able to receive event messages published over the event broker message bus, the publishing of events over the event broker message bus must be enabled. Additional event configuration changes for the publishing of event messages can also be made.</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#subscribing_to_message_bus_events_1651767527_328766">Publishing System Events</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#subscribing_to_message_bus_events_1651767527_349092">Publishing Message VPN-Level Events</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="subscribing_to_message_bus_events_1651767527_328766"/>Publishing System Events</h3>
+    <p>By default, the publishing of system event messages over the event broker message bus is not enabled.</p>
+    <p>To enable an event broker to publish system event messages, a Message VPN that currently has an enabled state must be configured as the Management Message VPN. (Only one Message VPN can be configured as the Management Message VPN.) Once a Management Message VPN is configured, system event messages will then always be published to that Management Message VPN. (If no Management Message VPN is configured, then system event messages are not published for the event broker.)</p>
+    <p>Once a Management Message VPN is configured, the publishing of system-level event messages must be enabled.</p>
+    <ul>
+      <li>To set a Message VPN as the Management VPN, enter the following CONFIG command: 
+        <p class="Code">solace# configure<br/>solace(configure)# management-message-vpn &lt;vpn-name&gt;</p><p><u>Where</u>:</p><p><code>&lt;vpn-name&gt;</code> is the name of the Message VPN to be designated as the Management Message VPN.</p><p class="Note_-_bullet">The no version of the command (<b>no management-message-vpn</b>) removes the Management Message VPN designation from the Message VPN.</p></li>
+      <li>To turn on the publishing of system event messages, use the following Logging Event CONFIG command:
+        <p class="Code">solace(configure)# logging event<br/>solace(configure/logging/event)# publish-system</p><p class="Note">The no version of the command (<b>no publish system</b>) turns off the publishing of system event messages.</p></li>
+      <li>To view the current status of the system scope configuration, enter the following User EXEC command. 
+        <p><u>Example</u>:</p><p class="Code">solace(configure/logging/event)# show logging event</p><p class="Code">System-tag:</p><p class="Code">Publish System Event Messages: Disabled</p></li>
+    </ul>
+    <h3><a name="subscribing_to_message_bus_events_1651767527_349092"/>Publishing Message VPN-Level Events</h3>
+    <p>By default, the publishing of Message VPN, client, and subscription event messages over the event broker message bus is not enabled, and must be enabled for each type you want to enable on a Message VPN by Message VPN basis.</p>
+    <p class="Note">If the publishing of Message VPN, client, and/or subscription event messages over the event broker message bus is not enabled, the events are still written to syslog.</p>
+    <p>The event messages for these event types can be published to the message bus in the Message VPN in which the event occurred.</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#subscribing_to_message_bus_events_1651767527_319778">Publishing Message VPN Events</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#subscribing_to_message_bus_events_1651767527_383459">Setting a Topic Format for Published Events</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#subscribing_to_message_bus_events_1651767527_298557">Publishing Client Events</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#subscribing_to_message_bus_events_1651767527_298604">Publishing Subscription Events</MadCap:xref>
+      </li>
+    </ul>
+    <h4><a name="subscribing_to_message_bus_events_1651767527_319778"/>Publishing Message VPN Events</h4>
+    <p>To turn on Message VPN event publishing for a Message VPN, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# event<br/>solace(configure/message-vpn/event)# publish-message-vpn</p>
+    <p class="Note">The no version of the command (<b>no publish-message-vpn</b>) turns off the publishing of Message VPN event messages for the given Message VPN.</p>
+    <h4><a name="subscribing_to_message_bus_events_1651767527_383459"/>Setting a Topic Format for Published Events</h4>
+    <p>By default, all event logs for an event broker are published to a topic that is prefixed by <code>#LOG/</code>.</p>
+    <p>However, in Message Queuing Telemetry Transport (MQTT) topic syntax, the “#” character is reserved as a “zero or more levels” wildcard. Therefore, for an application to receive published event logs using an MQTT session subscription, you must configure the event broker to publish event logs to a topic that is compatible with MQTT subscriptions.</p>
+    <p>To set the topic format for published events for a Message VPN, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-vpn/event)# publish-topic-format [smf] [mqtt]</p>
+    <p><u>Where</u>:</p>
+    <p><code>smf</code> specifies that events should be published using SMF topic syntax, with the format <code>#LOG/&lt;log-level&gt;/&lt;event-specific-content&gt;</code>. This is the default topic format used for published event logs.</p>
+    <p><code>mqtt</code> specifies that events should be published using MQTT topic syntax, with the format <code>$SYS/LOG/&lt;log-level&gt;/&lt;event-specific-content&gt;</code>.</p>
+    <div class="Note">
+      <ul>
+        <li>At least one option must be specified. If both formats are specified, event logs will be published using each of the specified topic formats.</li>
+        <li MadCap:conditions="Default.HideFromAllOutput">For consumers to receive MQTT events, the queue must be configured as <code>mqtt</code> and subscribers subscribe to the MQTT events using <code>$SYS/LOG</code>.</li>
+        <li>For consumers to receive events from a queue, the queue must subscribe to the events in SMF format and the events must be published using SMF topic syntax. <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">Conversely for consumers to receive event logs as MQTT format,   those events must be published in MQTT topic syntax and the queue must be set as <code>mqtt</code>, </MadCap:conditionalText></li>
+        <li>The no version of this command (<b>no publish-topic-format</b>) resets the parameter to its default value of <code>smf</code> only.</li>
+      </ul>
+    </div>
+    <h4><a name="subscribing_to_message_bus_events_1651767527_298557"/>Publishing Client Events</h4>
+    <p>To turn on client event publishing for a Message VPN, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# event<br/>solace(configure/message-vpn/event)# publish-client</p>
+    <p class="Note">The no version of the command (<b>no publish-client</b>) turns off the publishing of client scope events for the given Message VPN.</p>
+    <h4><a name="subscribing_to_message_bus_events_1651767527_298604"/>Publishing Subscription Events</h4>
+    <p>To turn on subscription add/delete event message publishing for a Message VPN, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# event<br/>solace(configure/message-vpn/event)# publish-subscription [no-unsubscribe-events-on-disconnect] [event-topic-format {v1 | v2}]</p>
+    <p><u>Where</u>:</p>
+    <p><code>no-unsubscribe-events-on-disconnect</code> configures the publishing of subscription events to disregard unsubscribe events for each of a client’s subscriptions when the client disconnects.</p>
+    <p><code>event-topic-format v1</code> sets the topic structure of subscription events to the form <code>#LOG/INFO/SUB_ADD|SUB_DEL/&lt;subscribedTopic&gt;</code></p>
+    <p><code>event-topic-format v2</code> sets the topic structure of subscription events to the form <code>#LOG/INFO/SUB/&lt;routerName&gt;/ADD|DEL/&lt;vpnName&gt;/&lt;clientName&gt;/&lt;subscribedTopic&gt;</code></p>
+    <div class="Note">
+      <ul>
+        <li>The no version of the command (<b>no publish-subscription</b>) turns off the publishing of subscription add/delete event messages for the given Message VPN.</li>
+        <li>Enabling the publishing of subscription-level events to the message bus in a Message VPN may affect subscription performance on the event broker.</li>
+        <li>Subscription event topics should not exceed the maximum topic string length. Topics strings that exceed the maximum length will be truncated. For more information on topic structure, refer to <MadCap:xref MadCap:unresolvedLink="import-link:a_topic_support_and_syntax_819845554_56063" href="../Messaging/Topic-Support-and-Syntax.htm">Topic Support and Syntax</MadCap:xref>.</li>
+      </ul>
+    </div>
+    <h4><a name="subscribing_to_message_bus_events_1651767527_341745"/>Viewing VPN Event Publishing Configuration</h4>
+    <p>The current event publishing configuration and status for a Message VPN can be viewed through the <b>show message-vpn</b> User EXEC command.</p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <p class="Code">solace&gt; show message-vpn default<br/> <br/>Message VPN:                         default<br/>&gt;Configuration Status:                Enabled<br/>Local Status:                        Up<br/>Distributed Cache Management:        Enabled<br/>Total Local Unique Subscriptions:    0<br/>Total Remote Unique Subscriptions:   0<br/>Total Unique Subscriptions:          0<br/>Maximum Subscriptions:               5000000<br/>Export Subscriptions:                Yes (100% complete)<br/>Active Incoming Connections:         30<br/>  Service SMF:                       30<br/>  Service Web-Transport:             0<br/>  Service REST:                      0<br/>Active Outgoing Connections:<br/>  Service REST:                      0<br/>Max Incoming Connections:            9000<br/>  Service SMF:                       9000<br/>  Service Web-Transport:             200000<br/>  Service REST:                      9000<br/>Max Outgoing Connections:<br/>  Service REST:                      6000<br/> <br/>Basic Authentication:                Enabled<br/>    Auth Type:                       no authentication<br/>    Auth Profile:<br/>    Radius Domain:<br/>Client Certificate Authentication:   Disabled<br/>    Maximum Chain Depth:             3<br/>    Validate Certificate Dates:      Enabled<br/>    Allow API Provided Username:     Disabled<br/>Kerberos Authentication:             Disabled<br/>    Allow API Provided Username:     Disabled<br/> <br/>SEMP over Message Bus:               Enabled<br/>  Admin commands:                    Disabled<br/>    Client commands:                 Disabled<br/>    Distributed Cache commands:      Disabled<br/>  Show commands:                     Disabled<br/>  Legacy Show Clear commands:        Enabled<br/> <br/>Large Message Threshold:             1024 (KB)<br/>Event Log Tag<br/>Publish Client Event Messages:       Disabled<br/>Publish Message VPN Event Messages:  Disabled<br/>Publish Subscription Event Messages: Disabled<br/>  No unsubscribes on disconnect:     Disabled<br/>  Event topic format:                N/A<br/> <br/>Event Threshold                           Set Value      Clear Value<br/>---------------------------------- ---------------- ----------------<br/>Incoming Connections                      80%(7200)        60%(5400)<br/>  Service SMF                             80%(7200)        60%(5400)<br/>  Service Web-Transport                 80%(160000)      60%(120000)<br/>  Service REST                            80%(7200)        60%(5400)<br/>Ingress Message Rate (msg/sec)              4000000          3000000<br/>Egress Message Rate (msg/sec)               4000000          3000000<br/>Subscriptions (#subs)                  80%(4000000)     60%(3000000)</p>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+  </body>
+</html>

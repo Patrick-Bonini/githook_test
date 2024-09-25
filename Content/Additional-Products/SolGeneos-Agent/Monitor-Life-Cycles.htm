@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:lastBlockDepth="4" MadCap:lastHeight="716" MadCap:lastWidth="1124">
+  <head/>
+  <body>
+    <h1>Monitor Life Cycles</h1>
+    <p>A monitor goes through the following states:</p>
+    <ul>
+      <li>WAITING—waiting for timer to go off</li>
+      <li>COLLECTING_QUEUE—queued waiting to start collecting</li>
+      <li>COLLECTING—collecting data</li>
+      <li>REPORTING_QUEUE—queued waiting to start reporting</li>
+      <li>REPORTING—reporting collected data</li>
+      <li>STOPPING—stopping the view, waiting for COLLECTING_QUEUE, COLLECTING, REPORTING_QUEUE, REPORTING to finish</li>
+      <li>STOPPED—the monitor is stopped</li>
+    </ul>
+    <p>The following steps describe a typical monitor life cycle and how the agent framework interacts with different methods and members in the monitor class:</p>
+    <ol>
+      <li>The Solace Geneos Agent service invokes the <code>initialize()</code> method; the monitor is loaded and is in STOPPED state. If the monitor is configured to auto start, then the <code>start()</code> method is called.</li>
+      <li>If <code>autoStart</code> is false, the monitor stays at STOPPED state. Otherwise, a data sampling task is added to the Monitor Timer thread shared by all monitors based on the monitor’s sampling rate, and its state changes to WAITING state.</li>
+      <li>When the timer goes off, the monitor enqueues a collection task onto the collecting context and the monitor transitions to COLLECTING_QUEUE state.</li>
+      <li>The collecting context changes the monitor state to COLLECTING state and invokes the monitor’s <code>onCollect()</code> method to collect data.</li>
+      <li>When collecting is complete, the monitor enqueues a reporting task onto the reporting context, and the monitor transitions to REPORTING_QUEUE state.</li>
+      <li>The reporting context changes the monitor state to REPORTING state, and invokes the monitor’s <code>onReport()</code> method to send data to NetProbes.</li>
+      <li>When the reporting is complete, the monitor transitions back to WAITING state.</li>
+      <li>If an error occurs during collecting or reporting, the monitor transitions to WAITING state. An error is logged; if it is enabled, the proper statistic (for example, <code>numAbortedIntervals</code>) is incremented.</li>
+    </ol>
+    <p>The monitor can be stopped and started through JMX through the <code>start()</code> or <code>stop()</code> methods. When the monitor is stopped, it transitions from STOPPING state to STOPPED state when all outstanding tasks are completed or canceled.</p>
+  </body>
+</html>

@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <meta name="keywords" content="multiple vrrp instances, multiple vrrp interfaces"/>
+  </head>
+  <body>
+    <h1>Configuring Redundancy Parameters</h1>
+    <p>You can perform redundancy-related configuration tasks on <MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/> <MadCap:variable name="Product-Names.broker_appliance_short"/>s.</p>
+    <p class="Note">The event broker redundancy facility must be turned off before any commands other than the <code>release-activity</code> or <code style="letter-spacing: -0.025em; font-weight: normal;">auto-revert</code> Redundancy CONFIG commands are run. The event broker redundancy facility is turned off by default.</p>
+    <div class="Note">
+      <p>Config-Sync will not automatically synchronize the objects/properties discussed in this section. Therefore, you must manually configure these objects/properties on each high-availability (HA) <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker.</p>
+      <p>To determine whether an object/property is synchronized by Config-Sync, look up the command used to configure the object/property in the <MadCap:xref href="../../Admin/Solace-CLI/Command-Line-Reference.htm">Command Line Interface Reference</MadCap:xref> or type the command in the Solace CLI, ending the command with "<code>?</code>". You can use the help to determine whether the object/property is synchronized.</p>
+    </div>
+    <h2 class="with-rule"><a name="managing_router_redundancy_2753819523_346478"/>Enabling Auto-Revert</h2>
+    <p>The auto-revert option controls what happens when the primary appliance comes back online after a failover has occurred.</p>
+    <p>When auto-revert isn't enabled (which is the default and recommended state), the primary appliance stays as a standby after it comes back online, allowing the backup appliance to remain active. In this case, the primary appliance becomes active only if the backup appliance fails or gives up activity. For more information, see  <MadCap:xref href="Maintaining-Event-Broker-Redundancy-All-Broker.htm#Give-Up-Activity">Forcing Backups to Give Up Activity to Primaries</MadCap:xref>.</p>
+    <p>If auto-revert is enabled, as soon as the primary appliance comes back online, it becomes active and switches the backup appliance from active to standby.</p>
+    <div class="Caution">
+      <p>It's recommended that you don't enable auto-revert on a Solace PubSub+ appliance. For example, a manual switch over is recommended so that you can determine why the failure occurred, and take action if required before the primary appliance takes activity again.</p>
+    </div>
+    <p>To enable auto-revert, enter the following CONFIG commands:
+                <p class="Code">solace1# configure<br/>solace1(configure)# redundancy<br/>solace1(configure/redundancy)# auto-revert</p></p>
+    <p>To disable auto-revert, enter the following CONFIG commands:
+                <p class="Code">solace1# configure<br/>solace1(configure)# redundancy<br/>solace1(configure/redundancy)# no auto-revert</p></p>
+    <p class="Note">It's recommended you set the same auto-revert state for both appliances in an HA pair.</p>
+    <h2 class="with-rule"><a name="managing_router_redundancy_2753819523_321542"/>Configuring a Mate Appliance Name</h2>
+    <p>To configure the name of the mate appliance for the given appliance, which allows messages within the network to be redirected to the mate in the event of an activity switch, enter the following commands:</p>
+    <p class="Code">solace# configure<br/>solace(configure)# redundancy<br/>solace(configure/redundancy)# mate-router-name &lt;name&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the router name of the mate appliance. Router names can contain up to 64 characters, composed of alphanumeric characters 0 to 9, a to z, A to Z, underscore '_', dot '.', and hyphen '-'. Note that '_', '.' and '-' cannot be used at the beginning or end of a router name. Router names must be unique among all configured event brokers. </p>
+    <p>The no version of this command, <code>no mate-router-name</code> deletes the given name from the mate appliance.</p>
+    <div class="Note">
+      <ul>
+        <li>
+You can only run this command with event broker redundancy and routing shutdown. </li>
+        <li>If the mate router-name is changed, a restart is required for the change to take effect.</li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="managing_router_redundancy_2753819523_321552"/>Releasing Activity</h2>
+    <p>To surrender activity from the given appliance to its mate for both the primary and backup virtual router VRIDs (provided the mate appliance is available, otherwise an error message is received), enter the following CONFIG commands:</p>
+    <p class="Code">solace# configure<br/>solace(configure)# redundancy<br/>solace(configure/redundancy)# release-activity</p>
+    <p>The no version of this command, <code>no release-activity</code>, causes the appliance to return the priorities of the VRIDs to their normal values and to take activity back for the local VRID.</p>
+    <p class="Note">Executing a <code>no release-activity</code> after a <code>release-activity</code> on an appliance can take back activity from its mate (regardless of the mate’s auto-revert setting) if the <code>no release-activity</code> is executed before the mate becomes fully active.</p>
+    <h2 class="with-rule"><a name="redundancy-interface"/>Assigning a Redundancy Interface</h2>
+    <p>Redundancy interfaces are  one or more message backbone appliance interfaces that you specify should be used for redundancy. You can assign up to two interfaces, effectively providing each appliance with multiple VRRP interfaces. </p>
+    <p>The interfaces you decide to assign  should depend on your intended network topology. For example, a typical Solace appliance use case is a deployment in a demilitarized zone with separate north and southbound interfaces configured as LAGs.</p>
+    <p class="GraphicCaption"><a name="Solace"/>Solace PubSub+ Appliance Deployed in a Demilitarized Zone</p>
+    <p>
+      <img src="../../Resources/Images/HA-Redundancy/multiple_redundancy_interfaces.PNG" style="width: 458px;height: 470px;" alt=""/>
+    </p>
+    <p>With only a single redundancy interface assigned on each appliance (e.g. LAG1), if the other interface (LAG2) goes down, the active appliance continues to provide service even though the messages cannot be forwarded out of the failed interface.</p>
+    <p>To solve this problem, you would assign both interfaces as redundancy interfaces, and specify the failover criteria as <code>any-fail</code> (refer to <MadCap:xref href="#Specifyi">Specifying the Redundancy Failover Criteria </MadCap:xref>). Once configured, the active appliance will release activity to the standby if either LAG1 or LAG2 fails.</p>
+    <p>You must designate at least one interface as a redundancy interface on each appliance in order to enable redundancy.</p>
+    <p>To assign a redundancy interface, enter the following commands:</p>
+    <p class="Code">solace(configure)# redundancy<br/>solace(configure/redundancy)# vrrp<br/>solace(configure/redundancy/vrrp)# interface &lt;phy-interface&gt;<br/></p>
+    <p>
+      <u>Where:</u>
+    </p>
+    <p><code>&lt;phy-interface&gt;</code> is an ASCII string specifying the Ethernet interface port or LAG to be assigned. Valid values are <code>eth&lt;port&gt;</code> (for example, <code>eth1</code>); <code>&lt;cartridge&gt;/&lt;slot&gt;/&lt;port&gt;</code> (for example, <code>1/1/8</code>); <code>&lt;cartridge&gt;/&lt;slot&gt;/lag&lt;N&gt;</code> (for example, <code>1/1/lag1</code>). There is no default value. You can assign a maximum of two redundancy interfaces. </p>
+    <h2 class="with-rule"><a name="Specifyi"/>Specifying the Redundancy Failover Criteria </h2>
+    <p>By default, PubSub+ appliances release activity to the mate if <u>any</u> configured redundancy interface fails. You can instead specify that <u>all</u> redundancy interfaces must fail to trigger an activity switch. The decision to change the failover criteria should depend on your intended network topology. </p>
+    <p>For example, suppose your network had an HA pair of appliances deployed in a demilitarized zone, each with separate north and southbound interfaces assigned as redundancy interfaces (refer to <MadCap:xref href="#Solace">Solace PubSub+ Appliance Deployed in a Demilitarized Zone</MadCap:xref>). Since you want the active appliance to trigger an activity switch if either interface (north or southbound) were to fail, you would set the failover criteria to <code>any-fail</code>. If you had a different topology that demanded the opposite behavior, for example a dual network deployment, you would set the failover criteria to <code>all-fail</code>.</p>
+    <p class="GraphicCaption"><a name="Solace"/>Solace PubSub+ Appliance  in a Dual Network Deployment</p>
+    <p class="GraphicCaption">
+      <img src="../../Resources/Images/HA-Redundancy/multiple_redundancy_interfaces_2.PNG" style="width: 439px;height: 422px;" alt=""/>
+    </p>
+    <div class="Caution">
+      <p>Using PubSub+ appliances in dual network deployments is a Controlled Availability (CA) feature and should only be used under the supervision of Solace support.</p>
+    </div>
+    <p>To specify the failover criteria for an appliance, enter the following commands:</p>
+    <p class="Code">solace(configure)# redundancy<br/>solace(configure/redundancy)# vrrp<br/>solace(configure/redundancy/vrrp)# failover-criteria {any-fail | all-fail}<br/></p>
+    <p>
+      <u>Where:</u>
+    </p>
+    <p><code>any-fail</code> specifies to release activity to the mate if <u>any</u> configured redundancy interface fails. This is the default. </p>
+    <p><code>all-fail</code> specifies to release activity to the mate if <u>all</u> configured redundancy interfaces fail. </p>
+    <h2 class="with-rule"><a name="managing_router_redundancy_2753819523_371804"/>Configuring a VRRP VRID</h2>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Configuring a VRRP VRID in Version 9.5.0 and Later</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <p>
+          <b>Specifying the VRID for the Primary Virtual Router</b>
+        </p>
+        <p>To configure the VRRP VRID used for the primary  virtual router, enter the following CONFIG commands:</p>
+        <p class="Code">solace# configure<br/>solace(configure)# redundancy<br/>solace(configure/redundancy)# vrrp<br/>solace(configure/redundancy/vrrp)# primary-vrid &lt;vrid&gt;</p>
+        <p>
+          <b>Specifying the VRID for the Backup Virtual Router</b>
+        </p>
+        <p>To configure the VRRP VRID used for the  backup virtual router, enter the following CONFIG commands:</p>
+        <p class="Code">solace# configure<br/>solace(configure)# redundancy<br/>solace(configure/redundancy)# vrrp<br/>solace(configure/redundancy/vrrp)# backup-vrid &lt;vrid&gt;</p>
+        <p><u>Where</u>:</p>
+        <p><code>&lt;vrid&gt;</code> is an integer identifying the VRRP VRID for the virtual router. Valid values are 1 through 255. This value must be different from the VRRP VRIDs being used by anything else on the local subnet. There is no default value.</p>
+        <p>The no version of this command, <code>no primary-vrid</code> or <code>no backup-vrid</code>, deletes the VRID from the specified virtual router.</p>
+        <p class="Note">This command can only be run with event broker redundancy shutdown, otherwise an error message is received.
+        </p>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Configuring a VRRP VRID in Versions Earlier than 9.5.0</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <p>To configure the VRRP VRID used for the primary and backup virtual routers, enter the following CONFIG commands:</p>
+        <p class="Code">solace# configure<br/>solace(configure)# redundancy<br/>solace(configure/redundancy)# vrrp-vrid &lt;vrid&gt; {primary | backup}</p>
+        <p><u>Where</u>:</p>
+        <p><code>&lt;vrid&gt;</code> is an integer identifying the VRRP VRID for the virtual router. Valid values are 1 through 255. This value must be different from the VRRP VRIDs being used by anything else on the local subnet. There is no default value.</p>
+        <p><code>primary</code> specifies that the given VRID is for the primary virtual router.</p>
+        <p><code>backup</code> specifies that the given VRID is for the backup virtual router.</p>
+        <p>The no version of this command, <code>no vrrp-vrid</code>, deletes the VRID from the specified virtual router.</p>
+        <p class="Note">This command can only be run with event broker redundancy shutdown, otherwise an error message is received.
+        </p>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <h2 class="with-rule"><a name="assign-active-standby-role"/>Assigning the Active/Standby Role</h2>
+    <p>To set the event broker's redundancy role, enter the following CONFIG commands:</p>
+    <p class="Note">Redundancy must be disabled to change the <code>active-standby-role</code>. If AD is enabled, then the <code>active-standby-role</code> must be <code>none</code>, or match that of AD. </p>
+    <p class="Code">solace# configure<br/>solace(configure)# redundancy<br/>solace(configure/redundancy)# active-standby-role {primary | backup | none}</p>
+    <p><u>Where</u>:</p>
+    <p><code>primary</code> specifies that the event broker is acting as the primary virtual router in an active/standby redundancy model</p>
+    <p><code>backup</code> specifies that the event broker is acting as the backup virtual router in an active/standby redundancy model.</p>
+    <p><code>none</code> specifies that the event broker is using an active/active redundancy model, or that the event broker's active/standby role is being derived from other configuration settings. The <code>none</code> value is recommended only when using active/active redundancy.</p>
+    <h2 class="with-rule"><a name="managing_router_redundancy_2753819523_356989"/>Starting/Stopping Redundancy</h2>
+    <p>To stop the redundancy facility on an appliance, enter the following CONFIG commands:</p>
+    <p class="Code">solace# configure<br/>solace(configure)# redundancy<br/>solace(configure/redundancy)# shutdown</p>
+    <div class="Note">
+      <p>When you stop redundancy on the appliance, the following occurs: </p>
+      <ul>
+        <li>The appliance will be active for its VRID, but will not take activity for its mate VRID.</li>
+        <li>The appliance immediately announces its local VRID with the highest possible priority supported by VRRP and completely stops announcing its mate VRID. The same priority levels are also advertised through the CSPF protocol, to ensure that all appliances in the network recognize that the VRID mastership changes immediately.</li>
+      </ul>
+    </div>
+    <p>To start the redundancy facility on an appliance, enter the following CONFIG commands:
+                <p class="Code">solace# configure<br/>solace(configure)# redundancy<br/>solace(configure/redundancy)# no shutdown</p><p class="Note">The <code>no shutdown</code> command for redundancy can only be run successfully after the VRIDs for the primary and backup virtual routers have been configured.</p></p>
+  </body>
+</html>

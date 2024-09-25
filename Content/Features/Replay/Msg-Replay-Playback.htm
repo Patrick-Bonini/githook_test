@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Playing Back a Replay Log</h1>
+    <p>There are three <MadCap:variable name="Product-Names.solace_cli"/> commands that allow you to control message playback from an event broker.</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#start-re">start-replay</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#cancel-r">cancel-replay</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#trim-log">trim-logged-messages</MadCap:xref>
+      </li>
+    </ul>
+    <p class="Note">For information about  starting replay from a client, see  <MadCap:xref href="../../API/API-Developer-Guide/Replay-from-Replay-Log.htm#Client">Client Initiated Replay</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="start-re"/>Initiating the Replay of Logged Messages Using <code>start-replay</code></h2>
+    <p>The <code>start-replay</code> command initiates a replay of logged messages from the replay log to the provided endpoint. </p>
+    <p class="Code">solace&gt; enable<br/>solace# admin<br/>solace(admin)# message-spool message-vpn &lt;vpn-name&gt;<br/>solace(admin/message-spool)# queue &lt;queue-name&gt; | topic-endpoint &lt;topic-endpoint-name&gt;<br/>solace(admin/message-spool/queue|topic-endpoint)# start-replay [replay-log &lt;replay-log&gt;] [from-date &lt;from-date&gt; | after-msg &lt;replication-group-msg-id&gt;]</p>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li><code>&lt;vpn-name&gt;</code>—The name of the Message VPN.</li>
+      <li><code>&lt;queue-name&gt;</code>—The name of the queue.</li>
+      <li><code>&lt;topic-endpoint-name&gt;</code>—The name of the topic endpoint.</li>
+      <li><code>&lt;replay-log&gt;</code>—The name of the replay log. </li>
+      <li><code>&lt;from-date&gt;</code>—The format <code>YYYY-MM-DDThh:mm:ssTZD</code>, where <code>TZD</code> is the time zone designator. For example, a <code>from-date</code> might look like: <code>2018-08-13T11:34:13-04:00</code>. </li>
+      <ul>
+        <li>If the <code>from-date</code> is earlier than the log's creation date, the replay will fail and the replay state of the endpoint will be failed.</li>
+        <li>If no <code>from-date</code> is given, replay will be initiated from the oldest available message.</li>
+      </ul>
+      <li><code>&lt;replication-group-msg-id&gt;</code>—The message after which to begin replay, identified by its replication group message ID.   The provided string should be as given via a <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker management interface such as <MadCap:variable name="Product-Names.solace_cli"/>, <MadCap:variable name="Product-Names.pubsubmanager_long"/>, or SEMPv2. You can also obtain this value by converting the replication group message ID to a string using a <MadCap:variable name="Manifest-Products-APIs.PubSub-GenericAll-Messaging-API"/>.</li>
+    </ul>
+    <p>All messages stored on an endpoint are deleted prior to replay, and bound flows are unbound. <MadCap:variable name="Manifest-Products-APIs.PubSub-GenericAll-Messaging-API"/>s can handle this situation and automatically rebind to the endpoint. Also, upon receipt of a <code>start-replay</code> command, any replay already in progress on the endpoint will be canceled.</p>
+    <p class="Note">Initiating a replay to a partitioned queue, temporary topic endpoint, or temporary queue is not supported.</p>
+    <p class="Note">Messages that are replayed to a queue are not counted towards the queue's spool usage.</p>
+    <h4>What happens to live messages received with a replaying endpoint destination?</h4>
+    <p>Live messages received with a replaying endpoint as the destination won't be spooled to the endpoint, but instead will be put in the replay log. These messages will be replayed to the endpoint when the replay catches up to them. Endpoints that aren't undergoing replay, and have a matching topic subscription, will continue to receive messages.</p>
+    <h4>What happens if there are no clients bound to a replaying endpoint?</h4>
+    <p>If you start a replay on an endpoint that has no clients bound to it, at most 1,000 messages will be replayed to the endpoint. When clients bind, and as these messages are consumed, more messages will be replayed as replay resumes.</p>
+    <p>If no clients are bound to the endpoint, and fewer than 1,000 messages are to be replayed, the endpoint will immediately transition to the <code>Pending Complete</code> state and start attracting live messages.</p>
+    <h4>What happens if a subscription changes during replay?</h4>
+    <p>Replayed messages are based on the topic subscriptions at the start of replay. If you add, change, or remove subscriptions while replay is in progress, there is no change to the messages that are replayed.</p>
+    <h4>What's the possible impact of trimming on replay?</h4>
+    <p>When replaying from the beginning of the replay log, it might not be possible for a client to successfully complete a replay operation because the replay log is trimming messages faster than the client can consume them. For more information about trimming, see <MadCap:xref href="Msg-Replay-Concepts-Config.htm#Trimming">Trimming the Replay Log</MadCap:xref>. </p>
+    <h4 MadCap:conditions="Default.HideFromAllOutput"><a name="trim-not-fast"/>What happens if trimming doesn't occur fast enough?</h4>
+    <p MadCap:conditions="Default.HideFromAllOutput"> Trimming occurs when the replay log exceeds 90% of its configured quota for <code>max-spool-usage</code>. If messages are received at a faster rate than the broker is able to trim the replay log, the replay log usage eventually increases over the 90% threshold. <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">Once the usage reaches 100%, the event broker starts to discard messages and stops sending acknowledgment to clients. This mechanism effectively rate-limits the publishing clients</MadCap:conditionalText>. If the replay log size reaches 100% of its configured quota, the event broker back-pressures publishing clients as necessary to ensure the replay log spool usage does not exceed its configured quota.</p>
+    <p MadCap:conditions="Default.HideFromAllOutput">We recommend that you monitor the replay log usage and choose a replay log trimming strategy. For example, if you notice that a replay log usage consistently exceeds 90% of its configure quota for <code>max-spool-usage</code>, you may need to manually trim the replay log, or be more selective with the message that are stored to the message replay log. For example, you can use  <a href="Msg-Replay-Config.htm#topic-filters" class="link-internal">topic filters</a> to reduce the number of messages written to the replay log. See <MadCap:xref href="#example-of-trimming">How should I choose a replay log trimming strategy?</MadCap:xref> for more information.</p>
+    <p MadCap:conditions="Default.HideFromAllOutput"> Let's say that you want at least one day's worth of messages to be available for replay. If your replay log is large enough to always store two days'  of messages without exceeding the 90% threshold, you can trim messages older than one day. Using this approach, you may see the replay log grow to nearly 90% full at the end of the day, but you can then trim the replay log to 45% of configured quota. This approach is beneficial if you can run the command during a time of day when you have lower traffic to reduce the performance impact to the event broker. </p>
+    <p MadCap:conditions="Default.HideFromAllOutput">For more information about monitoring, trimming the replay log, and using topic filters, see the following sections:</p>
+    <ul MadCap:conditions="Default.HideFromAllOutput">
+      <li MadCap:conditions="Default.HideFromAllOutput">
+        <MadCap:xref href="Msg-Replay-Monitoring.htm">Monitoring Message Replay</MadCap:xref>
+      </li>
+      <li MadCap:conditions="Default.HideFromAllOutput">
+        <MadCap:xref href="Msg-Replay-Concepts-Config.htm#Trimming">Trimming the Replay Log</MadCap:xref>
+      </li>
+      <li MadCap:conditions="Default.HideFromAllOutput">
+        <MadCap:xref href="Msg-Replay-Config.htm#topic-filters">Using Topic Filters</MadCap:xref>
+      </li>
+    </ul>
+    <h4 MadCap:conditions="Default.HideFromAllOutput"><a name="example-of-trimming"/>How should I choose a replay log trimming strategy?</h4>
+    <p MadCap:conditions="Default.HideFromAllOutput">When you configure message replay, <MadCap:variable name="Variables.CompanyName"/> recommends that you decide on a strategy to handle replay log trimming. You can simply choose to use automatic trimming that requires no additional configuration, but you should be aware that trimming the replay log may cause potential performance impacts to the event broker regarding the rate of received messages it is able to process. <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">Since trimming causes a performance impact and automatic  trimming occurs when the replay log exceeds 90% of configured quota, you can choose manually trim the replay log instead to avoid automatic trimming. There is still a performance impact, but situations that are well-suited for manual trimming have these characteristics:</MadCap:conditionalText></p>
+    <p MadCap:conditions="Default.HideFromAllOutput">You can choose to use manually trimming practice where you would trim the replay log before the 90% threshold at times that you choose. This strategy can reduce the performance implications of automatic trimming at unexpected times. Though manual trimming has the same performance impact, you can choose to run it at designated times when the event broker isn't sensitive to performance variations. A use case that is well suited for manual trimming to avoid automatic trimming has these characteristics:</p>
+    <ul MadCap:conditions="Default.HideFromAllOutput">
+      <li>
+        <p MadCap:conditions="Default.HideFromAllOutput">The traffic pattern of the broker follows a predictable cycle, in which there is a <i>quiet time</i> where the performance impact of trimming the replay log does not cause or unexpected performance impacts.</p>
+      </li>
+      <li>
+        <p MadCap:conditions="Default.HideFromAllOutput">The replay log can be sized large enough to hold all messages logged for the minimum replay log retention you require plus the messages logged within the duration of a traffic cycle. </p>
+      </li>
+      <li>
+        <p MadCap:conditions="Default.HideFromAllOutput">It's possible  to deploy an automated application to perform the trimming on an appropriate schedule.</p>
+      </li>
+    </ul>
+    <p MadCap:conditions="Default.HideFromAllOutput">The following example shows  how you could include a manual trimming strategy. Consider a deployment where:</p>
+    <ul MadCap:conditions="Default.HideFromAllOutput">
+      <li MadCap:conditions="Default.HideFromAllOutput">A system adds up to 100,000 MB of messages to the replay log each day.</li>
+      <li MadCap:conditions="Default.HideFromAllOutput">The event broker has low-traffic overnight, when manual replay log trimming can be performed without the impacting the event broker performance.</li>
+      <li MadCap:conditions="Default.HideFromAllOutput">The required log retention is 9 days with an additional cycle day</li>
+    </ul>
+    <p MadCap:conditions="Default.HideFromAllOutput">With the parameters mentioned above, the following can be considered:</p>
+    <ol MadCap:conditions="Default.HideFromAllOutput">
+      <li>
+        <p>The replay log requires up to 1,000,000 MB without automatic trimming occurring. The calculation for this example is as follows:</p>
+        <ul>
+          <li>The 100,000 MB /day x (9 days of retention with an addition one day cycle) = 100,000 MB/day x 10 days = 1,000,000 MB. </li>
+          <li>Since trimming begins at 90% of the configured quota, you would set the <code>max-spool-usage</code> to 1,250,000 MB because the expected usage won't exceed 1,000,000 MB and automatic trimming wouldn't begin until the replay log had approximately 1,125,000 MB of data. See <MadCap:xref href="Msg-Replay-Config.htm#calc-replay-log-size">Calculating the Required Replay Log Size</MadCap:xref> for the details. This allows for  80% of the configured quota to be available for critical data, but since trimming doesn’t begin until the 90% of configured quota is reached, it provides  you the flexibility to change the system behavior without losing important data. As such, monitoring is required, see step 3.</li>
+        </ul>
+      </li>
+      <li>
+        <p>Nightly, your deployed automated management application runs to manually trim the replay log during your quiet period using one of the following mechanisms:</p>
+        <ul>
+          <li>Running the <code>admin/message-spool/replay-log/trim-logged-messages older-than-date &lt;1 week ago&gt;</code> command (see <MadCap:xref href="#trim-log">Deleting Messages from Replay Log using trim-logged-messages</MadCap:xref>).</li>
+          <li>Using the SEMPv2 command, <code>PUT /msgVpns/{msgVpnName}/replayLogs/{replayLogs/{replayLogName}/trimLoggedMsgs</code> <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">, see the <a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/API-Developer-Online-Ref-Documentation/swagger-ui/software-broker/action/index.html#/replayLog/trimLoggedMsgs" class="link-internal">SEMP reference</a>) more information</MadCap:conditionalText>.</li>
+        </ul>
+      </li>
+      <li>
+        <p>As you monitor the replay log usage,  ensure the replay log usage never exceeds 80% as described in step 1. If it does, the presumptions of the design of your strategy no longer hold and you must characterize your system again, adjust the size of  replay log, and then update the system.</p>
+      </li>
+    </ol>
+    <h4>What's the impact of selectors?</h4>
+    <p>We recommend that you avoid using egress selectors on queues because there are feature interactions that occur between selectors and message replay as follows:</p>
+    <ul>
+      <li>If you replay to a queue that has one or more consumers and it uses egress <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">(check) </MadCap:conditionalText>selectors, you must ensure that the selector matches all replayed messages, otherwise message replay may not complete.</li>
+      <li>You can replay to a topic endpoint with an selector, but only the messages that match the topic endpoint subscription and the selector are replayed.</li>
+    </ul>
+    <h2 class="with-rule"><a name="cancel-r"/>Deleting Replay Messages on the Provided Endpoint Using <code>cancel-replay</code></h2>
+    <p>The <code>cancel-replay</code> command deletes all replayed messages stored on the provided endpoint and disconnects bound clients. It also causes the endpoint to go into the <code>Failed</code> state, and  causes any flows bound to the endpoint to be unbound.</p>
+    <p class="Code">solace&gt; enable<br/>solace# admin<br/>solace(admin)# message-spool message-vpn &lt;vpn-name&gt;<br/>solace(admin/message-spool)# queue &lt;queue-name&gt; | topic-endpoint &lt;topic-endpoint-name&gt;<br/>solace(admin/message-spool/queue|topic-endpoint)# cancel-replay [force-complete]</p>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li><code>&lt;vpn-name&gt;</code>—The name of the Message VPN.</li>
+      <li><code>&lt;queue-name&gt;</code>—The name of the queue.</li>
+      <li><code>&lt;topic-endpoint-name&gt;</code>—The name of the topic endpoint.</li>
+      <li><code>force-complete</code>—The paramater forces the replay to complete without waiting for bound clients to acknowledge the unsolicited unbind request and clears the Failed state.</li>
+    </ul>
+    <h2 class="with-rule"><a name="trim-log"/>Deleting Messages from Replay Log Using <code>trim-logged-messages</code></h2>
+    <p>The <code>trim-logged-messages</code> command deletes all messages from the replay log beginning with the oldest message in the log up to, but not including, <code>&lt;older-than-date&gt;</code>.</p>
+    <p class="Code">solace&gt; enable<br/>solace# admin<br/>solace(admin)# message-spool message-vpn &lt;vpn-name&gt;<br/>solace(admin/message-spool)# replay-log &lt;replay-log-name&gt;<br/>solace(admin/message-spool/replay-log)# trim-logged-messages older-than-date &lt;older-than-date&gt;</p>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li><code>&lt;vpn-name&gt;</code>—The name of the Message VPN.</li>
+      <li><code>&lt;replay-log-name&gt;</code>—The name of the message replay log.</li>
+      <li><code>&lt;older-than-date&gt;</code>—The format <code>YYYY-MM-DDThh:mm:ssTZD</code> where <code>TZD</code> is the time zone designator. For example, an <code>older-than-date</code> might look like: <code>2018-08-13T11:34:13-04:00</code>.</li>
+    </ul>
+  </body>
+</html>

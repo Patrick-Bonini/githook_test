@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><MadCap:concept term="Appliance"/>Shutting Down Guaranteed Messaging Redundant Appliances</h1>
+    <p>If you have to shut down a pair of redundant Solace PubSub+ appliances running software version 7.1 or greater that are using Guaranteed Messaging (for example, if you are moving a SAN or there is a data center power down), use the following procedure.</p>
+    <ol>
+      <li>Enter the following command for the primary event broker to ensure that it is in the correct redundancy state.
+        <pre>solace-primary# show redundancy</pre><p>The command output on the primary event broker looks like this (output may vary by appliance version):</p><pre>Configuration Status : Enabled
+Auto Revert          : No
+Redundancy Mode      : Active/Active
+Mate Router Name     : solace-backup
+ADB Link To Mate     : Up
+ADB Hello To Mate    : Up
+                              Primary Virtual Router Backup Virtual Router
+                              ---------------------- ----------------------
+Activity Status               Local Active           Mate Active
+Routing Interface             1/6/lag1:1             1/6/lag1:2
+VRRP VRID                     50                     197
+Routing Interface Status      Up                     Up
+VRRP Status                   Master                 Backup
+VRRP Priority                 250                    100
+Message Spool Status          AD-Active              AD-Disabled
+Priority Reported By Mate     Standby                Active</pre><p class="Note">The <code>Auto Revert</code> value is a configurable option; it may be set to <code>Yes</code>, depending on the redundant system configuration.</p></li>
+      <li>Enter the following command for the backup event broker to ensure that it is in the correct redundancy state.
+        <pre>solace-backup# show redundancy</pre><p>The command output on the backup event broker looks like this (output may vary by appliance version):</p><pre>
+Configuration Status : Enabled
+Auto Revert          : No
+Redundancy Mode      : Active/Active
+Mate Router Name     : solace-primary
+ADB Link To Mate     : Up
+ADB Hello To Mate    : Up
+                              Primary Virtual Router Backup Virtual Router
+                              ---------------------- ----------------------
+Activity Status               Local Active           Mate Active
+Routing Interface             1/6/lag1:1             1/6/lag1:2
+VRRP VRID                     197                    50
+Routing Interface Status      Up                     Up
+VRRP Status                   Master                 Backup
+VRRP Priority                 250                    100
+Message Spool Status          AD-Disabled            AD-Standby
+Priority Reported By Mate     Standby                Active</pre></li>
+      <li>Enter the following commands to shut down messaging services on both event brokers:
+        <pre>solace-primary# configure
+solace-primary(configure)# service msg-backbone
+solace-primary(configure/service/msg-backbone)# shutdown
+All SMF, WEB, and REST clients will be disconnected.
+Do you want to continue (y/n)? y
+solace-primary(configure/service/msg-backbone)# exit
+solace-primary(configure/service)# exit
+solace-primary(configure)#</pre><pre>solace-backup# configure
+solace-backup(configure)# service msg-backbone
+solace-backup(configure/service/msg-backbone)# shutdown
+All SMF, WEB, and REST clients will be disconnected.
+Do you want to continue (y/n)? y
+solace-backup(configure/service/msg-backbone)# exit
+solace-backup(configure/service)# exit
+solace-backup(configure)#</pre></li>
+      <li>Enter the following commands for both the primary and backup event broker to ensure that auto-revert is not enabled for either event broker:
+        <pre>solace-primary(configure/redundancy)# no auto-revert
+solace-primary(configure/redundancy)# end
+solace-primary#</pre><pre>solace-backup(configure)# redundancy
+solace-backup(configure/redundancy)# no auto-revert
+solace-backup(configure/redundancy)# end
+solace-backup#</pre></li>
+      <li>If the event brokers are using transacted sessions, wait until all transacted sessions time-out and the count drops to 0. This could take up to 60 seconds.</li>
+      <li>Enter the following command for the primary event broker to view the transacted sessions in use (the following example only shows the relevant transacted session usage lines):
+        <pre>solace-primary# show message-spool detail</pre><pre>                                       Currently Used   Max Allowed
+                                       --------------   -----------
+Queue and Topic-endpoint Spools:                   35         16000
+                         Queues:                   32
+                Topic-endpoints:                    3
+            Transacted Sessions:                    0         16000
+. . .</pre></li>
+      <li>Enter the following commands to shut down the message spools on both event brokers:
+        <pre>solace-primary# configure
+solace-primary(configure)# hardware message-spool
+solace-primary(configure/hardware/message-spool)# shutdown
+All message spooling will be stopped.
+Do you want to continue (y/n)? y
+solace-primary(configure/hardware/message-spool)# end
+solace-primary#</pre><pre>solace-backup# configure
+solace-backup(configure)# hardware message-spool
+solace-backup(configure/hardware/message-spool)# shutdown
+All message spooling will be stopped.
+Do you want to continue (y/n)? y
+solace-backup(configure/hardware/message-spool)# end
+solace-backup#</pre></li>
+      <li>Enter the following command on the primary event broker to view the total number of spooled messages, and write down the total number of spooled messages for future reference:
+<pre>solace-primary&gt; show message-spool</pre></li>
+      <li>For the primary event broker, enter the following command to backup the ADB configuration to the event broker internal disk.
+<pre>solace-primary# admin
+solace-primary(admin)# system
+solace-primary(admin/system)# message-spool
+solace-primary(admin/system/message-spool)# backup-adb-to-disk
+On the next system startup, the backed-up ADB state on disk will overwrite
+the current ADB state.
+Do you want to continue (y/n)? y
+Moving ADB messages to disk: 100%
+Backing up ADB config to disk: 100%
+solace-primary(admin/system/message-spool)# end
+solace-primary#</pre></li>
+      <li>For the primary event broker, after the CLI output indicates that the ADB backup operation has completed, enter the following command to display the message spool contents:
+<pre>solace-primary# show message-spool detail</pre><p>Ensure that there are no messages spooled on the ADB and all messages are spooled to disk.</p></li>
+      <li>Enter the following commands to turn off both event brokers:
+        <pre>solace-primary# power-down
+This command powers off the router and does not restart it afterwards
+Do you want to continue (y/n)? y</pre><pre>solace-backup# power-down
+This command powers off the router and does not restart it afterwards
+Do you want to continue (y/n)? y</pre></li>
+      <li>Perform any required maintenance tasks (for example, upgrading or replacing hardware) while the event brokers are powered down.</li>
+      <li>Power up the primary event broker.
+        <ul><li>To power up a Solace PubSub+ 3230 or 3260, use a straightened paper clip to press the on/standby button on the front panel of the event broker.</li><li>To power up a Solace PubSub+ 3530 or 3560, press the on/standby button on located on the lower left-hand side of the rear panel of the event broker.</li></ul><p>Wait for the supercapacitor on the ADB to fully charge. This could take up to 15 minutes.</p></li>
+      <li>Enter the following command to determine its charge level:
+        <pre>solace-primary# show hardware detail</pre><pre>. . .
+
+Power Module Details:
+      State:                               Ok
+      Charge Level:                        100%
+      Estimated Time Until Fully Charged:  0 minutes
+. . .</pre></li>
+      <li>Enter the following commands on the primary event broker to start the message spool that was shut down:
+        
+<pre>solace-primary# configure
+solace-primary(configure)# hardware message-spool
+solace-primary(configure/hardware/message-spool)# no shutdown primary
+solace-primary(configure/hardware/message-spool)# exit
+solace-primary(configure/hardware)# exit</pre></li>
+      <li>Enter the following commands on the primary event broker to start the messaging services that were shut down:
+        
+<pre>solace-primary(configure)# service msg-backbone
+solace-primary(configure/service/msg-backbone)# no shutdown
+solace-primary(configure/service/msg-backbone)# end
+solace-primary#</pre></li>
+      <li>Power up the backup event broker.
+        <ul><li>To power up a Solace PubSub+ 3230 or 3260, use a straightened paper clip to press the on/standby button on the front panel of the event broker.</li><li>To power up a Solace PubSub+ 3530 or 3560, press the  on/standby button on located on the lower left-hand side of the rear panel of the event broker.</li></ul><p>Wait for the supercapacitor on the ADB to fully charge. This could take up to 15 minutes.</p></li>
+      <li>Enter the following command to determine the charge level of the supercapacitor:
+<pre>solace-backup# show hardware detail</pre><pre>. . .
+
+Power Module Details:
+      State:                               Ok
+      Charge Level:                        100%
+      Estimated Time Until Fully Charged:  0 minutes
+. . .</pre></li>
+      <li>Enter the following commands on the backup event broker to start the message spool that was shut down:
+        
+<pre>solace-backup# configure
+solace-backup(configure)# hardware message-spool
+solace-backup(configure/hardware/message-spool)# no shutdown backup
+solace-backup(configure/hardware/message-spool)# exit
+solace-backup(configure/hardware)# exit
+solace-backup(configure)# exit</pre></li>
+      <li>Enter the following commands on the backup event broker to start the messaging services that were shut down:
+        
+<pre>solace-backup(configure)# service msg-backbone
+solace-backup(configure/service/msg-backbone)# no shutdown
+solace-backup(configure/service/msg-backbone)# end
+solace-backup#</pre><p class="Note">Solace recommends that the auto revert redundancy configuration be kept disabled on an event broker. However, if you turned off auto-revert earlier, and you do want to use auto revert for your event brokers, you should re-enabled it at this point.</p></li>
+      <li>Enter the following command on the primary event broker to ensure that it is in the correct redundancy state:
+        <pre>solace-primary# show redundancy</pre><p>The output looks like the following (but may vary by appliance version):</p><pre>Configuration Status      : Enabled 
+ Auto Revert               : No 
+ Redundancy Mode           : Active/Active 
+ Mate Router Name          : solace-backup 
+ ADB Link To Mate          : Up 
+ ADB Hello To Mate         : Up 
+                                Primary Virtual Router Backup Virtual Router 
+                                ---------------------- --------------------- 
+ Activity Status                Local Active           Mate Active 
+ Routing Interface              1/6/lag1:1             1/6/lag1:2 
+ VRRP VRID                      50                     197 
+ Routing Interface Status       Up                     Up 
+ VRRP Status                    Master                 Backup 
+ VRRP Priority                  250                    100 
+ Message Spool Status           AD-Active              AD-Disabled 
+ Priority Reported By Mate      Standby                Active</pre></li>
+      <li>Enter the following command on the backup event broker to ensure that it is in the correct redundancy state:
+<pre>solace-backup# show redundancy</pre><p>The output looks like the following (but may vary by appliance version):</p><pre>Configuration Status    : Enabled 
+ Auto Revert             : No 
+ Redundancy Mode         : Active/Active 
+ Mate Router Name        : solace-primary 
+ ADB Link To Mate        : Up 
+ ADB Hello To Mate       : Up 
+                              Primary Virtual Router Backup Virtual Router 
+                              ---------------------- ---------------------- 
+ Activity Status              Local Active           Mate Active 
+ Routing Interface            1/6/lag1:1             1/6/lag1:2 
+ VRRP VRID                    197                    50 
+ Routing Interface Status     Up                     Up 
+ VRRP Status                  Master                 Backup 
+ VRRP Priority                250                    100 
+ Message Spool Status         AD-Disabled            AD-Standby 
+ Priority Reported By Mate    Standby                Active</pre></li>
+      <li>If the event brokers are not in the correct redundancy state, enter the following commands on the primary event broker to force a redundancy switch to the mate event broker, then verify that both event brokers are now in the correct redundancy state (see step 21 and 22):
+        
+<pre>solace-primary# admin
+solace-primary(admin)# redundancy revert-activity
+solace-primary(admin)# end
+solace-primary#</pre></li>
+    </ol>
+  </body>
+</html>

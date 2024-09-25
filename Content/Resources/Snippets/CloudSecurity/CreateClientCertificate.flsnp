@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <body>
+    <p>After you create your internal CA key and certificate files, follow these steps to create a client certificate and have the CA sign it.</p>
+    <p class="Note">This procedure explains how to configure a client certificate using a common name (CN). You can configure the <MadCap:variable name="Product-Names.broker_cloud_short"/> to use a Microsoft universal principal name (msUPN) from the <b>otherName</b> field of the SAN extension if the client certificate has one. <MadCap:variable name="Product-Names.broker_cloud_short_intitalcap"/>s only support using msUPNs from the SAN extension. They do not support other SAN, including email addresses, DNS names, or UP addresses. See <a href="https://www.openssl.org/docs/man1.1.1/man5/x509v3_config.html" target="_blank" class="link-offsite">Subject Alternative Name in the x509v3_config documentation on the OpenSSL website</a> for more information.</p>
+    <ol>
+      <li>Use Open SSL to create a private key for the client. The client application needs the private key file (client1.key) to connect to the <MadCap:variable name="Product-Names.broker_cloud_short"/>. Keep this file secure.
+		<pre class="Code" xml:space="preserve">openssl genrsa -out client1.key 2048</pre></li>
+      <li>Create a certificate signing request (CSR) for the client certificate. The common name for the client certficate is <code>client1.messaging.solace.cloud</code>. The common name is important because it identifies the client. As before, you can omit the <code>-subj</code> parameter to add the common name interactively.
+<pre class="Code" xml:space="preserve">openssl req -new -key client1.key -out MyClient1.csr -subj "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=client1.messaging.solace.cloud"</pre></li>
+      <li>Sign the client certificate using your internal CA private key and certificate that you already created. The new client certificate is valid for one year.
+<pre class="Code" xml:space="preserve">openssl x509 -req -in MyClient1.csr -CA MyRootCaCert.pem -CAkey MyRootCaKey.key -CAcreateserial -out clientCert1.pem -days 365 -sha256</pre><p>The following files, created during this step, need to be accessible by the client:</p><ul><li><b>client1.key</b>—This is the private key for the client. Keep this file safe.</li><li><b>clientCert1.pem</b>—This is the client certificate that has been signed by your internal CA. It  authenticates the client with the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li></ul></li>
+    </ol>
+  </body>
+</html>

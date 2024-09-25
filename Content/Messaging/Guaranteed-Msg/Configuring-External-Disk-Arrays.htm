@@ -1,0 +1,520 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Configuring an External Disk Array for Guaranteed Messaging</h1>
+    <p>This section describes how to configure a customer-provided external disk storage array for use with either a standalone Solace PubSub+ appliance using Guaranteed Messaging or a high-availability (HA) redundant Solace <MadCap:variable name="Product-Names.pubsub_brand_only"/> appliance pair using Guaranteed Messaging. For information on how to configure external block devices for use with Solace PubSub+ software event brokers, refer to <MadCap:xref href="../../Software-Broker/Configuring-Storage.htm">Storage Configuration</MadCap:xref>.</p>
+    <p>A customer supplied external disk storage array is required to use Guaranteed Messaging with standalone or redundant pairs of Solace PubSub+ appliances. An appliance must also have a physical ADB and a physical HBA installed.</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#managing_guaranteed_messaging_1810020758_618949">Array Requirements</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#managing_guaranteed_messaging_1810020758_631824">Step 1: Register the Appliance HBA with the External Array</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#managing_guaranteed_messaging_1810020758_631806">Step 2: Provision a File System on the LUN</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#managing_guaranteed_messaging_1810020758_464417">Step 3: Configure the Guaranteed Message Spool to Use the External Disk</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#managing_guaranteed_messaging_1810020758_464478">Step 4: Verify the Guaranteed Message Spool Configuration</MadCap:xref>
+      </li>
+    </ul>
+    <div class="Note">
+      <ul>
+        <li>The configuration and provisioning of the external disk storage array itself is beyond the scope of this document as it depends on the disk manufacturer chosen for use. Therefore, proper configuration of an external disk storage array is the responsibility of the customer and is not described in this section. If required, <a href="../../get-support.htm" class="link-internal">contact Solace</a> for assistance.</li>
+        <li>If you are using Guaranteed Messaging with an HA pair of redundant Solace PubSub+ appliances, the configuration procedures in <MadCap:xref href="../../Features/HA-Redundancy/Managing-Appliance-Redundancy.htm">Managing Appliance Redundancy</MadCap:xref> must be successfully completed first before performing the procedures in this section.</li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="managing_guaranteed_messaging_1810020758_618949"/>Array Requirements</h2>
+    <p>The appliance HBA must be connected to the external disk storage array. Each HBA should have a fibre channel link path to two disk array controllers.
+        <p class="Note">The two optical fiber channel ports on the HBA allow for redundant fibre channel cable links to the external disk storage array through standard multi‑mode optical fiber cable equipped with LC-type optical connectors.</p></p>
+    <p>When using a pair of PubSub+ appliances using Active/Standby redundancy, the ADB links must be directly connected together.</p>
+    <p>For an external disk storage array to be used with an ADB and its associated HBA, the external disk storage array must have:</p>
+    <ul>
+      <li>RAID 1+0, four disks minimum.</li>
+      <li>Up to a 15 tebibyte (TiB) LUN.</li>
+      <li>Access allowed to HBA ports. When using HA redundancy, provide access to the ports of both HBAs on the redundant appliance pair.</li>
+      <li>Fiber channel connectivity.</li>
+    </ul>
+    <p><a href="../../get-support.htm" class="link-internal">Contact Solace</a> for:</p>
+    <ul>
+      <li>Acquiring root access to the Solace PubSub+ appliances</li>
+      <li>Information on use of other disk storage array models or products with the ADB and HBA</li>
+    </ul>
+    <p class="Note">As of Solace PubSub+ appliance release 8.2.0, operations below that state they can only be performed by root, can now also be performed by a Sysadmin User. For information on configuring Sysadmin Users, refer to <MadCap:xref href="../../Admin/Configuring-Multiple-Shell-Users.htm">Configuring Multiple Linux Shell Users</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="managing_guaranteed_messaging_1810020758_631824"/>Step 1: Register the  Appliance HBA with the External Array</h2>
+    <p>The WWNs of the HBA used by a Solace PubSub+ appliance can found on the Packing List provided upon delivery of the appliance. They can also be provided by <a href="../../get-support.htm" class="link-internal">Solace</a>  upon request.</p>
+    <p class="Note">You can use the <code>show hardware detail</code> User EXEC CLI command to display the HBA port and node names for an appliance. For example:</p>
+    <pre class="Code">solace&gt; show hardware detail
+
+. . .    
+
+Slot 1/3: Host Bus Adapter Blade    
+  Product #: HBA-0204FC-02-A    
+  Serial #: M54687    
+  Model Name: QLE2462    
+  Model Description: PCI-Express to 4Gb FC, Dual Channel    
+  Driver Version: 8.01.07-k1    
+            
+  Fibre-Channel 1    
+    State: Link Up - F_Port (fabric via point-to-point)    
+    Speed: 2 Gbit    
+    Port Id: 0x031f00    
+ <b>Port Name: 0x210000e08b931f25 </b>    
+    Port Type: NPort (fabric via point-to-point)    
+ <b>Node Name: 0x200000e08b931f25</b></pre>
+    <h2 class="with-rule"><a name="managing_guaranteed_messaging_1810020758_631806"/>Step 2: Provision a File System on the LUN</h2>
+    <p>To configure a file system, it is recommended that you run the Solace-provided script, <code>provision-lun-for-ad</code>, to automatically configure and provision the LUN on a standalone appliance. If you are using a pair of HA redundant appliances, only run the script on one of the appliances—the Config-Sync facility will apply the configured file system to its mate appliance. (Refer to <MadCap:xref href="#managing_guaranteed_messaging_1810020758_728379">Provisioning a File System on the LUN with the Automated Script</MadCap:xref>.)</p>
+    <p>Alternatively, if the script fails to successfully provision a file system, you can use the GDisk utility to manually configure and provision the partitions on the LUN. (Refer to <MadCap:xref href="#managing_guaranteed_messaging_1810020758_730622">Provisioning a File System on the LUN with GDisk</MadCap:xref>.)</p>
+    <div class="Note">
+      <ul>
+        <li>Both the procedure to configure a file system with the Solace-provided script and the procedure to configure a file system through the GDisk utility are only to be used for a LUN that does not have any existing, provisioned partitions.</li>
+        <li>Solace PubSub+ appliances running software version 7.1 or greater support both ext3 and ext4 file systems. However, any new partitions that are created should use an ext4 file system.</li>
+      </ul>
+    </div>
+    <h3><a name="managing_guaranteed_messaging_1810020758_728379"/>Provisioning a File System on the LUN with the Automated Script</h3>
+    <ol>
+      <li>Enter the <code>show hardware detail</code> User EXEC CLI command on the appliance to confirm the new external disk LUN is available according to the new WWN.
+            <p><u>Example</u>:</p><pre class="Code">solace&gt; show hardware detail
+
+. . .
+
+Slot 1/2: Host Bus Adapter Blade
+  Product #: HBA-0204FC-01-A
+  Serial #: H64544
+  Model Name: QLA2462
+  Model Description: PCI-X 2.0 to 4Gb FC, Dual Channel
+  Driver Version: 8.01.07-k1
+  
+. . .
+
+  Attached devices
+     LUN 0
+        State:          Ready
+        Size:           80G
+        WWN:            60:06:01:60:e8:60:1c:00:c6:3e:7b:a8:ad:53:e3:11
+     LUN 1
+        State:          Ready
+        Size:           800G
+        WWN:            60:06:01:60:e8:60:1c:00:2c:42:35:c1:ad:53:e3:11</pre></li>
+      <li> If there are changes to an existing LUN configuration, or the addition of a new LUN, it can be registered on a <MadCap:variable name="Product-Names.pubsub_brand_only"/> appliance by executing (in this order):<ul><li>The <code>rescan-scsi-bus.sh --nosynch -f -r -m</code> script</li><li>The <code>rescan-scsi-bus.sh -a</code> script </li><li>The <code>rescan-scsi-bus.sh -i</code> if the previous two scripts fail (the <code>-i</code> option causes the link to all external disks to go down, and will affect <MadCap:variable name="Product-Names.pubsub_cache"/> if it is running on this node)</li></ul><p> </p><p>If the new LUN doesn't appear: </p><ul><li>You can confirm that the SAN is properly configured</li><li>You can confirm that the HBA port is registered for the new LUN,</li><li>Re-issue <code>rescan-scsi-bus.sh --nosync -a</code>, <code>rescan-scsi-bus.sh --nosync -f -r -m</code>, and <code>rescan-scsi-bus.sh -a</code> scripts. </li><li>If the new LUN still doesn't appear, then a reload is required.</li></ul><div class="Caution"><p>Restarting a Solace PubSub+appliance will cause a disruption to service.</p></div></li>
+      <li>Run the Solace-provided script.<p>If you do not have root access, with the "support" user account, you can use "sudo" from the Linux shell to configure and provision the LUN with the Solace‑provided <code>provision-lun-for-ad</code> script.</p><p><u>Example</u>:</p><pre class="Code">[support@solace ~]# sudo provision-lun-for-ad --lun=3600140590e5103e56f3436d97032e61e
+Script  : /usr/sw/loads/soltr_7.1.0.1523/supported/provision-lun-for-ad
+User    : root@solace  Jan 20 15 15:21:06
+Logfile : /usr/sw/jail/diags/support.provision-lun-for-ad.2015-01-20,15.21.06
+ 
+List of visible LUNs:
+36001405f6bd73860d76412eab3a4a006
+3600140590e5103e56f3436d97032e61e
+ 
+mke4fs 1.41.12 (17-May-2010)
+Filesystem label=
+OS type: Linux
+Block size=4096 (log=2)
+Fragment size=4096 (log=2)
+Stride=0 blocks, Stripe width=0 blocks
+10491008 inodes, 1953234688 blocks
+97661734 blocks (5.00%) reserved for the super user
+First data block=0
+Maximum filesystem blocks=0
+59608 block groups
+32768 blocks per group, 32768 fragments per group
+176 inodes per group
+Superblock backups stored on blocks: 
+          32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208, 
+          4096000, 7962624, 11239424, 20480000, 23887872, 71663616, 78675968, 
+          102400000, 214990848, 512000000, 550731776, 644972544, 1934917632
+ 
+Writing inode tables: done
+Creating journal (32768 blocks): done
+Writing superblocks and filesystem accounting information: done
+ 
+This filesystem will be automatically checked every 28 mounts or 180 days, whichever comes first. Use tune4fs -c or -i to override.
+mke4fs 1.41.12 (17-May-2010)
+Filesystem label=
+OS type: Linux
+Block size=4096 (log=2)
+Fragment size=4096 (log=2)
+Stride=0 blocks, Stripe width=0 blocks
+10491008 inodes, 1953234683 blocks
+97661734 blocks (5.00%) reserved for the super user
+First data block=0
+Maximum filesystem blocks=0
+59608 block groups
+32768 blocks per group, 32768 fragments per group
+176 inodes per group
+Superblock backups stored on blocks: 
+         32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208, 
+         4096000, 7962624, 11239424, 20480000, 23887872, 71663616, 78675968,
+         102400000, 214990848, 512000000, 550731776, 644972544, 1934917632
+ 
+Writing inode tables: done
+Creating journal (32768 blocks): done
+Writing superblocks and filesystem accounting information: done
+ 
+This filesystem will be automatically checked every 20 mounts or 180 days, whichever comes first. Use tune4fs -c or -i to override.
+LUN 3600140590e5103e56f3436d97032e61e has been provisioned for Assured Delivery.</pre><p class="Note">The <code>--lun</code> flag takes in the WWN of the LUN you are provisioning.</p></li>
+      <li>If you are using a redundant pair of Solace PubSub+ appliances, restart the appliance on which the step 3 was <u>not</u> performed.</li>
+    </ol>
+    <h3><a name="managing_guaranteed_messaging_1810020758_730622"/>Provisioning a File System on the LUN with GDisk</h3>
+    <p>To configure and provision the LUN using the GDisk utility, root access to the Solace PubSub+ appliance is required.</p>
+    <p>To manually configure and provision a file system on a LUN, perform the following steps on a standalone appliance, or on one appliance in an HA redundant pair:</p>
+    <ol>
+      <li>Calculate 2048 sector partition boundaries. </li>
+      <p>To calculate sector boundaries for the two partitions, first determine how many sectors are on the disk. Use the <code>gdisk</code> command on the <code>/dev/mapper</code> entry for the LUN to determine the number of sectors. Use the "p" command to print the details.</p>
+      <p> In the example below, the <code>3600140590e5103e56f3436d97032e61e</code> is referring to the WWN of the LUN.</p>
+      <p><u>Example</u>:</p>
+      <pre class="Code">[root@solace mapper]# gdisk /dev/mapper/3600140590e5103e56f3436d97032e61e
+GPT fdisk (gdisk) version 0.8.9
+ 
+Partition table scan:
+  MBR: protective
+  BSD: not present
+  APM: not present
+  GPT: present
+ 
+Found valid GPT with protective MBR; using GPT.
+ 
+Command (? for help): p
+Disk 3600140590e5103e56f3436d97032e61e: 31251759104 sectors, 14.6 TiB
+Logical sector size: 512 bytes
+Disk identifier (GUID): D96B0E77-9E54-41D2-88F3-7A8C89A7DDB6
+Partition table holds up to 128 entries
+First usable sector is 34, last usable sector is 31251759070
+Partitions will be aligned on 2048-sector boundaries
+Total free space is 31251759037 sectors (14.6 TiB)
+ 
+. . .</pre>
+      <p>Once you have determined how many sectors are on the disk (the LUN in the above example has 31251759037 sectors), you can then determine the size of each partition as a multiple of 2048 sectors:</p>
+      <table style="border-collapse: separate;border-left-style: solid;border-left-width: 0px;border-left-color: #000000;border-right-style: solid;border-right-width: 0px;border-right-color: #000000;border-top-style: solid;border-top-width: 0px;border-top-color: #000000;border-bottom-style: solid;border-bottom-width: 0px;border-bottom-color: #000000;margin-left: 0;margin-right: auto;">
+        <col/>
+        <col/>
+        <tbody>
+          <tr>
+            <td style="font-size: 0.92rem;">total sectors minus 2048</td>
+            <td style="font-size: 0.92rem;"> 31251759037 – 2048 = 31251756989</td>
+          </tr>
+          <tr>
+            <td style="font-size: 0.92rem;">divide by 2</td>
+            <td style="font-size: 0.92rem;"> 31251756989 / 2 = 15625878494.5</td>
+          </tr>
+          <tr>
+            <td style="font-size: 0.92rem;">round down to nearest integer</td>
+            <td style="font-size: 0.92rem;">15625878494</td>
+          </tr>
+          <tr>
+            <td style="font-size: 0.92rem;">divide by 2048 </td>
+            <td style="font-size: 0.92rem;">15625878494 / 2048 = 7629823.4833</td>
+          </tr>
+          <tr>
+            <td style="font-size: 0.92rem;">round down to nearest integer</td>
+            <td style="font-size: 0.92rem;"> 7629823</td>
+          </tr>
+          <tr>
+            <td style="font-size: 0.92rem;">multiply by 2048</td>
+            <td style="font-size: 0.92rem;"> 7629823 * 2048 = 15625877504</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>When you know the size of each partition in the sectors (15625877504) and that the first sector of the first partition is always 2048, you can then determine the start and end sectors for each partition:</p>
+      <table style="border-collapse: separate;margin-left: 0;margin-right: auto;">
+        <col/>
+        <col/>
+        <tbody>
+          <tr>
+            <td colspan="2" style="font-size: 0.92rem;">1st start sector:  2048</td>
+          </tr>
+          <tr>
+            <td colspan="2" style="font-size: 0.92rem;">1st end sector:   partition size + 2047 = 15625879551</td>
+          </tr>
+          <tr>
+            <td colspan="2" style="font-size: 0.92rem;">2nd start sector: 15625879551 + 1 = 15625879552</td>
+          </tr>
+          <tr>
+            <td colspan="2" style="font-size: 0.92rem;">2nd end sector:  15625879551 + 15625877504 = 31251757055</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>Using the above numbers, you can then create partitions using the GDisk utility. </p>
+      <li>On the active and ready disk array, run the GDisk utility to create two partitions aligned to a 2048-sector partition boundary on the device.</li>
+      <ul>
+        <li>For a standalone appliance, the second partition that is created can be smaller (as small as 100MB). </li>
+        <li>For a redundant pair of appliances, two equally sized partitions are required. The partitions can be up to 7.5 TiB each (for a total of 15 TiB). However, the partition sizes required depend on the maximum disk space configured for the message spool using the <code>max-spool-usage</code> Message Spool VPN CONFIG command. When using a redundant pair of appliances, each partition should be <MadCap:variable name="Broker-Limitations.redundant-pair-partition-size"/> .</li>
+      </ul>
+      <ol style="list-style-type: lower-alpha;">
+        <li>Enter the following at the prompt: </li>
+        <pre class="Code">gdisk /dev/mapper/&lt;device&gt;</pre>
+        <p>Example:</p>
+        <pre class="Code">[root@solace ~]# gdisk /dev/mapper/3600140590e5103e56f3436d97032e61e</pre>
+        <li>To create new partition tables, enter the "n" command, and then "1" for first partition. </li>
+        <li>To align the partition tables on 2048 sector boundaries, do the following:</li>
+        <ul>
+          <li>For the first partition, enter "2048" at the "First sector..." prompt, then at the "Last sector..." prompt, enter the value you calculated in step 1 for the end of the first sector.</li>
+          <li>For the second partition, enter the value you calculated in step 1 for the start of the sector for that partition, then at the "Last sector..." prompt, enter the value you calculated in step 1 for the end of the sector for the second partition.</li>
+        </ul>
+        <li>Enter the "w" command to save the resulting partition table.</li>
+      </ol>
+      <p>In the example below, two equal-sized partitions are created for a redundant pair of appliances:</p>
+      <pre class="Code">[root@solace mapper]# gdisk /dev/mapper/3600140590e5103e56f3436d97032e61e
+GPT fdisk (gdisk) version 0.8.9
+ 
+Partition table scan:
+  MBR: protective
+  BSD: not present
+  APM: not present
+  GPT: present
+ 
+Found valid GPT with protective MBR; using GPT.
+ 
+Command (? for help): p
+Disk 3600140590e5103e56f3436d97032e61e: 31251759104 sectors, 14.6 TiB
+Logical sector size: 512 bytes
+Disk identifier (GUID): D96B0E77-9E54-41D2-88F3-7A8C89A7DDB6
+Partition table holds up to 128 entries
+First usable sector is 34, last usable sector is 31251759070
+Partitions will be aligned on 2048-sector boundaries
+Total free space is 31251759037 sectors (14.6 TiB)
+ 
+Number  Start (sector)  End (sector)  Size  Code  Name
+ 
+Command (? for help): n
+Partition number (1-128, default 1): 1
+First sector (34-31251759070, default = 2048) or {+-}size{KMGTP}: 2048
+Last sector (2048-31251759070, default = 31251759070) or {+-}size{KMGTP}: 15625879551
+Current type is 'Linux filesystem'
+Hex code or GUID (L to show codes, Enter = 8300): 8300
+Changed type of partition to 'Linux filesystem'
+ 
+Command (? for help): n
+Partition number (2-128, default 2): 2
+First sector (34-31251759070, default = 15625879552) or {+-}size{KMGTP}: 15625879552
+Last sector (15625879552-31251759070, default = 31251759070) or {+-}size{KMGTP}: 31251757055
+Current type is 'Linux filesystem'
+Hex code or GUID (L to show codes, Enter = 8300): 8300
+Changed type of partition to 'Linux filesystem'
+ 
+Command (? for help): p
+Disk 3600140590e5103e56f3436d97032e61e: 31251759104 sectors, 14.6 TiB
+Logical sector size: 512 bytes
+Disk identifier (GUID): D96B0E77-9E54-41D2-88F3-7A8C89A7DDB6
+Partition table holds up to 128 entries
+First usable sector is 34, last usable sector is 31251759070
+Partitions will be aligned on 2048-sector boundaries
+Total free space is 4028 sectors (2.0 MiB)
+ 
+Number   Start (sector)     End (sector)     Size    Code  Name
+     1             2048      15625879551  7.3 TiB    8300  Linux filesystem
+     2      15625879552      31251757055  7.3 TiB    8300  Linux filesystem
+ 
+Command (? for help): w
+ 
+Final checks complete. About to write GPT data. THIS WILL OVERWRITE EXISTING
+PARTITIONS!!
+ 
+Do you want to proceed? (Y/N): y
+OK; writing new GUID partition table (GPT) to 3600140590e5103e56f3436d97032e61e.
+Warning: The kernel is still using the old partition table.
+The new table will be used at the next reboot.
+The operation has completed successfully.</pre>
+      <li>After the partitions are created, add them to the device mapping. To do this, determine device mapping for the external disk:</li>
+      <pre class="Code">[root@solace ~]# ls -l /dev/mapper
+total 0
+brw      1 root root 252,   0 Jan 20 14:07 3600140590e5103e56f3436d97032e61e
+crw-rw   1 root root  10, 236 Jan 20 06:05 control</pre>
+      <li>Reread the partition table and create device maps for the newly created partitions:</li>
+      <pre class="Code">[[root@solace ~]# kpartx -a -p p /dev/mapper/3600140590e5103e56f3436d97032e61e</pre>
+      <p>The two partitions are listed in <code>/dev/mapper</code> as <code>p1</code> and <code>p2</code>:</p>
+      <pre class="Code">[[root@solace ~]# ls -l /dev/mapper/
+total 0
+brw-------  1 root root 252,   0 Jan 20 14:07 3600140590e5103e56f3436d97032e61e
+brw-------  1 root root 252,   1 Jan 20 11:05 3600140590e5103e56f3436d97032e61ep1
+brw-------  1 root root 252,   2 Jan 20 11:05 3600140590e5103e56f3436d97032e61ep2
+crw-rw----  1 root root  10, 236 Jan 20 06:05 control</pre>
+      <li>Create an ext4 file system on each partition using the <code>mkfs.ext4</code> command with each partition in the <code>/dev/mapper</code> listing:</li>
+      <p class="Note">If the disk is greater than 200 GB, you should use the -N 10000000 option to limit the number of inodes and speed up formatting.</p>
+      <pre class="Code">[[root@solace ~]# mkfs.ext4 -N 10000000 /dev/mapper/3600140590e5103e56f3436d97032e61ep1
+mke4fs 1.41.12 (17-May-2010)
+Filesystem label=
+OS type: Linux
+Block size=4096 (log=2)
+Fragment size=4096 (log=2)
+Stride=0 blocks, Stripe width=0 blocks
+10491008 inodes, 1953234688 blocks
+97661734 blocks (5.00%) reserved for the super user
+First data block=0
+Maximum filesystem blocks=0
+59608 block groups
+32768 blocks per group, 32768 fragments per group
+176 inodes per group
+Superblock backups stored on blocks: 
+    32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208, 
+    4096000, 7962624, 11239424, 20480000, 23887872, 71663616, 78675968, 
+    102400000, 214990848, 512000000, 550731776, 644972544, 1934917632
+ 
+Writing inode tables: done                            
+Creating journal (32768 blocks): done
+Writing superblocks and filesystem accounting information: done
+ 
+This filesystem will be automatically checked every 28 mounts or
+180 days, whichever comes first. Use tune4fs -c or -i to override.
+</pre>
+      <pre class="Code">[root@solace ~]# mkfs.ext4 -N 10000000 /dev/mapper/3600140590e5103e56f3436d97032e61ep2
+mke4fs 1.41.12 (17-May-2010)
+Filesystem label=
+OS type: Linux
+Block size=4096 (log=2)
+Fragment size=4096 (log=2)
+Stride=0 blocks, Stripe width=0 blocks
+10491008 inodes, 1953234688 blocks
+97661734 blocks (5.00%) reserved for the super user
+First data block=0
+Maximum filesystem blocks=0
+59608 block groups
+32768 blocks per group, 32768 fragments per group
+176 inodes per group
+Superblock backups stored on blocks: 
+    32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208, 
+    4096000, 7962624, 11239424, 20480000, 23887872, 71663616, 78675968, 
+    102400000, 214990848, 512000000, 550731776, 644972544, 1934917632
+ 
+Writing inode tables: done                            
+Creating journal (32768 blocks): done
+Writing superblocks and filesystem accounting information: done
+ 
+This filesystem will be automatically checked every 35 mounts or 180 days, whichever comes first. Use tune4fs -c or -i to override.</pre>
+      <li>If you are using a redundant pair of appliances, restart the appliance on which the above procedures were <span style="text-decoration: underline;">not</span> made.</li>
+    </ol>
+    <h2 class="with-rule"><a name="managing_guaranteed_messaging_1810020758_464417"/>Step 3: Configure the  Message Spool to Use the External Disk</h2>
+    <MadCap:snippetBlock src="../../Resources/Snippets/Not-Config-Synced.flsnp"/>
+    <p>To enable Guaranteed message spooling using the external disk storage array for a standalone appliance, or the primary appliance in a redundant pair, perform the following steps:</p>
+    <ol>
+      <li>Enter the  User EXEC CLI command to display which external disks are available:</li>
+      <pre class="Code">solace1&gt; show hardware detail
+			
+. . .
+				
+Slot 1/2: Host Bus Adapter Blade
+  Product #: HBA-0204FC-01-A
+  Serial #: H64544
+  Model Name: QLA2462
+  Model Description: PCI-X 2.0 to 4Gb FC, Dual Channel
+  Driver Version: 8.01.07-k1
+				
+. . .
+				
+  Attached devices
+   LUN 0
+      State: Ready
+      Size: 80 GB 
+      <b>WWN</b>: 60:06:01:60:e8:60:1c:00:ec:7b:6d:3f:5c:db:de:11</pre>
+      <li>Configure the Guaranteed message spool to use the external disk, according to its WWN:</li>
+      <pre class="Code">solace1(configure/hardware/message-spool)# disk-array wwn &lt;wwn #&gt;</pre>
+      <p><u>Where</u>:</p>
+      <p><code>&lt;wwn #&gt;</code> is the WWN displayed by the<code> show hardware detail</code> command output above. </p>
+      <li>Enable the Guaranteed message spool on the primary appliance:</li>
+      <pre class="Code">solace1(configure/hardware/message-spool)# no shutdown primary</pre>
+    </ol>
+    <p>To enable Guaranteed message spooling using the external disk storage array for the backup appliance in a redundant pair, perform the following steps:</p>
+    <p class="Note">For information on configuring redundant appliances, refer to <MadCap:xref href="../../Features/HA-Redundancy/Managing-Appliance-Redundancy.htm">Managing Appliance Redundancy</MadCap:xref>.</p>
+    <ol>
+      <li>Enter the following CLI command to display which external disks are available:
+<pre class="Code">solace2&gt; show hardware detail
+
+. . .
+
+Slot 1/2: Host Bus Adapter Blade
+  Product #: HBA-0204FC-01-A
+  Serial #: H64544
+  Model Name: QLA2462
+  Model Description: PCI-X 2.0 to 4Gb FC, Dual Channel
+  Driver Version: 8.01.07-k1
+  
+  . . .
+  
+  Attached devices
+  LUN 0
+  State: Ready
+  Size: 80 GB 
+  <b>WWN</b>: 60:06:01:60:e8:60:1c:00:ec:7b:6d:3f:5c:db:de:11</pre></li>
+      <li>Configure the Guaranteed message spool to use the external disk, according to its WWN:
+            <pre class="Code">solace2(configure)# hardware message-spool<br/>solace2(configure/hardware/message-spool)# disk-array wwn &lt;wwn #&gt;</pre><p><u>Where</u>:</p><p><code>&lt;wwn #&gt;</code> is the WWN displayed by the<b> show hardware detail</b> command output above.</p></li>
+      <li>Enable the Guaranteed message spool on the backup appliance:
+            <pre class="Code">solace2(configure/hardware/message-spool)# no shutdown backup</pre></li>
+    </ol>
+    <h2 class="with-rule"><a name="managing_guaranteed_messaging_1810020758_464478"/>Step 4: Verify the Guaranteed Message Spool Configuration</h2>
+    <p>For a standalone appliance, perform the following steps:</p>
+    <ol>
+      <li>Enter the <code>show message-spool</code> User EXEC CLI command to verify the message spool is correctly configured. The appliance should show a configuration status of "Enabled (Primary)", an operational status of "AD-Active", and a datapath status of "Up". </li>
+      <p><u>Example</u>:</p>
+      <pre class="Code">solace1&gt; show message-spool
+  <span style="color: #ff0000;">
+Config Status:                            Enabled (Primary)</span>
+            
+Maximum Spool Usage:                      60000 MB
+Spool While Charging:                     No
+Spool Without Flash Card:                 No
+Using Internal Disk:                      No
+Disk Array WWN:             60:06:01:60:e8:60:1c:00:ec:7b:6d:3f:5c:db:de:11
+ <span style="color: #ff0000;">
+Operational Status:                       AD-Active
+Datapath Status:                          Up</span>
+            
+. . .
+				
+                                          ADB       Disk      Total
+Current Persistent Store Usage (MB)    0.0000     0.0000     0.0000
+Number of Messages Currently Spooled        0          0          0</pre>
+      <li>If either output does not show the proper status, enter the <code>show message-spool detail</code> User EXEC CLI command to view system details as an aid in troubleshooting.</li>
+    </ol>
+    <p>For a pair of redundant appliances, perform the following steps:</p>
+    <ol>
+      <li>Enter the <code>show message-spool</code> User EXEC CLI command on the primary appliance to verify its message spool is correctly configured. It should show a configuration status of "Enabled (Primary)", an operational status of "AD‑Active", and a datapath status of "Up". </li>
+      <p><u>Example</u>:</p>
+      <pre class="Code">solace1&gt; show message-spool
+  <span style="color: #ff0000;">
+Config Status:                            Enabled (Primary)</span>
+            
+Maximum Spool Usage:                      60000 MB
+Spool While Charging:                     No
+Spool Without Flash Card:                 No
+Using Internal Disk:                      No
+Disk Array WWN: 60:06:01:60:e8:60:1c:00:ec:7b:6d:3f:5c:db:de:11
+  <span style="color: #ff0000;">
+Operational Status:                       AD-Active
+Datapath Status:                          Up</span>
+            
+. . .
+				
+                                          ADB       Disk      Total
+Current Persistent Store Usage (MB)    0.0000     0.0000     0.0000
+Number of Messages Currently Spooled        0          0          0</pre>
+      <li>Enter the <b>show message-spool</b> User EXEC CLI command on the backup appliance to verify its message spool is correctly configured. It should show a configuration status of "Enabled (Backup)", an operational status of "AD‑Standby", and a datapath status of "Down". </li>
+      <p><u>Example</u>:</p>
+      <pre class="Code">solace2&gt; show message-spool
+  <span style="color: #ff0000;">
+Config Status:                            Enabled (Backup)</span>
+            
+Maximum Spool Usage:                      60000 MB
+Spool While Charging:                     No
+Spool Without Flash Card:                 No
+Using Internal Disk:                      No
+Disk Array WWN: 60:06:01:60:e8:60:1c:00:ec:7b:6d:3f:5c:db:de:11
+  <span style="color: #ff0000;">
+Operational Status:                       AD-Standby
+Datapath Status:                          Down</span>
+            
+. . .
+
+                                          ADB    Disk   Total
+Current Persistent Store Usage (MB)    0.0000  0.0000  0.0000
+Number of Messages Currently Spooled        0       0       0</pre>
+      <li>If either the primary or backup appliance do not show the proper status, enter the <code>show message-spool detail</code> User EXEC CLI command to view system details as an aid in troubleshooting.</li>
+      <li>Once the message spools on the primary and backup appliance show the proper status, enter the <code>release-activity</code> Redundancy CONFIG CLI command on the primary appliance to surrender activity to the backup appliance and verify the backup appliance can take activity.</li>
+      <li>Once it is confirmed that the backup appliance has taken activity, enter the <code>no release-activity</code> Redundancy CONFIG CLI command on the primary appliance to enable it to take activity again.</li>
+      <li>If auto-revert is disabled, enter the <code>revert-activity</code> Redundancy ADMIN CLI command on the backup appliance to revert activity back to the primary appliance.</li>
+    </ol>
+  </body>
+</html>

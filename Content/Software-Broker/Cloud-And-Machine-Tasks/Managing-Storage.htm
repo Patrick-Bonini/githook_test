@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:searchable="False">
+  <head>
+    <title/>
+    <meta name="robots" content="noindex, nofollow"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Software"/>Managing Storage Volumes</h1>
+    <p>The <code>solacectl</code> command-line utility is used to manage the storage volumes used by machine<MadCap:conditionalText MadCap:conditions="Default.NotForPDF"> and cloud</MadCap:conditionalText> images of the Solace PubSub+ software event broker. The utility can assign storage volumes to external block devices or move them back to the Linux host. </p>
+    <p>Before you use the <code>solacectl storage</code> command discussed below, we recommend that you review the <MadCap:xref href="../Configuring-Storage.htm" MadCap:conditions="Default.NotForPDF">Managing Software Event Broker Storage</MadCap:xref><a href="https://docs.solace.com/Software-Broker/Configuring-Storage.htm" class="link-offsite" MadCap:conditions="Default.OnlyForPDF" target="_blank">Managing Software Event Broker Storage</a> section on planning considerations related to storage volumes.</p>
+    <h2 class="with-rule"><a name="Setting"/>Setting Up Volumes as New Block Devices</h2>
+    <p>To set up a storage volume that the Solace PubSub+ application uses as a new block device, enter the following commands from the Linux Host shell as root:</p>
+    <pre>solacectl service stop
+solacectl storage configure [-n] [-p] &lt;device&gt; &lt;volumes&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>-n</code> (or <code>--new</code>) specifies to setup a volume as a new block device. This is the default option and is used unless another option is specifically provided.</p>
+    <p><code>-p</code> (or <code>--partition</code>) the partition to setup if there are more than one. Normally, this option is not needed.</p>
+    <p><code>device</code> is the destination device on which to store the volumes.</p>
+    <p><code>volumes</code> is a space-separated list of volume names.</p>
+    <p>By default, the <code>solacectl storage configure</code> command preserves the files on the storage volume when migrating to a new block device. </p>
+    <p class="Tip">To review the list of available block devices and volumes, run the <code>solacectl storage ls</code> command, then check the block devices and storage volumes columns in the output.</p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <p>The following steps show how to assign the <code>storage-group</code> volume to an external block device <code>/dev/sdb</code>.</p>
+        <ol>
+          <li>Review available block devices and storage volumes. In this example, <code>storage-group</code> initially resides on the following path: <p><code>/var/lib/docker/volumes/storage-group/_data</code>.</p><pre class="Code" xml:space="preserve">[sysadmin@vmr-132-1 ~]$ solacectl storage ls
+Block Devices:
+Name                                              Size        Note
+sda                                               30.0G       Main device
+└─sda1                                            0.2G
+└─sda2                                            29.8G
+sdb                                               8.0G
+└─sdb1                                            8.0G
+
+Storage Volumes:
+Name                        Size      Used      Available Path
+/dev/mapper/vg01-root       9.8G      1.1G      8.7G      /
+/dev/mapper/vg01-solace     9.8G      1.4G      8.5G      /var/lib/docker/volumes
+├─storage-group             9.8G      1.4G      8.5G      /var/lib/docker/volumes/storage-group/_data
+
+Image Pool:
+Name                                            Size      Used       Available
+Image pool                                      8.905 GB  2.206 GB   6.698 GB
+</pre></li>
+          <li>Assign <code>storage-group</code> to the destination device <code>sdb</code>.<pre class="Code" xml:space="preserve">[sysadmin@vmr-132-1 ~]$ solacectl storage configure sdb storage-group
+Creating new partition...
+Verified the file system is XFS.
+Mounting /dev/sdb1
+Volumes have been configured in the new block device</pre></li>
+          <li>Review to confirm the assignment of <code>storage-group</code> to <code>sdb</code>.<pre class="Code" xml:space="preserve">[sysadmin@vmr-132-1 ~]$ solacectl storage ls
+Block Devices:
+Name                                              Size      Note
+sda                                               30.0G     Main device
+└─sda1                                             0.2G
+└─sda2                                            29.8G
+sdb                                                8.0G
+└─sdb1                                             8.0G 
+Storage Volumes:
+Name                        Size      Used      Available     Path
+/dev/mapper/vg01-root       9.8G      1.1G      8.7G          /
+/dev/mapper/vg01-solace     9.8G      1.1G      8.7G          /var/lib/docker/volumes
+/dev/sdb1                   8.0G      306M      7.7G          /mnt/vmr
+├─storage-group             8.0G      1.1G      8.7G          /mnt/vmr/storage-group/_data</pre><p class="Note">The <code>storage-group</code> can be re-assigned to the main device, <code>sda</code>, with the following command: <code>[sysadmin@vmr-132-1 ~]$ solacectl storage configure sda storage-group</code>.</p></li>
+        </ol>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <h2 class="with-rule"><a name="Setting2"/>Setting Up Volumes as Existing  Block Devices</h2>
+    <MadCap:snippetBlock src="../../Resources/Snippets/solacectl-Map-Volume-to-Block-Device.flsnp"/>
+    <p class="Tip">To review the list of available block devices and volumes, run the <code>solacectl storage ls</code> command, then check the block devices and storage volumes columns in the output.</p>
+    <h2 class="with-rule"><a name="Formatti"/>Formatting Block Devices</h2>
+    <p>To format a block device by erasing partition tables and data, enter the following commands from the Linux Host shell as root:</p>
+    <p class="Code">solacectl service stop<br/>solacectl storage configure [-p] -f &lt;device&gt; &lt;volumes&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>-p</code> (or <code>--partition</code>) the partition to setup if there are more than one. Normally this option is not needed.</p>
+    <p><code>-f</code> (or <code>--format</code>) specifies to format a block device by erasing partition tables and data.</p>
+    <p><code>device</code> is the destination device on which volumes are stored.</p>
+    <p><code>volumes</code> is a space separated list of volume names.</p>
+    <p class="Tip">To review the list of available block devices and volumes, run the <code>solacectl storage ls</code> command, then check the block devices and storage volumes columns in the output.</p>
+    <h2 class="with-rule" MadCap:conditions="Default.NotForPDF"><a name="Migratin"/>Migrating the Storage-Group to External Storage</h2>
+    <p MadCap:conditions="Default.NotForPDF">The procedures shown in this section provide instructions for how to migrate the <code>storage-group</code> to external storage for these configurations:</p>
+    <ul MadCap:conditions="Default.NotForPDF">
+      <li>
+        <MadCap:xref href="#Stand">Standalone Event Brokers</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Message">Event Brokers in an HA Group</MadCap:xref>
+      </li>
+    </ul>
+    <h3 MadCap:conditions="Default.NotForPDF"><a name="Before"/>Before you begin</h3>
+    <ul MadCap:conditions="Default.NotForPDF">
+      <li>The procedures make use of the <code>solacectl storage</code> command discussed in the <a href="#Setting" class="link-internal">previous sections</a>. We recommend that you review those sections if you aren't familiar with this command.</li>
+      <li>We recommend that you review the <MadCap:xref href="../Configuring-Storage.htm" MadCap:conditions="Default.NotForPDF">Managing Software Event Broker Storage</MadCap:xref><a href="https://docs.solace.com/Software-Broker/Configuring-Storage.htm" class="link-offsite" MadCap:conditions="Default.OnlyForPDF" target="_blank">Managing Software Event Broker Storage</a> section on planning considerations related to storage volumes.</li>
+    </ul>
+    <h3 MadCap:conditions="Default.NotForPDF"><a name="Stand"/>Standalone Event Brokers</h3>
+    <h4 MadCap:conditions="Default.NotForPDF">Prerequisites</h4>
+    <ul MadCap:conditions="Default.NotForPDF">
+      <li>You have planned your storage strategy. Consult the <MadCap:xref href="../Configuring-Storage.htm" MadCap:conditions="Default.NotForPDF">Storage Configuration</MadCap:xref><a href="https://docs.solace.com/Software-Broker/Configuring-Storage.htm" class="link-offsite" MadCap:conditions="Default.OnlyForPDF" target="_blank">Managing Software Event Broker Storage</a> section if you need more information.</li>
+    </ul>
+    <h4 MadCap:conditions="Default.NotForPDF">Steps</h4>
+    <ol MadCap:conditions="Default.NotForPDF">
+      <li>Log into the event broker's host shell as sysadmin.</li>
+      <li>Ensure the persistent storage is sized correctly to support the volumes being moved.</li>
+      <li>Switch to the root user.</li>
+      <li>Stop the <code>solace</code> service using <code>solacectl service</code>.</li>
+      <li>Migrate the <code>storage-group</code> to external storage using <code>solacectl storage</code>.</li>
+      <li>Verify the <code>storage-group</code> has been moved to external storage.</li>
+      <li>Re-start the <code>solace</code> service using <code>solacectl service</code>.</li>
+      <li>Log out of the event broker.</li>
+    </ol>
+    <h3 MadCap:conditions="Default.NotForPDF"><a name="Message"/>Event Brokers in an HA Group</h3>
+    <h4 MadCap:conditions="Default.NotForPDF">Prerequisites </h4>
+    <ul MadCap:conditions="Default.NotForPDF">
+      <li>You have planned your storage strategy. Consult <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../Configuring-Storage.htm">Managing Software Event Broker Storage</MadCap:xref></MadCap:conditionalText><MadCap:xref href="../Configuring-Storage.htm"><a href="https://docs.solace.com/Software-Broker/Configuring-Storage.htm" class="link-offsite" MadCap:conditions="Default.OnlyForPDF" target="_blank">Managing Software Event Broker Storage</a></MadCap:xref> if you need more information.</li>
+      <li>Before beginning the migration you need to ensure the event brokers in the HA group are in the correct state:</li>
+      <ol>
+        <li>Log into each event broker as an admin user.</li>
+        <li>On the primary event broker, you should verify that:<ul><li><code>Configuration Status</code> is <code>Enabled</code>.</li><li><code>Redundancy Status</code> is <code>Up</code>.</li><li><code>Message Spool Status</code> is <code>AD-Active</code>.</li></ul><p>You can use the <code>show redundancy</code> CLI command to make the verification.</p></li>
+        <li>On the backup event broker, you should verify that:<ul><li><code>Configuration Status</code> is <code>Enabled</code>.</li><li><code>Redundancy Status</code> is <code>Up</code>.</li><li><code>Message Spool Status</code> is <code>AD-Standby</code>.</li></ul><p>You can use the <code>show redundancy</code> CLI command to make the verification. </p></li>
+        <li>Log out of all event brokers.</li>
+      </ol>
+    </ul>
+    <h4 MadCap:conditions="Default.NotForPDF">Steps</h4>
+    <ol MadCap:conditions="Default.NotForPDF">
+      <li>On the <b>backup</b> event broker migrate the <code>storage-group</code> to external storage.<ol style="list-style-type: lower-alpha;"><li>Log into the backup event broker's host shell as sysadmin.</li><li>Ensure the persistent storage is sized correctly to support the volumes being migrated.</li><li>Switch to the root user.</li><li>Stop the <code>solace</code> service using <code>solacectl service</code>.</li><li>Migrate the <code>storage-group</code> to external storage using <code>solacectl storage</code>.</li><li>Verify the <code>storage-group</code> has been moved to external storage.</li><li>Re-start the <code>solace</code> service using <code>solacectl service</code>.</li><li>Log out of the backup event broker's host shell.</li></ol></li>
+      <li>Release activity on the primary event broker.<ol style="list-style-type: lower-alpha;"><li>Log into each event broker as an admin user</li><li>Verify that <code>Redundancy Status</code> is <code>Up</code> on both the primary and backup event brokers. You can use the <code>show redundancy</code> command to do this as was illustrated in <b>Prerequisites</b>.</li><li><a href="../../Features/HA-Redundancy/Maintaining-Event-Broker-Redundancy-All-Broker.htm#Releasing-Activity" class="link-internal" MadCap:conditions="Default.NotForPDF">Release activity</a><a href="https://docs.solace.com/Features/HA-Redundancy/Maintaining-Event-Broker-Redundancy-All-Broker.htm#Releasing-Activity" target="_blank" class="link-offsite" MadCap:conditions="Default.OnlyForPDF">Release activity</a> on the primary event broker.</li><li>Verify that the <code>Message Spool Status</code> on the backup event broker is <code>AD-Active</code>.</li><li>Log out of all event brokers.</li></ol></li>
+      <li>On the primary event broker migrate the <code>storage-group</code> to external storage.<ol style="list-style-type: lower-alpha;"><li>Log into the primary event broker's host shell as sysadmin.</li><li>Ensure the persistent storage is sized correctly to support the volumes being migrated.</li><li>Switch to the root user.</li><li>Stop the <code>solace</code> service using <code>solacectl service</code>.</li><li>Migrate the <code>storage-group</code> to external storage  using <code>solacectl storage</code>.</li><li>Verify the <code>storage-group</code> has been moved to external storage.</li><li>Re-start the <code>solace</code> service using <code>solacectl service</code>.</li><li>Log out of the primary event broker's host shell.</li></ol></li>
+      <li>Revert activity on the backup event broker.<ol style="list-style-type: lower-alpha;"><li>Log into the primary event broker as admin.</li><li><a href="../../Features/HA-Redundancy/Maintaining-Event-Broker-Redundancy-All-Broker.htm#Releasing-Activity" class="link-internal" MadCap:conditions="Default.NotForPDF">Reclaim activity</a><a href="https://docs.solace.com/Features/HA-Redundancy/Maintaining-Event-Broker-Redundancy-All-Broker.htm#Releasing-Activity" target="_blank" class="link-offsite" MadCap:conditions="Default.OnlyForPDF">Reclaim activity</a> by running the <code>no release-activity</code> command on the primary event broker.</li><li>Log out of the primary event broker.</li><li>Log into the backup event broker as admin.</li><li>On the backup event broker, <a href="../../Features/HA-Redundancy/Maintaining-Event-Broker-Redundancy-All-Broker.htm#Give-Up-Activity" class="link-internal" MadCap:conditions="Default.NotForPDF">give up activity</a><a href="https://docs.solace.com/Features/HA-Redundancy/Maintaining-Event-Broker-Redundancy-All-Broker.htm#Give-Up-Activity" target="_blank" class="link-offsite" MadCap:conditions="Default.OnlyForPDF">give up activity</a> by running the <code>redundancy revert-activity</code> command.</li><li>Verify <code>Redundancy Status</code> is <code>Up</code> on each event broker.<p>On the primary event broker the <code>Message Spool Status</code> should be <code>AD-Active</code>.</p><p>On the backup event broker the <code>Message Spool Status</code> should be <code>AD-Standby</code>.</p></li><li>Log out of the backup event broker</li></ol></li>
+      <li>On the monitoring event broker migrate the <code>storage-group</code> to external storage.<ol style="list-style-type: lower-alpha;"><li>Log into the monitoring event broker's host shell as sysadmin.</li><li>Ensure the persistent storage is sized correctly to support the volumes being migrated.</li><li>Switch to the root user.</li><li>Stop the <code>solace</code> service using <code>solacectl service</code>.</li><li>Migrate the <code>storage-group</code> to external storage  using <code>solacectl storage</code>.</li><li>Verify the <code>storage-group</code> has been moved to external storage.</li><li>Re-start the <code>solace</code> service using <code>solacectl service</code>.</li><li>Log out of the monitoring event broker's host shell.</li></ol></li>
+      <li>Verify the <code>Redundancy Status</code> is <code>Up</code> on all three event brokers in the HA group.</li>
+    </ol>
+  </body>
+</html>

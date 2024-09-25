@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Deployment Options for Replication</h1>
+    <p>Typically, replication is set up so that clients connect to the primary site, and remain connected to that site as long as it is active. Clients would connect to the backup site only when the primary site fails or goes into the standby state for another reason (such as testing a failover). However, depending on your business requirements, there are additional options for configuring replication.</p>
+    <h2 class="with-rule"><a name="Allowing"/>Allowing Clients to Connect to Standby Sites</h2>
+    <p>By default, clients consume replicated messages (as part of a transaction or not) from Message VPNs with replication active states. If a client attempts to connect to a standby replication site, the connect attempt is rejected. However, it is possible to allow clients to connect and consume messages from endpoints on a replication active Message VPN and its mate replication standby Message VPN.</p>
+    <p>An example of this type of deployment would be one using a replay server, which is any form of third-party application or solution integrated with PubSub+ that offers replay functionality (in this case, "replay server" does not refer to the Solace <a href="../Replay/Message-Replay-Overview.htm" class="link-internal">Message Replay</a> feature). A replay server must consume all messages so they can be later replayed, and for the purposes of disaster recovery, an instance of the replay server must run on both the active and the standby sites. In the event of a failover, the replay server on the standby site will have consumed the same set of messages as the server on the active site and therefore would be able to provide the same replay service.</p>
+    <p>To enable a replication deployment like this, some extra configuration is required:</p>
+    <ul>
+      <li>the <code>allow-clients-when-standby</code> option must be enabled for all client profiles that are used by clients allowed to connect on to the standby site.</li>
+      <li>the propagation of consumer acks must be disabled for each endpoint that these standby clients will consume messages from. Ack propagation is the mechanism by which the consuming of messages on the active site is signaled to the standby site. Since messages are being consumed on both sites, this signaling needs to be disabled. The configuration is the same whether or not the messages are being consumed in a transaction or not.</li>
+    </ul>
+    <p>Although clients are allowed to connect to the standby site, their capabilities are limited. They are not allowed to publish guaranteed messages, create endpoints, or modify existing endpoints in any way. They are, however, allowed to publish direct messages and add direct subscriptions. This allows for direct message communication between clients connected to the standby site for co-ordination purposes.</p>
+    <p class="Note">Host lists should not be used for a standby client. In this scenario, there should be a client for each site and the clients should only connect to their specific site, so a list of hosts is not needed.</p>
+    <h2 class="with-rule"><a name="data_center_replication_provide_service_both_sites"/>Providing Service at Both Replication Sites</h2>
+    <p>A possible customer deployment model for replicated data center infrastructure is to have a replication group where the replication sites are located some distance apart (perhaps 50 or 100 miles). Each replication site uses high-availability (HA) pairs of redundant event brokers: one replication site can actively service one set of Message VPNs, while the other replication site actively services another set of Message VPNs. That is, the HA pairs at one site have Message VPNs with <code>active</code> replication states and other Message VPNs with <code>standby</code> replication states, and the HA pairs at the other replication site have the same Message VPNs but with the opposite replication states.</p>
+    <p>This allows both replication sites to provide messaging services to separate sets of clients. However, they should maintain enough capacity to provide service to all clients of the replication group if there is a planned or unplanned service outage at one of the sites.</p>
+    <p>The figure below provides a simplified example where the New York data center has Message VPNs A, B, C with an <code>active</code> replication state, and Message VPNs D, E, F with a <code>standby</code> replication state. At the Boston  data center, the Message VPNs D, E, F are <code>active</code> and the Message VPNs A, B, C are <code>standby</code>.</p>
+    <p>
+      <img src="../../Resources/Images/DR-Replication/replication_arch.png" style="max-width: 75%;" alt=""/>
+    </p>
+    <p class="Note">Replication can also be deployed with single event brokers at one or both sites, rather than redundant pairs. However this configuration reduces the fault tolerance of the solution.</p>
+  </body>
+</html>

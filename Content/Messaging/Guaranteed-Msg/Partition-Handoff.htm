@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud;Appliance;Software"/>Partition Handoff</h1>
+    <p>Each time the broker performs <MadCap:xref href="Partition-Rebalancing.htm">Partition Rebalancing</MadCap:xref>, there is a point in the process where one or more partitions must be reassigned to different consumers (flows). This is called a <i>partition handoff</i>. The broker attempts to perform a partition handoff with as few disruptions as possible—that is, a "graceful" partition handoff.  Graceful is not necessarily perfect; there may be a disruption to message flow
+ depending on the behavior of consumer applications. Guidelines for consumer applications are discussed in <MadCap:xref href="#consumer-guidelines">Best Practices for Consuming Applications</MadCap:xref>, below.</p>
+    <p>The graceful partition handoff process attempts to achieve the following goals (listed in order from most to least desirable):</p>
+    <ul>
+      <li><b>Goal 1</b>: Prevent disruptions altogether. This is ideal, but requires certain consumer behaviors. See <MadCap:xref href="#consumer-guidelines">Best Practices for Consuming Applications</MadCap:xref>, below.</li>
+      <li><b>Goal 2</b>: Restrict disruptions to the partition whose consumer is changing, such that other partitions are not affected.</li>
+      <li><b>Goal 3</b>: Limit disruptions to a subset of the key sequences mapped to the partition. The term "key sequence" refers to a series of messages with the same key that must be
+processed in sequence and to completion. The start and stop (that is, the length) of the key sequence is unknown to the event broker.</li>
+    </ul>
+    <p>Let's consider an example that illustrates the factors involved in partition handoff. Suppose we have an application consisting of a number of microservices (publishers and consumers). As shown in the diagram below, the application initially has one publisher and one consumer. Messages are represented by the letters A and B (representing the partition key; for example, customer numbers) and the numbers 1 through 5 (representing the sequence within the key; for example, invoice numbers). There is a single partitioned queue with two partitions,
+assigned to <code>Consumer 1</code>. Suppose a new consumer (<code>Consumer 2</code>) becomes available, so that <code>Partition 1</code> needs to be handed off from <code>Consumer 1</code> to <code>Consumer 2</code>. In this example, <code>Partition 0</code> is not affected in any
+way (satisfying Goal 2); only messages relating to key B are impacted.</p>
+    <p>
+      <img src="../../Resources/Images/Guaranteed-Msg/Graceful-Partition-Handoff-Before.png" alt="A diagram that illustrates the example described by the surrounding text."/>
+    </p>
+    <p>The state of messages B1 through B5 from the perspective of the event broker is as follows:</p>
+    <ul>
+      <li>
+B1 has been delivered to the flow but has not been acknowledged, and so remains in the partition for potential redelivery. (The <code>Consumer 1</code> client has received B1 and is in the process of handling it.)
+</li>
+      <li>B2 has been delivered to the flow but has not been acknowledged, and so remains in the partition for potential redelivery. (The consumer has not yet received B2.)</li>
+      <li>
+B3 has been received but  has not been delivered to any flow.
+</li>
+      <li>B4 is unknown to the broker because it is inflight from the publisher.
+</li>
+      <li>B5 is unknown to the broker because the publisher has not yet sent it.</li>
+    </ul>
+    <p>A graceful partition handoff consists of the following steps:</p>
+    <ol>
+      <li>The event broker pauses new message delivery from the affected partition to the current flow (they remain in the queue).<ul><li>In the example, message B3 in <code>Partition 1</code> is held in the queue and not sent to the flow for <code>Consumer 1</code>. After the queue receives them, messages B4 and B5 are also held and not sent to the flow.</li></ul></li>
+      <li>If required, the event broker waits for the configured <code>rebalance max-handoff-time</code> (so that outstanding messages can be acknowledged by the consumers).<ul><li>In the example, <code>Consumer 1</code> acknowledges messages B1 and B2.</li></ul></li>
+      <li>The event broker updates the partition-to-flow mapping, so that the new flow is assigned to the affected partition.<ul><li>In the example, the flow for <code>Consumer 2</code> is now assigned to <code>Partition 1</code>.</li></ul></li>
+      <li>The event broker resumes delivery, now including the new flow.<ul><li>Here, B3, B4, and B5 are delivered to <code>Consumer 2</code>. </li></ul></li>
+    </ol>
+    <p>The result of the handoff (assuming all messages have now been acknowledged) is shown in the diagram below:</p>
+    <p>
+      <img src="../../Resources/Images/Guaranteed-Msg/Graceful-Partition-Handoff-After.png" alt="A diagram that illustrates the example described by the surrounding text."/>
+    </p>
+    <p>Our example application may expect that all messages B1 through B5 would be delivered to the same consumer, so that state from earlier messages can be used when handling subsequent messages. This is the
+normal behavior of the partitioned queue, but due to the handoff, B1 and B2 are sent to <code>Consumer 1</code>, and B3 through B5 are sent to <code>Consumer 2</code>. That is, the key sequence for B has been
+disrupted at some point in its middle.</p>
+    <p>
+It is important to note that this disruption of the key sequence occurs only if the key sequence has undelivered messages. The particular sequence in the example (B3-B5) was disrupted, but might be only one of many
+independent key sequences passing through the partition as it was being reassigned. The same publisher, or any other publisher, might be generating full key sequences whose messages are inflight towards the
+consumer, or not yet been seen by any consumer. After the  delivery pause, these messages are handled without disruption  to their key sequences (satisfying Goal 3).
+</p>
+    <h2 class="with-rule"><a name="consumer-guidelines"/>Best Practices for Consuming Applications</h2>
+    <p>Ideally, partition  handoffs are transparent to the consuming application. Although handoffs are designed to be as unobtrusive as possible to the consumer, they may cause application-level errors as the flow of messages belonging to one partition is moved from one consumer to another.</p>
+    <p>It is possible to design your consuming applications so that they are resilient to any message flow disruption that results from partition handoff (Goal 1). Some possible ways to achieve this are:</p>
+    <ul>
+      <li>
+Use a shared database to maintain state. The diagrams for the preceding example show a database that all consumers can read from and write to. If each instance of the application writes to the database any state needed for future processing of a given
+key before acknowledging the corresponding message back to the broker, then any other instance of the application could handle a message with a key it had not previously
+encountered by first retrieving state for this key from the shared database.</li>
+      <li>
+Acknowledge only after receiving the last message in a sequence. If the application knows the start and end values of a key sequence, it can delay sending acknowledgments for all messages in the sequence until the final message has been received and processed. That way, if a
+sequence is disturbed, the event broker will resend the entire sequence, in order, to a new consumer. This approach doesn't eliminate the problem, but it  reduces the size of the window during which the application is
+exposed (a handoff could still occur during the time it takes to acknowledge all messages back-to-back).</li>
+    </ul>
+    <p>
+It might not be possible or practical to design applications that are so sophisticated. In particular, some design decisions can result in disruption to the partition key sequence. For example:
+</p>
+    <ul>
+      <li>The consumer might hold its per-key state solely in RAM and automatically acknowledge each message so it can be as simple and performant as possible.
+</li>
+      <li>The consumer might not acknowledge messages immediately, and instead be more selective based on the message sequence, thus exceeding the rebalance timer or max-handoff timer for the queue.
+The consumer may not be able to acknowledge messages within the configured time limits. This can cause message duplication. You can adjust the max-delivered-unacked-msgs-per-flow setting (similar to how you would for other non-exclusive queue scenarios where there are different processing times for different message workloads) to prevent this.</li>
+      <li>The administrator might set the timeout values low, perhaps even to 0, to cause new key sequences to be handled in the new consumer in preference to  trying to gracefully finish handling old key sequences in the old consumer.</li>
+      <li>The consumer could be designed to fail and restart a transaction or process.</li>
+    </ul>
+    <p>The recovery methods in these cases are application specific. You must decide how your applications behave when the key sequence of their received messages never completes, or when they are given messages where the keys don't start at the beginning of the key sequence.</p>
+  </body>
+</html>

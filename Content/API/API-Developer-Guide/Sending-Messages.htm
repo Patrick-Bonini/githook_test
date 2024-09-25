@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Sending Direct Messages</h1>
+    <p>When sending a Direct message, client applications must consider the following factors:</p>
+    <ul>
+      <li>When using JCSMP, whether you want to send messages using a streaming or non-streaming mode. Refer to <MadCap:xref href="#publishing_direct_messages_2102779381_620161">Streaming and Non-Streaming Sends in the JCSMP</MadCap:xref>.</li>
+      <li>When using the Java RTO, C, or .NET APIs, whether you want to send messages using a blocking or non-blocking mode. Refer to <MadCap:xref href="#publishing_direct_messages_2102779381_620144">Blocking and Non-blocking Network I/O</MadCap:xref>.</li>
+      <li>The number of messages to publish per send invocation. Refer to <MadCap:xref href="#publishing_direct_messages_2102779381_611393">Sending One Message at a Time</MadCap:xref> or <MadCap:xref href="#sending-multiple-messages">Sending Multiple Messages at a Time</MadCap:xref>.</li>
+      <li>Whether you want to send messages that require a reply from the receiver. Refer to <MadCap:xref href="Publishing-Messages-that.htm">Publishing Messages that Request Replies</MadCap:xref>.</li>
+    </ul>
+    <p style="font-weight: bold;">Related Samples</p>
+    <p>For examples of how to publish and receive Direct messages, refer to the <code>DirectPubSub</code> sample for the JCSMP, Java RTO, C, and .NET APIs, and the <code>TopicSubscriber</code> and <code>TopicPublisher</code> samples for the JavaScript and Node.js APIs.</p>
+    <h2 class="with-rule"><a name="publishing_direct_messages_2102779381_620161"/>Streaming and Non-Streaming Sends in JCSMP</h2>
+    <p>JCSMP only supports a blocking network I/O model. However, when publishing messages, JCSMP can use a publish event handler that operates in either a streaming or a non-streaming mode. The mode used by the publish event handler is set when an <code>XMLmessageProducer</code> is acquired. </p>
+    <p>To publish messages using JCSMP, a client must acquire an <code>XMLMessageProducer</code> from the <code>JCSMPSession</code>. Once it is acquired, the <code>JCSMPSession</code> maintains a connection to the event broker and the application can then send messages.</p>
+    <p><code>XMLMessageProducer</code> can also be used to create Session‑dependent messages through the Producer interface (refer to <MadCap:xref href="Creating-Messages.htm#publishing_direct_messages_2102779381_618548">Message Ownership</MadCap:xref>).</p>
+    <p>The <code>XMLMessageProducer</code> is in an “open” state until the <code>close()</code> method is called on <code>XMLMessageProducer</code>.</p>
+    <p class="Note">A client should cache an acquired instance, and close it only when it is no longer required. It is not efficient to acquire a new <code>XMLMessageProducer</code> instance for every message sent.</p>
+    <p>To acquire an <code>XMLMessageProducer</code> instance, call <code>getMessageProducer(JCSMPStreamingPublishEventHandler callback)</code> and set the callback handler. When a non-null instance of the <code>JCSMPStreamingPublishEventHandler</code> parameter is passed in, the send operation uses a <code>JCSMPStreamingPublishEventHandler</code> to asynchronously get confirmation of message delivery failures using a callback mechanism.</p>
+    <h2 class="with-rule"><a name="publishing_direct_messages_2102779381_620144"/>Blocking and Non-blocking Network I/O</h2>
+    <p>The Java RTO, C, and .NET APIs can use a blocking or non‑blocking network I/O model for send operations. This is controlled by the Send Blocking Session property. By default, this property is set to <code>true</code>, so that a blocking mode is used.</p>
+    <p>When the Send Blocking Session property is set to <code>false</code>, a non-blocking mode is used. If the OS/network cannot send the whole message without blocking the calling thread until more buffer space is available, the client application gets a <code>WOULD_BLOCK</code> return code. When a <code>WOULD_BLOCK</code> return code is received, the message is not sent and the client application must wait for a <code>CAN_SEND</code> Session event, which indicates that the network is then ready for the send.</p>
+    <h2 class="with-rule"><a name="publishing_direct_messages_2102779381_611393"/>Sending One Message at a Time</h2>
+    <p>To publish a single message per API call, call one of the send methods or functions listed below.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Publish Messages</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">XMLMessageProducer.send(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">SessionHandle.send(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">solClient_session_sendMsg(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">ISession.Send(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode">solace.Session.send(...)</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="Note">
+      <p>When using JCSMP, and sending messages created from a Producer (that is Session‑dependent messages), ensure that the application:
+        </p>
+      <ul>
+        <li>Does not send a <code>Message</code> instance created either in a previous <code>JCSMPSession</code> or by another <code>XMLMessageProducer</code>. Attempting to do this throws an <code>IllegalArgumentException</code>.</li>
+        <li>Does not send the same message multiple times. Attempting to do this throws an <code>InvalidOperationException</code>.</li>
+        <li>Calls <code>close()</code> to close the producer when finished publishing. Any further access, such as sending messages, causes an exception to be raised.</li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="sending-multiple-messages"/>Sending Multiple Messages at a Time</h2>
+    <p>A group of Direct messages can be sent through a single API call. This allows messages to be sent in a batch or a vector. The messages to be sent are specified as an array; up to fifty messages can be sent through the call.</p>
+    <p>When batch sending messages, a Direct Delivery mode should be set for all of the messages (refer to <MadCap:xref href="Setting-Message-Properti.htm#Delivery-Mode">Delivery Mode</MadCap:xref>).</p>
+    <p style="font-weight: bold;">JCSMP</p>
+    <p>When using JCSMP, an array of <code>{Message, Destination}</code> pairs (each represented by a <code>JCSMPSendMultipleEntry</code> instance) must be passed in. This pairing allows messages to be sent to individual destinations. Each message must be an application‑owned message instance (that is, acquired from <code>JCSMPFactory.createMessage(...)</code>).</p>
+    <p>JCSMP attempts to write all of the messages to the network at once and blocks until completion.</p>
+    <p style="font-weight: bold;">Java RTO, C, and .NET APIs</p>
+    <p>When using the Java RTO, C, or .NET APIs, an array of messages must be passed in. Unlike JCSMP, message destinations are not set through a send method; rather, they are set as a property for each message.</p>
+    <p>When a blocking mode is configured for the Session through the Session properties, the call blocks until all messages can be accepted by the messaging API. If a non‑blocking mode is configured, and the API cannot accept all messages to publish, <code>SOLCLIENT_WOULD_BLOCK</code> is returned, and the number of messages that were accepted is returned in the <code>in_out_howManySent</code>, <code>numberOfMessagesWritten</code>, or <code>messagesSent</code> parameter. The application can reattempt to send the messages that were not accepted or take another action.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Publish a Group of Messages</p>
+      </caption>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">XMLMessageProducer.sendMultiple(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">SessionHandle.send(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">solClient_session_sendMultipleMsg(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">ISession.Send(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">Not supported</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-weight: bold;">Related Samples</p>
+    <p>For examples of how to publish a group of messages, refer to the <code>PerfTest</code> sample for the appropriate messaging API.</p>
+  </body>
+</html>

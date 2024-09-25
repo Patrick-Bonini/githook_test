@@ -1,0 +1,506 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Creating JMS‑Compatible Messages With Other APIs</h1>
+    <p>This section shows code samples of how non-JMS Solace messaging APIs can create and set data on messages so that the Solace JMS API can interpret those messages as one of the following standard message types:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#creating_jms-compatible_msgs_1946471526_329878">BytesMessage</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#creating_jms-compatible_msgs_1946471526_329687">MapMessage</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#creating_jms-compatible_msgs_1946471526_328289">StreamMessage</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#TextMess">TextMessage</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#creating_jms-compatible_msgs_1946471526_337481">ObjectMessage</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#creating_jms-compatible_msgs_1946471526_328316">Non-Standard Messages</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="creating_jms-compatible_msgs_1946471526_329878"/>BytesMessage</h2>
+    <p>The following examples show how to create and receive a BytesMessage using non-JMS Solace messaging APIs.</p>
+    <h4>Java Messaging API</h4>
+    <p><b>Create</b>:</p>
+    <pre>
+BytesMessage message = JCSMPFactory.onlyInstance().createMessage(BytesMessage.class);
+message.setData(new byte[] {0x01, 0x02});</pre>
+    <p><b>Receive</b>:</p>
+    <pre>
+FlowReceiver receiver = session.createFlow(endpoint, topic, null);
+receiver.start();
+BytesMessage message = (BytesMessage)receiver.receive();
+byte[] data = message.getData();</pre>
+    <h4>C Messaging API</h4>
+    <p><b>Create</b>:</p>
+    <pre>
+solClient_opaqueMsg_pt msg_p = NULL;
+char* data[2];  
+
+// create a message
+if (solClient_msg_alloc(&amp;msg_p) == SOLCLIENT_OK) 
+{
+   // copy the content of data to the binary attachment 
+   if ( solClient_msg_setBinaryAttachment (msg_p,data,(solClient_uint32_t)2) == SOLCLIENT_OK)   
+   {
+       // at this point the message is ready to be sent 
+   }
+}</pre>
+    <p><b>Receive</b>:</p>
+    <pre>
+// binary attachment buffer pointer and size
+void               *dataBuf_p;
+solClient_uint32_t  dataBufSize;
+
+// Assuming that msg_p is a reference to a received message
+if (solClient_msg_getBinaryAttachmentPtr(msg_p, &amp;dataBuf_p, &amp;dataBufSize ) == SOLCLIENT_OK) 
+{
+    // at this point dataBuf_p and dataBufSize can be used to access or copy out
+    // the binary attachment
+}</pre>
+    <h4>.NET Messaging API</h4>
+    <p><b>Create</b>:</p>
+    <pre xml:space="preserve">
+// create a message
+IMessage message = ContextFactory.Instance.CreateMessage();
+byte[] data = {0x01, 0x02};
+message.BinaryAttachment = data;
+// Set other message properties
+// ...
+// at this point the message is ready to be sent</pre>
+    <p><b>Receive</b>:</p>
+    <pre>
+// assuming that message is a reference to a received message
+IMessage message = args.Message; /*args is a MessageEventArgs*/
+if (SDTUtils.GetContainer(message) == null &amp;&amp; SDTUtils.GetText(message) == null) 
+{
+    // it is not a map, stream or text message
+    Byte[] rxData = message.BinaryAttachment;
+}
+</pre>
+    <h4>JavaScript Messaging API</h4>
+    <p><b>Create</b>:</p>
+    <pre xml:space="preserve">
+// the binary data
+var data;
+
+// create a message
+var message = solace.SolclientFactory.createMessage();
+
+// assuming that data the user added content to data
+message.setBinaryAttachment(data);
+// Set other message properties
+// ...
+// At this point the message is ready to be sent</pre>
+    <p><b>Receive</b>:</p>
+    <pre>
+// assuming that message is a reference to a received message
+var message;
+if (message.getType() == solace.MessageType.BINARY) 
+{
+   // rxData will be the JavaScript string representing the binary data
+   var rxData = message.getBinaryAttachment();
+}</pre>
+    <h2 class="with-rule"><a name="creating_jms-compatible_msgs_1946471526_329687"/>MapMessage</h2>
+    <p>The following examples show how to create and receive a MapMessage using non-JMS Solace messaging APIs.</p>
+    <h4>Java Messaging API</h4>
+    <p><b>Create</b>:</p>
+    <pre>
+MapMessage message = JCSMPFactory.onlyInstance().createMessage(MapMessage.class);
+SDTMap map = JCSMPFactory.onlyInstance().createMap();
+map.putBoolean("success", true);
+message.setMap(map);</pre>
+    <p><b>Receive</b>:</p>
+    <pre>
+FlowReceiver receiver = session.createFlow(endpoint, topic, null);
+                        
+receiver.start();
+                        
+MapMessage message = (MapMessage )receiver.receive();
+if (message !=null) {
+SDTMap rcvdMap = message.getMap();
+...
+}</pre>
+    <h4>C Messaging API</h4>
+    <p><b>Create (message independent container)</b>:</p>
+    <pre xml:space="preserve">
+solClient_opaqueMsg_pt msg_p = NULL;
+solClient_opaqueContainer_pt mapContainer = NULL;
+char            map[1024];
+                        
+// create a message
+if (solClient_msg_alloc(&amp;msg_p) == SOLCLIENT_OK) 
+{
+   // create a map container 
+   if (solClient_container_createMap (&amp;mapContainer, map, sizeof(map) == SOLCLIENT_OK)   
+   {	
+       // populate the map container
+       // ...
+       // set the map container as message payload
+       if (solClient_msg_setBinaryAttachmentContainer (msg_p, mapContainer) == SOLCLIENT_OK)
+       {
+           // at this point the message is ready to be sent 
+       }
+
+   }
+}</pre>
+    <p><b>Create (message dependent container)</b>:</p>
+    <pre xml:space="preserve">
+solClient_opaqueMsg_pt msg_p = NULL;
+solClient_opaqueContainer_pt mapContainer = NULL;
+                        
+// create a message
+if (solClient_msg_alloc(&amp;msg_p) == SOLCLIENT_OK) 
+{
+   // create a map container 
+   if (solClient_msg_createBinaryAttachmentMap (msg_p, &amp;mapContainer, 1024) == SOLCLIENT_OK)   
+   {
+       // populate the map container
+       // ...
+       // at this point the message is ready to be sent
+
+   }
+}</pre>
+    <p><b>Receive</b>:</p>
+    <pre xml:space="preserve">
+solClient_opaqueContainer_pt mapContainer = NULL;
+
+// Assuming that msg_p is a reference to a received message
+if (solClient_msg_getBinaryAttachmentMap (msg_p, &amp;mapContainer) == SOLCLIENT_OK) 
+{
+    // At this point mapContainer is accessible using SDT accessor functions
+    // ...
+}</pre>
+    <h4>.NET Messaging API</h4>
+    <p><b>Create (message independent container)</b>:</p>
+    <pre>
+// create a message
+IMessage message = ContextFactory.Instance.CreateMessage();
+                        
+// create a map container and populate it
+IMapContainer map = SDTUtils.CreateMap(1024);
+
+// set the map as the message payload
+SDTUtils.SetSDTContainer(message,map);
+</pre>
+    <p>
+      <b>Create (message dependent container):</b>
+    </p>
+    <pre>
+// create a message
+IMessage message = ContextFactory.Instance.CreateMessage();
+
+// create a map container and populate it
+IMapContainer map = SDTUtils.CreateMap(message,1024);
+
+// no need to add the map to the message, it is already in the payload</pre>
+    <p><b>Receive</b>:</p>
+    <pre>
+// assuming that message is a reference to a received message
+IMessage message = args.Message; /*args is a MessageEventArgs*/
+ISDTContainer container = SDTUtils.GetContainer(message);
+if (container != null &amp;&amp; container  is IMapContainer)
+{
+    // typecast the container to IMapContainer 
+    IMapContainer map = (IMapContainer) container;
+}</pre>
+    <h4>JavaScript Messaging API</h4>
+    <p><b>Create</b>:</p>
+    <pre>
+// create the map container
+var map = new solace.SDTMapContainer(); 
+
+// create a message
+var message = solace.SolclientFactory.createMessage();
+ 
+// assuming the map contains entries
+message.setSdtContainer(solace.SDTField.create(solace.SDTFieldType.MAP, map)); 
+
+// set other message properties
+// ...
+// at this point the message is ready to be sent</pre>
+    <p><b>Receive</b>:</p>
+    <pre>
+// assuming that message is a reference to a received message
+var message;
+if (message.getType() == solace.MessageType.MAP) 
+{
+   var rxMap = message.getSdtContainer();
+}
+</pre>
+    <h2 class="with-rule"><a name="creating_jms-compatible_msgs_1946471526_328289"/>StreamMessage</h2>
+    <p>The following examples show how to create and receive a StreamMessage using non-JMS Solace messaging APIs.</p>
+    <h4>Java Messaging API</h4>
+    <p><b>Create</b>:</p>
+    <pre>
+StreamMessage message = JCSMPFactory.onlyInstance().createMessage(StreamMessage.class);
+SDTStream stream = JCSMPFactory.onlyInstance().createStream();
+stream.writeBoolean(true);
+message.setStream(stream);</pre>
+    <p>
+      <b>Receive:</b>
+    </p>
+    <pre>
+FlowReceiver receiver = session.createFlow(endpoint, topic, null);
+receiver.start();
+BytesMessage message = (BytesMessage)receiver.receive();
+byte[] data = message.getData();</pre>
+    <h4>C Messaging API</h4>
+    <p><b>Create (message independent container)</b>:</p>
+    <pre>
+solClient_opaqueMsg_pt msg_p = NULL;
+solClient_opaqueContainer_pt streamContainer = NULL;
+char            stream[1024];
+
+// create a message
+if (solClient_msg_alloc(&amp;msg_p) == SOLCLIENT_OK) 
+{
+   // create a stream container 
+   if (solClient_container_createStream (&amp;streamContainer, stream, sizeof(stream) == SOLCLIENT_OK)   
+   {
+       // populate the stream container
+       // ...
+       // set the stream container as message payload
+       if (solClient_msg_setBinaryAttachmentContainer (msg_p, streamContainer) == SOLCLIENT_OK)
+       {
+          // at this point the message is ready to be sent 
+       }
+    }
+}</pre>
+    <p><b>Create (message dependent container)</b>:</p>
+    <pre>
+solClient_opaqueMsg_pt msg_p = NULL;
+solClient_opaqueContainer_pt streamContainer = NULL;
+
+// create a message
+if (solClient_msg_alloc(&amp;msg_p) == SOLCLIENT_OK) 
+{
+   // create a stream container 
+   if (solClient_msg_createBinaryAttachmentStream (msg_p, &amp;streamContainer, 1024) == SOLCLIENT_OK)   
+   {
+       // populate the stream container
+       // ...
+       // at this point the message is ready to be sent
+
+   }
+}</pre>
+    <p><b>Receive</b>:</p>
+    <pre>
+solClient_opaqueContainer_pt streamContainer = NULL;
+
+// Assuming that msg_p is a reference to a received message
+if (solClient_msg_getBinaryAttachmentStream (msg_p, &amp;streamContainer) == SOLCLIENT_OK) 
+{
+    // At this point streamContainer is accessible using SDT accessor functions
+     // ...
+}</pre>
+    <h4>.NET Messaging API</h4>
+    <p><b>Create (message independent container)</b>:</p>
+    <pre>
+// create a message
+IMessage message = ContextFactory.Instance.CreateMessage();
+
+// create a stream container and populate it
+IStreamContainer map = SDTUtils.CreateStream(1024);
+
+// set the stream as the message payload
+SDTUtils.SetSDTContainer(message,stream);
+</pre>
+    <p>
+      <b>Create (message dependent container)</b>
+    </p>
+    <pre>
+// create a message
+IMessage message = ContextFactory.Instance.CreateMessage();
+
+// create a stream container and populate it
+IStreamContainer map = SDTUtils.CreateStream(message,1024);
+
+// no need to add the stream to the message, it is already in the payload</pre>
+    <p><b>Receive</b>:</p>
+    <pre>
+// assuming that message is a reference to a received message
+IMessage message = args.Message; /*args is a MessageEventArgs*/
+ISDTContainer container = SDTUtils.GetContainer(message);
+if (container != null &amp;&amp; container  is IStreamContainer)
+{
+    // typecast the container to IStreamContainer
+    IStreamContainer map = (IStreamContainer) container;
+}</pre>
+    <h4>JavaScript Messaging API</h4>
+    <p><b>Create</b>:</p>
+    <pre>
+// create the stream container
+var stream = new solace.SDTStreamContainer(); 
+
+// create a message
+var message = solace.SolclientFactory.createMessage();
+
+// assuming the stream contains entries
+message.setSdtContainer(solace.SDTField.create(solace.SDTFieldType.STREAM, stream)); 
+
+// set other message properties
+// ...
+// at this point the message is ready to be sent</pre>
+    <p><b>Receive</b>:</p>
+    <pre>
+// assuming that message is a reference to a received message
+var message;
+if (message.getType() == solace.MessageType.STREAM) 
+{
+   var rxStream = message.getSdtContainer();			
+}</pre>
+    <h2 class="with-rule"><a name="TextMess"/>TextMessage</h2>
+    <p>The following examples show how to create and receive a TextMessage using non-JMS Solace messaging APIs.</p>
+    <h4>Java Messaging API</h4>
+    <p class="Note">This sample requires the JMS connection factory setting <code>text-msg-xml-payload</code> to be set to <code>false</code>, which specifies that the TextMessage string is set/get in the messageʼs binary attachment.</p>
+    <p><b>Create</b>:</p>
+    <pre>
+TextMessage message = JCSMPFactory.onlyInstance().createMessage(TextMessage.class);
+message.setText("This is a text message.");</pre>
+    <p><b>Receive</b>:</p>
+    <pre>
+FlowReceiver receiver = session.createFlow(endpoint, topic, null);
+receiver.start();
+BytesMessage message = (BytesMessage)receiver.receive();
+byte[] data = message.getData();</pre>
+    <h4>C Messaging API</h4>
+    <p class="Note">This sample requires the JMS connection factory setting <code>text-msg-xml-payload</code> to be set to <code>false</code>, which specifies that the TextMessage string is set/get in the messageʼs binary attachment.</p>
+    <p><b>Create</b>:</p>
+    <pre>
+solClient_opaqueMsg_pt msg_p = NULL;
+char* text = "This is a text message.";
+
+// create a message
+if (solClient_msg_alloc(&amp;msg_p) == SOLCLIENT_OK) 
+{
+   if (solClient_msg_setBinaryAttachmentString (msg_p, text )== SOLCLIENT_OK)   
+   {
+       // at this point the message is ready to be sent
+   }
+}</pre>
+    <p><b>Receive</b>:</p>
+    <pre xml:space="preserve">
+// pointer to the string in the payload
+const char *textStr; 
+
+// Assuming that msg_p is a reference to a received message
+if (solClient_msg_getBinaryAttachmentString (msg_p, &amp;textStr) == SOLCLIENT_OK) 
+{
+    // at this point textStr points to the contained string in the 
+    // text message payload
+    // ...
+}</pre>
+    <h4>.NET Messaging API</h4>
+    <p class="Note">This sample requires the JMS connection factory setting <code>text-msg-xml-payload</code> to be set to <code>false</code>, which specifies that the TextMessage string is set/get in the messageʼs binary attachment.</p>
+    <p><b>Create</b>:</p>
+    <pre>
+// create a message
+IMessage message = ContextFactory.Instance.CreateMessage();
+
+// and set the text
+SDTUtils.SetText(message,"This is a text message.");</pre>
+    <p><b>Receive</b>:</p>
+    <pre>
+// assuming that message is a reference to a received message
+IMessage message = args.Message; /*args is a MessageEventArgs*/
+String textStr = SDTUtils.GetText(message);
+if (textStr != null) 
+{
+   // message is a text message
+}</pre>
+    <h4>JavaScript Messaging API</h4>
+    <p class="Note">This sample requires the JMS connection factory setting <code>text-msg-xml-payload</code> to be set to <code>false</code>, which specifies that the TextMessage string is set/get in the messageʼs binary attachment.</p>
+    <p><b>Create</b>:</p>
+    <pre>
+// create a message
+var message = solace.SolclientFactory.createMessage();
+
+// set content
+message.setSdtContainer(solace.SDTField.create(solace.SDTFieldType.STRING, "This is a text message."));
+
+// set other message properties
+// ...
+// at this point the message is ready to be sent</pre>
+    <p><b>Receive</b>:</p>
+    <pre>
+// assuming that message is a reference to a received message
+var message;
+if (message.getType() == solace.MessageType.TEXT)
+{
+    var txtStr = message.getSdtContainer().getValue();
+}</pre>
+    <h2 class="with-rule"><a name="creating_jms-compatible_msgs_1946471526_337481"/>ObjectMessage</h2>
+    <p>Non-JMS Solace APIs do not have the ability to create a message that the JMS API would interpret as an ObjectMessage.</p>
+    <h2 class="with-rule"><a name="creating_jms-compatible_msgs_1946471526_328316"/>Non-Standard Messages
+</h2>
+    <p>When the JMS API cannot interpret a message sent by a non-JMS Solace API as a JMS BytesMessage, MapMessage, StreamMessage, or TextMessage, the message is handled as a predetermined default message type according to its message payload. This message conversion is described in the following table:</p>
+    <table style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');margin-left: 0;margin-right: auto;" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 33%;"/>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 33%;"/>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 33%;"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">XML Payload Present?</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Binary Attachment Present?</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Convert to Message Type...</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Yes</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Yes</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>TextMessage</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Yes</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>No</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>TextMessage</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>No</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Yes</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>BytesMessage</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>No </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>No</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>Message (contains only header information)</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

@@ -1,0 +1,354 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Software"/>Using System Scaling Parameters</h1>
+    <p>You can increase certain system scaling limits using system scaling parameters. You can specify system scaling parameters using configuration keys when you create a software broker instance  (see <MadCap:xref href="Config-Key-Scaling-Params.htm">Setting Scaling Parameters Using Configuration Keys</MadCap:xref>). You can also change system scaling parameters while the software broker is running using the <MadCap:variable name="Product-Names.solace_cli"/> (see <MadCap:xref href="Set-Scaling-Params-Standalone.htm">Scaling Up An Existing Single Software Event Broker</MadCap:xref> and <MadCap:xref href="Set-Scaling-Params-HA.htm">Scaling Up An Existing HA Group</MadCap:xref>).</p>
+    <p>For details about the minimum system resources required, see <MadCap:xref href="System-Resource-Requirements.htm">System Resource Requirements</MadCap:xref>.</p>
+    <p>To see the current values of the system scaling parameters, run the <code>show system</code> command in the <MadCap:variable name="Product-Names.solace_cli"/>, and look at the <b>Scaling</b> section of the output:</p>
+    <pre xml:space="preserve">
+solace&gt; show system
+
+System Uptime: 1d 0h 45m 21s
+Last Restart Reason: User request
+
+Scaling:
+   Max Bridges: 25
+   Max Connections: 100
+   Max Queue Messages: 100M
+   Max Kafka Bridges: 0
+   Max Kafka Broker Connections: 0
+   Max Subscriptions: 500000
+
+Topic Routing:
+   Subscription Exceptions: Enabled
+   Subscription Exceptions Defer: Enabled</pre>
+    <p>You can configure the following system scaling parameters:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#max-client-connections">Maximum Number of Client Connections</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#max-queue-messages">Maximum Number of Queue Messages</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="System-Scaling-Parameters.htm#max-vpn-bridges">Maximum Number of VPN Bridges</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#max-subscriptions">Maximum Number of Subscriptions</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#max-kafka-bridges">Maximum Number of Kafka Bridges</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#max-kafka-broker-connections">Maximum Number of Kafka Broker Connections</MadCap:xref>
+      </li>
+    </ul>
+    <p class="Caution">Increasing a scaling parameters causes an immediate event broker restart.</p>
+    <p class="Note">If you increase the value of these system scaling parameters, the event broker will require additional resources. For more information, see <MadCap:xref href="#additional-system-resources">Additional System Resources</MadCap:xref>.</p>
+    <div class="Note">
+      <ul>
+        <li>
+          <p>Scaling parameters that are decoupled from <code>max-connections</code> can be independently scaled. Independent scaling parameters allow flexibility to scale up deployments without upgrading to larger software event brokers.</p>
+        </li>
+        <li>
+          <p>If you don't provide a specific value for an independent scaling parameter, it defaults to a value that is appropriate for your selected value of <code>max-connections</code>.<br/></p>
+        </li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="max-client-connections"/>Maximum Number of Client Connections</h2>
+    <p>You can increase the number of concurrent client connections supported by the event broker using the <code>max-connections</code> system scaling parameter. By default, the event broker is limited to 100 concurrent client connections, but it can be provisioned for up to 200,000 connections assuming that sufficient system resources are provided.</p>
+    <p>To scale parameters independent of <code>max-connections</code>, you must upgrade your <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker to version 10.7.1 or later. See <MadCap:xref href="../Release-Notes/Release-Info-appliance-sw-releases.htm">Event Broker Releases</MadCap:xref> for release timelines of individual scaling parameters.</p>
+    <table style="mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th style="border-left-style: solid;border-left-width: 1px;border-left-color: #ffffff;border-right-style: solid;border-right-width: 1px;border-right-color: #ffffff;border-top-style: solid;border-top-width: 1px;border-top-color: #ffffff;border-bottom-style: solid;border-bottom-width: 1px;border-bottom-color: #ffffff;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;" class="TableStyle-Table_Num-HeadE-Column1-Header1">PubSub+ Broker</th>
+          <th style="border-left-style: solid;border-left-width: 1px;border-left-color: #ffffff;border-right-style: solid;border-right-width: 1px;border-right-color: #ffffff;border-top-style: solid;border-top-width: 1px;border-top-color: #ffffff;border-bottom-style: solid;border-bottom-width: 1px;border-bottom-color: #ffffff;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;" class="TableStyle-Table_Num-HeadE-Column1-Header1">Default Concurrent Client Connections</th>
+          <th style="border-left-style: solid;border-left-width: 1px;border-left-color: #ffffff;border-right-style: solid;border-right-width: 1px;border-right-color: #ffffff;border-top-style: solid;border-top-width: 1px;border-top-color: #ffffff;border-bottom-style: solid;border-bottom-width: 1px;border-bottom-color: #ffffff;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;" class="TableStyle-Table_Num-HeadD-Column1-Header1">Maximum Possible Concurrent Client Connections</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">PubSub+ Standard</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">100</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">1,000</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">PubSub+ Enterprise</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">100</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">200,000</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>For default maximum client connections values, see <code>maxconnectioncount</code> in <MadCap:xref href="Configuration-Keys-Reference.htm">Configuration Keys</MadCap:xref>.</p>
+    <div class="Note">
+      <p>The following functionality is not available on <MadCap:variable name="Product-Names.broker_sw_short"/>s configured for a maximum of 100 client connections:</p>
+      <ul>
+        <li>
+          <a href="../Features/DMR/DMR-Overview.htm" class="link-internal">Dynamic Message Routing (DMR)</a>
+        </li>
+        <li>
+          <a href="../Features/MNR/Managing-Multi-Node-Routing-Links.htm" class="link-internal">Multi-Node Routing (MNR)</a>
+        </li>
+      </ul>
+      <p>To use these features, configure your <MadCap:variable name="Product-Names.broker_sw_short"/>s with a higher maximum number of client connections.</p>
+    </div>
+    <p class="Caution">For PubSub+ Standard Edition, if you set the <code>max-connections</code> system scaling parameter higher than the maximum supported, the broker will fail to start.</p>
+    <p class="Note">The number of current client connections cannot be changed on a broker configured as a monitoring node in an HA group.</p>
+    <p>A number of related system limits (for example, the maximum number of client usernames) are automatically scaled to values appropriate for the permitted number of client connections; see the <MadCap:snippetText src="../Resources/Snippets/System-Limits-Spreadseet.flsnp"/> for more information regarding those system limits.</p>
+    <p>The following types of clients use connections that count against the total number of <code>max-connections</code>:</p>
+    <ul>
+      <li>
+        <p>Messaging clients (SMF, MQTT, AMQP, or REST): 1 connection each</p>
+      </li>
+      <li>
+        <p>Internal clients (VPN, VPN Bridge, Kafka Bridge Sender or Receiver, or DMR link per VPN): 1 connection each</p>
+      </li>
+    </ul>
+    <h3><a name="container-ulimit"/>Setting the Number of Concurrent Open Files for Container Images</h3>
+    <p>To ensure reliable operation of the event broker, you must also increase the maximum number of concurrent open files per process when the maximum number of client connections is increased. The maximum number of concurrent open files for the container processes is governed by the <code>nofiles</code> resource limit. Most container runtimes support setting <code>rlimit</code> values using the <code>ulimit</code> parameter when creating a container. For example, in Docker Engine and Podman, for 10,000 client connections, add the <code>--ulimit nofile=2448:72992</code> command line parameter when you create the container.</p>
+    <table style="margin-left: 0;margin-right: auto;mc-table-style: url('../Resources/TableStyles/Table_Num.css');width: 100%;" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th rowspan="2" class="TableStyle-Table_Num-HeadE-Column1-Header1">Resource Limit</th>
+          <th colspan="5" class="TableStyle-Table_Num-HeadD-Column1-Header1">Maximum Client Connections</th>
+        </tr>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">100</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">1,000</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">10,000</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">100,000</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">200,000</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">nofiles</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">2448:37392</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">2448:40992</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">2448:72992</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">2448:252992</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">2448:452992</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="Tip">For ease of use, and if the resources are available, we recommend using 2500:500000 for all instances.</p>
+    <h2 class="with-rule"><a name="max-queue-messages"/>Maximum Number of Queue Messages</h2>
+    <p>You can increase the number of queue messages (references to messages queued for delivery to consumers) supported by the event broker using the <code>max-queue-messages</code> system scaling parameter. </p>
+    <p>For <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker versions 10.8.1 and later, for new broker instances, the default value for the maximum number of queue messages is governed by the value of the <code>max-connections</code> system scaling parameter:</p>
+    <ul>
+      <li>
+        <p>When <code>max-connections</code> is 100, the default value for the maximum number of queue messages is 100 million. </p>
+      </li>
+      <li>
+        <p>When <code>max-connections</code> is 1K or higher, the default value for the maximum number of queue messages is 240 million.</p>
+      </li>
+    </ul>
+    <table style="margin-left: 0;margin-right: auto;width: 75%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1">
+            </col>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th style="border-left-style: solid;border-left-width: 1;border-left-color: #ffffff;border-right-style: solid;border-right-width: 1;border-right-color: #ffffff;border-top-style: solid;border-top-width: 1;border-top-color: #ffffff;border-bottom-style: solid;border-bottom-width: 1;border-bottom-color: #ffffff;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;" class="TableStyle-Table_Num-HeadE-Column1-Header1">PubSub+ Broker</th>
+          <th style="border-left-style: solid;border-left-width: 1;border-left-color: #ffffff;border-right-style: solid;border-right-width: 1;border-right-color: #ffffff;border-top-style: solid;border-top-width: 1;border-top-color: #ffffff;border-bottom-style: solid;border-bottom-width: 1;border-bottom-color: #ffffff;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;" class="TableStyle-Table_Num-HeadD-Column1-Header1">Maximum Possible Queue Messages</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">PubSub+ Standard</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">240,000,000</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">PubSub+ Enterprise</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">3,000,000,000</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>For default maximum queue messages values, see <code>maxqueuemessagecount</code> in <MadCap:xref href="Configuration-Keys-Reference.htm">Configuration Keys</MadCap:xref>. </p>
+    <p class="Caution">Running an event broker with 100M queue messages is not recommended in a production environment as it may result in performance issues.</p>
+    <p class="Note">For PubSub+ Standard Edition, if you set the <code>max-queue-messages</code> system scaling parameter higher than the maximum supported, the broker will fail to start.</p>
+    <p class="Note">The maximum number of queue messages cannot be changed on a broker configured as a monitoring node in an HA group.</p>
+    <h2 class="with-rule"><a name="max-vpn-bridges"/>Maximum Number of VPN Bridges</h2>
+    <p>You can increase the number of VPN bridges for a single event broker using the <code>max-bridges</code> system scaling parameter. A VPN bridge consumes a client connection. Therefore, don't configure <code>max-bridges</code> values higher than <code>max-connections</code>.</p>
+    <p>This independent scaling parameter is available for <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker versions 10.7.1 and later.</p>
+    <p>The value of the maximum number of VPN bridge subscriptions is: </p>
+    <ul>
+      <li>
+        <p>100,000 when the <code>max-bridges</code> value is 5000.</p>
+      </li>
+      <li>
+        <p>20,000 when the <code>max-bridges</code> value is 25 or 500.</p>
+      </li>
+    </ul>
+    <table style="mc-table-style: url('../Resources/TableStyles/Table_Num.css');margin-left: 0;margin-right: auto;width: 50%;" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1">
+            </col>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th style="border-left-style: solid;border-left-width: 1;border-left-color: #ffffff;border-right-style: solid;border-right-width: 1;border-right-color: #ffffff;border-top-style: solid;border-top-width: 1;border-top-color: #ffffff;border-bottom-style: solid;border-bottom-width: 1;border-bottom-color: #ffffff;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;" class="TableStyle-Table_Num-HeadE-Column1-Header1">PubSub+ Broker</th>
+          <th style="border-left-style: solid;border-left-width: 1;border-left-color: #ffffff;border-right-style: solid;border-right-width: 1;border-right-color: #ffffff;border-top-style: solid;border-top-width: 1;border-top-color: #ffffff;border-bottom-style: solid;border-bottom-width: 1;border-bottom-color: #ffffff;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;" class="TableStyle-Table_Num-HeadD-Column1-Header1">Maximum Possible VPN Bridges</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">PubSub+ Standard</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">500</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">PubSub+ Enterprise</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">5,000</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>For default maximum VPN bridges values, see <code>maxbridgecount</code> in <MadCap:xref href="Configuration-Keys-Reference.htm">Configuration Keys</MadCap:xref>.</p>
+    <p class="Caution">Because <code>max-bridges</code> is dependent on <code>max-connections</code>, if you for example increase <code>max-bridges</code>
+from 25 to 5000 and <code>max-connections</code> remains at 100, not all 5000 VPN bridges may be allocated. The <MadCap:variable name="Product-Names.solace_cli"/> shows a warning in such a scenario.</p>
+    <p class="Note"><code>connect-via</code> is limited to 500 outbound VPN bridge connections. This means that in an event mesh, the configuration of 5000 VPN bridges must be done as an inbound connection to the core event brokers.</p>
+    <h2 class="with-rule"><a name="max-subscriptions"/>Maximum Number of Subscriptions</h2>
+    <p>You can increase the number of subscriptions for a single event broker using the <code>max-subscriptions</code> system scaling parameter. This helps to achieve flexibility to deploy different sizes of the event broker within your event mesh without worrying about exceeding the subscription limits of the smaller event brokers in your event mesh . Note that you must allocate additional RAM to the smaller event brokers to accommodate the larger subscription tables. Each client requires at least one subscription. Therefore, don't configure <code> max-connections</code> values higher than <code>max-subscriptions</code>.</p>
+    <p>This independent scaling parameter is available for <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker versions 10.8.1 and later.</p>
+    <table style="mc-table-style: url('../Resources/TableStyles/Table_Num.css');margin-left: 0;margin-right: auto;width: 50%;" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1">
+            </col>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th style="border-left-style: solid;border-left-width: 1;border-left-color: #ffffff;border-right-style: solid;border-right-width: 1;border-right-color: #ffffff;border-top-style: solid;border-top-width: 1;border-top-color: #ffffff;border-bottom-style: solid;border-bottom-width: 1;border-bottom-color: #ffffff;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;" class="TableStyle-Table_Num-HeadE-Column1-Header1">PubSub+ Broker</th>
+          <th style="border-left-style: solid;border-left-width: 1;border-left-color: #ffffff;border-right-style: solid;border-right-width: 1;border-right-color: #ffffff;border-top-style: solid;border-top-width: 1;border-top-color: #ffffff;border-bottom-style: solid;border-bottom-width: 1;border-bottom-color: #ffffff;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;" class="TableStyle-Table_Num-HeadD-Column1-Header1">Maximum Possible Subscriptions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">PubSub+ Standard</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">500,000</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">PubSub+ Enterprise</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">5,000,000</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>For default maximum subscriptions values, see <code>maxsubscriptioncount</code> in <MadCap:xref href="Configuration-Keys-Reference.htm">Configuration Keys</MadCap:xref>.</p>
+    <p class="Caution">Because <code>max-connections</code> is dependent on <code>max-subscriptions</code>, if your <code>max-connections</code>
+is for example at 100 and you increase your <code>max-subscriptions</code> from 50,000 to 500,000, not all 500,000 subscriptions may be allocated. The <MadCap:variable name="Product-Names.solace_cli"/> shows a warning in such a scenario.</p>
+    <p class="Note">For <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker versions earlier than 10.8.1, all event brokers in the same network must have the same value for <code>max-subscriptions</code>; otherwise, subscription resource limits might be exceeded on the event brokers, and message forwarding will not be reliable.</p>
+    <h2 class="with-rule" MadCap:conditions="Default.HideFromAllOutput"><a name="Maximum"/>Maximum Number of Endpoints</h2>
+    <p class="Note" MadCap:conditions="Default.HideFromAllOutput">For <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker versions earlier than <span style="color: #ff0000;">10.8.1</span>, <code>max-endpoints</code> is tied within the <code>max-connections</code> value. On upgrade, the  <code>max-subscriptions</code> scaling parameter needs to be updated using configuration keys to reflect what value it had when it was tied to <code>max-connections</code>. <br/><MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">After <code>max-endpoints</code> is out, the second part of this note (On upgrade...) might not be applicable.</MadCap:conditionalText></p>
+    <p MadCap:conditions="Default.HideFromAllOutput">You can increase the number of endpoints (queues and topic endpoints) for a single event broker
+using the <code>max-endpoints</code> system scaling parameter. The maximum number of endpoints for
+each broker equals the <code>max-connections</code> system scaling parameter value. For example, if the
+maximum number of client connections is 100, the maximum number of endpoints is 100, and so
+on. The maximum number of queue subscriptions for each broker depends on the <code>max-endpoints</code>
+system scaling parameter. </p>
+    <table style="margin-left: 0;margin-right: auto;width: 75%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0" MadCap:conditions="Default.HideFromAllOutput">
+      <col class="TableStyle-Table_Num-Column-Column1">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1">
+            </col>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th style="border-left-style: solid;border-left-width: 1;border-left-color: #ffffff;border-right-style: solid;border-right-width: 1;border-right-color: #ffffff;border-top-style: solid;border-top-width: 1;border-top-color: #ffffff;border-bottom-style: solid;border-bottom-width: 1;border-bottom-color: #ffffff;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;" class="TableStyle-Table_Num-HeadE-Column1-Header1">PubSub+ Broker</th>
+          <th style="border-left-style: solid;border-left-width: 1;border-left-color: #ffffff;border-right-style: solid;border-right-width: 1;border-right-color: #ffffff;border-top-style: solid;border-top-width: 1;border-top-color: #ffffff;border-bottom-style: solid;border-bottom-width: 1;border-bottom-color: #ffffff;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;" class="TableStyle-Table_Num-HeadE-Column1-Header1">Maximum Number of Endpoints (Client Connections)</th>
+          <th style="border-left-style: solid;border-left-width: 1;border-left-color: #ffffff;border-right-style: solid;border-right-width: 1;border-right-color: #ffffff;border-top-style: solid;border-top-width: 1;border-top-color: #ffffff;border-bottom-style: solid;border-bottom-width: 1;border-bottom-color: #ffffff;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;" class="TableStyle-Table_Num-HeadD-Column1-Header1">Maximum Number of Queue Subscriptions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">PubSub+ Standard</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">100, 1,000</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">1,000</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" rowspan="4">PubSub+ Enterprise</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">1,000</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">10,000</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">10,000</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">50,000</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1"> 100.000</td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">500,000</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">200,000</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">1,000,000<br/></td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="Caution" MadCap:conditions="Default.HideFromAllOutput">Because <code>max-endpoints</code> is dependent on <code>max-connections</code>, if you for example increase <code>max-endpoints</code>
+from 100 to 1,000 and <code>max-connections</code> remains at 100, not all 1,000 endpoints may be allocated. The <MadCap:variable name="Product-Names.solace_cli"/> shows a warning in such a scenario.</p>
+    <h2 class="with-rule"><a name="max-kafka-bridges"/>Maximum Number of Kafka Bridges</h2>
+    <p>You can increase the number of Kafka bridges (Kafka senders + Kafka receivers) supported by the event broker using the <code>max-kafka-bridges</code> system scaling parameter. By default, the event broker is limited to 0 bridges, but it can be provisioned for up to 200 bridges assuming that sufficient system resources are provided. In addition, keep in mind that you should not set the <code>max-kafka-bridges</code> value to greater than the <code>max-connections</code> value set for the system.</p>
+    <table style="margin-left: 0;margin-right: auto;width: 75%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th style="border-left-style: solid;border-left-width: 1;border-left-color: #ffffff;border-right-style: solid;border-right-width: 1;border-right-color: #ffffff;border-top-style: solid;border-top-width: 1;border-top-color: #ffffff;border-bottom-style: solid;border-bottom-width: 1;border-bottom-color: #ffffff;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;" class="TableStyle-Table_Num-HeadE-Column1-Header1">PubSub+ Broker</th>
+          <th style="border-left-style: solid;border-left-width: 1;border-left-color: #ffffff;border-right-style: solid;border-right-width: 1;border-right-color: #ffffff;border-top-style: solid;border-top-width: 1;border-top-color: #ffffff;border-bottom-style: solid;border-bottom-width: 1;border-bottom-color: #ffffff;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;" class="TableStyle-Table_Num-HeadD-Column1-Header1">Maximum Possible Kafka Bridges</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">PubSub+ Standard or Enterprise</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">200</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>For default maximum subscriptions values, see <code>maxkafkabridgecount</code> in <MadCap:xref href="Configuration-Keys-Reference.htm">Configuration Keys</MadCap:xref>.</p>
+    <p class="Note">The maximum number of Kafka bridges cannot be changed on a broker configured as a monitoring node in an HA group.</p>
+    <h2 class="with-rule"><a name="max-kafka-broker-connections"/>Maximum Number of Kafka Broker Connections</h2>
+    <p>You can increase the number of concurrent Kafka broker connections supported by the event broker using the <code>max-kafka-broker-connections</code> system scaling parameter. By default, the event broker is limited to 0 concurrent Kafka broker connections, but it can be provisioned for up to 10000 connections assuming that sufficient system resources are provided.</p>
+    <p>You can expect each Kafka sender and receiver to require approximately one connection from this budget for every Kafka broker in the Kafka cluster that they are configured to send messages to or receive messages from. If different senders and receivers connect to the same Kafka cluster these connections are all independent of one another and count separately against this limit. You should, in such cases, use a common sender or receiver with more queue or topic bindings to aid in scaling. The number of bindings does not affect the number of required connections.</p>
+    <p>When deciding on the maximum number of concurrent Kafka broker connections your deployment will support, you must  ensure that enough process IDs (PIDs) are available to your platform.  Kafka bridging requires that 1000 + the value you configure for <code>max-kafka-broker-connections</code> PIDs are available.  For more information about setting per Node and per Pod PIDs limits in Kubernetes, see <a href="https://kubernetes.io/docs/concepts/policy/pid-limiting/" class="link-offsite">Process ID Limits And Reservations</a>.</p>
+    <table style="margin-left: 0;margin-right: auto;width: 75%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th style="border-left-style: solid;border-left-width: 1;border-left-color: #ffffff;border-right-style: solid;border-right-width: 1;border-right-color: #ffffff;border-top-style: solid;border-top-width: 1;border-top-color: #ffffff;border-bottom-style: solid;border-bottom-width: 1;border-bottom-color: #ffffff;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;" class="TableStyle-Table_Num-HeadE-Column1-Header1">PubSub+ Broker</th>
+          <th style="border-left-style: solid;border-left-width: 1;border-left-color: #ffffff;border-right-style: solid;border-right-width: 1;border-right-color: #ffffff;border-top-style: solid;border-top-width: 1;border-top-color: #ffffff;border-bottom-style: solid;border-bottom-width: 1;border-bottom-color: #ffffff;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;" class="TableStyle-Table_Num-HeadD-Column1-Header1">Maximum Possible Concurrent Kafka Broker Connections</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">PubSub+ Standard or Enterprise</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">10,000</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>For default maximum subscriptions values, see <code>maxkafkabrokerconnectioncount</code> in <MadCap:xref href="Configuration-Keys-Reference.htm">Configuration Keys</MadCap:xref>.</p>
+    <p class="Note">The maximum number of Kafka broker connections cannot be changed on a broker configured as a monitoring node in an HA group.\</p>
+    <h2 class="with-rule"><a name="multiple-broker-considerations"/>Multiple Broker Considerations</h2>
+    <p>If you have multiple event brokers in an event mesh, you must be aware of the following considerations when increasing the scaling parameters: </p>
+    <ul>
+      <li>
+        <p>Except for HA group setups, the values of the  system scaling parameters can be arbitrarily different on each <MadCap:variable name="Product-Names.broker_sw_short"/> in the event mesh.</p>
+      </li>
+      <li>
+        <p>For <code>max-subscriptions</code> specifically, because the allocation of SMRP can be unpredictable, if you increase  to a higher subscription limit on one event broker, you must update the other event brokers in the event mesh to the same value as soon as possible. </p>
+        <p MadCap:conditions="Default.HideFromAllOutput">For more information on the behavior of <code>max-subscription</code>, see [TBD link from DOC-4812]. </p>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="additional-system-resources"/>Additional System Resources</h2>
+    <p> The resource requirements for the minimum (default) values of the system scaling parameters are listed in <MadCap:xref href="System-Resource-Requirements.htm">System Resource Requirements</MadCap:xref>.</p>
+    <p class="Note"> If you increase the value of any system scaling parameters, the event broker will require additional resources.  To see how the system resource requirements change with higher values of system scaling parameters, use the <MadCap:xref href="System-Resource-Calculator.htm">System Resource Calculator</MadCap:xref>.</p>
+  </body>
+</html>

@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Performing XA Transaction Operations</h1>
+    <p>Once an XA Session is established, an XA Resource for that XA Session must be obtained to create and manage transaction branches (refer to <MadCap:xref href="#using_xa_transactions_1775489719_316550">Obtaining XA Resources</MadCap:xref>).</p>
+    <p>The XA Resource interface defines the contract between a Resource Manager and a Transaction Manager in a distributed transaction processing (DTP) environment and the methods it offers allows the Transaction Manager to manage a transaction branch and control its state.</p>
+    <p>The event broker, acting as the Resource Manager, will perform the work that is requested for a transaction branch on behalf of the Transaction Manager. The Resource Manager is responsible for associating all work performed on its data between the start and end method invocations with the global transaction.</p>
+    <h2 class="with-rule"><a name="using_xa_transactions_1775489719_357034"/>Xids</h2>
+    <p>The XA Resource uses Xids to identify each transaction branch. These Xids must be unique within a Message VPN.</p>
+    <p>An Xid is comprised of a global transaction ID (an array of 1 to 64 bytes) that identifies the global transaction that the transaction will be a part of, and a global transaction format ID (an array of 4 bytes), and a branch qualifier ID (an array of 1 to 64 bytes) that uniquely identifies the transaction branch. The Xid consists of all three fields separated by a “-” characters:</p>
+    <p class="Code">&lt;format-id&gt;-&lt;global-transaction-id&gt;-&lt;branch-qualifier&gt;</p>
+    <p>Each field is displayed in ASCII hex format with two ASCII characters per byte in the array. The number of ASCII hex characters implies the length of the array. The XID can be up to 266 characters long. </p>
+    <p>The following are examples of Xids that may display in the Solace CLI output:</p>
+    <p class="Code">01020304-0123456789ABCDEF-01<br/>00020304-01-02<br/>02030405-00-03<br/>09ABCDEF-0000-04<br/>01020304-000000-05</p>
+    <p>The combination of the global transaction identifier and branch qualifier must be globally unique for each Xid, although the format ID is often zero, which indicates that the OSI CCR (Open Systems Interconnection Commitment, Concurrency, and Recovery) standard is used for naming. </p>
+    <p class="Note">The <code>javax.transaction.xa.Xid</code> interface is used by Java applications using XA transactions. Typically, the Xid interface is used by a Transaction Manager to coordinate with a Resource Manager (the event broker acts as a Resource Manager). However, an implementation of this interface (<code>com.solacesystems.common.xa.SolXid</code>) is provided with the Solace JMS package for the convenience of programmers who may be developing XA applications without an application server.</p>
+    <h2 class="with-rule"><a name="using_xa_transactions_1775489719_360232"/>Transaction States</h2>
+    <p>The operations that can be performed through the XAResource for a transaction, and the sequence in which those operations can occur, is determined by the current state of the transaction branch. The table below lists the states that a transaction branch may have depending on the XA requests that were performed on it.</p>
+    <table class="TableStyle-Table_Num" style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;margin-left: 0;margin-right: auto;caption-side: top;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">Possible Transaction States</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Transaction State</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Active</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">The transaction is associated to an XA session. In all states other than Active, the transaction is not associated to an XA Session. A transaction has an active state after it is successfully created through a call to <code>XAResource.start(...)</code>. A transaction with an active state will persist as long as the XA Session is open.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Idle</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">The transaction is not associated to the XA session and will be rolled back if not prepared, committed, or rolled back within the idle timeout period. A transaction has an Idle state after it has been successfully ended through a call to <code>XAResource.end(...)</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Prepared</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">The transaction is prepared and ready for a commit or roll back request. A transaction has a prepared state of a transaction after it is successfully prepared through a call to <code>XAResource.prepare(...)</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">Heuristically Completed</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body">The transaction is heuristically completed and either successfully committed or rolled back. A transaction has a Heuristically Completed state after an administrator has successfully heuristically committed or rolled back the transaction. A Heuristically Completed transaction will persist until it is deleted through a call to <code>XAResource.forget(...)</code> or the transaction is heuristically deleted by an administrator through the Solace CLI or SolAdmin.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">Free</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">The transaction is not allocated.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>The table below indicates the state that a transaction must have when a particular XAResource request is made and the state that the transaction will have after the request is made.</p>
+    <p>A transaction state will only change when all of the required processing is complete. For example, when an XA Prepare request is made, the transaction state will remain in the Idle state until all of the operations required in the transaction are performed and the prepare request is completed successfully. Alternatively, if the prepare fails, the transaction is rolled back and thus never transitions into the Prepared state. For more information, refer to <MadCap:xref href="#using_xa_transactions_1775489719_313265">Preparing Transactions</MadCap:xref>.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">XA Requests and Related Transaction States</p>
+      </caption>
+      <col width="208px" class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">XA request</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Can be invoked when transaction has a state of</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Transaction state after successful Invocation...</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">XAResource.start with TMNOFLAG</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Free</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Active</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">XAResource.start with TMNORESUME</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Idle (suspended)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Active</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">XAResource.end with TMFAIL</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Active or Idle</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Idle (rollback only)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">XAResource.end with TMSUCCESS</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">Active or Idle</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body">Idle</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">XAResource.end with TMSUSPEND</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Active</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Idle (suspended)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">XAResource.prepare</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Idle</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Prepared</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">XAResource.commit</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Prepared</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Free</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">XAResource.commit with onePhase</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">Idle</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body">Free</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">XAResource.rollback</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">Active, Idle, or Prepared</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">Free</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="using_xa_transactions_1775489719_316550"/>Obtaining XA Resources</h2>
+    <p>To obtain an XA Resource to use for an XA Session, call <code>XASession.getXAResource()</code>.</p>
+    <p class="Note">By default, the transaction timeout value used by the Resource Manager for XA Resources is 180 seconds. To set a transaction timeout value (in seconds) for the obtained XAResource instance, call <code>XAResource.setTransactionTimeout(int seconds)</code> and pass in a value for the number of seconds. To reset the timeout value to the default value used by the resource manager, set the value to zero. </p>
+    <p>The following primary operations can be performed with an obtained XA Resource: </p>
+    <ul>
+      <li>
+        <MadCap:xref href="#using_xa_transactions_1775489719_330145">Starting Transactions</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#using_xa_transactions_1775489719_313834">Ending Transactions</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#using_xa_transactions_1775489719_313265">Preparing Transactions</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#using_xa_transactions_1775489719_304242">Completing or Canceling Transactions</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="Closing-XA-Sessions.htm">Closing XA Sessions</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="using_xa_transactions_1775489719_330145"/>Starting Transactions</h3>
+    <p>To associate a transaction branch with the resource, and start work on behalf of a transaction branch specified in Xid, the <code>XAResource.start(Xid xid, int flags)</code> method must be called.</p>
+    <p>Up to 256 messages can be tracked within a transaction branch. These include published messages to be added to endpoints, and/or messages spooled on endpoints that are to be consumed and removed from those endpoints.</p>
+    <p>To start a transaction, call the following method:</p>
+    <p class="Code">XAResource.start(Xid xid, int flags)</p>
+    <p><u>Where</u>:</p>
+    <p><code>xid</code> is the Xid for the transaction. </p>
+    <p><code>flags</code> is one of the following:</p>
+    <ul>
+      <li><code>TMNOFLAGS</code>—indicates that the transaction is a new transaction that is to be started. The XID must be unique in the Message VPN and the transaction must not already be associated with an XA Session, otherwise the request is rejected.</li>
+      <li><code>TMRESUME</code>—indicates that the transaction is a suspended transaction that is to be resumed. The XID must be in the association suspended state, otherwise the request is rejected.</li>
+    </ul>
+    <p class="Note">The Solace JMS implementation does not support the <code>TMJOIN</code> flag, which indicates that the work to be performed is to be added to another, pre‑existing transaction.</p>
+    <p>When <code>start(...)</code> is successfully invoked, an association is created between the XA Session and the transaction branch, and the transaction branch has an Active state. </p>
+    <p class="Note">Only one distributed transaction can be associated with an XA Session at a time.</p>
+    <h3><a name="using_xa_transactions_1775489719_313834"/>Ending Transactions</h3>
+    <p>An XA End request is used to end or suspend the work being performed for a transaction branch that has an Active state. When this method is invoked, an XA End request is sent to the Resource Manager (that is, the event broker) to:</p>
+    <ul>
+      <li>associate the published and consumed messages with the transaction branch identified by the given Xid;</li>
+      <li>disassociate the XA resource from that transaction branch;</li>
+      <li>then let the transaction complete.</li>
+    </ul>
+    <p>To end or suspend the work being performed for a transaction branch that has an Active state, call the following method:</p>
+    <p class="Code">XAResource.end(Xid xid,int flags)</p>
+    <p><u>Where</u>:</p>
+    <p><code>xid</code> is the Xid for the transaction. </p>
+    <p><code>flags</code> is one of the following:</p>
+    <ul>
+      <li><code>TMSUCCESS</code>—indicates that the portion of work in the transaction is completed successfully</li>
+      <li><code>TMSUSPEND</code>—indicates that the transaction is temporarily suspended in an incomplete state</li>
+      <li><code>TMFAIL</code>—indicates that the portion of work in the transaction has failed</li>
+    </ul>
+    <p>When <code>end(...)</code> is successfully invoked on an active transaction branch, the result depends on the flag that was set for the method:</p>
+    <ul>
+      <li><code>TMSUCCESS </code>flag—The transaction’s state is changed to Idle (if the transaction remains idle for longer than the idle-timeout value set for the XAResource, the transaction is automatically rolled back). The transaction can then be prepared for a two-phase commit, rolled back, or committed through a one-phase commit.</li>
+      <li><code>TMSUSPEND</code> flag—The transaction’s state is changed to Idle. The association between the transaction branch and the XA Session is changed from Associated to Association-Suspended.</li>
+      <li><code>TMFAIL</code> flag—The transaction’s state is changed to Idle, marked as rollback only, and can only be rolled back to be freed.</li>
+    </ul>
+    <p class="Note">When the <code>TMSUCCESS</code> and <code>TMSUSPEND</code> flags are set, if the endpoint for subscriber messages is shutdown or deleted, or if the messages to be consumed have already been consumed or re-delivered on a different flow, before the XA End request was made, the request will fail. When an XA End request fails, the transaction is put into an Idle state and marked as Rollback‑only—it can only be rolled back to be freed.</p>
+    <p>When <code>end(...)</code> is not successfully invoked, the transaction is automatically rolled back, and an <code>XA_RBROLLBACK</code> response is returned to the client API.</p>
+    <h3><a name="using_xa_transactions_1775489719_313265"/>Preparing Transactions</h3>
+    <p>A transaction branch that has been ended and has an Idle state must be prepared before it can be committed through a two-phase commit.</p>
+    <p>To prepare an idle transaction for a commit, call the following method:</p>
+    <p class="Code">XAResource.prepare (Xid xid)</p>
+    <p><u>Where</u>:</p>
+    <p><code>xid</code> is the Xid for the transaction. </p>
+    <p>When the XA prepare call is made, the event broker validates the request and then processes the list of messages assigned to the transaction, and the result of the request is sent to the client in a response message (for example,  <code>XA_OK</code> or <code>XA_RBROLLBACK</code>). </p>
+    <p>When <code>prepare(...)</code> is successfully invoked, the transaction’s state is changed to Prepared, and the XA Session and the transaction are no longer associated. A transaction that is successfully prepared has a high probability of being successfully committed.</p>
+    <p>When <code>prepare(...)</code> is not successfully invoked, an <code>XAException</code> is thrown, and the transaction is automatically rolled back and freed.</p>
+    <p class="Note">For a scenario where there are no other resources involved in the distributed transaction, only a one-phase commit is required and the client does not have to call <code>XAResource.prepare(...)</code>. In such a case, the client can just call <code>commit(...)</code> with the <code>onePhase</code> flag set to <code>true</code>.</p>
+    <p>When an XA prepare is performed and an endpoint that messages in the transaction branch are to be consumed from or published to has been shut down, is over its message quota, or has been deleted, the following occurs:</p>
+    <ul>
+      <li>If an endpoint that messages in the transaction branch are to be consumed from is shutdown, deleted, or over its message quota when an XA prepare call is made, the transaction will fail and be rolled back. </li>
+      <li>If an endpoint that messages in the transaction branch are to published to or consumed from has been deleted before an XA prepare call is made, the prepare will fail and the transaction is rolled back.</li>
+      <li>If an endpoint that messages in the transaction branch are to published to is shutdown or over its message quota when an XA prepare call is made, the following occurs:<ul><li>If the reject‑to‑sender‑on‑discard parameter is enabled for the endpoint (this is the default setting), transaction will fail and be rolled back.</li><li>If the reject‑to‑sender‑on‑discard parameter is not enabled for the endpoint, the prepare will succeed, but when commit is called, the messages will not be added to the endpoint.</li></ul></li>
+    </ul>
+    <p class="Note">When doing the quota checking for an XA Prepare request, the checking accounts for all of the messages in the transaction, but it does not account for any messages in other prepared transactions.</p>
+    <h3><a name="using_xa_transactions_1775489719_304242"/>Completing or Canceling Transactions</h3>
+    <p>Messages that are published or received through an XA transaction are staged on the event broker. The transaction can either be:</p>
+    <ul>
+      <li>completed through a commit operation. </li>
+      <li>canceled through a rollback operation</li>
+    </ul>
+    <h4><a name="using_xa_transactions_1775489719_304253"/>Committing Transactions</h4>
+    <p>To commit a transaction, call the following method:</p>
+    <p class="Code">XAResource.commit(Xid xid, boolean onePhase)</p>
+    <p><u>Where</u>:</p>
+    <p><code>xid</code> is the Xid for the transaction. </p>
+    <p><code>onePhase</code> is a flag that indicates whether the Resource Manager should use a one‑phase commit protocol to commit the work done on behalf of Xid. If <code>true</code>, the Resource Manager must use a one-phase commit protocol to commit the work done on behalf of the Xid. If <code>false</code>, the Resource Manager must use a two-phase commit protocol to commit the work done on behalf of the Xid. </p>
+    <p>A transaction branch can only be committed if it has an Idle state (a one-phase commit is required) or Prepared state (a two-phase commit is required).</p>
+    <p>When a transaction branch is successfully committed, the following occurs:</p>
+    <ul>
+      <li>For publish operations, the staged messages are sent to their destination queue or topic (that is, a durable topic endpoint).</li>
+      <li>For receive operations, the received messages are acknowledged by the consumers and then removed from the endpoints they were spooled to.</li>
+      <li>The transaction’s state is changed to Free.</li>
+    </ul>
+    <p>Commits are blocking operations. A new transaction cannot be started until the current transaction is freed through a successful commit or is rolled back or suspended.</p>
+    <p>The result of the commit is sent to the client API in a response message. If a commit fails for any reason, a rollback of the entire transaction occurs. An <code>XAException</code> is thrown to indicate the failure reason.</p>
+    <p>When a commit is performed and an endpoint that messages in the transaction branch are to be published to is shut down or deleted, the following occurs:</p>
+    <ul>
+      <li>For a one-phase commit:<ul><li>When an endpoint is shutdown: The transaction is rolled back if the endpoint is configured for reject-to-sender-on-discard. If reject‑to‑sender‑on‑discard is not enabled then the commit succeeds but the message is not added to the endpoint.</li><li>When an endpoint is deleted: The commit fails and the transaction is rolled back.</li><li>If the commit fails, the Resource Manager may throw an <code>XA_RB*</code> exception. In this case, the Resource Manager rolls back the branch’s work and releases all held resources.</li></ul></li>
+      <li>For a two-phase commit:<ul><li>When an endpoint is shutdown: The commit succeeds but the message is not added to the endpoint.</li><li>When an endpoint is deleted: The commit succeeds.</li></ul></li>
+    </ul>
+    <h3><a name="using_xa_transactions_1775489719_304291"/>Rolling Back Transactions</h3>
+    <p>Instead of completing an active transaction through a commit, a client can call <code>XAResource.rollback()</code> to rollback a transaction that has an Active, Idle, or Prepared state.</p>
+    <p>When a rollback is performed, staging information for the active transaction is removed, therefore:</p>
+    <ul>
+      <li>for publish operations, the publisher messages are deleted from the message spool and are not spooled on the destination endpoints, and the transaction is freed.</li>
+      <li>for consume operations, the messages assigned to the transaction remain spooled on the endpoints, they are redelivered, and the transaction is freed.</li>
+    </ul>
+    <p>Rollbacks are blocking operations.</p>
+    <p>When <code>rollback(...)</code> is successfully invoked, the transaction’s state is changed to Free.</p>
+    <p class="Note">If a transacted Session fails due to a network failure or an event broker reset, the client can immediately reconnect (this is automatic if the number of reconnect retries for the client connection is greater than zero), and, if possible, the API reestablishes the transaction that was in progress. If the Session and transaction are not reestablished within three minutes, the event broker automatically rolls back the transaction that was in progress. (For information on setting client reconnect properties, refer to <MadCap:xref href="Managing-Sessions.htm#establishing_connections_577400906_329588">Configuring Connection Time-Outs and Retries</MadCap:xref>.)</p>
+    <h2 class="with-rule"><a name="using_xa_transactions_1775489719_364284"/>Deleting Heuristically-Completed Transaction Branches</h2>
+    <p>If you want to delete a transaction branch that was heuristically completed by an event broker administrator, an XAForget request can be performed. This request can only be performed successfully if the transaction has been heuristically committed or rolled back, and the transaction is freed.</p>
+    <p>To delete a heuristically-completed transaction branch, call the following method:</p>
+    <p class="Code"><code>XAResource.forget(</code>Xid xid)</p>
+    <p><u>Where</u>:</p>
+    <p><code>xid</code> is the Xid for the transaction.</p>
+    <p>For information on the heuristic operations available to event broker administrators, refer to <MadCap:xref MadCap:unresolvedLink="import-link:managing_message_vpns_2096211297_92422" href="../../Messaging/Guaranteed-Msg/Performing-Heuristic-Actions.htm">Performing Heuristic Actions on Transactions</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="using_xa_transactions_1775489719_364739"/>Recovering Prepared Transactions</h2>
+    <p>If an Application Server failure occurs, you can use the <code>XAResource.recover(…)</code> method to ask the event broker to return those transaction branches that are in a prepared or heuristically completed state. </p>
+    <p class="Code"><code>XAResource.recover (</code>int flags)</p>
+    <p><u>Where</u>:</p>
+    <p><code>flags</code> is one of the following:</p>
+    <ul>
+      <li><code>TMSTARTRSCAN</code>—starts a recovery scan. </li>
+      <li><code>TMENDRSCAN</code>—ends a recovery scan. </li>
+      <li><code>TMNOFLAGS</code>—indicates no flags value is selected. <code>TMNOFLAGS</code> must be used when no other flags are set in the parameter. </li>
+    </ul>
+  </body>
+</html>

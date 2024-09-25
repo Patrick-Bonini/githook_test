@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Using an Integrated Load Balancer Solution</h1>
+    <p><MadCap:variable name="Variables.CompanyName"/> recommends that customers use an load balancer that's integrated with Kubernetes  (e.g., MetalLB, VMWare NSX-T) to expose the <MadCap:variable name="Product-Names.broker_cloud_short"/> within the Kubernetes cluster to external traffic. To support this setup, ensure that the customer determines with their Kubernetes administrator whether the Kubernetes Service of type <code>LoadBalancer</code> is supported and whether any special annotations are needed to create an external network load balancer.</p>
+    <p>To use an external load balancer, the customer must recognize the following:</p>
+    <ul>
+      <li>The customer must configure the <MadCap:variable name="Product-Names.cloud_agent_short"/> so that it creates a Kubernetes Service of type <code>LoadBalancer</code>. The configuration automatically attaches the public IP addresses to the <code>LoadBalancers</code> for <MadCap:variable name="Product-Names.broker_cloud_short"/>s to be accessible from the Internet. The network load balancer takes care of routing requests appropriately within the Kubernetes cluster.</li>
+      <li>Each <MadCap:variable name="Product-Names.broker_cloud_short"/> has its own, dedicated network load balancer and that load balancer consumes one IP address.  The customer must ensure that you have enough load balancers and external IP addresses for the number of <MadCap:variable name="Product-Names.broker_cloud_short"/>s that the customer wants to expose. In the case where the service is available on the Internet, this would be enough public IP addresses. For example,  three load balancers and three public IP addresses are required to expose three <MadCap:variable name="Product-Names.broker_cloud_short"/>s publically over the Internet.
+			</li>
+    </ul>
+    <p><MadCap:variable name="Variables.CompanyName"/> recommends that the customer use a network load balancer with an L4 load balancing strategy that fronts the Kubernetes nodes. The benefits of using an network load balancer is that it exposes a single endpoint that's not impacted if any of the Kubernetes worker nodes go out of service. That  network load balancer also ensures that traffic is routed only to worker nodes that are operational.
+</p>
+    <p><a name="traffic_policy_recommendation"/><MadCap:variable name="Variables.CompanyName"/> also recommends setting the load balancer's <code>externalTrafficPolicy</code> to <code>local</code>. The <code>local</code> policy setting preserves the source IP addresses of connecting client applications. This setting allows your <MadCap:variable name="Product-Names.broker_cloud_short"/>s to determine which client is connecting to it. </p>
+    <p>While we recommend <code>local</code>, <MadCap:variable name="Variables.CompanyName"/> also supports the <code>cluster</code> policy if required. The <code>cluster</code> policy can provide faster fail over times for applications when needed, but comes with the following drawbacks:</p>
+    <ul>
+      <li>
+        <p>Any node in your cluster can receive traffic and then forward it to the pod hosting the target <MadCap:variable name="Product-Names.broker_cloud_short"/>. The additional network travel can affect performance.</p>
+      </li>
+      <li>
+        <p>The source IP address for the connecting client becomes unavailable to your target <MadCap:variable name="Product-Names.broker_cloud_short"/>, as its IP is replaced by that of the forwarding node.</p>
+      </li>
+      <li>
+        <p>Your <MadCap:variable name="Product-Names.broker_cloud_short"/> will generate additional TLS connection logs because of TCP probing that is inherent in the <code>cluster</code> policy setting.</p>
+      </li>
+    </ul>
+    <p>You can learn more about the external traffic policy settings in the <a href="https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#preserving-the-client-source-ip" target="_blank" alt="Link to official Kubernetes documentation" class="link-offsite">Kubernetes’ documentation</a>.</p>
+    <p>To expose the cluster, an external IP address is mapped to the load balancer’s private IP address. This mapping is sometimes automatically managed by some integrated load balancer solutions.  In addition, the customer is responsible to check whether any special annotations are required to configure network load balancer for their environment.</p>
+    <p>Public access outside of the customer's private network is optional. If required, an Internet gateway is required to route a public IP address to the appropriate private IP address. If the customer's network blocks external traffic from the Internet, they must whitelist the <MadCap:variable name="Product-Names.home_cloud_long"/>'s IP address. In this case, the customer must provide details (URL, username, and password) of the HTTP/HTTPS proxy server to the <MadCap:variable name="Product-Names.cloud_agent_short"/> during deployment.</p>
+    <p>
+      <div class="thumbnail-container">
+        <img src="../../Resources/Images/Cloud-Deployment-Guides/k8s_simpleloadbalancer.png" class="solacethumbnail" alt=""/>
+        <img src="../../Resources/Images/expand-icon.png" class="img-expand" MadCap:conditions="Default.NotForPDF" alt=""/>
+      </div>
+    </p>
+    <p>When you use an integrated load balancer, there are advantages and disadvantages over using NodePort (with an external network load balancer).</p>
+    <p>
+      <b>Advantages</b>
+    </p>
+    <ul>
+      <li>Simple usage. The client has a single endpoint to connect to for each service and standard ports and change ports:<ul><li>That solution allows the customer to use standard TCP ports because the IP address is dedicated to the <MadCap:variable name="Product-Names.broker_cloud_short"/>, so collisions of port numbers won't occur. For example, you could use 55443, which is the standard port for SMF-TLS where NodePort with External IP won't permit this.</li><li>The customer can customize the TCP ports as required. NodePort doesn't permit the configuration of TCP ports. What this means is that custom ports you specify when you create a service via the <MadCap:variable name="Product-Names.console_ui_long"/> can be used to access the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li></ul></li>
+      <li>Easier operation. The load balancer takes of routing traffic to the operational Worker node</li>
+    </ul>
+    <p>
+      <b>Disadvantages</b>
+    </p>
+    <ul>
+      <li>
+        <p>An integrated load balancer is typically harder to implement for on-premises locations.  For on-premises locations, typically the customer needs to deploy an additional external network balancer and this also requires  some network planning.</p>
+      </li>
+      <li>
+        <p>Each <MadCap:variable name="Product-Names.broker_cloud_short"/> requires a network load balancer and one IP address, which can increase costs if there are multiple <MadCap:variable name="Product-Names.broker_cloud_short"/>s. In addition, for each <MadCap:variable name="Product-Names.broker_cloud_short"/> that's exposed publically, a public IP addresses is required.</p>
+      </li>
+    </ul>
+    <p>For more information, see <a href="https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer" class="link-offsite" target="_blank">Type LoadBalancer</a> in the <i>Kubernetes</i> documentation.</p>
+    <p>For more information about creating an external load balancer, see <a href="https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/" class="link-offsite">Create an External Load Balancer</a> in the <i>Kubernetes</i> documentation.</p>
+  </body>
+</html>

@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/><MadCap:concept term="Cloud"/>Managing Certificate Authorities with the <MadCap:variable name="Product-Names.cloud_product_titlecase"/> REST API</h1>
+    <p>The <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.cloud_product_long"/></MadCap:conditionalText>REST APIs <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">for <MadCap:variable name="Product-Names.cloud_product_firstuse"/> </MadCap:conditionalText>and API tokens allow you to add and delete the domain certificate authority (CA) certificates and client CA certificates programmatically.  You can also disable the standard domain CA list  if you want to use only the domain CA certificates that you have added.  </p>
+    <p>If applications use client certificates to authenticate with an <MadCap:variable name="Product-Names.broker_cloud_short"/>, you must also add the appropriate  client CA certificates.  For more information, see <MadCap:xref href="ght_use_rest_api_authentication.htm">Managing Authentication with the [%=Product-Names.cloud_product_titlecase%] REST API</MadCap:xref>.</p>
+    <p>To perform these tasks in the <MadCap:variable name="Product-Names.console_ui_short"/>, see <MadCap:xref href="server_certs.htm">Managing Domain and Client Certificate Authorities</MadCap:xref>.</p>
+    <p>This topic includes steps to complete the following tasks:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#add-client-certificate-later-98">Adding a Domain or Client CA for [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#delete-server-certificate-later-98">Deleting a Domain or Client CA</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#get-certificate-services-all">Getting the List of  CA Certificates for [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#enable-disable-server-domain-ca-later-98">Enabling or Disabling the Standard Domain Certificate Authorities List</MadCap:xref>
+      </li>
+    </ul>
+    <h2><a name="understand-certificates"/>About Certificates and <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</h2>
+    <MadCap:snippetBlock src="../Resources/Snippets/Cloud/MissionControl/certificates_common_info.flsnp"/>
+    <h2>Before you Begin</h2>
+    <p>Before you can start this tutorial, you require the following:</p>
+    <ul>
+      <li>An account with <MadCap:variable name="Product-Names.cloud_product_short"/> and <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li>
+      <li>Your profile  must be assigned the Administrator or <MadCap:variable name="Product-Names.cluster_mgr"/> Editor role.</li>
+      <li>The service ID of the <MadCap:variable name="Product-Names.broker_cloud_short"/>.  The <code>{serviceId}</code> is the last value of the specified service's URL. For example, in this URL <code><MadCap:variable name="Manifest-Products-Links.CloudConsoleOnly"/>services/d4g5cxzcrhk</code>, the service ID is<code> d4g5cxzcrhk</code>. The service identifier is required for many of the REST API calls.</li>
+      <li>An API token must be available in the account with  the  following permissions:
+				<ul><li>From <b>Mission Control</b>:
+						<ul><li><b>Get My Services with Management Credentials</b></li></ul></li><li>From <b>Organization Services</b>:<ul><li><b>Get Services With Management Credentials</b></li><li><b>Create / Delete Certificate Authorities</b></li></ul></li></ul><p>For more information, see <MadCap:xref href="ght_api_tokens.htm#Create">Creating an API Token</MadCap:xref>.</p></li>
+      <li>
+        <p>A REST client of your choice. Postman is a good choice if you want a visual REST API development tool. At this time, there is no Solace Blog available so if you use Postman, simply make each call by typing the REST API call after you've set up the environment in Postman to use your API token. For more information about setting up Postman, see <MadCap:xref href="ght_api_tokens.htm">Using an API Token with Postman</MadCap:xref>.</p>
+        <MadCap:snippetBlock src="../Resources/Snippets/Cloud/restapi_checktoken_nosolaceblog.flsnp"/>
+      </li>
+    </ul>
+    <h2><a name="add-client-certificate-later-98"/>Adding a Domain or Client CA for <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</h2>
+    <p>You can add a domain or client CA certificate to an <MadCap:variable name="Product-Names.broker_cloud_short"/>. </p>
+    <p>The minimum permission required in the API token to use this REST API call is <b>Create / Delete Certificate Authorities</b>.</p>
+    <p>To add the certificate, you issue a POST to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{serviceId}/requests/serviceCertificateAuthorityRequests</code>  where <code>{serviceId}</code> is the identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/>. </p>
+    <p>A successful request returns <code>201</code> (Created); otherwise, one of the following error codes is returned:</p>
+    <ul>
+      <li><code>5000</code> — with a support code of <code>102</code> if <code>serviceCertificateAuthorityRequests</code> was passed an invalid format or missing a parameter. The request must include all the required parameters in the payload.</li>
+      <li><code>5000</code> — with a support code of <code>106</code> indicates the certificate authentication permission (<b>Create / Delete Certificate Authorities</b>) is not enabled in the API token that was used.</li>
+    </ul>
+    <p>As part of the POST call, you must specify the following parameters in the payload:</p>
+    <ul>
+      <li><code>certificate</code> — The container object for the payload that contains the following parameters:<ul><li><code>name</code> —The string name to identify the certificate to add to the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li><li><code>content</code> — The PEM file certificate. The <code>-----BEGIN CERTIFICATE-----</code> and <code>-----END CERTIFICATE-----</code> must be separated from the certificate contents (random string) using <code>\n</code> (newline).</li><li><code>action</code> — Use the action <code>create</code> as the verb to create the certificate.</li></ul></li>
+      <li style="text-decoration: none;"><code>certType</code> — Use  <code>domain</code> to create a server domain CA certificate or <code>client</code> to create a client CA certificate. To preserve API backwards compatibility, this parameter is not marked as required to preserve compatibility with older clients; however this parameter must be used for all new clients. If you don't specify this parameter, both a server domain and client certificate are created using the specified <code>content</code>. </li>
+    </ul>
+    <p>For example, if the service identifier of <code>vsr13ijvlhn</code> is used in a  <code>POST</code> call to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/vsr13ijvlhn/requests/serviceCertificateAuthorityRequests</code> with the following payload:</p>
+    <pre xml:space="preserve">{
+  "certificate": {
+  "name": "MyFirstCert",
+  "content":"-----BEGIN CERTIFICATE-----\nMIID5zCCAs+gAwIBAgIUK1Esxtvcw0h772/ZNspgH7EkyMQwDQYJKoZIhvcNAQELBQAwgYIxCzAJBgNVBAYTAkdCMQ8wDQYDVQQIDAZMb25kb24xDzANBgNVBAcMBkxvbmRvbjEYMBYGA1UECgwPR2xvYmFsIFNlY3VyaXR5MRYwFAYDVQQLDA1JVCBEZXBhcnRtZW50MR8wHQYDVQQDDBYqLm1lc3NhZ2luZy5zb2xhY2UuY29tMB4XDTIxMDcxNTE3MzQ0MVoXDTIyMDcxNTE3MzQ0MVowgYIxCzAJBgNVBAYTAkdCMQ8wDQYDVQQIDAZMb25kb24xDzANBgNVBAcMBkxvbmRvbjEYMBYGA1UECgwPR2xvYmFsIFNlY3VyaXR5MRYwFAYDVQQLDA1JVCBEZXBhcnRtZW50MR8wHQYDVQQDDBYqLm1lc3NhZ2luZy5zb2xhY2UuY29tMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAmpFZql+L7K3S5+8C2GojP8wpOk78N/rHTPTuGmylFnzOv5FBDkqZuZRQBnkkvPJO80XZAY2m5cBrWeH3VqQXn0s2pStxnFnjNoUpPg33OzYbFYZkOL8B3u2g1fM+vGfqIjm9UYFQaDPxSNvHB2slkOay4Z1iwaj6EfHy+yuLiImay3nfDydMgyM+/rsGA4DjEc7d5xnU1n1H10CLaLsvRah1LyR3YWKT85Pw5yft8bA9SWsJKBrzpo8vb4qP5gadqzQnljW4IrJbopKGvExb02CLlzd2eTZSr9CwnCREb4H1LjQ+0gxZV25aAmvGNho0TFSlpKgbfJoXS9V1ibpS0QIDAQABo1MwUTAdBgNVHQ4EFgQUl0rNoyaUxMaXG8/4xM666M86I2owHwYDVR0jBBgwFoAUl0rNoyaUxMaXG8/4xM666M86I2owDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAJD1lD//MzQE14KwXZ4nL9/5koLO6kQL7NvI0yhd1/hes9+lhhxeB2O8EZ28nxu5weBgVR/pyJDkpivJKntnlqOO0zitm85Z64tWh2RFjufs2DhKLtSZ1UKQQATIFsnYOsBDU2D3StVRrUqnWD/0OkoRzFpSKpqDtWl7FDIUcAscZZBGehsY/YtPMj3b/jcCdGAR+kUeEaj7v7Mx98Kx0vmUmYHwr+s28HCaQJOjQ7P9s6VT/QhXZ8ErhOQUoTrLYxa10SCtwgVkd/HYLJbDKZ5lALUO+lmbIBbwKOD3TIl3DHMniskuDrzSjKPemdM7dWn6AvQmBxbvghqfkpQ9o+A==\n-----END CERTIFICATE-----",
+  "action": "create"
+  },
+  "certType": "client"
+}</pre>
+    <p>Upon success, the following response is returned:</p>
+    <pre xml:space="preserve">
+  "data": {
+    "id": "8bgf3k68bzs",
+    "creationTimestamp": 1631136684773,
+    "certificate": {},
+    "certType": "client",
+    "type": "serviceCertificateAuthorityRequest"
+  }</pre>
+    <p>Because this operation is asynchronous, you must issue a <code>GET</code> call to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{serviceId}/requests/{requestId}</code>  to check the progress of the operation, where <code>serviceId</code> is the identifier for the <MadCap:variable name="Product-Names.broker_cloud_short"/> and <code>requestId</code> is the value from <code>id</code> parameter that was returned in the response from the POST call. </p>
+    <p>Continuing from the previous example, if you issue the   <code>GET</code> call to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/vsr13ijvlhn/requests/8bgf3k68bzs</code>, you can see the status is <code>completed</code> in the <code>adminProgress</code> parameter in the response as shown below:<br/></p>
+    <pre xml:space="preserve">{
+  "data": {
+    "id": "8bgf3k68bzs",
+    "creationTimestamp": 1631136684773,
+    <b>"adminProgress": "completed"</b>,
+    "certificate": {},
+    "certType": "client",
+    "type": "serviceCertificateAuthorityRequest"
+   },
+  "meta": {
+    "currentTime": 1631136792025
+  }
+}</pre>
+    <p>You can also issue a <code>GET</code> request to the service to verify the certificate was created. For more information, see <MadCap:xref href="#get-certificate-services-all">Get the List of  Server and Client Certificate for [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref>.</p>
+    <h2><a name="delete-server-certificate-later-98"/>Deleting a Domain or Client CA</h2>
+    <p>You can delete a domain or client CA certificate from an <MadCap:variable name="Product-Names.broker_cloud_short"/>. The minimum permission required in the API token to use this REST API call is <b>Create / Delete Certificate Authorities</b>.</p>
+    <p>To remove the certificate, you issue a POST call to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{serviceId}/requests/serviceCertificateAuthorityRequests</code>  where <code>{serviceId}</code> is the identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+    <p>A successful request returns <code>201</code> (Created); otherwise, one of following error codes is returned:</p>
+    <ul>
+      <li><code>5000</code> — with a support code of <code>102 </code>if <code>serviceCertificateAuthorityRequests</code> was passed an invalid format or missing a parameter. The request must include all parameters specified in the payload above.</li>
+      <li><code>5000</code> — with a support code of <code>106</code> indicates the certificate authentication permission (<b>Create / Delete Certificate Authorities</b>) is not enabled in the API token that was used.</li>
+    </ul>
+    <p>  As part of the POST call, you must specify the following parameters in the payload:</p>
+    <ul>
+      <li><code>certificate</code> — The container object for the payload  that contains the following parameters:<ul><li><code>name</code> — The name of the certificate to remove from the <MadCap:variable name="Product-Names.broker_cloud_short"/>. Note that if you specify a name that doesn't exist, the operation returns a status of completed.</li><li><code>action</code> — Use the action <code>delete</code> as the verb for the POST request.</li></ul></li>
+      <li><code>certType</code> — Use  <code>domain</code> to delete a server domain certificate or <code>client</code> to delete  a client certificate. To preserve API backwards compatibility, this parameter is not marked as required to preserve compatibility with older clients; however this parameter must be used for all new clients. If you don't specify this parameter, the specified <code>name</code> for the certificate (if it exists) is  removed from the both the client certificate and server domain lists for the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li>
+    </ul>
+    <p>For example, for the  service identifier of <code>vsr13ijvlhn</code>, a <code>POST</code> call to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/vsr13ijvlhn/requests/serviceCertificateAuthorityRequests</code> with the following payload to delete a client certificate looks like this:</p>
+    <pre xml:space="preserve">{
+  "certificate": {
+    "name": "MyFirstCertificate",
+    "action": "delete"
+  },
+  "certType": "client"
+}</pre>
+    <p>Upon success, the following response is returned:</p>
+    <pre xml:space="preserve">{
+  "data": {
+    "id": "e23zv0w1qn8",
+    "creationTimestamp": 1631131845296,
+    "certificate": {},
+    "certType": "client",
+    "type": "serviceCertificateAuthorityRequest"
+   }  
+}</pre>
+    <p>Because this operation is asynchronous, you must issue a <code>GET</code> call to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{serviceId}/requests/{requestId}</code>  to check the progress of the operation, where <code>serviceId</code> is the identifier for the <MadCap:variable name="Product-Names.broker_cloud_short"/> and <code>requestId</code> is the value from <code>id</code> parameter that was returned in the response from the POST call.   Continuing from the previous example,  if you issue the   <code>GET</code> call to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/vsr13ijvlhn/requests/e23zv0w1qn8</code>, you can see the status is <code>completed</code> in the <code>adminProgress</code> progress  in the response as follows:<br/></p>
+    <pre xml:space="preserve">{
+  "data": {
+    "id": "e23zv0w1qn8",
+    "creationTimestamp": 1631133476085,
+    <b>"adminProgress": "completed"</b>,
+    "certificate": {},
+    "certType": "client",
+    "type": "serviceCertificateAuthorityRequest"
+   },
+  "meta": {
+    "currentTime": 1631133476500
+  }
+}</pre>
+    <p>You can also issue a <code>GET</code> request to the service to verify the certificate was removed. For more information, see <MadCap:xref href="#get-certificate-services-all">Get the List of  Server and Client Certificate for [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref>.</p>
+    <h2><a name="get-certificate-services-all"/>Getting the List of  CA Certificates for <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</h2>
+    <p>To get the names for the available CA certificates, you issue a GET to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{serverId}</code> where  <code>{serverId}</code> is the identifier for the service regardless of the version of your <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+    <p>The minimum permission required in the API token are one of <b>Get My Services with Management Credentials</b> or <b>Get Services with Management Credentials</b> (though both are recommended so that you can see both <MadCap:variable name="Product-Names.broker_cloud_short"/>s you create and those created by others in the Account). When the <code>GET</code> call is successful, a <code>200</code> response is returned. For <MadCap:variable name="Product-Names.broker_cloud_short"/>s, the names of the CA certificates are found in the <code>clientCertificateAuthorities</code> (for client CA certificates) and <code>domainCertificateAuthorities</code> (for server domainCA certificates) parameters.</p>
+    <p>If an error occurs for the <code>GET</code> call, one of the following error codes is returned:</p>
+    <ul>
+      <li><code>5000</code> — with a support code of <code>103</code> if the specified <MadCap:variable name="Product-Names.broker_cloud_short"/> could not be found.</li>
+      <li><code>5000</code> — with a support code of <code>106</code> if the required  permissions (<b>Get Services with Management Credentials</b> or <b>Get My Service with Management Credentials</b>) were not enabled in the API token that was used.</li>
+    </ul>
+    <p>For example, a <code>POST</code> call to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/v0q6d1xqg7g</code> to an <MadCap:variable name="Product-Names.broker_cloud_short"/> gives the following response:</p>
+    <pre>{
+  "data": {
+  "type": "service",
+  "timestamp": 0,
+  "userId": "9hbxppv9y75",
+  "serviceId": "v0q6d1xqg7g",
+  "infrastructureId": "2bn7jlo767j",
+  "name": "My-First-Service",
+  "msgVpnName": "my-first-service",
+  "datacenterId": "gke-gcp-us-central1-a",
+  "datacenterProvider": "gcp",
+  ...
+			&lt;snip&gt;
+			...
+			...
+  "certificateAuthorities": [],
+  "<b>clientCertificateAuthorities</b>": [
+    <b>"MySecondCertificate",
+    "MyFirstCertificate"
+   ],</b>
+  "<b>domainCertificateAuthorities</b>": [
+	<b>"MyFirstServerCertificate"			
+   ],</b>
+  "clientProfiles": [
+			"default"
+   ],
+  ...
+  &lt;snip&gt;
+  ...
+  }
+}</pre>
+    <p>For more information about getting service information, see <MadCap:xref href="ght_use_rest_api_services.htm#getdetails-service">Getting the Connection Details for the Event Broker Service using the REST API</MadCap:xref>.</p>
+    <h2><a name="enable-disable-server-domain-ca-later-98"/>Enabling or Disabling the Standard Domain Certificate Authorities List</h2>
+    <p>For <MadCap:variable name="Product-Names.broker_cloud_short"/>s, the standard domain CA list includes industry-standard, trusted CA certificates used to verify the server names for outgoing TLS connections. This list cannot be modified and is enabled by default. If you want to use only the domain CA list that you have added CA certificates to, you can disable the standard domain CA list. To do this, run the following <code>POST</code> command to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/${serviceId}/requests/standardCertificateAuthorityRequests</code>.</p>
+    <p>The minimum permission required in the API Token to use this REST API call is <b>Create / Delete Certificate Authorities</b>.</p>
+    <p>A successful request returns <code>201</code> (Created); otherwise, one of the following error codes is returned:</p>
+    <ul>
+      <li><code>5000</code> — with a support code of <code>102</code> if the <code>standardCertificateAuthorityRequests</code> was passed an invalid format or missing a parameter. The request must include all parameters specified in the payload above.</li>
+      <li><code>5000</code> — with a support code of <code>106</code> certificate authentication permission (<b>Create / Delete Certificate Authorities</b>) is not enabled in the API token that was used.</li>
+    </ul>
+    <p>   As part of the POST call, you must specify the following parameters in the payload:</p>
+    <ul>
+      <li><code>certificate</code> — The container object for the payload  that contains the following parameters:<ul><li><code>name</code> — The name of the certificate to remove from the <MadCap:variable name="Product-Names.broker_cloud_short"/>. Note that if you specify a name that doesn't exist, the operation still returns a status of completed.</li><li><code>action</code> — Use the action <code>delete</code> as the verb for the POST request.</li></ul></li>
+    </ul>
+    <p>For example, if the identifier for the service identifier of <code>v0q6d1xqg7g</code>, a <code>POST</code> call to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/v0q6d1xqg7g/requests/standardCertificateAuthorityRequests</code> with the following parameters in the payload:</p>
+    <pre xml:space="preserve">{
+  "enable": "false"
+}
+</pre>
+    <p>Upon success, the following response is returned:</p>
+    <pre>{
+  "data": {
+  "id": "st8do048y8c",
+  "creationTimestamp": 1631203856862,
+  "tlsStandardDomainCertificateAuthoritiesEnabled": true,
+  "type": "standardCertificateAuthorityRequest"
+  }
+}</pre>
+    <p> Because this operation is asynchronous, you must issue a <code>GET</code> call to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{serviceId}/requests/{requestId}</code>  to check the progress of the operation, where <code>serviceId</code> is the identifier for the <MadCap:variable name="Product-Names.broker_cloud_short"/> and <code>requestId</code> is the value from <code>id</code> parameter that was returned in the response from the POST call.   Continuing from the previous example,  if you issue the   <code>GET</code> call to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/v0q6d1xqg7g/requests/st8do048y8c</code>, you can see the status is <code>completed</code> in the <code>adminProgress</code> progress  in the response as follows:<br/></p>
+    <pre xml:space="preserve">{
+  "data": {
+    "id": "st8do048y8c",
+    "creationTimestamp": 1631203856862,
+    <b>"adminProgress": "completed"</b>,
+    "type": "defaultServiceRequest"
+   },
+  "meta": {
+    "currentTime": 1631203859000
+  }
+}</pre>
+  </body>
+</html>

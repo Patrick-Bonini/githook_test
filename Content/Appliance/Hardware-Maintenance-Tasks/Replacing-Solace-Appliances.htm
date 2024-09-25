@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><MadCap:concept term="Appliance"/>Replacing Solace PubSub+ Appliances</h1>
+    <p>This section shows the steps required to replace operating Solace PubSub+ appliances with newer ones. Instructions are provided for standalone appliances and those operating in High Availability (HA) redundant pairs.</p>
+    <p class="Note">These procedures  apply only for like-for-like replacements. If you are replacing  different chassis models or NAB/ADB types, <a href="../../get-support.htm" class="link-internal">contact Solace</a> because  there could be scaling differences  and  a custom procedure may be required.</p>
+    <h2 class="with-rule"><a name="Replacin"/>Replacing Standalone Appliances </h2>
+    <p>This procedure shows you how to replace a single standalone appliance.</p>
+    <h3><a name="Precondi"/>Before you begin </h3>
+    <p>The procedure shown in the <MadCap:xref href="#Steps">Steps</MadCap:xref> section assumes that:</p>
+    <ul>
+      <li>The appliance doesn't belong to a redundant HA pair.</li>
+      <li>Neither Replication nor Guaranteed VPN Bridges nor both are configured.
+				<p>If these features are in use, you'll need to consult one of the following prior to performing the instructions in the <MadCap:xref href="#Steps">Steps</MadCap:xref> section:</p><ul><li>If only Replication is configured: refer to <MadCap:xref href="#Addition">Additional steps when Replication is configured</MadCap:xref>. </li><li>If only Guaranteed VPN Bridges are configured: refer to <MadCap:xref href="#Addition2">Additional steps when Guaranteed VPN Bridges are configured</MadCap:xref>.</li><li>When Replication and Guaranteed VPN Bridges are both configured: refer to <MadCap:xref href="#Addition3">Additional steps when both Replication and Guaranteed VPN Bridges are configured</MadCap:xref>.</li></ul></li>
+      <li>If the appliance has an ADB installed, you have access from the appliance to an external file server capable of temporarily holding the configuration database and the contents of its ADB. </li>
+      <li>If the appliance contains an HBA,  you must register the new appliance's HBA with the external array. For details, refer to <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-External-Disk-Arrays.htm">Configuring External Disk Arrays for Guaranteed Messaging</MadCap:xref>.</li>
+    </ul>
+    <p>The procedure doesn't affect the external disk-array used for message spooling as the disk-array is reused with the new hardware.</p>
+    <h3><a name="Steps"/>Steps</h3>
+    <ol>
+      <li>Prepare the old appliance.<ol style="list-style-type: lower-alpha;"><li>Shutdown the message-backbone to ensure   the event broker is not providing any services. 
+			
+			
+			<p>Enter the following commands in the Solace CLI:<br/><p class="Code">solace(configure)# service<br/>solace(configure/service)# msg-backbone<br/>solace(configure/service/msg-backbone)# shutdown<br/>All clients will be disconnected.<br/>Do you want to continue (y/n)? y</p></p></li><li>If the appliance uses an ADB, its contents must be backed up it can be restored later on the new hardware.
+				
+				
+				<p>Enter the following commands:</p><p class="Code">solace(configure)# hardware message-spool<br/>solace(configure/hardware/message-spool)# shutdown<br/>All message spooling will be stopped.<br/>Do you want to continue (y/n)? y<br/>solace(configure/hardware/message-spool)# end<br/>solace# admin<br/>solace(admin)# system message-spool<br/>solace(admin/system/message-spool)# backup-adb-to-disk<br/>On the next system startup, the backed-up ADB state on disk will overwrite the current ADB state.<br/>Do you want to continue (y/n)? y</p><p>This creates a directory <code>/usr/sw/adb</code>, which needs to be moved to an external file server. </p><p>To move the directory, enter the following commands:</p><p class="Code" xml:space="preserve">solace# shell "Backup adb to external file server"<br/>login: support<br/>Password: &lt;password&gt;<br/>[support@solace ~]$ sudo su -
+[sudo] password for root: &lt;password&gt;
+[root@solace ~]# cd /usr/sw<br/>[root@solace sw]# tar zcf /tmp/adb.&lt;hostname&gt;.tar.gz adb<br/>[root@solace sw]# scp /tmp/adb.&lt;hostname&gt;.tar.gz &lt;username&gt;@&lt;hostname&gt;:/&lt;path-to-remote-dir&gt;
+[root@solace sw]# exit
+logout
+[support@solace ~]$ exit
+logout</p></li><li>Backup the current configuration database to an external file server.<p><u>Example</u>:</p><p class="Code">copy current-config sftp://&lt;username&gt;@&lt;hostname&gt;/&lt;path-to-remote-dir&gt;/config_&lt;date&gt;.tar.gz</p><p class="Note">For information on how to back up a current configuration to a remote destination, refer to <MadCap:xref href="../../Admin/Managing-Event-Broker-Configurations.htm">Managing Event Broker Configurations</MadCap:xref>. Pay particular attention to the need to capture product-keys and certificate files, which are not automatically included in the backup.</p></li><li>If the event broker hosts Solace Geneos Agent, its Solace Geneos Agent properties file (<code>solgeneos/config/solgeneosagent.properties</code>) must be copied to an external file server.</li></ol></li>
+      <li>Swap the appliances.<ol style="list-style-type: lower-alpha;"><li>Power-down the old appliance.
+			
+			<p>Enter the following commands:</p><p class="Code">solace# power-down<br/>				This command powers off the appliance and does not restart it afterwards<br/>				Do you want to continue (y/n)? y</p></li><li>Label all cables and disconnect them from the appliance.</li><li>Remove the appliance from the rack and replace it with the new one. For information on how to physically install appliances, refer to the help for the type of appliance being removed (refer to <MadCap:xref href="../Appliance-Set-Up/Hardware-Installation.htm">Solace Appliance Hardware Installation</MadCap:xref>).</li><li>Reconnect all cables to the new appliance.</li><li>Power up the new appliance, and through the management console, use the <code>setup</code> Config command to perform basic network parameters (refer to <MadCap:xref href="../Appliance-Set-Up/Initializing-Appliances.htm">Initializing Appliances</MadCap:xref>).</li><li>If the appliance has an HBA installed, register the HBA with the external array (refer to <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-External-Disk-Arrays.htm">Configuring External Disk Arrays for Guaranteed Messaging</MadCap:xref>), then use the <code>reload</code> command to restart it.  </li></ol></li>
+      <li>Prepare the new appliance.<ol style="list-style-type: lower-alpha;"><li>Get the new appliance to run the same Solace PubSub+ version the old appliance ran. This may involve either an upgrade or a downgrade depending on what is shipped on the new hardware.<div class="Note"><ul><li>The tasks associated with upgrading the Solace PubSub+ software on an appliance are described in <MadCap:xref href="../Appliance-Upgrade/Appliance-Upgrade.htm">Upgrade Procedures</MadCap:xref>.</li><li>For information on downgrading appliance versions, refer to <MadCap:xref href="../Changing-Software-Loads.htm#system_and_software_maintenance_tasks_3138406956_208346">Downgrading SolOS Versions</MadCap:xref>.</li></ul></div></li><li>Restore the old appliance's configuration database from the external file server to the new appliance.<p><u>Example</u>:</p><p class="Code">&lt;username&gt;@192.168.2.xx's password: &lt;password&gt;<br/>solace# copy scp://&lt;username&gt;@&lt;host&gt;/&lt;path-to-remote-dir&gt;/config_&lt;date&gt;.tar.gz<br/>solace# reload config config_&lt;date&gt;.tar.gz<br/>This command causes a reload of the system<br/>Do you want to continue (y/n)? <b>y</b></p><p class="Note">Restoring a configuration from a remote destination is discussed in <MadCap:xref href="../../Admin/Managing-Event-Broker-Configurations.htm">Managing Event Broker Configurations</MadCap:xref>. Pay particular attention to the need to restore product-keys and certificate files, which are not automatically included in the backup.</p></li><li>If the appliance hosts Solace Geneos Agent, install Solace Geneos Agent and restore its properties file from the external file server. For information about installing and configuring Solace Geneos Agent, refer to <MadCap:xref href="../../Additional-Products/SolGeneos-Agent/SolGeneos-Overview.htm">Solace Geneos Overview</MadCap:xref>.</li><li>If the appliance has an ADB installed, its contents needs to be restored. Enter the following commands:
+			
+			<p class="Code" xml:space="preserve">solace# shell "Restore adb from external file server"<br/>login: support<br/>Password: &lt;password&gt;<br/>[support@solace ~]$ sudo su -
+[sudo] password for root: &lt;password
+[root@solace ~]# cd /usr/sw
+[root@solace sw]# tar xvfz /tmp/adb.&lt;hostname&gt;.tar.gz <br/>[root@solace sw]# scp &lt;username&gt;@&lt;hostname&gt;:/&lt;path-to-remote-dir&gt;/adb-&lt;hostname&gt;.tar.gz /tmp<br/>[root@solace sw]# exit
+logout
+[support@solace ~]$ exit
+logout
+</p><p>For the ADB contents to take effect, the appliance must be reloaded.</p><p> Enter the following commands:</p><p class="Code">solace# reload<br/>This command causes a reload of the system<br/>Do you want to continue (y/n)? y</p><p>After the appliance restarts, log back in and enable message spooling:</p><p class="Code">solace(configure)# hardware message-spool<br/>solace(configure/hardware/message-spool)# no shutdown primary</p></li><li>Re-enable message-backbone service:
+				
+				<p class="Code">solace(configure)# service<br/>solace(configure/service)# msg-backbone<br/>solace(configure/service/msg-backbone)# no shutdown</p></li></ol></li>
+    </ol>
+    <h3><a name="Addition"/>Additional steps when Replication is configured</h3>
+    <p>If Replication is configured, you must perform the following steps:</p>
+    <ol>
+      <li>Shutdown Message VPN Replication on both sites.</li>
+      <li>Shutdown Config-Sync on both sites.</li>
+      <li>Perform the procedure shown in <MadCap:xref href="#Steps">Steps</MadCap:xref>.</li>
+      <li>Re-enable Config-Sync on both sites.</li>
+      <li>Re-enable Message VPN Replication on both.</li>
+    </ol>
+    <h3><a name="Addition2"/>Additional steps when Guaranteed VPN Bridges are configured</h3>
+    <p>If Guaranteed VPN Bridges are configured, you must perform the following steps:</p>
+    <ol>
+      <li>Identify the other appliances that connect to the appliance that is to be replaced.</li>
+      <li>On each of those connected appliances reconfigure the remote Message VPN by removing the bridge queue.	</li>
+      <li>Perform the <MadCap:xref href="#Steps">Steps</MadCap:xref> on the appliance to be replaced.</li>
+      <li>On each of the connected appliances add back the bridge queues.</li>
+    </ol>
+    <h3><a name="Addition3"/>Additional steps when both Replication and Guaranteed VPN Bridges are configured</h3>
+    <ol>
+      <li>On both sites involved in the Replication configuration perform the following:
+			<ul><li>Shutdown Message VPN Replication on both sites.</li><li>Shutdown Config-Sync on both sites.</li></ul></li>
+      <li>Identify the other appliances that connect via Guaranteed VPN Bridges to the appliance that is to be replaced.
+			<ul><li>On each of those connected appliances reconfigure the remote Message VPN by removing the bridge queue.</li></ul></li>
+      <li>Perform the procedure shown in <MadCap:xref href="#Steps">Steps</MadCap:xref> on the appliance to be replaced.</li>
+      <li>On both sites involved in the Replication configuration perform the following:
+			<ul><li>Re-enable Config-Sync on both sites.</li><li>Re-enable Message VPN Replication on both.</li></ul></li>
+      <li>On each of the other appliances connected via Guaranteed VPN Bridges add back the bridge queues.</li>
+    </ol>
+    <h2 class="with-rule"><a name="Replacin2"/>Replacing Both Appliances in an HA Pair</h2>
+    <p>This procedure covers how to replace both appliances in an HA redundant pair. To perform this procedure, you must have access from the appliances to an external file server capable of temporarily holding the appliances' configuration databases and the contents of their ADBs (if installed). This procedure does not affect the external disk array used for message spooling—the disk-array is reused with the new hardware.</p>
+    <p>Be aware that if the appliances contain HBAs, you must register the new appliances' HBAs with the external array. For details, refer to <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-External-Disk-Arrays.htm">Configuring External Disk Arrays for Guaranteed Messaging</MadCap:xref>.</p>
+    <p>Certain steps are to be applied to one appliance or to both appliances in the pair.</p>
+    <ol>
+      <li>Prepare the old appliances:<ol style="list-style-type: lower-alpha;"><li style="font-weight: normal;">Verify Config-Sync is operationally "up" (that is, the appliances are in-sync). Use the following Solace CLI command to verify this on both event brokers:
+			<p class="Code">solace1# show config-sync<br/>Admin Status                      : Enabled<br/>Oper Status                       : Up</p><p class="Note">If the operational status is other than "Up" then this should be corrected before proceeding. Using ConfigSync to keep event broker configuration synchronized is fully described in <MadCap:xref href="../../Features/Config-Sync/Config-Sync-Overview.htm">Config-Sync Overview</MadCap:xref>.</p></li><li style="font-weight: normal;">Shutdown the message backbone to ensure that the appliances  do not provide any services. Enter the following commands for both event brokers:
+				
+				<p class="Code">solace1(configure)# service<br/>solace1(configure/service)# msg-backbone<br/>solace1(configure/service/msg-backbone)# shutdown<br/>All clients will be disconnected.<br/>Do you want to continue (y/n)? y</p></li><li>Force the primary event broker to have activity. Enter the following commands in the CLI of the backup appliance:
+				
+				<p class="Code">solace2(configure)# redundancy<br/>solace2(configure/redundancy)# release-activity</p></li><li>If the appliances use ADBs, their contents must be backed up so they can be restored later on the new hardware.<p>Enter the following commands in the CLI of both appliances: </p><p class="Code">solace1(configure)# hardware message-spool<br/>solace1(configure/hardware/message-spool)# shutdown<br/>All message spooling will be stopped.<br/>Do you want to continue (y/n)? y</p><p>Then enter the following commands only in the CLI of the primary appliance:</p><p class="Code">solace1(configure/hardware/message-spool)# end<br/>solace1# admin<br/>solace1(admin)# system message-spool<br/>solace1(admin/system/message-spool)# backup-adb-to-disk<br/>On the next system startup, the backed-up ADB state on disk will overwrite the current ADB state.<br/>Do you want to continue (y/n)? y</p><p>This creates a directory <code>/usr/sw/adb</code>, which needs to be moved to an external file server. </p><p>To move the directory, enter the following commands in a support shell on the primary appliance:</p><p class="Code" xml:space="preserve">solace1# shell "Backup adb to external file server"<br/>login: support<br/>Password: &lt;password&gt;<br/>[support@solace ~]$ sudo su -
+[sudo] password for root: &lt;password&gt;
+[root@solace ~]# cd /usr/sw<br/>[root@solace sw]# tar zcf /tmp/adb.&lt;hostname&gt;.tar.gz adb<br/>[root@solace sw]# scp /tmp/adb.&lt;hostname&gt;.tar.gz &lt;username&gt;@&lt;hostname&gt;/&lt;path-to-remote-dir&gt;
+[root@solace sw]# exit
+logout<br/>[support@solace ~]$ exit
+logout
+</p></li></ol><ol style="list-style-type: lower-alpha;" MadCap:continue="true"><li>Backup the current configuration database of both appliances to an external file server.<p><u>Example</u>:</p><p class="Code">solace1# copy current-config sftp://&lt;username&gt;@&lt;hostname&gt;/&lt;path-to-remote-dir&gt;/config_&lt;date&gt;.tar.gz</p><p class="Note">For information on how to back up a current configuration to a remote destination, refer to <MadCap:xref href="../../Admin/Managing-Event-Broker-Configurations.htm">Managing Event Broker Configurations</MadCap:xref>. Pay particular attention to the need to capture product-keys and certificate files, which are not automatically included in the backup.</p></li></ol><ol style="list-style-type: lower-alpha;" MadCap:continue="true"><li> If the event broker hosts Solace Geneos, its Solace Geneos properties file (<code>solgeneos/config/solgeneosagent.properties</code>) must be copied to an external file server.</li></ol></li>
+      <li>Swap out the old appliances.<ol style="list-style-type: lower-alpha;"><li>Power-down the old appliances.<p>Enter the following commands in the CLI of both appliances:</p><p class="Code">solace1# power-down<br/>This command powers off the appliance and does not restart it afterwards<br/>Do you want to continue (y/n)? <b>y</b></p></li><li>Label all cables and disconnect them from the appliances.</li><li>Remove the old appliances from the rack and replace them with the new ones.</li><li>Reconnect all cables to the new appliances.</li><li>Power up the new appliances, and through the management console, use the <code>setup</code> Config command to perform basic network initialization (refer to <MadCap:xref href="../Appliance-Set-Up/Initializing-Appliances.htm">Initializing Appliances</MadCap:xref>).</li><li>If the appliances have HBAs installed, register the HBAs with the external array (refer to <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-External-Disk-Arrays.htm">Configuring External Disk Arrays for Guaranteed Messaging</MadCap:xref>), then use the <code>reload</code> command to restart them.</li></ol></li>
+      <li>Prepare the new appliances.<ol style="list-style-type: lower-alpha;"><li>Get the new appliance to run the same Solace PubSub+ version the old appliance ran. This may involve either an upgrade or a downgrade depending on what is shipped on the new hardware.<div class="Note"><ul><li>The tasks associated with upgrading the Solace PubSub+ software on an appliance are described in <MadCap:xref href="../Appliance-Upgrade/Appliance-Upgrade.htm">Upgrade Procedures</MadCap:xref>.</li><li>For information on downgrading appliance versions, refer to <MadCap:xref href="../Changing-Software-Loads.htm#system_and_software_maintenance_tasks_3138406956_208346">Changing Appliance Software</MadCap:xref>.</li></ul></div></li><li>Restore the old appliances' configuration databases from the external file server.
+			
+			<p class="Code">&lt;username&gt;@192.168.2.xx's password: &lt;password&gt;<br/>solace# copy scp://&lt;username&gt;@&lt;hostname&gt;/&lt;path-to-remote-directoryy&gt;/config_&lt;date&gt;.tar.gz<br/>solace# reload config config_&lt;date&gt;.tar.gz<br/>This command causes a reload of the system<br/>Do you want to continue (y/n)? <b>y</b></p><div class="Note"><ul><li>Restoring a configuration from a remote destination is discussed in <MadCap:xref href="../../Admin/Managing-Event-Broker-Configurations.htm">Managing Event Broker Configurations</MadCap:xref>. Pay particular attention to the need to restore product-keys and certificate files, which are not automatically included in the backup.</li><li>If replay logs are included in the configuration and the appliances are set up in the active-active redundancy model, you must do a second restart of the backup appliance after reloading its configuration. Set the active-standby redundancy role of the backup appliance to <code>backup</code> prior to the restart. After the restart, set the active-standby role back to <code>none</code>.</li></ul></div></li><li>If the appliance hosts Solace Geneos Agent, install Solace Geneos Agent and restore its properties file from the external file server. For information about installing and configuring Solace Geneos Agent, refer to <MadCap:xref href="../../Additional-Products/SolGeneos-Agent/SolGeneos-Overview.htm">Solace Geneos Overview</MadCap:xref>.</li><li>If the appliances use ADBs, theirs contents need to be restored. Enter the following commands in the CLI of the primary appliance:
+				
+				<p class="Code" xml:space="preserve">solace1# shell "Restore adb from external file server"<br/>login: support<br/>Password: &lt;password&gt;<br/>[support@solace ~]$ sudo su -
+[sudo] password for root: &lt;password&gt;
+[root@solace ~]# cd /usr/sw<br/>[root@solace sw]# tar xvfz /tmp/adb.&lt;hostname&gt;.tar.gz<br/>[root@solace sw]# scp &lt;username&gt;@&lt;hostname&gt;:/&lt;path-to-remote-dir&gt;/adb-&lt;hostname&gt;.tar.gz /tmp<br/>[root@solace sw]# exit
+logout
+[support@solace ~]$ exit
+logout</p><p>For the ADB contents to take effect, the primary appliance must be reloaded. Enter the following commands:</p><p class="Code">solace1# reload<br/>This command causes a reload of the system<br/>Do you want to continue (y/n)? y</p><p>Log back into the primary appliance and enable message spooling:</p><p class="Code">solace1(configure)# hardware message-spool<br/>solace1(configure/hardware/message-spool)# no shutdown primary</p><p>Then, on the backup appliance, enter the following CLI commands:</p><p class="Code">solace2(configure)# hardware message-spool<br/>solace2(configure/hardware/message-spool)# no shutdown backup</p></li><li>Re-enable message-backbone service. Enter the following commands in the CLI of both appliances:
+				
+				<p class="Code">solace1(configure)# service<br/>solace1(configure/service)# msg-backbone<br/>solace1(configure/service/msg-backbone)# no shutdown</p></li></ol></li>
+      <li style="font-weight: normal;">Verify Config-Sync is operationally "up" (that is, the event brokers are in-sync).<p> Enter the following commands in the CLI of both appliances:</p><p class="Code">dev2-22# show config-sync<br/>Admin Status                      : Enabled<br/>Oper Status                       : Up</p><p class="Note">If the operational status is other than "Up", then this should be corrected before proceeding. For information on how to use Config-Sync to keep event broker configurations synchronized, refer to <MadCap:xref href="../../Features/Config-Sync/Config-Sync-Overview.htm">Config-Sync Overview</MadCap:xref>.</p></li>
+    </ol>
+  </body>
+</html>

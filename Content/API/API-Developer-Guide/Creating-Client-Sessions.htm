@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><a name="Creating_ent_sessions"/>Creating Client Sessions</h1>
+    <p>A Session creates a single, client connection to a Solace PubSub+ event broker for sending and receiving messages. The Solace Message Format (SMF) is used to facilitate the communication between a client and an event broker, and this SMF communication is then encapsulated through a single TCP connection.</p>
+    <p class="Note">A Session can also use a shared memory transport when using the Inter‑Process Communications (IPC) capabilities of the Solace C API; for more information refer to <MadCap:xref href="../IPC/Configuring-IPC-Communications.htm">Configuring Inter-Process Communications</MadCap:xref>. However, shared memory transport and IPC capabilities are not available when using the C API for iOS applications.</p>
+    <p>By default, Sessions are unsecured—in a connected Session, the SMF data sent between a client and an event broker is transmitted as plain text. However, it is also possible to establish a secure Session that uses Transport Layer Security (TLS)/ Secure Sockets Layer (SSL) protocols so that the SMF data is encrypted. For information on how to configure specific TLS/SSL Session properties and establish a secure Session, refer to <MadCap:xref href="Creating-Secure-Sessions.htm">Creating Secure Sessions</MadCap:xref>.</p>
+    <p>Sessions are always created within a Context. The client application controls whether one or multiple Sessions are grouped under a processing Context. Once a Session is created within a given Context, it remains associated with that single Context until it is disposed.</p>
+    <p>To create a Session, the client application must provide the following:</p>
+    <ul>
+      <li><u>Session properties</u><![CDATA[
+        ]]><p>Properties used to customize the Session. Any Session property that is not explicitly supplied is set to default values. Although the defaults can be used in many cases, some client and event broker parameters require specific input from the client to establish a connection to a Message VPN on an  event broker. Refer to <MadCap:xref href="Session-Props-Required.htm">Session Properties Required to Establish a Connection</MadCap:xref>.</p></li>
+      <li><u>Specific Context instance</u><![CDATA[
+        ]]><p>For JCSMP, if you want to use a Context other than the default Context, you can pass in a specific Context to the factory method.</p></li>
+      <li><u>Session event callback or delegate</u><![CDATA[
+        ]]><p>For the Java RTO, C, or .NET APIs, a Session event callback or delegate must be specified when creating a Session. This callback or delegate is invoked for each Session event. Refer to <MadCap:xref href="Handling-Session-Events.htm">Handling Session Events</MadCap:xref>.</p><p>A Session event callback is optional for JCSMP.</p></li>
+      <li><u>Message receive callback or delegate</u><![CDATA[
+        ]]><p>For the Java RTO, C, or .NET APIs, a message event callback or delegate must be specified when creating a Session. This callback or delegate is invoked each time a Direct message is received through the Session. Refer to <MadCap:xref href="Receiving-Direct-Message.htm">Receiving Direct Messages</MadCap:xref>.</p><p>For JCSMP, Direct messages delivered to a Session are received through a <code>com.solacesystems.jcsmp.Consumer</code>, which is acquired by the client application after the Session is created.</p></li>
+    </ul>
+    <p>Once a Session is created, it must be connected. ForJCSMP, explicitly calling connect is recommended as best practice; although the API will automatically attempt to connect when requesting a producer or consumer. For the Java RTO, C, and .NET APIs, you must use the Session connect calls listed below.</p>
+    <table style="caption-side: top;width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Create a Session</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col width="75%" class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li>
+                <p class="Tbl_BodyCode">JCSMPFactory.createSession(...)</p>
+                <p class="Tbl_Body">Creates a Session.</p>
+              </li>
+            </ul>
+            <ul>
+              <li>
+                <p class="Tbl_BodyCode">JCSMPSession.getMessageConsumer(...)</p>
+                <p class="Tbl_Body">Registers a message callback.</p>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li>
+                <p class="Tbl_BodyCode">ContextHandle.createSessionForHandle(...)</p>
+                <p class="Tbl_Body">Creates a Session that is bound to an unbound SessionHandle.</p>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">solClient_session_create(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">IContext.CreateSession(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <ul>
+              <li>
+                <p class="Tbl_BodyCode">solace.SolclientFactory.createSession(...)</p>
+                <p>Creates a Session.</p>
+              </li>
+              <li>
+                <p class="Tbl_BodyCode">Session.on(...)</p>
+                <p class="Tbl_Body">Registers a session event listener, e.g.: for a MESSAGE event.</p>
+              </li>
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      <table style="caption-side: top;width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+        <caption valign="top" style="padding-bottom: 3pt;">
+          <p class="TblCaption">To Connect a Session</p>
+        </caption>
+        <col class="TableStyle-Table_Num-Column-Column1"/>
+        <col style="width: 75%;" class="TableStyle-Table_Num-Column-Column1"/>
+        <thead>
+          <tr class="TableStyle-Table_Num-Head-Header1">
+            <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+            <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Use</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="TableStyle-Table_Num-Body-Body1">
+            <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+              <p class="Tbl_Body">JCSMP</p>
+            </td>
+            <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+              <p class="Tbl_BodyCode">Session.connect()</p>
+            </td>
+          </tr>
+          <tr class="TableStyle-Table_Num-Body-Body1">
+            <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+              <p class="Tbl_Body">Java RTO</p>
+            </td>
+            <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+              <p class="Tbl_BodyCode">SessionHandle.connect()</p>
+            </td>
+          </tr>
+          <tr class="TableStyle-Table_Num-Body-Body1">
+            <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+              <p class="Tbl_Body">C</p>
+            </td>
+            <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+              <p class="Tbl_BodyCode">solClient_session_connect(...)</p>
+            </td>
+          </tr>
+          <tr class="TableStyle-Table_Num-Body-Body1">
+            <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+              <p class="Tbl_Body">.NET</p>
+            </td>
+            <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+              <p class="Tbl_BodyCode">ISession.Connect()</p>
+            </td>
+          </tr>
+          <tr class="TableStyle-Table_Num-Body-Body1">
+            <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+              <p class="Tbl_Body">JavaScript and Node.js</p>
+            </td>
+            <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+              <p class="Tbl_BodyCode">Session.connect()</p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </p>
+    <p>
+      <table style="caption-side: top;width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+        <caption valign="top" style="padding-bottom: 3pt;">
+          <p class="TblCaption">To Close a Session</p>
+        </caption>
+        <col class="TableStyle-Table_Num-Column-Column1"/>
+        <col width="75%" class="TableStyle-Table_Num-Column-Column1"/>
+        <thead>
+          <tr class="TableStyle-Table_Num-Head-Header1">
+            <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+            <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Call</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="TableStyle-Table_Num-Body-Body1">
+            <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+              <p class="Tbl_Body">JCSMP</p>
+            </td>
+            <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+              <p class="Tbl_BodyCode">Session.closeSession()</p>
+            </td>
+          </tr>
+          <tr class="TableStyle-Table_Num-Body-Body1">
+            <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+              <p class="Tbl_Body">Java RTO</p>
+            </td>
+            <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+              <ul>
+                <li>
+                  <p class="Tbl_BodyCode">SessionHandle.disconnect()</p>
+                </li>
+                <li>
+                  <p class="Tbl_BodyCode">SessionHandle.destroy()</p>
+                </li>
+              </ul>
+              <p class="Tbl_Body">Destroying the session is not required.</p>
+            </td>
+          </tr>
+          <tr class="TableStyle-Table_Num-Body-Body1">
+            <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+              <p class="Tbl_Body">C</p>
+            </td>
+            <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+              <ul>
+                <li>
+                  <p class="Tbl_BodyCode">solClient_session_disconnect(...)</p>
+                </li>
+                <li>
+                  <p class="Tbl_BodyCode">solClient_session_destroy(...)</p>
+                </li>
+              </ul>
+              <p class="Tbl_Body">Destroying the session is not required.</p>
+            </td>
+          </tr>
+          <tr class="TableStyle-Table_Num-Body-Body1">
+            <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+              <p class="Tbl_Body">.NET</p>
+            </td>
+            <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+              <ul>
+                <li>
+                  <p class="Tbl_BodyCode">ISession.Disconnect()</p>
+                </li>
+                <li>
+                  <p class="Tbl_BodyCode">ISession.Dispose()</p>
+                </li>
+              </ul>
+              <p class="Tbl_Body">Disposing of the session is not required.</p>
+            </td>
+          </tr>
+          <tr class="TableStyle-Table_Num-Body-Body1">
+            <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+              <p class="Tbl_Body">Javascript and Node.js</p>
+            </td>
+            <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+              <ul>
+                <li>
+                  <p class="Tbl_BodyCode">Session.disconnect()</p>
+                </li>
+                <li>
+                  <p class="Tbl_BodyCode">Session.dispose()</p>
+                </li>
+              </ul>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </p>
+    <div class="Note">
+      <ul>
+        <li>When using the Java RTO, C, JavaScript, Node.js, or .NET APIs, calling <code>destroy</code> or <code>dispose</code> to destroy a session object is not required. If the Session object is not destroyed, you may reconnect to it at a later time.</li>
+        <li>When using the C or .NET APIs, if a Session is destroyed/disposed or a global cleanup is performed, any buffered messages associated with that Session are discarded before it is disconnected. When a Context is destroyed/disposed, the buffered messages associated with every Session contained within that Context are discarded.</li>
+        <li>When using the Javascript or Node.js APIs, calling <code>dispose</code>  releases all resources associated with the session. Solace recommends calling <code>disconnect</code> first for a proper handshake with the event broker.</li>
+      </ul>
+    </div>
+    <h4>Related Samples</h4>
+    <p>For an example of how to create and connect Sessions, refer to the <code>DirectPubSub</code> sample for the Java, Java RTO, C, and .NET APIs, and the <code>TopicPublisher</code> sample for the JavaScript and Node.js APIs.</p>
+  </body>
+</html>

@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Cloud;Software"/>Step 4: Try a Publish-Subscribe / Fan-Out Message Exchange Pattern</h1>
+    <p>You've now completed <MadCap:xref href="try-me-cli-tool.htm">Step 3: Set up the [%=Product-Names.try-me-cli%] Tool</MadCap:xref> and learned a bit about Solly's Coffee.</p>
+    <p>In step 4, you'll use the <MadCap:variable name="Product-Names.try-me-cli"/> tool to take a closer look at the Solly's Coffee order management system (OMS) and set up a publish-subscribe message exchange to fan out event messages to many subscribers.</p>
+    <p class="with-rule">With publish-subscribe messaging, messages sent by the producer (publisher) can be processed multiple times by different consumers (subscribers). Each consumer receives its own copy of the message for processing, as illustrated in the following diagram:</p>
+    <p>
+      <img src="../../Resources/Images/Getting-Started/pub-sub-high-level.png" alt="Diagram illustrating the concepts described in the surrounding text"/>
+    </p>
+    <p>In the Solly's Coffee OMS we introduced in <a href="try-me-cli-tool.htm#Use_Case" target="_blank" class="link-internal">step 3</a>, the new order propagation event flow involving the OM-Order Details event uses publish-subscribe message exchange. The order details event is published by the Order Management application and received by both the Kitchen Floor and Barista Station applications.</p>
+    <h2>Set Up a Publish-Subscribe Message Exchange</h2>
+    <p>In this exercise we'll set up four applications, three subscribers and one publisher, and publish an event. The subscriber applications are Barista Station, Kitchen Floor, and Human Resources. The publisher is Order Management. After you complete these steps you'll have a message exchange pattern like the following animation:</p>
+    <p>
+      <img src="../../Resources/Images/Animated/pub-sub-pattern.gif" alt="Animation showing a publish-subscribe message exchange"/>
+    </p>
+    <p>To set up your applications and publish an event, perform these steps:</p>
+    <ol>
+      <li>Open four command-line terminal windows, one for each application.</li>
+      <li>In terminal 1, subscribe the <b>Barista Station</b> application to all events from the country <b>ca</b> from all source types. Enter the following command:</li>
+      <pre>stm receive --topic "coffeeshop/order/details/v1/*/ca/&gt;" --client-name "Barista Station" --output-mode full</pre>
+      <p>You should see the following result:</p>
+      <pre>ℹ  info      info: loading 'receive' command from configuration 'stm-cli-config.json'
+…  awaiting  connecting to broker [ws://localhost:8008, vpn: default, username: default, password: ******]
+ℹ  info      info: client name: Barista Station
+✔  success   success: === Barista Station successfully connected and ready to receive events. ===
+ℹ  info      info: subscribing to coffeeshop/order/details/v1/*/ca/&gt;
+ℹ  info      info: press Ctrl-C to exit
+✔  success   success: successfully subscribed to topic: coffeeshop/order/details/v1/*/ca/&gt;</pre>
+      <li>In terminal 2, subscribe the <b>Kitchen Floor</b> application to all events from the country <b>ca</b> with from all source types. Enter the following command: </li>
+      <pre>stm receive --topic "coffeeshop/order/details/v1/*/ca/&gt;" --client-name "Kitchen Floor"</pre>
+      <p>You should see the following result:</p>
+      <pre>ℹ  info: loading 'receive' command from configuration 'stm-cli-config.json'
+…  connecting to broker [ws://localhost:8008, vpn: default, username: default, password: ******]
+ℹ  info: client name: Kitchen Floor
+✔  success: === Kitchen Floor successfully connected and ready to receive events. ===
+ℹ  info: subscribing to coffeeshop/order/details/v1/*/ca/&gt;
+ℹ  info: press Ctrl-C to exit
+✔  success: successfully subscribed to topic: coffeeshop/order/details/v1/*/ca/&gt;</pre>
+      <li>In terminal 3, subscribe the <b>Human Resources</b> application to all staff arrival events in the country <b>ca</b>. Enter the following command:</li>
+      <pre>stm receive --topic "coffeeshop/staff/arrive/v2/*/ca/&gt;" --client-name "Human Resources"</pre>
+      <p>You should see the following result:</p>
+      <pre>ℹ  info      info: loading 'receive' command from configuration 'stm-cli-config.json'
+…  awaiting  connecting to broker [ws://localhost:8008, vpn: default, username: default, password: ******]
+ℹ  info      info: client name: Human Resources
+✔  success   success: === Human Resources successfully connected and ready to receive events. ===
+ℹ  info      info: subscribing to coffeeshop/staff/arrive/v2/*/ca/&gt;
+ℹ  info      info: press Ctrl-C to exit
+✔  success   success: successfully subscribed to topic: coffeeshop/staff/arrive/v2/*/ca/&gt;</pre>
+      <li>Before configuring the publisher, create a message payload to publish in JSON format. Copy and paste the following text into a text editor and save the file as <code>order.json</code>.
+<pre>{
+  "source": "mobile",
+  "device": "app-android",
+  "country" : "Canada",
+  "region" : "Ontario",
+  "storeID" : 437,
+  "requestId": 44334,
+  "customer": {
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "phone": "123-456-7890"
+  },
+  "items": [
+    {
+      "productID": "COF001",
+      "productName": "Americano",
+      "quantity": 2,
+      "size": "Medium",
+      "options": ["Extra Shot", "Whipped Cream"]
+    },
+    {
+      "productID": "PST001",
+      "productName": "Chocolate Croissant",
+      "quantity": 1
+    }
+  ],
+  "totalPrice": 12.50,
+  "pickupTime": "2024-01-05T14:30:00",
+  "specialInstructions": "Please make it extra hot."
+}</pre></li>
+      <li>In terminal 4, publish an event with the message payload you just created from the <b>Order Management</b> application with the topic <code>coffeeshop/order/details/v1/{mobile}/{ca}/{437}/{44334}</code>.
+ Enter the following command:
+				<pre>stm send --topic coffeeshop/order/details/v1/mobile/ca/437/44334 --file order.json --client-name "Order Management"</pre><p>You should see the following result:</p><pre>ℹ  info      info: loading 'send' command from configuration 'stm-cli-config.json'
+…  waiting   connecting to broker [ws://localhost:8008, vpn: default, username: default, password: ******]
+ℹ  info      info: client name: Order Management
+✔  success   success: === Order Management successfully connected and ready to publish events. ===
+…  waiting   publishing...
+✔  success   success: message published to topic - [Topic coffeeshop/order/details/v1/mobile/ca/437/44334], type - TEXT
+ℹ  info      info: Message Properties
+Destination:                            [Topic coffeeshop/order/details/v1/mobile/ca/437/44334]
+ℹ  info      info: Message Payload (bytes): 659
+✔  success   success: disconnecting from Solace PubSub+ Event Broker...
+✔  success   success: disconnected
+✔  success   success: exiting...</pre></li>
+    </ol>
+    <p>Now, let's check the subscribers to see if they received the event published by the <b>Order Management</b> application.</p>
+    <p>To check your subscribers, perform these steps:</p>
+    <ol>
+      <li>Check the <b>Barista Station</b> application in terminal 1. The following message should appear: </li>
+      <pre>✔  success: message Received - [Topic coffeeshop/order/details/v1/mobile/ca/437/44334], type - TEXT
+ℹ  info: Message Properties
+Destination:                            [Topic coffeeshop/order/details/v1/mobile/ca/437/44334]
+Class Of Service:                       COS1
+DeliveryMode:                           DIRECT
+Message Id:                             1
+DMQ Eligible
+Binary Attachment:                      len=664
+ℹ  info: Message Payload:
+{
+  source: "mobile",
+  device: "app-android",
+  country: "Canada",
+  region: "Ontario",
+  storeID: 437,
+  requestId: 44334,
+  customer: {
+    name: "John Doe",
+    email: "john.doe@example.com",
+    phone: "123-456-7890"
+  },
+  items: [
+    {
+      productID: "COF001",
+      productName: "Americano",
+      quantity: 2,
+      size: "Medium",
+      options: [
+        "Extra Shot",
+        "Whipped Cream"
+      ]
+    },
+    {
+      productID: "PST001",
+      productName: "Chocolate Croissant",
+      quantity: 1
+    }
+  ],
+  totalPrice: 12.5,
+  pickupTime: "2024-01-05T14:30:00",
+  specialInstructions: "Please make it extra hot."
+}</pre>
+      <li>Check the <b>Kitchen Floor</b> application in terminal 2. The following message should appear:</li>
+      <pre>✔  success   success: message Received - [Topic coffeeshop/order/details/v1/mobile/ca/437/44334], type - TEXT
+ℹ  info      info: Message Properties
+Destination:                            [Topic coffeeshop/order/details/v1/mobile/ca/437/44334]
+ℹ  info      info: Message Payload (bytes): 659</pre>
+      <li>Check the <b>Human Resources</b> application in terminal 3. No message should appear because the subscription does not match the topic of the published message.</li>
+      <li>
+        <p>Press Control+C (on Windows and Linux) or Command+C (on Mac), to stop the applications.
+            </p>
+      </li>
+    </ol>
+    <p>You've now seen the power of publish-subscribe with a Solace event broker.  A published event can be delivered to multiple consumers based on the topic subscriptions they have defined.</p>
+    <h2 class="with-rule">Tutorial Steps</h2>
+    <p>You've completed the fourth step in the tutorial. Click the link to the next lesson to continue.</p>
+    <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');border-left-style: solid;border-left-width: 1px;border-left-color: #e1e1e1;border-right-style: solid;border-right-width: 1px;border-right-color: #e1e1e1;border-top-style: solid;border-top-width: 1px;border-top-color: #e1e1e1;border-bottom-style: solid;border-bottom-width: 1px;border-bottom-color: #e1e1e1;margin-left: 0;margin-right: auto;" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Step</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/num1.png" alt="Step 1"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="font-weight: bold;">Set up Your First Event Broker - Complete</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/num2.png" alt="Step 2"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="font-weight: bold;">Solace EDA Basics - Complete</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/num3.png" alt="Step 3"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="font-weight: bold;">Set up the  <MadCap:variable name="Product-Names.try-me-cli"/> Tool - Complete</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/num4.png" alt="Step 4"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p style="font-weight: bold;">Try a Publish-Subscribe Message Exchange Pattern - Complete</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/num5.png" alt="Step 5"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p style="font-weight: bold;">Try a Request-Reply Message Exchange Pattern  - <a href="request-reply-pattern.htm" class="link-internal">Next Lesson</a></p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/num6.png" alt="Step 6"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="font-weight: bold;">Explore Consumer Scaling Patterns</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/complete.png" alt=""/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="font-weight: bold;">Next Steps</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>You can return to the main <a href="../Getting-Started-Try-Broker.htm" class="link-internal">Tutorial page</a> at any time.</p>
+  </body>
+</html>

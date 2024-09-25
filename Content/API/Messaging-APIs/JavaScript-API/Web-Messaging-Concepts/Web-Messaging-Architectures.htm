@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" xml:lang="en-us">
+  <head>
+    <link href="../../../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+    <title/>
+  </head>
+  <body>
+    <h1>Web Messaging Architectures</h1>
+    <p>This section describes the architecture of typical Solace Web Messaging systems.</p>
+    <h2 class="with-rule"><a name="Internal"/>Internal Web Application Deployment Architecture</h2>
+    <p>In the following figure, server applications within the data center communicate with each other through an internal messaging system—the Solace PubSub+ messaging infrastructure—in the normal distributed systems manner. These applications can be written in Java, .NET, C++, or other convenient languages, and the messaging system provides services such as pub/sub, request/reply, and various messaging qualities of service such as persistent and non-persistent messaging.</p>
+    <p>
+      <img src="Images/Web Messaging Architectures.png" style="visibility: visible;mso-wrap-style: square;max-width: 355px;" MadCap:mediastyle="@media print { max-width: 355px; }" alt=""/>
+    </p>
+    <p>Desktop users can use traditional thick GUI in .NET or Java to interact with the back end server applications to request information, perform transactions, and receive real-time streaming updates.</p>
+    <p>With Web Messaging, mobile and browser-based applications can also connect directly to this same messaging platform without requiring an additional web fan-out tier between the browser/mobile and the internal MOM. This allows organizations to take advantage of the many benefits of web UI technologies, such as zero-footprint application install and ubiquitous deployment, within their organization using a clean and simple architecture.</p>
+    <p>The user accesses the web application by clicking a link or entering a URL on their browser or starting a mobile application. For browser-based applications, the browser performs HTTP GET operations to download the web application (for example, JavaScript). The web application and any static content are served from a standard web server and not by the event broker to allow maximum flexibility in managing and deploying applications.</p>
+    <p>The web application in the browser or mobile device uses the JavaScript API to connect and authenticate to the event broker, and all real-time communication with the server applications goes through the event broker not the web server.</p>
+    <p>The JavaScript API automatically uses the most efficient communication transport allowed by both internet intermediaries and the browser/mobile without needing any intervention from the application. See <MadCap:xref href="#Web-Transport-Protocols">Web Transport Protocols</MadCap:xref> more information on web transports.</p>
+    <p>Since Solace Web Messaging supports Cross Origin Resource Sharing (CORS) and Adobe’s cross-domain policy, the web server that downloads the application need not share the same DNS name as the event broker, and no reverse proxy is needed between the browser/mobile and the event broker. See <MadCap:xref href="#CORS">Cross Origin Resource Sharing – CORS</MadCap:xref> for more information on CORS and Same Origin Policy.</p>
+    <p>Once authenticated, the web application uses its JavaScript API to communicate directly with the event broker to register topic subscriptions and receive messages published on those topics from any publisher.</p>
+    <p>The same JavaScript is used to send a request to back end services and receive the reply to this request.</p>
+    <h2 class="with-rule"><a name="Internet"/>Internet-Based Web Application Deployment Architecture</h2>
+    <p>This section describes how internet-based browser and mobile users can access internal applications.</p>
+    <p>As shown in the following figure, external browser users download web applications over the internet by clicking a link or typing in a URL. The web application is dynamically served by a web server typically within the Demilitarized Zone (DMZ) of Company A. These web applications use a Solace Web messaging API to connect to an event broker inside Company A, and subscribe to topics of their choice to receive streaming updates or engage in a request/reply interaction with some back end application in the data center of Company A. This real-time streaming connection may need to pass through various internet intermediaries such as HTTP proxies, firewalls, and HTTP load balancers. This is all handled by the Solace JavaScript API without intervention by the application developer.</p>
+    <p>
+      <img src="Images/Web Messaging Architectures_1.png" style="visibility: visible;mso-wrap-style: square;width: 480px;height: 466px;" alt=""/>
+    </p>
+    <p>Although not technically required, event brokers providing messaging services to external/internet users are typically deployed within the DMZ as a result of enterprise security practices. The DMZ appliances are then configured to be peered with the intranet event brokers so that communication can be both automatically and securely performed between server-based applications and external web applications.</p>
+    <p>Multiple event brokers are typically deployed within the DMZ for fault tolerance and load balancing purposes. <MadCap:xref href="#Session-Load-Balancing">Session Load Balancing to DMZ Appliances</MadCap:xref> describes how to load balance sessions to event brokers and <MadCap:xref href="Network-Level-DMZ-Connectivity.htm">Network-Level DMZ Connectivity Architecture</MadCap:xref> explains network architectures used in the DMZ.</p>
+    <p>The topic routing protocols that run between the event brokers allow automatic discovery and dynamic propagation of client topic subscriptions for both publish/subscribe and peer-to-peer message exchanges. Thus, the only messages flowing from the intranet event brokers to the DMZ event brokers are those for which there is at least one interested internet user, which reduces total bandwidth requirements and load.</p>
+    <p>Messages are fanned out to internet users by the DMZ event brokers based on subscription interest. Similarly, messages from internet users can be sent to internal applications (typically a request/reply message exchange pattern) and these messages are routed (and perhaps load balanced) by the event brokers to the correct server application based on the topic in the message, with the reply routed back to the requesting internet user.</p>
+    <p>If transport security is required by the web application, Secure Sockets Layer (SSL) encryption is performed by the Web messaging API using the facilities of the browser or mobile operating system. This SSL connection is typically terminated at the external firewall of Company A. This allows all internet security (for example, certificate management, Denial of Service (DoS) attack prevention, access controls) to be managed from a single point in the infrastructure (because messaging is typically just one of many internet services).</p>
+    <h2 class="with-rule"><a name="Using"/>Using Solace Only for Web Messaging</h2>
+    <p>The following figure shows how Solace Web Messaging can be used with an existing non-Solace intranet messaging system. </p>
+    <p>
+      <img src="Images/Web Messaging Architectures_2.png" style="visibility: visible;mso-wrap-style: square;width: 463px;height: 386px;" alt=""/>
+    </p>
+    <p>In this case, a software messaging adaptor or bridge must be implemented that uses the messaging API of the internal messaging system on one side, and a Solace messaging API on the other side, to bridge communications between the two messaging systems. Web applications communicate with the Solace DMZ event brokers using Solace JavaScript APIs. The messaging adaptor transforms messages to and from the internal messaging system to allow bi-directional communication.</p>
+    <h2 class="with-rule"><a name="CORS"/>Cross Origin Resource Sharing – CORS</h2>
+    <p>Cross Origin Resource Sharing (CORS - <a href="http://en.wikipedia.org/wiki/Cross-origin_resource_sharing" class="link-internal">http://en.wikipedia.org/wiki/Cross-origin_resource_sharing</a>) is a web browser technology specification that defines ways for a web server or a device like the event broker to allow its resources to be accessed by a web page that was served from a different domain/web site. It provides a way to create a web application that uses the resources of multiple web sites in a Web2.0 manner.</p>
+    <p>The event broker supports CORS for JavaScript. CORS support on the event broker allows a web application retrieved from a web server using one URL to access the event broker using a completely different and unrelated URL without requiring an intermediate reverse HTTP proxy, as shown in the figure in <MadCap:xref href="#Internal">Internal Web Application Deployment Architecture</MadCap:xref>.</p>
+    <p>Without CORS support, browsers adhere to the Same Origin Policy (<a href="http://en.wikipedia.org/wiki/Same_origin_policy" class="link-internal">http://en.wikipedia.org/wiki/Same_origin_policy</a>) which prevents a web application served from one (web) site from accessing resources of a different (web) site due to security concerns.</p>
+    <h2 class="with-rule"><a name="Web-Transport-Protocols"/>Web Transport Protocols</h2>
+    <p>Raw TCP cannot be used from browsers and cannot pass through HTTP proxies and other internet intermediaries. HTTP must be used in these situations. Before the advent of WebSockets, the HTTP protocol and its support in browsers and internet intermediaries did not natively support asynchronous, bidirectional communication between a web application and a web server, as is required by messaging applications. HTTP only supports client initiated request/reply. Various techniques need to be applied to be able to support asynchronous bidirectional communication over an HTTP transport. These techniques vary based on the client runtime and feature support in intermediaries. Solace Web Messaging handles this automatically for applications so application developers can be free from needing to worry about such transport complexities and can instead focus on their business application.</p>
+    <p>Solace Web Messaging automatically determines the most efficient web transport protocol to use to carry messages to/from a browser or mobile application when the session is connected by the application. The most efficient transport protocol used in any particular situation depends on a combination of the runtime container (browser type and version, mobile framework, mobile OS) and any internet intermediaries (proxies, load balancers, firewalls). Internet Explorer 8 and 9, for example, do not support the WebSocket protocol for JavaScript applications so only a Comet/Long Polling transport can be used. Chrome, Safari, and other modern browsers allow the Solace API to use WebSockets to provide a more efficient transport from the event broker to the browser/mobile.</p>
+    <p>The “best” transport to use is automatically determined by the JavaScript API without the application needing to be involved, although the application can choose to influence this using the <code>transportProtocol</code> session property. Applications can determine which transport protocol is currently in use by a session by querying the <code>transportProtocolInUse</code> session property. Similarly, the protocol in use for a given connection can be viewed from the event broker using the <code>show client &lt;name&gt; web-transport</code> CLI command.</p>
+    <p>The web transports supported by Solace Web Messaging are listed below in order of most efficient to least efficient. In all cases, the transport channel can be SSL encrypted or clear text as directed by the application when the session is established.</p>
+    <ul>
+      <li>WebSockets – WebSockets is a wireline protocol defined in IETF <a href="http://tools.ietf.org/html/rfc6455" class="link-internal">RFC 6455</a> as well as a browser API defined by <a href="http://www.w3.org/TR/2011/WD-websockets-20110419/" class="link-internal">W3C</a>. Applications using Solace web APIs do not use the WebSocket API, rather the Solace API uses the browser’s WebSocket API (when available) to produce the WebSocket wireline protocol interactions with the event broker and applications use a Solace Web Messaging API. WebSockets is the most efficient and lowest latency web transport. Guaranteed messaging requires the use of Websockets. Direct messaging can use any of the listed web transports.</li>
+    </ul>
+    <ul>
+      <li>HTTP Streaming – HTTP Streaming is a form of <a href="http://en.wikipedia.org/wiki/Push_technology#Long_polling" class="link-internal">long polling</a> where HTTP Chunked Transfer Coding (see <a href="http://tools.ietf.org/html/rfc2616" class="link-internal">RFC 2616</a>) is used by the event broker to send a stream of Solace messages from the event broker to the web client without needing to terminate the HTTP response. It is therefore more efficient than Comet for streaming data to web clients.</li>
+    </ul>
+    <ul>
+      <li>HTTP Comet Binary – HTTP Comet is a simpler form of long polling, which is used when a more efficient transport is not available. In this mode, multiple Solace messages can be packed in a single HTTP interaction however the HTTP reply from the event broker is not long running as with HTTP Streaming – it is terminated with each group of messages sent to the web client and a new HTTP long poll is applied by the API. In the Binary mode, the payload remains as binary data for increased efficiency.</li>
+    </ul>
+    <ul>
+      <li>HTTP Comet Base64 – This mode of Comet is the same as HTTP Comet Binary except that the HTTP payload is Base64 encoded due to the fact that some older browsers do not support binary HTTP payloads.</li>
+    </ul>
+    <p>Support for the different transport modes across Solace messaging APIs is shown in the following table.</p>
+    <table style="mc-table-style: url('../../../../Resources/TableStyles/Table_Num.css');margin-left: 0;margin-right: auto;" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 69px;"/>
+      <col style="width: 115px;" class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 5rem;"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" colspan="2" rowspan="2" style="border-left-style: none;border-left-width: 1px;border-right-style: solid;border-right-width: 2px;border-right-color: #e1e1e1;border-top-style: none;border-top-width: 1px;border-bottom-style: solid;border-bottom-width: 2px;border-bottom-color: #e1e1e1;padding-left: 6pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;">
+            <p> </p>
+          </td>
+          <th colspan="4" class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="TableHeader" style="font-weight: bold;">Web Transport</p>
+          </th>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>WebSockets</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>HTTP Streaming</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>HTTP Comet Binary</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>HTTP Comet Base64</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td rowspan="7" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="TableHeader" style="font-weight: bold;">Web API</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>JavaScript</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="vertical-align: middle;padding-left: 6pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;border-right-style: solid;border-right-width: 2px;border-right-color: #e1e1e1;text-align: center;">
+            <p style="text-align: center;">
+              <img src="../../../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="text-align: center;">
+            <p style="text-align: center;">
+              <img src="../../../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="text-align: center;">
+            <p style="text-align: center;">
+              <img src="../../../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1" style="text-align: center;">
+            <p style="text-align: center;">
+              <img src="../../../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1" style="text-align: center;">
+            <p style="text-align: center;">
+              <img src="../../../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1" style="text-align: center;"> </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1" style="text-align: center;"> </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1" style="text-align: center;"> </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>iOS</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="text-align: center;">
+            <p style="text-align: center;">
+              <img src="../../../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="text-align: center;">
+            <p style="text-align: center;">
+              <img src="../../../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="text-align: center;">
+            <p style="text-align: center;">
+              <img src="../../../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1" style="text-align: center;">
+            <p> </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="text-align: center;">
+            <p style="text-align: center;">
+              <img src="../../../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="text-align: center;">
+            <p style="text-align: center;">
+              <img src="../../../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="text-align: center;">
+            <p style="text-align: center;">
+              <img src="../../../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1" style="text-align: center;">
+            <p> </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="text-align: center;">
+            <p style="text-align: center;">
+              <img src="../../../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="text-align: center;">
+            <p style="text-align: center;">
+              <img src="../../../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="text-align: center;">
+            <p style="text-align: center;">
+              <img src="../../../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1" style="text-align: center;">
+            <p> </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1" style="text-align: center;">
+            <p style="text-align: center;">
+              <img src="../../../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1" style="text-align: center;">
+            <img src="../../../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1" style="text-align: center;">
+            <img src="../../../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1" style="text-align: center;"> </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">JCSMP</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1" style="text-align: center;">
+            <img src="../../../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1" style="text-align: center;"> </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1" style="text-align: center;"> </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1" style="text-align: center;"> </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="Sharing-Arch"/>Multiple Applications Sharing the Same Infrastructure</h2>
+    <p>In some cases, especially for private cloud infrastructures, there are several distinct applications that require web messaging. In this case, as shown in the following figure, service can be provided to these multiple applications on the same shared Solace infrastructure using a feature called Message Virtual Private Networks (VPNs).</p>
+    <p>Message VPNs provide a method of virtualizing an event broker so that multiple application groups can share the same physical event broker while still being isolated from each other, like Virtual Local Area Networks (VLANs) on an Ethernet switch.</p>
+    <p>The following figure shows an example of three applications with server applications and web clients sharing the same DMZ and internal messaging infrastructure. Each application is deployed within its own Solace Message VPN which spans both the DMZ event brokers and the internal event brokers as a result of the Solace routing protocols. </p>
+    <p>
+      <img src="Images/Multiple Applications Sharing.png" style="visibility: visible;mso-wrap-style: square;width: 360px;height: 394px;" alt=""/>
+    </p>
+    <p>Back end server applications connect into their own Message VPN and offer streaming data or request/reply services using topics that are only accessible by applications in this same Message VPN.</p>
+    <p>When web applications establish a session with an event broker in the DMZ, they provide their Message VPN name along with their username and password. This locks them into a virtual partition of the event broker specifically for their application, allowing them to communicate only with the back end processes that are providing service for this application but no others.</p>
+    <h2 class="with-rule"><a name="Session-Load-Balancing"/>Session Load Balancing to DMZ Appliances</h2>
+    <p>The format of URLs used for Web Messaging is completely determined by the system architect.</p>
+    <p>When Web Messaging is deployed for access by browser or mobile applications within an enterprise, as in <MadCap:xref href="#Internal">Internal Web Application Deployment Architecture</MadCap:xref>, there are no additional considerations.</p>
+    <p>When Web Messaging is deployed for internet access, as in <MadCap:xref href="#Internet">Internet-Based Web Application Deployment Architecture</MadCap:xref>, information about these URLs must be configured on both the event broker and the HTTP load balancer to allow the system to </p>
+    <ul style="list-style-type: disc;margin-left: 18pt;">
+      <li style="list-style-type: disc;">load balance new Web Messaging sessions among the several event brokers in the DMZ, and</li>
+      <li style="list-style-type: disc;">ensure that HTTP requests from established messaging sessions are routed in a “sticky” manner to the same event broker that received the session initiation request.</li>
+    </ul>
+    <p>The event broker is configured via the <code>web-url-suffix</code> command. Example configuration for an F5 Big IP firewall is provided in <MadCap:xref href="Using-F5-Big-IP-as-a-Load.htm">Using F5 Big-IP as a Load Balancer for External Internet Connectivity</MadCap:xref>.</p>
+    <p>The URLs to consider and associated rules are:</p>
+    <ol style="list-style-type: decimal;margin-left: 18pt;" start="1">
+      <li>URL used to get the web application
+                <p>Format: https://&lt;hostname&gt;/&lt;download-my-app-from-server&gt;</p><p>This URL is the one used by the user to “GET” the browser application. Because the event broker does not serve static content to browsers, this URL must be served by a separate web server as shown in the figure of <MadCap:xref href="#Internal">Internal Web Application Deployment Architecture</MadCap:xref>. This URL does not apply for non-browser applications. This URL is visible to the application user.<br/>For example: https://my-company.com/download-my-sdp-application</p></li>
+      <li>URL used to initiate the messaging session<br/>Format: https://&lt;hostname&gt;/&lt;application&gt; <br/>This URL is not seen by the application user, but is provided by your web application to the JavaScript API through the url session property. This URL identifies a set of possible event brokers to connect to. <br/>Configuration of the external load balancer for this URL must allow incoming sessions to be load balanced among the IP interfaces of applicable DMZ event brokers for that application. For example, referring to the figure in <MadCap:xref href="Network-Level-DMZ-Connectivity.htm">Network-Level DMZ Connectivity Architecture</MadCap:xref>, to load balance sessions for &lt;application1&gt; among both event brokers in the DMZ, this URL needs to be mapped with a load balanced distribution method to all of (IP-2 to IP-5) and (IP-7 to IP-10). <br/>For example: https://my-company.com/my-sdp-application</li>
+      <li>URL used after messaging session initiation
+                <p>Format: <code>https://&lt;hostname&gt;/&lt;application&gt;&lt;web-url-suffix&gt;</code> <br/>This URL is not seen by the application user or your application. It is used by the JavaScript API to send subsequent HTTP requests to the specific event broker that received its session initiation request. This provides a “sticky” communication between this API session and the particular event broker. <br/>The “web-url-suffix” value is configured on each DMZ event broker using the “web-url-suffix” command within the “web-transport” configuration. Cookies and other such mechanisms are not used to provide session stickiness since these can be disabled in browsers. <br/>The web-url-suffix configuration rules are:</p><ol style="list-style-type: lower-alpha;"><li>The “web-url-suffix” value must uniquely identify a particular event broker among all other DMZ appliances (for example, the hostname of the appliance) to effect session affinity.</li><li>The suffix can be any valid URL suffix syntax, but for convenience and readability is often in the form of a URL parameter (for example, “<code>?appliance=Prod-DMZ-123</code>”).</li><li>As part of the session initiation process, this suffix value is returned by the event broker to the JavaScript API and then used by the API in subsequent HTTP requests for this API session. No application involvement is required. </li><li>This URL must be configured on the external firewall to map to only the IP addresses of this particular event broker, but it can map to any or all of the externally-facing IP interfaces. For example, referring to the figure in <MadCap:xref href="Network-Level-DMZ-Connectivity.htm">Network-Level DMZ Connectivity Architecture</MadCap:xref>, the “web-url-suffix” for the left-most appliance could map to all of IP2 through IP5.</li><p>For example: <code>https://my-company.com/my-sdp-application?appliance=Prod-DMZ-158</code></p></ol></li>
+    </ol>
+    <p>In summary, the “web-url-suffix” is:</p>
+    <ul>
+      <li>determined by the system architect to uniquely identify an event broker in the DMZ</li>
+      <li>configured on the event broker through the “web-url-suffix” command</li>
+      <li>configured on the external firewall along with the application URL root to map to the IP addresses of the specific event broker</li>
+      <li>completely invisible to the application</li>
+    </ul>
+  </body>
+</html>

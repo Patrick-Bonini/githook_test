@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Delivering Messages to Single Consumers</h1>
+    <p>Solace PubSub+ event brokers support a Deliver‑To‑One feature that allows a producer to specify that if a message it sends matches subscriptions for multiple Direct Transport clients on an event broker, it can only be delivered to at most one of them. This feature is useful for implementing load balancing across a group of consumers.</p>
+    <p>The Deliver-To-One feature has the following constraints when used with JMS:</p>
+    <ul>
+      <li>The Deliver-To-One feature can only be specified for Non-Persistent messages sent using the Direct Transport delivery mode.</li>
+      <li>The group of Deliver-To-One consumers must be bound to non-durable endpoints using Direct Transport with a single consumer per connection.</li>
+    </ul>
+    <p>The Deliver-To-One behavior for producers is specified by the <code>deliver-to-one</code> JNDI Connection Factory property. If this property is set to <code>true</code>, producers for that connection send all messages using the Deliver-To-One feature.</p>
+    <p>However, it is possible to enable or disable the feature on a per-message basis using the <code>SOLACE_JMS_PROP_DELIVER_TO_ONE</code> property. This message property overrides the Connection Factory setting. For example, to ensure that a message is sent using the Deliver-To-One feature, the message property can be set as follows:</p>
+    <pre>TextMessage message = session.createTextMessage("text message");    message.setBooleanProperty(SupportedProperty.SOLACE_JMS_PROP_DELIVER_TO_ONE, true);</pre>
+    <p>By default, the Deliver-To-One override is enabled in the Connection Factory, and consumers created with that default Connection Factory setting connect to the event broker using a Deliver-To-One override. As a result, those consumers receive all matching messages, regardless of whether or not the producer sends the message using the Deliver-To-One feature.</p>
+    <p>To enable the Deliver-To-One feature for non‑durable consumers using Direct Transport, use SolAdmin or the CLI to disable the DTO Override property (<code>deliver-to-one-override</code>) for the Connection Factory. </p>
+    <p>It is also possible to set delivery priorities for each consumer. Priority levels range from 1 (the highest priority) to 4 (the lowest priority). When a Deliver-To-One message is published, the client with the highest priority receives the message. If multiple clients have the same priority, the client is chosen in a round-robin fashion. The priority is specified by the <code>subscriber-local-priority or subscriber-network-priority</code> JNDI Connection Factory properties.</p>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">Network DTO priority subscription flags are currently ignored by the Solace JNDI. They are reserved for future development.</p>
+    <p>Deliver-To-One is not supported for durable consumers or non-durable consumers using Guaranteed transport. These consumers always connect using a Deliver-To-One override.</p>
+  </body>
+</html>

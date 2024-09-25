@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Considerations for Replicated Event Broker Deployments</h1>
+    <p>The Solace Replication facility provides a data center redundancy and disaster recovery solution for Solace PubSub+. When Replication is implemented, Guaranteed messages that are published to Message VPNs with Replication active states at one site are automatically propagated to matching Message VPNs at a mate Replication site. Therefore, in a scenario where a serious service outage occurs for one Replication site, a service switch-over to the operational mate Replication site can be performed with minimal or no message loss.</p>
+    <p style="margin-top: 0pt;margin-bottom: 0pt;font-family: Helvetica;font-weight: normal;font-style: normal;letter-spacing: 0em;line-height: 13pt;text-decoration: none;">This section provides information on special considerations if your JMS applications are to be used with event brokers using the Replication facility.</p>
+    <ul>
+      <li style="margin-top: 0pt;margin-bottom: 0pt;font-family: Helvetica;font-weight: normal;font-style: normal;letter-spacing: 0em;line-height: 13pt;text-decoration: none;">
+        <MadCap:xref href="#solace_jms_overview_950181419_244227">Messaging API Versions</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#solace_jms_overview_950181419_244233">Host Lists</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#solace_jms_overview_950181419_244238">Automatic Reconnects</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="solace_jms_overview_950181419_244227"/>Messaging API Versions</h2>
+    <p>It is strongly recommended that Replication-aware applications use release 7.1.2  or later Solace enterprise messaging APIs. These versions support automatic handling of replication failovers. When a replication failover occurs, the API properly handles any in-progress messages or transactions. </p>
+    <h2 class="with-rule"><a name="solace_jms_overview_950181419_244233"/>Host Lists</h2>
+    <p>Applications should be configured with a host list of two addresses, one for the Guaranteed Messaging-enabled virtual router at each site. The addresses can be either IP addresses or host names.</p>
+    <p>When the application attempts to connect to a standby event broker, the connection will be rejected by the event broker. After the specified number of retries per host, the API will attempt to connect to the other host in the host list. Normally, for an application to be used with Replication, if a connection fails for one host it would be good to immediately attempt to connect to the other host before retrying the same host. Therefore, setting a connect retries per host of 1 is recommended.</p>
+    <p class="Note">Host lists should not be used if you are using an active/active Replication deployment, where clients are consuming messages from endpoints on the Replication active Message VPN or on its mate Replication standby Message VPN. For such a deployment, each consuming client should only attempt to connect to the Replication active Message VPN on one host or the Replication standby Message VPN on its mate.</p>
+    <h2 class="with-rule"><a name="solace_jms_overview_950181419_244238"/>Automatic Reconnects</h2>
+    <p>When using a Solace messaging API’s automatic reconnect feature, it should be noted that the duration of a Replication failover will be minutes or hours because operator intervention is required for the switch‑over. Therefore, it is recommended to setting the number of reconnect retries to -1, which allows a client application to attempt to reconnect indefinitely.</p>
+    <h4>Related Samples</h4>
+    <p>For an example of how to handle Replication reconnects, see the <code>Replication</code> sample that is included with the Solace messaging API that you are using.</p>
+  </body>
+</html>

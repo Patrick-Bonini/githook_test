@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Replication Best Practices</h1>
+    <p>This section  provides recommendations for configuring data center replication. Before you read these best practices, ensure that you also understand the replication concepts described in <MadCap:xref href="Data-Center-Replication-Overview.htm">Replication Overview</MadCap:xref>. In addition, you should also understand how the use of transactions and replication modes affect the replication process. These concepts are discussed in detail in <MadCap:xref href="How-Replication-Works.htm">How Replication Works</MadCap:xref> and <MadCap:xref href="Sync-Asynch-Replication.htm">Synchronous and Asynchronous Message Replication</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="data_center_replication_58739731_326703"/>Do Not Mix Message Types</h2>
+    <p>We recommend that you do not mix message types. In particular, mixing the following types of messages on a single endpoint can create complications:</p>
+    <ul>
+      <li>replicated and non-replicated messages</li>
+      <li>transacted and non-transacted messages</li>
+    </ul>
+    <p>If replicated and non-replicated messages are mixed, the endpoint will have different sets of messages on the active and standby sites. In the event of a replication failover to the standby site, clients will have different messages to consume in the endpoint which will likely be difficult for the client application to handle. Additionally, the non-replicated messages that are in the endpoint on the previously active, now standby site are not guaranteed to be preserved (since they were never intended to be replicated) and will eventually be cleaned from the endpoint on the standby event broker as newer replicated messages are consumed from that endpoint on the newly active site. This means that on a fail-back to the originally active site, this messages may or may not be present in the endpoint. </p>
+    <p>If an endpoint is being subject to a mixture of transacted and non-transacted operations, then delivery delays can occur, especially when using synchronous transactions and when the replication service becomes degraded. The issue is worse if  the <code>reject-msg-when-sync-ineligible</code> option is enabled. </p>
+    <h2 class="with-rule"><a name="Topic"/>Use a Replication-Specific Topic  Hierarchy</h2>
+    <p>To prevent the complexities that occur when you mix message types on an endpoint, we recommend that you use a topic structure that classifies messages by type. We recommend a topic hierarchy that classifies messages as follows:</p>
+    <ul>
+      <li>Guaranteed messages that will:<ul><li>Not be replicated</li><li>Be synchronously replicated</li><li>Be asynchronously replicated</li></ul></li>
+      <li>Direct messages</li>
+      <li>Messages from a particular paired replication site (for example, the paired New York and Boston  replication sites)</li>
+      <li>Messages from different publishers</li>
+    </ul>
+    <p>For example, a topic hierarchy that accomplishes all of these things would have the following topic prefixes:</p>
+    <pre>&lt;Rep_site_pair&gt;/&lt;pubId&gt;/MODE_DIRECT/&lt;app-topic&gt;<br/>&lt;Rep_site_pair&gt;/&lt;pubId&gt;/MODE_GM_SF/REPL_NONE/&lt;app-topic&gt;<br/>&lt;Rep_site_pair&gt;/&lt;pubId&gt;/MODE_GM_SF/REPL_AYNC/&lt;app-topic&gt;<br/>&lt;Rep_site_pair&gt;/&lt;pubId&gt;/MODE_GM_SF/REPL_SYNC/&lt;app-topic&gt;</pre>
+    <p>For deployments where short topics are preferred, the topics could be made less verbose. For example, <code>&lt;Rep_site_pair&gt;/&lt;pubId&gt;/GM_SF/S/&lt;app-topic&gt;</code>.</p>
+    <p>Creating such a hierarchy provides the following benefits:</p>
+    <ul>
+      <li>It simplifies the configuration of replicated topic subscriptions—only two subscriptions need to be added per replicated Message VPN to replicate all messages:<pre>solace(configure/message-vpn/replication)# create replicated-topic */*/MODE_GM_SF/REPL_ASYNC/&gt;<br/>solace(...sage-vpn/replication/replicated-topic)# exit<br/>solace(configure/message-vpn/replication)# create replicated-topic */*/MODE_GM_SF/REPL_SYNC/&gt;<br/>solace(...sage-vpn/replication/replicated-topic)# replication-mode sync<br/>solace(...sage-vpn/replication/replicated-topic)# exit</pre></li>
+      <li>It prevents the unintended promotion or demotion of a message because of topic matches (for example, a non-persistent message that is converted to a Direct message). If Direct message consumers only subscribe to <code>*/*/MODE_DIRECT</code> topics, and Guaranteed message consumers only subscribe to <code>*/*/MODE_GM*</code> promotion and demotion is avoided.</li>
+      <li>The paired replication site prefix allows for creation of bridged networks without forwarding loops.</li>
+      <li>It is easy for publishers to make use of last value queues (LVQs) to determine their last published message by setting an LVQ’s subscription to <code>&lt;Rep_site_pair&gt;/&lt;pubId&gt;/&gt;</code>.</li>
+    </ul>
+    <p>The last three points offer benefits to all Solace-based solutions, not just those using replication. For non-replicated solutions, the paired replication site prefix would become a prefix specific to the virtual router.</p>
+    <p class="Note">For applications that publish directly to queues rather than publishing to topics that are mapped to queues, the published messages can be replicated by configuring the queue's unique topic ( <code>#P2P/QUE/&lt;queue-name&gt;</code>).</p>
+    <h2 class="with-rule"><a name="data_center_replication_58739731_355359"/>Ensure Sufficient Network Bandwidth</h2>
+    <p>When you deploy replication, there must be sufficient network bandwidth to accommodate the published message rate for all replicated topics. Some additional overhead is needed if you are using transactions. The replication queue can absorb message bursts above the available bandwidth, but it is important that the network connection between the active and standby site link be fast to keep up with the replication data. Compression can be enabled on the replication bridge connection, if necessary.</p>
+    <p>If security is an issue between the replication sites, SSL encryption on the replication bridge can be enabled.</p>
+    <h2 class="with-rule"><a name="System"/>Be Aware of System Resources Used by Replication</h2>
+    <p>The replication facility consumes some system resources when it's enabled on an event broker because the event broker automatically creates the following objects:</p>
+    <ul>
+      <li>one Message VPN bridge for the replication facility, plus one Message VPN bridge for each replicated Message VPN</li>
+      <li>one queue for each Replicated Message VPN</li>
+      <li>one queue topic subscription for each Replicated Message VPN</li>
+    </ul>
+    <p>These system-created objects all have names that begin with the <code>#</code> character (for example, the replication bridge is <code>#MSGVPN_REPLICATION_BRIDGE</code>). As objects required for the successful operation of the replication facility, you can't delete or directly edit them.</p>
+    <p>When the Config-Sync facility is enabled, an event broker also automatically creates some objects that consume system resources. For information, refer to <MadCap:xref href="../Config-Sync/Config-Sync-Overview.htm#System-Resources">System Resources Used by Config-Sync</MadCap:xref>.</p>
+    <p>If local or XA transactions are being replicated, additional transaction resources are used on both the active and standby sites to replicate the transactions.</p>
+    <h2 class="with-rule"><a name="Avoid"/>Ensure Adequate Resources at Both Sites</h2>
+    <p>When using replication, you must ensure that the Message VPN-level and system-level resources used by one event broker does not exceed those that can be supported by the event broker in the other replication site. Consider, for example, a scenario where the event broker used at the primary site has higher client connection capacity than the event broker at the backup site. In the event of a failover, all the clients may not be able to connect to the backup site.</p>
+  </body>
+</html>

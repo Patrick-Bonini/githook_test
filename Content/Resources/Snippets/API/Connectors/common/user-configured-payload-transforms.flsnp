@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../../../TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <p>Message payloads going through a workflow can be transformed using a Spring Expression Language (SpEL) expression as follows:</p>
+    <pre># &lt;workflow-id&gt; : The workflow ID ([0-19])
+# &lt;expression&gt; : A SpEL expression
+                 
+solace.connector.workflows.&lt;workflow-id&gt;.transform-payloads.expressions[0].transform=&lt;expression&gt;</pre>
+    <p>A SpEL expression may reference:</p>
+    <ul>
+      <li>
+        <p><code>payload:</code>: To access the message payload.</p>
+      </li>
+      <li>
+        <p><code>headers.&lt;header_name&gt;</code>: To access a message header value.</p>
+      </li>
+      <li>
+        <p><a href="#registered-functions" class="link-internal">Registered functions</a>.</p>
+      </li>
+    </ul>
+    <p class="Note">While the syntax uses an array of expressions, only a single transform expression is  supported  in  this  release.  Multiple  transform  expressions  may  be  supported  in the future.</p>
+    <h3><a name="registered-functions"/>Registered Functions</h3>
+    <p><a href="https://docs.spring.io/spring-framework/docs/current/reference/html/core.html#expressions-ref-functions" target="_blank" class="link-offsite">Registered functions</a> are built-in and can be called directly from SpEL expressions. To call a registered function, use the <code>#</code> character followed by the function name. The following table describes the available registered functions:</p>
+    <table style="mc-table-style: url('../../../../TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1">
+            </col>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Registered Function Signature</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>
+              <code>boolean isPayloadBytes(Object obj)</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>Returns whether the object <code>ob</code>j is an instance of <code>byte[]</code> or not.</p>
+            <p>Sample usage of this function within a SpEL expression: <br/><code>"#isPayloadBytes(payload) ? true : false"</code></p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p><b>Example 1:</b> To normalize <code>byte[]</code> and <code>String</code> payloads as upper-cased <code>String</code> payloads or leave payloads unchanged when of different types:</p>
+    <pre xml:space="preserve">solace.connector.workflows.0.transform-payloads.expressions[0].transform
+="#isPayloadBytes(payload) ? new String(payload).toUpperCase() : payload instanceof 
+T(String) ? payload.toUpperCase() : payload"        </pre>
+    <p><b>Example 2:</b> To convert <code>String</code> payloads to <code>byte[]</code> payloads using a <code>charset</code> retrieved from a message header or leave payloads unchanged when of different types:</p>
+    <pre xml:space="preserve">solace.connector.workflows.0.transform-payloads.expressions[0].transform="payload 
+instanceof T(String) ? 
+payload.getBytes(T(java.nio.charset.Charset).forName(headers.charset)) : payload"
+</pre>
+    <p>For more information about Spring Expression Language (SpEL) expressions, see <a href="https://docs.spring.io/spring-framework/docs/current/reference/html/core.html#expressions" target="_blank" class="link-offsite">Spring Expression Language (SpEL)</a>.</p>
+    <p> </p>
+  </body>
+</html>

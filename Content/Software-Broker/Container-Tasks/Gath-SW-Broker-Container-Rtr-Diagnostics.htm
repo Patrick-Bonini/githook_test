@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <meta name="description" content="A complete set of Solace PubSub+ event broker diagnostic files and debug logs are sometimes required for Solace Customer Support to determine the root cause of an operational problem."/>
+    <meta name="keywords" content="diagnostics"/>
+    <meta name="author" content="Solace Corporation"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Software"/>Gathering Diagnostics from Software Event Broker Containers</h1>
+    <p>A complete set of event broker diagnostic files and debug logs are sometimes required for Solace Customer Support to determine the root cause of an operational problem. To assist with the investigation, you can use either of the following to gather diagnostic information about a Solace PubSub+ software event broker container:</p>
+    <ul>
+      <li><code>gather-diagnostics-host</code> utility from the container</li>
+      <li><code>gather-diagnostics</code> command from the Solace CLI</li>
+    </ul>
+    <h2 class="with-rule"><a name="Using-Util"/>Gather-Diagnostics-Host Utility</h2>
+    <p>We recommend that you use the <code>gather-diagnostics-host</code> utility instead of the <code>gather-diagnostics</code> CLI command. The utility can be run even if the software event broker container isn’t running, Solace CLI is not accessible, or there is a suspected misconfiguration of the container host.</p>
+    <p class="Note">To use the <code>gather-diagnostics-host</code> utility, you must have a Linux host running Python 2.7 or greater.</p>
+    <p class="Note">The commands below assume that you are running your container in rootful mode. If you are running in rootless mode, you may not need to use sudo.
+        </p>
+    <p>The <code>gather-diagnostics-host</code> utility is delivered in the software event broker container file system. To extract the utility, use the <code>docker cp</code> or <code>podman cp</code> command.</p>
+    <pre class="Code">&gt;sudo docker cp &lt;CONTAINER_NAME&gt;:/usr/share/solace/gather-diagnostics-host &lt;DESTINATION_PATH&gt;</pre>
+    <p>For example:</p>
+    <pre class="Code">&gt;sudo docker cp solace:/usr/share/solace/gather-diagnostics-host /usr/local/bin</pre>
+    <p>The <code>gather-diagnostics-host</code> utility attempts to gather core dump files from:</p>
+    <ol>
+      <li>Any container host path mounted as a volume in the software event broker container at <code>/var/lib/solace/diags</code>.</li>
+      <li>The container host path specified in the Linux kernel <code>core_pattern</code> if that path is specified as an absolute path. That is, relative paths and pipes to user space programs will not be interpreted. For more information, see <MadCap:xref href="../Managing-Core-Files.htm">Managing Core Files</MadCap:xref>.</li>
+      <li>A user-specified path provided as a <code>gather-diagnostics-host</code> command line parameter.</li>
+    </ol>
+    <p><code>gather-diagnostics-host</code> collects diagnostics information from software event broker containers. When run without additional command line parameters, it will gather information from all containers created from the default container image named <code>solapp:currentload</code> or, if none exist, containers using the default name <code>solace</code>. The user may specify a container, by name, using <code>--name</code>, or a specific container image, using <code>--image</code>.</p>
+    <p>To run the <code>gather-diagnostics-host</code> utility, enter the following command in the Linux host environment:</p>
+    <pre class="Code" xml:space="preserve">gather-diagnostics-host [-h] [-f &lt;filename&gt;] [-d &lt;days&gt;] [-n &lt;container&gt;] [-i &lt;repository&gt;:&lt;tag&gt;] [--no-container] [--core-host-path pattern] [-V] [-D]</pre>
+    <p><u>Where</u>: </p>
+    <p><code>-h</code> or <code>--help</code> displays the gather diagnostics help information.</p>
+    <p><code>-f filename</code> or <code>--file filename</code> outputs a single compressed file of diagnostics data. A default file name will be used if one is not specified.</p>
+    <p><code>-d days</code> or <code>--days days</code> specifies the number of days of history to capture.</p>
+    <p><code>-n container</code> or <code>--name container</code> specifies a particular container name or ID to gather diagnostic data for. If no container is specified, all containers matching the container image will be used.</p>
+    <p><code>-i repository:tag</code> or <code>--image repository:tag</code> specifies the container image to use to find matching containers. The default value is <code>solace-app:currentload</code>.</p>
+    <p><code>--no-container</code> specifies do not attempt to run <code>gather-diagnostics-host</code> inside the container.</p>
+    <p><code>--core-host-path pattern</code> specifies the path to core files to be used as regex. This script will capture all files on the host matching <code>pattern</code>.</p>
+    <p><code>-V</code> specifies to increase output verbosity.</p>
+    <p><code>-D</code> specifies debug mode, which describes utility actions without doing anything.</p>
+    <h2 class="with-rule"><a name="gdh-with-windows"/>Using Gather-Diagnostics-Host on Docker for Windows </h2>
+    <p>For convenience, the <code>gather-diagnostics-host</code> support utility is bundled in the software event broker container image. To use this utility in Docker for Windows, create a new sidecar container with privileged settings based on the software event broker container image with a different <code>ENTRYPOINT</code> command (<code>gather-diagnostics-host</code>).</p>
+    <p>For example: </p>
+    <pre xml:space="preserve">&gt; docker run --rm -t --privileged -u root --volumes-from solace -v c:\Users\username\storage\diags:/tmp -v /var/run/docker.sock:/var/run/docker.sock solace-pubsub-standard:&lt;version&gt; /usr/share/solace/gather-diagnostics-host --sidecar</pre>
+    <p>This example creates a sidecar container which runs the gather-diagnostic-host utility on the running container named <code>solace</code> and places the output in a compressed tar file in the <code>C:\Users\username\storage\diags</code> directory.</p>
+    <p class="Note">By default, the <code>gather-diagnostics-host</code> utility places the <code>/tmp</code> directory inside the new container and removes it when the container is removed. Solace recommends mounting the <code>/tmp</code> directory to a persistent location on a shared disk as demonstrated in the example above.</p>
+    <h2 class="with-rule"><a name="gdh-with-mac"/>Using Gather-Diagnostics-Host Utility on Docker for Mac</h2>
+    <p>For convenience, the <code>gather-diagnostics-host</code> support utility is bundled in the software event broker container image. To use this utility in Docker for Mac,  create  a new sidecar container with privileged settings based on the container image with a different <code>ENTRYPOINT</code> command (<code>gather-diagnostics-host</code>).</p>
+    <p>For example:</p>
+    <pre xml:space="preserve">&gt; docker run --rm -t --privileged -u root --volumes-from solace -v /Users/username/storage/diags:/tmp -v /var/run/docker.sock:/var/run/docker.sock solace-pubsub-standard:&lt;version&gt; /usr/share/solace/gather-diagnostics-host --sidecar</pre>
+    <p>This example creates a sidecar container which runs the <code>gather-diagnostic-host</code> utility on the running container named <code>solace</code> and places the output in a compressed tar file in the <code>Users/username/storage/diags</code> directory.</p>
+    <p class="Note">By default, the <code>gather-diagnostics-host</code> utility places the <code>/tmp</code> directory inside the new container and removes it when the container is removed. Solace recommends mounting the <code>/tmp</code> directory to a persistent location on a shared disk as demonstrated in the example above.</p>
+    <h2 class="with-rule"><a name="Using-CLI"/>Using the Gather-Diagnostics CLI Command</h2>
+    <p>You can use the Solace CLI <code>gather-diagnostics</code> command to gather diagnostics for a software event broker container if you don't have access to the container host; that is, if you only have Solace CLI access to the software event broker container.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/Admin/gather-diagnostics.flsnp"/>
+  </body>
+</html>

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../../../TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <p>The connector has three leader election modes for redundancy:</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;width: 95%;mc-table-style: url('../../../../TableStyles/Table_Num.css');" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 106px;"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Leader Election Mode</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Standalone (Default)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>A single instance of a connector without any leader election capabilities.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Active-Active</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>A participant in a cluster of connector instances where all instances are active.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Active-Standby</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>A participant in a cluster of connector instances where only one instance is active (i.e. the leader), and the others are standby.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>Operators can configure the leader election mode by setting the following configuration:</p>
+    <pre xml:space="preserve">
+solace.connector.management.leader-election.mode
+=(standalone|active_active|active_standby)
+</pre>
+    <h2><a name="leader-election-modes"/>Leader Election Modes: Standalone and Active-Active</h2>
+    <p>When the connector starts, all enabled workflows start at the same time. The connector itself is considered as always active.</p>
+    <h2><a name="leader-active-standby-mode"/>Leader Election Mode: Active-Standby</h2>
+    <p>If the connector is in the <code>active-standby</code> mode, a <MadCap:variable name="Product-Names.pubsub_brand_only"/> management session and management queue must be configured as follows:</p>
+    <pre xml:space="preserve">
+solace.connector.leader-election.mode=active_standby
+
+# Management session
+# Exact same interface as solace.java.*
+solace.connector.management.session.host=&lt;management-host&gt;
+solace.connector.management.session.msgVpn=&lt;management-vpn&gt;
+solace.connector.management.session.client-username=&lt;client-username&gt;
+solace.connector.management.session.client-password=&lt;client-password&gt;
+solace.connector.management.session.&lt;other-property-name&gt;=&lt;value&gt;
+
+# Management queue name accessible by the management session
+# Must have exclusive access type
+solace.connector.management.queue=&lt;management-queue-name&gt;
+</pre>
+    <p>To determine if the connector is <code>active</code> or <code>standby</code>, it creates a flow to the management queue. If this flow is active, the connector’s state is <code>active</code> and it will start its enabled workflows. If this flow is inactive, the connector’s state is <code>standby</code> and it will stop its enabled workflows.</p>
+    <p>At a macro level for a cluster of connectors, failover only happens when there are infrastructure failures (for example, the JVM goes down or networking failures to the management queue occur).</p>
+    <p>If a workflow fails to start or stop during failover, it will retry up to some maximum defined by the configuration option, <code>solace.connector.management.leader-election.fail-over.max-attempts</code>.</p>
+    <p>During failover, the connector attempts to start or stop all enabled workflows. After an attempt has been made to start or stop each workflow, the connector transitions to the active/standby mode regardless of the status of the workflows.</p>
+    <h2><a name="leader-management-endpoint"/>Leader Election Management Endpoint</h2>
+    <p>A custom <code>leaderelection</code> management endpoint was provided using <a href="https://docs.spring.io/spring-boot/docs/current/reference/html/actuator.html#actuator.endpoints" class="link-offsite">Spring Actuator</a>.</p>
+    <p>Operators can navigate  to the connector’s <code>leaderelection</code> management endpoint to view its leader election status.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;width: 95%;mc-table-style: url('../../../../TableStyles/Table_Num.css');" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Endpoint</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Operation</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Payloads</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>
+              <code>/leaderelection</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Read </p>
+            <p>(HTTP <code>GET</code>)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p><b>Request</b>: None.</p>
+            <p><b>Response</b>:</p>
+            <pre xml:space="preserve">
+{
+  "mode": {
+    "type": "(standalone |
+              active_active |
+              active_standby)",
+    "state": "(active | standby)",
+    "source": {
+      "queue": "&lt;management-queue-name&gt;",
+      "host": "&lt;management-host&gt;",
+      "msgVpn": "&lt;management-vpn&gt;"   
+    }
+  }
+}</pre>
+            <p>The <code>type</code> and <code>state</code> objects always appear in the response, while <code>source</code> only appears in the response when the response for<code> type</code> is <code>active_standby</code>.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

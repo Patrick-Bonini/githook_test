@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Cloud;Appliance;Software"/>Queues</h1>
+    <p>A queue acts as both a destination for published Guaranteed messages and as an endpoint that clients can bind consumers to and consume messages from. A queue is typically used in both point-to-point (PTP) messaging environments and in a publish and subscribe (pub/sub) model.</p>
+    <p>Queues are significantly more flexible than <MadCap:xref href="Topic-Endpoints.htm">Topic Endpoints</MadCap:xref> and are the recommended approach for most applications.</p>
+    <h2 class="with-rule"><a name="queue-access-types"/>Queue Access Types</h2>
+    <p>A queue has an access type, which determines how messages are delivered when multiple consumer flows are bound to it. Queues can be assigned one of the following access types:</p>
+    <ul>
+      <li>
+        <MadCap:snippetBlock src="../../Resources/Snippets/queue-access-type-exclusive.flsnp"/>
+      </li>
+      <li>
+        <MadCap:snippetBlock src="../../Resources/Snippets/queue-access-type-non-exclusive.flsnp"/>
+      </li>
+    </ul>
+    <p>The access type can be changed for a durable queue, but only when consumer access to the queue (that is, message egress) has been disabled.</p>
+    <p>We recommend disabling ingress and allowing messages to drain from the queue before changing a non-exclusive queue from partitioned to non-partitioned or vice versa:</p>
+    <ul>
+      <li>If a queue changes from partitioned to non-partitioned or vice versa, the event broker unbinds all clients already bound to the queue. This ensures that the event broker and clients are consistently using (or not using) the semantics for partitioned queues. Note that any messages remaining in deleted partitions are also deleted.</li>
+      <li>If a queue changes from  non-partitioned to partitioned, messages that are enqueued at the time of the change may get stuck because the broker no longer delivers messages from the parent queue after the queue becomes partitioned. In this case, messages can be copied out of the parent queue.</li>
+    </ul>
+    <p>Queue browsing is supported for exclusive queues and non-exclusive, non-partitioned queues.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For information about creating queues, configuring access types, and disabling message egress using the <MadCap:variable name="Product-Names.solace_cli"/>, see <MadCap:xref href="Configuring-Queues.htm">Configuring Queues</MadCap:xref>.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For information about creating and configuring queues in <MadCap:variable name="Product-Names.pubsubmanager_long"/>, see <a href="../../Cloud/Broker-Manager/configuring-queues-broker-manager.htm" class="link-internal">Configuring Queues for <MadCap:variable name="Product-Names.cloud_product_short"/></a> or <a href="../../Admin/Broker-Manager/configuring-queues-broker-manager.htm" class="link-internal">Configuring Queues for <MadCap:variable name="Product-Names.broker_sw_short"/>s and <MadCap:variable name="Product-Names.broker_appliance_short"/>s</a>.</p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">For more information about  about creating queues, configuring access types, and disabling message egress, see <MadCap:xref href="../../Cloud/Broker-Manager/configuring-queues-broker-manager.htm">Configuring Queues</MadCap:xref>.</p>
+    <h4>Summary of Queue Access Types</h4>
+    <table style="width: 100%;margin-left: 0;margin-right: auto;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 25%;"/>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 25%;"/>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 25%;"/>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 25%;"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" rowspan="2">Queue Property</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" rowspan="2">Exclusive Access Type</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1" colspan="2" style="text-align: center;padding-left: 6pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;border-bottom-style: solid;border-bottom-width: 1px;border-bottom-color: #e1e1e1;">Non-Exclusive Access Type</th>
+        </tr>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Non-Partitioned</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Partitioned</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Message Distribution</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Single consumer</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Multiple consumers with round-robin message delivery.</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Dynamic consumer support. The number of active consumers is limited to the number of provisioned partitions.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Message Order</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Guaranteed</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Not guaranteed</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Guaranteed within each partition, but not between partitions.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">Queue Browsing</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">Supported</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">Supported</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">Not supported</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="well-known"/>Well-Known Queues</h2>
+    <p>Any queue, durable or non-durable, with a commonly recognized name is a well-known queue. The well-known queue name is specified by the application rather than being generated by the API. Applications can send messages to a well-known queue without any communication with the creator of the queue. A well-known queue name can be used to send messages to the queue, as long as it exists somewhere within a network of event brokers.</p>
+    <p>One of the key features of the well-known queue is its durability. Administrators can use queue templates to control the durability of well-known queues. A well-known durable queue can be converted to a well-known non-durable queue by specifying durability override through a queue template. <MadCap:conditionalText MadCap:conditions="SAP.SAPTempHide">To learn how to configure durability override using a queue template, refer to <MadCap:xref href="Configuring-Endpoint-Templates.htm#Configur">Configuring Queue Templates</MadCap:xref>. </MadCap:conditionalText>For overview information on queue templates, see <MadCap:xref href="Endpoint-Templates.htm">Endpoint Templates</MadCap:xref>. </p>
+    <p>When using a well-known non-durable queue in a request/reply messaging pattern, there is a race condition where the recipient of a request might reply before the respondent's node knows how to route the response to the requestor's node. As such, well-known queues are not recommended for use in a request/reply messaging pattern. For the request/reply pattern, it is recommended to use the client's #P2P topic prefix for a direct messaging reply-to and an anonymous queue's network topic as a reply-to for guaranteed messaging.</p>
+    <p>Well-known queues can be created by management interfaces such as the <MadCap:variable name="Product-Names.solace_cli"/>, <MadCap:variable name="Product-Names.pubsubmanager_long"/>, and SEMPv2, or they can be created by applications through the <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging APIs</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">Solace Messaging APIs</MadCap:conditionalText>.<MadCap:conditionalText MadCap:conditions="SAP.SAPTempHide"> For more information, see <MadCap:xref href="../../API/API-Developer-Guide/Provisioning-Durable-End.htm#Dynamically-Create">Provisioning Durable Endpoints Using the [%=Manifest-Products-APIs.PubSub-GenericAll-Messaging-API%]s</MadCap:xref>.</MadCap:conditionalText></p>
+    <h2 class="with-rule"><a name="anonymous"/>Anonymous Queues</h2>
+    <p>Unlike well-known queues, the anonymous queue name is generated by the API rather than being specified by the application, hence the queue name is not well known. To send a message to an anonymous queue, the destination must be sent to peers as it is not known ahead of time. Often this is done in the reply-to field of a message in a request/reply messaging pattern. A mechanism is built into <MadCap:variable name="Product-Names.pubsub_brand_only" MadCap:conditions="SAP.SapHideFromOutput"/><MadCap:variable name="Product-Names.cloud_product_short" MadCap:conditions="SAP.SapOnlyOutput"/> to prevent race conditions in sending to anonymous queues after they are created. This makes anonymous queues particularly well-suited for request/reply messaging patterns.</p>
+    <p>Anonymous queues are always non-durable, which means the queue and the data on the queue are removed when a client unbinds from the queue or the client is disconnected and fails to re-establish session within sixty seconds.</p>
+    <h2 class="with-rule"><a name="dmq"/>Dead Message Queues</h2>
+    <p> By default, Guaranteed messages are removed from a durable endpoint's message spool and discarded when:</p>
+    <ul>
+      <li>the number of redelivery attempts for a message exceeds the Max Redelivery value for the original destination endpoint;</li>
+      <li>or a message's TTL value has been exceeded and the endpoint is configured to respect message TTL expiry times.</li>
+    </ul>
+    <p>However, messages that are flagged as DMQ-eligible by the publishing client can be sent to a DMQ assigned to the endpoint rather than be discarded.</p>
+    <p>Any durable queue on the same Message VPN as the endpoint that the messages were spooled to can be assigned as that endpoint's DMQ. Although durable endpoints are assigned a default DMQ (<code>#DEAD_MSG_QUEUE</code>), every durable endpoint can be assigned a specific DMQ. Therefore, there can be multiple DMQs per Message VPN.</p>
+    <p>If an endpoint's assigned DMQ does not exist, the Guaranteed messages will be discarded even if they are DMQ-eligible. In addition, although it is the default DMQ, a management user must manually create the <code>#DEAD_MSG_QUEUE</code>.</p>
+    <p>When messages are delivered to an endpoint through topic-to-queue mapping, and that message is subsequently moved to the default DMQ used by multiple endpoints, there is no way for an application servicing the DMQ to know which endpoint the message came from. In this case, configuring a separate  DMQ for each endpoint might be preferable.</p>
+    <p>A <a href="Queues.htm#partitioned-queues" class="link-internal">partitioned queue</a> can have or be a DMQ.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For information about configuring DMQs using the <MadCap:variable name="Product-Names.solace_cli"/>, see <MadCap:xref href="Setting-Dead-Msg-Queues.htm">Configuring Dead Message Queues</MadCap:xref>.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For more information about configuring DMQs in <MadCap:variable name="Product-Names.pubsubmanager_long"/>, see <a href="../../Cloud/Broker-Manager/configuring-dmqs-broker-manager.htm" class="link-internal">Configuring Dead Message Queues for <MadCap:variable name="Product-Names.cloud_product_short"/></a> or <a href="../../Admin/Broker-Manager/configuring-dmqs-broker-manager.htm" class="link-internal">Configuring Dead Message Queues for <MadCap:variable name="Product-Names.broker_sw_short"/>s and <MadCap:variable name="Product-Names.broker_appliance_short"/>s</a>.</p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">For more information about configuring DMQs, see <MadCap:xref href="../../Cloud/Broker-Manager/configuring-dmqs-broker-manager.htm">Configuring Dead Message Queues</MadCap:xref>.</p>
+    <h3 MadCap:conditions="SAP.SapOnlyOutput,SAP.SapHideFromOutput"><a name="dmq-feature-interactions"/>DMQ Feature Interactions</h3>
+    <MadCap:snippetBlock src="../../Resources/Snippets/Features/dmq-feature-interaction.flsnp" MadCap:conditions="SAP.SapHideFromOutput"/>
+    <h2 class="with-rule"><a name="lvq"/>Last Value Queues</h2>
+    <p>If a queue is assigned a max-spool-usage value of 0, the queue can spool only the last message it received. For a partitioned queue, each partition holds the last message spooled to that partition. In this configuration, the queue is acting as a so-called last value queue.<MadCap:conditionalText MadCap:conditions="SAP.SAPTempHide"> For instructions on how to set max-spool-usage to 0, refer to <MadCap:xref href="Configuring-Queues.htm#Configur16">Configuring Max Spool Usage Values</MadCap:xref>.</MadCap:conditionalText></p>
+    <h4>Message Priority</h4>
+    <p>Last value queues always store the last message received, regardless of the priority value of the message (see <MadCap:xref href="Message-Priority.htm">Message Priority</MadCap:xref>). </p>
+    <h4>Application of Topic Subscriptions</h4>
+    <p>A client publishing Guaranteed messages can apply a topic subscription to a last value queue so that it attracts all the messages that the client publishes. This allows the client to use the last value queue to accurately determine the very last Guaranteed message that it successfully published.</p>
+    <p>This could be beneficial, for example, if an application failure occurs after a message has been published. In this case, if the client application does not receive an acknowledgment from the event broker for the message, it does not know if the published message was lost entirely, or if the message was received but just the acknowledgment was lost. If a last value queue is used, when the client reconnects and rebinds to the last value queue, it can determine what was the last successfully published message, and it can continue publishing from where it left off without creating duplicate messages or losing messages.</p>
+    <p>When there is more than one publisher for a given topic, the publisher should be identified in the published topic, which can be wildcarded by subscribing applications. </p>
+    <p>For example, assign the last value queue for each publishing client a topic subscription of the form <code>uniquePubId/&gt;</code> (with <code>Pub1/&gt;</code> for the first publisher, <code>Pub2/&gt;</code> for the second publisher, and so on). The clients can then publish messages to topics of the form <code>uniquePubId/some/hierarchical/topic/</code>. For example, <code>Pub1</code> might publish to <code>Pub1/price/equities/apple</code>, while <code>Pub2</code> might publish to <code>Pub2/price/equities/apple</code>, and so on. This allows clients to specifically subscribe to their own last value queue, but other clients, who also want to receive messages on those topics, can use a topic subscription of the form <code>*/some/hierarchical/topic</code>. For example, <code>*/price/equities/apple</code>.</p>
+    <h4 MadCap:conditions="SAP.SapHideFromOutput">Message Selectors</h4>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Message selectors are not supported with last value queues.</p>
+    <h2 class="with-rule" MadCap:conditions="SAP.SapHideFromOutput"><a name="browsing"/>Queue Browsing</h2>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Client applications using <MadCap:variable name="Variables.CompanyName"/> enterprise APIs can create a queue browser in a session to look at messages spooled on a queue in order of oldest to newest without consuming them. That is, browsing messages returns the full content of messages, complete with all message headers and payloads, but those browsed messages are not removed from the message spool. You should be aware that when you browse a queue that has an active consumer, it's possible that the browser won't receive all messages published to the queue because the consumer can receive and acknowledge messages before they are delivered to the browser.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">The figure below shows how a Browser Flow returns messages from the queue, without consuming them so that clients with established Flows can still consume them. In this example, a selector string is also used so that the client application only browses messages that match that selector. (Refer to <MadCap:xref href="Endpoints.htm#Selectors">Selectors</MadCap:xref> for more information.)</p>
+    <p class="GraphicCaption" MadCap:conditions="SAP.SapHideFromOutput">Queue Browsing</p>
+    <p style="text-align: left;" MadCap:conditions="SAP.SapHideFromOutput">
+      <img src="../../Resources/Images/Guaranteed-Msg/Queue_selectors.png" alt="Diagram illustrating the concepts described in the surrounding text."/>
+    </p>
+    <p class="Note" MadCap:conditions="SAP.SapHideFromOutput">Queue browsing is not supported for Partitioned Queues.</p>
+    <h2 class="with-rule"><a name="partitioned-queues"/>Partitioned Queues</h2>
+    <MadCap:snippetBlock src="../../Resources/Snippets/BrokerManager/partitioned-queue-desc.flsnp"/>
+    <p>A partitioned queue object has a <code>partition count</code> property that specifies the number of partitions it has. Partitions are numbered  from 0 to N-1, where N is the number of partitions.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For information about configuring partitioned queues using the <MadCap:variable name="Product-Names.solace_cli"/>, see <MadCap:xref href="Configuring-Queues.htm#configure-partitioned-queues">Configuring Partitioned Queues</MadCap:xref>.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For more information about configuring partitioned queues in <MadCap:variable name="Product-Names.pubsubmanager_long"/>, see <a href="../../Cloud/Broker-Manager/configuring-partitioned-queues.htm" target="_blank" class="link-internal">Configuring Partitioned Queues for <MadCap:variable name="Product-Names.cloud_product_short"/></a> or <a href="../../Admin/Broker-Manager/configuring-partitioned-queues.htm" target="_blank" class="link-internal">Configuring Partitioned Queues for <MadCap:variable name="Product-Names.broker_sw_short"/>s and <MadCap:variable name="Product-Names.broker_appliance_short"/>s</a>.</p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">For more information about configuring partitioned queues, see <MadCap:xref href="../../Cloud/Broker-Manager/configuring-partitioned-queues.htm#configure-partitioned-queues">Configuring Partitioned Queues</MadCap:xref>.</p>
+    <h3><a name="pq-publish-and-consume"/>Publishing to and Consuming from Partitioned Queues</h3>
+    <MadCap:snippetBlock src="../../Resources/Snippets/BrokerManager/partition-message-distribution.flsnp"/>
+    <h3><a name="pq-scaling"/>Adding and Removing Partitions</h3>
+    <p><i>Partition scaling</i> refers to adding or removing partitions. You add or remove partitions by changing the partition count of the queue. </p>
+    <p>To avoid message loss, we recommend that you ensure messages are drained from the queue before making any of these administrative changes. For more details and specific instructions for adding and removing partitions, see <MadCap:xref href="Partition-Scaling.htm" MadCap:conditions="SAP.SapHideFromOutput">Partition Scaling</MadCap:xref><MadCap:xref href="../../Cloud/Broker-Manager/configuring-partitioned-queues.htm#adding_removing_partitions" MadCap:conditions="SAP.SapOnlyOutput">Adding and Removing Partitions in a Queue</MadCap:xref>.</p>
+    <p class="Caution" MadCap:conditions="SAP.SapHideFromOutput">Partition scaling is service affecting. Ensure that you follow the exact procedures provided in <MadCap:xref href="Partition-Scaling.htm">Partition Scaling</MadCap:xref> to add or remove partitions.</p>
+    <h3><a name="pq-rebalancing"/>Changing the Number of Consumers</h3>
+    <p>When the number of consumers (that is, bound flows) of a partitioned queue changes, the <i>partition rebalancing</i> process is triggered. Rebalancing involves reassigning partition-to-flow mappings such that flows are distributed evenly across all partitions, with each partition assigned to a single flow (but note that a flow can be assigned more than one partition). See <MadCap:xref href="Partition-Rebalancing.htm">Partition Rebalancing</MadCap:xref> for more information.</p>
+    <p>As part of rebalancing, the event broker often transfers partitions to different client flows. This  process, called <i>partition handoff</i>, has implications for the design of consuming applications. For a detailed discussion about this process and how your application can respond to changes in partition-to-flow mappings, see <MadCap:xref href="Partition-Handoff.htm">Partition Handoff</MadCap:xref>.</p>
+    <h3 MadCap:conditions="SAP.SapHideFromOutput"><a name="pq-feature-interactions"/>Partitioned Queue Feature Interactions</h3>
+    <dl MadCap:conditions="SAP.SapHideFromOutput">
+      <dt>Direct Message Delivery Mode</dt>
+      <dd>
+        <p>A direct message can have a partition key set, although this has no meaning to the broker unless that direct message is promoted into a partitioned queue. Otherwise the partition key is simply carried through the Broker from ingress to egress.</p>
+      </dd>
+      <dt>High Availability (Redundancy)</dt>
+      <dd>
+        <p>The event broker's partition-to-flow mappings are maintained across HA failovers. From the perspective of client applications, there is no difference in redundancy behavior between partitioned and non-partitioned queues.</p>
+      </dd>
+      <dt>Disaster Recovery (Replication)</dt>
+      <dd>
+        <p>Replication of messages destined for a partitioned queue is supported, with the following caveats:
+				</p>
+        <ul>
+          <li>
+            <p>If the <a href="Partition-Scaling.htm#partition-scaling-procedure" class="link-internal">proper procedure</a> for partition scaling is not followed, messages replicated to the DR-standby may end up in a different partition than on the DR-active. This is due to the fact that configuration changes on the DR-active site are coordinated with the DR-standby site out of band with the delivery of data messages. For example, a change to the <code>partition count</code> on the DR-active site is sent to the DR-standby site through config-sync, but the timing for acting on that change relative to data messages is uncoordinated. After partition scaling on both sides has completed, messages can be expected to wind up in the same partitions. </p>
+          </li>
+          <li>
+            <p>If the <a href="Partition-Scaling.htm#partition-scaling-procedure" class="link-internal">proper procedure</a> for partition scaling is not followed, ACK propagation from DR-active to DR-standby may fail because the acked message is in the wrong ancillary queue. Typically such messages are acked when subsequent messages are acked (due to our use of ranged ACKs), but regardless they will not be acked at the proper time.</p>
+          </li>
+          <li>
+            <p>If a failover occurs from the DR-active site to the DR-standby site, no coordination of previous relationships between partitions and consumer flows is maintained. </p>
+          </li>
+        </ul>
+      </dd>
+      <dt>REST Delivery Points</dt>
+      <dd>
+        <p>REST Delivery Points cannot bind to partitioned queues.</p>
+      </dd>
+      <dt>Active Flow Indication</dt>
+      <dd>
+        <p>The <MadCap:xref href="../../API/API-Developer-Guide/Creating-Flows.htm#Active-Flow-Indication">Active Flow Indication</MadCap:xref> is supported for partitioned queues. Although clients bind to the parent (non-exclusive queue), internally the flow is actually assigned to one or more of the child partitions. When a flow is assigned its first partition it is considered to have transitioned to "active". Flows that are assigned no partitions (for example, if there are more flows than partitions) are considered "inactive". </p>
+      </dd>
+      <dt>Queue Browsing</dt>
+      <dd>
+        <p>Queue browsing is not supported for partitioned queues. The event broker rejects requests from a browsing flow to bind to a partitioned queue.</p>
+      </dd>
+      <dt>Selectors</dt>
+      <dd>
+        <p>Selectors are not supported for partitioned queues. The event broker rejects a bind request to a partitioned queue if the request includes a selector.</p>
+      </dd>
+      <dt>Transactions</dt>
+      <dd>
+        <p>Local transactions are supported for both publish and subscribe, with the caveat that the commit of a local publish transaction fails if the selected partition is deleted between the time the message is received and the time the transaction is committed (due to a configuration change in the interim). In this case, the transaction can simply be retried.</p>
+        <p>XA transactions are not supported for either publish or subscribe:</p>
+      </dd>
+      <dt>Client-Signaled Behaviors</dt>
+      <dd>
+        <p>Client applications cannot create partitioned queues. Partitioned queues must be administratively provisioned.</p>
+        <p>Clients applications can manage the subscriptions of partitioned queues.</p>
+      </dd>
+      <dt>Replay</dt>
+      <dd>
+        <p>Message replay is not supported for partitioned queues.</p>
+      </dd>
+      <dt>Deleting Messages from Partitioned Queues</dt>
+      <dd>
+        <p>To delete messages that are spooled in a child queue, you must specify the name of the child queue in the <code>delete-messages</code> command. If you run the <code>delete-messages</code> command on the parent queue (that is, without specifying a partition), the event broker deletes any messages that were spooled directly to the parent queue before it became partitioned.</p>
+      </dd>
+      <dt>Copying One Message to Endpoint</dt>
+      <dd>
+        <p>Messages can be stranded in the parent queue if that queue changes from non-partitioned to partitioned.  In this case, messages can be copied out of the parent queue.</p>
+        <p>Messages can be copied to or from a partition.</p>
+      </dd>
+      <dt>AMQP</dt>
+      <dd>
+        <p>AMQP publishers can set the <code>group-id</code> attribute on their messages, and the event broker maps this property directly to the partition key property. This mechanism supports the publish-side behavior of partitioned queues.</p>
+      </dd>
+      <dt>MQTT</dt>
+      <dd>
+        <p>MQTT 3.1 publishers have no means to set the partition key for a message. Their messages can be delivered to partitioned queues but are assigned a random partition.</p>
+        <p>MQTT 5.0 publishers can set <code>JMSXGroupID</code> as a user property on their messages, and the event broker maps this property directly to the partition key property. This mechanism supports the publish-side behavior of partitioned queues.</p>
+        <p>MQTT subscribers do not have the ability to bind to an arbitrary queue, and so have no means to draw messages from a partitioned queue.</p>
+      </dd>
+      <dt>HTTP</dt>
+      <dd>
+        <p>Any HTTP publisher can provide a partition key by using an HTTP header option of <code>Solace-User-Property-JMSXGroupID</code>.  The event broker translates this field to the equivalent SMF header and triggers publish-side partitioned queue behavior.</p>
+      </dd>
+      <dt>Distributed Tracing</dt>
+      <dd>
+        <p>Partitioned queues are traced the same as non-partitioned queues.</p>
+      </dd>
+      <dt>Dead Message Queue Handling</dt>
+      <dd>
+        <p>A partitioned queue can have a DMQ configured for it. Messages expire from all partitions of a partitioned queue into the single configured DMQ.</p>
+        <p>A DMQ may itself be a partitioned queue. Any expiring message will be put into the partitioned DMQ based on the hash of the message's partition key, or into partition 0 if there is no hash.</p>
+      </dd>
+    </dl>
+  </body>
+</html>

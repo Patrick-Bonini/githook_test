@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Backing Up and Restoring HA Appliance Configurations</h1>
+    <p>This section provides information on how to back up and restore configuration for paired high-availability (HA) Solace PubSub+ appliances running Guaranteed Messaging.</p>
+    <p class="Warning">Do not use this procedure for <MadCap:variable name="Product-Names.broker_cloud_short"/>s in <MadCap:variable name="Product-Names.cloud_product_short"/>. Using this procedure in <MadCap:variable name="Product-Names.cloud_product_short"/>  may result in a degradation of service. Instead, see <MadCap:xref href="../Cloud/backup-brokers-messaging.htm">Backing Up [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref> for more information.</p>
+    <MadCap:snippetBlock src="../Resources/Snippets/broker-config-not-backed-up.flsnp"/>
+    <h2 class="with-rule"><a name="Back-Up-GM-HA"/>Backing Up Configuration</h2>
+    <p>The default backup procedure for paired appliances running Guaranteed Messaging is to run the <code>copy current-config</code> Privileged EXEC command.</p>
+    <p>However, before creating configuration file backups, always note the local state of Guaranteed Messaging activity on the paired appliances and observe the following:</p>
+    <ul>
+      <li>Creating the configuration file backup while Guaranteed Messaging is <u>active</u> captures the Guaranteed Messaging configuration at the time of backup.</li>
+      <li>Creating the configuration file backup while Guaranteed Messaging is <u>inactive</u> (that is, while the mate appliance is active), captures the Guaranteed Messaging configuration from when this appliance was last active. Further, a backup of the inactive appliance contains the queue and topic endpoint configuration that was present at the time this appliance was last active.</li>
+    </ul>
+    <div class="Note">
+      <ul>
+        <li>Queue and topic endpoint configuration changes are only acknowledged on the inactive paired appliance when it assumes the active role.</li>
+        <li>Solace recommends using a naming scheme for the backed up Guaranteed Messaging configuration files to help identify the appliance and Guaranteed Messaging activity at the time of backup.
+        <p>For example, consider the backups for paired appliance <code>R1</code> and <code>R2</code>, where <code>R1</code> is active, and <code>R2</code> is inactive:</p><p><code>copy current-config config_R1_AD_active</code></p><p><code>copy current-config config_R2_AD_inactive</code></p></li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="Roll-Back"/>Rolling Back to a Previous Configuration</h2>
+    <p>The default procedure for restoring the configuration files for redundant appliance pairs running Guaranteed Messaging service is to use the <code>reload</code> Privileged EXEC command as described below. The result is the restoration of a previously backed up Guaranteed Messaging service configuration.</p>
+    <p class="Caution"> During the following procedure, all spooled messages are lost.</p>
+    <p>To rollback to a previous Guaranteed Messaging configuration used by a redundant appliance pair, use the following procedure:</p>
+    <ol>
+      <li>Select a backup configuration file for the primary appliance that you want to roll back to. The configuration file must have been taken while Guaranteed Messaging service was active.</li>
+      <li>Rollback to the selected backup configuration file on the primary appliance as follows:
+        <p class="Code">solace1# configure<br/>solace1(configure)# redundancy<br/>solace1(configure/redundancy)# shutdown<br/>solace1(configure/redundancy)# exit<br/>solace1(configure)# hardware message-spool<br/>solace1(configure/hardware/message-spool)# shutdown<br/>solace1(configure/hardware/message-spool)# end</p><p> </p><p class="Code">solace1# admin<br/>solace1(admin)# system message-spool<br/>solace1(admin/system/message-spool)# reset<br/>solace1(admin/system/message-spool)# end<br/>solace1# reload config &lt;config-file&gt;</p><p class="Note">The appliance restarts with the restored configuration. All spooled messages are lost.</p><p class="Code">solace1# configure<br/>solace1(configure)# hardware message-spool<br/>solace1(configure/hardware/message-spool)# shutdown<br/>solace1(configure/hardware/message-spool)# end</p></li>
+      <li>On the secondary appliance, shut down the redundancy and message-spool, and then reset the message-spool:
+                <p class="Code">solace2# configure<br/>solace2(configure)# redundancy<br/>solace2(configure/redundancy)# shutdown<br/>solace2(configure/redundancy)# exit<br/>solace2(configure)# hardware message-spool<br/>solace2(configure/hardware/message-spool)# shutdown<br/>solace2(configure/hardware/message-spool)# end</p><p> </p><p class="Code">solace2# admin<br/>solace2(admin)# system message-spool<br/>solace2(admin/system/message-spool)# reset<br/>solace2(admin/system/message-spool)# end</p></li>
+      <li>Assert disk ownership on the primary appliance, and start the message spool and redundancy:
+                <p class="Code">solace1# admin<br/>solace1(admin)# system message-spool<br/>solace1(admin/system/message-spool)# assert-disk-ownership<br/>solace1(admin/system/message-spool)# end</p><p> </p><p class="Code">solace1# configure<br/>solace1(configure)# hardware message-spool<br/>solace1(configure/hardware/message-spool)# no shutdown primary<br/>solace1(configure/hardware/message-spool)# exit<br/>solace1(configure)# redundancy<br/>solace1(configure/redundancy)# no shutdown</p></li>
+      <li>When the primary appliance is back in service, select the backup configuration file for the mate appliance.</li>
+      <li>Run the following command to rollback to the selected backup configuration file on the secondary appliance:
+        <p class="Code">solace2# reload config &lt;config-file&gt;</p><p>The appliance restarts with the restored configuration. All spooled messages are lost.</p></li>
+      <li>Check  activity status on both appliances:
+                <ul><li><code>local active/local active</code> on the first appliance</li><li><code>mate active/mate active</code> on the second appliance</li></ul></li>
+      <li>If the backup virtual router on the primary appliance is <code>local active</code>, you may wish to restore the usual state by doing a <code>revert-activity</code> on the primary appliance:		 <p class="Code">solace1# admin<br/>solace1(admin)# redundancy revert-activity<br/>solace1(admin)# end</p></li>
+      <li>
+        <p>If the HA pair is using SSL, restore the server certificate by reloading it. For instructions to load server certificates, see <MadCap:xref href="../Security/Managing-Server-Certs.htm#Loading-Server-Certs">Loading Server Certificate Files</MadCap:xref>.</p>
+      </li>
+      <li>The configuration for redundant pair of appliances may need reconciliation. Use Config-Sync to assert one appliance’s configuration over its mate. For more information, see <MadCap:xref href="../Features/Config-Sync/Configuring-Config-Sync.htm#Assertin2">Asserting Routers’ VPN Configurations Over Their Mates</MadCap:xref>.</li>
+    </ol>
+  </body>
+</html>

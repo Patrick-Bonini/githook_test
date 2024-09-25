@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <style>
+			iframe {
+			position: inherit;
+			}
+		</style>
+  </head>
+  <body>
+    <h1>Migrating to an Event-Driven Architecture Example</h1>
+    <p>The following sections provide an example of how you can use a Microgateway to migrate from a traditional request/reply architecture to an event-driven architecture. </p>
+    <p>Under a traditional request/reply architecture, adding a new event-driven service means taxing every existing microservice to support at least two message exchange patterns (events and request/reply). Because a Microgateway can translate incoming events into REST HTTP requests, you can add new event-driven applications without having to interfere with existing services. In addition, you can have both environments in operation until you are ready to remove the older services.</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Overview">Overview</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Before">Before You Begin</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Create-Broker">Step 1: Create a PubSub+ Software Event Broker</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Configure-Broker">Step 2: Configure a Microgateway on the PubSub+ Software Event Broker</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Publish-Event">Step 3: Publish an Event</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Cleanup">Step 4: Cleanup</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Next-Steps">Next Steps</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Overview"/>Overview</h2>
+    <p>In this example, we'll create a Solace PubSub+ software event broker, configure a Microgateway on it, and publish an event containing a specified IP address to the event broker using a sample browser-based application. The Microgateway on the event broker translates the event into a REST HTTP request before sending it to a Geo Finder application. Once received,  the Geo Finder application responds to the request with geographical information about the IP address.</p>
+    <p>The browser-based event publisher represents a new event-driven microservice you are adding to your environment, and the Geo Finder application represents an existing REST HTTP endpoint. </p>
+    <p>
+      <img src="../Resources/Images/Microgateway-Tasks/microgateway_sample_architecture1.PNG" alt=""/>
+    </p>
+    <h2 class="with-rule"><a name="Before"/>Before You Begin</h2>
+    <p>It's assumed you have:</p>
+    <ul>
+      <li>Windows 10 Pro, or Mac OS X Yosemite 10.10.3 or higher.</li>
+      <li>Docker for Mac, or Docker for Windows installed, with at least 2 GiB of memory dedicated to Docker Engine. For more information about allocating memory and swap space, refer to  <a href="https://docs.docker.com/docker-for-windows/#advanced" target="_blank" class="link-offsite">Docker for Windows</a> or <a href="https://docs.docker.com/docker-for-mac/#advanced" target="_blank" class="link-offsite">Docker for Mac</a> settings page.</li>
+      <li>Google Chrome as your current browser. </li>
+    </ul>
+    <h2 class="with-rule"><a name="Create-Broker"/>Step 1: Create a PubSub+ Software Event Broker</h2>
+    <p>To create a PubSub+ software event broker for this example:</p>
+    <ol>
+      <li>
+        <p>Start Docker Engine and open a command-line terminal.</p>
+      </li>
+      <li>
+        <p>Download the <a href="https://gist.github.com/tzoght/281052e24d463eb182b5534ba4dd55e8#file-singlenode-yml" target="_blank" class="link-offsite">singleNode.yml</a> Docker compose template file:</p>
+        <pre class="Code" xml:space="preserve">curl https://raw.githubusercontent.com/SolaceLabs/solace-docs-assets/master/microgateway/singleNode.yml -O</pre>
+      </li>
+      <li>
+        <p>Create a PubSub+ software event broker using the compose file:</p>
+        <div class="Note">
+          <p>The compose file in this example publishes a number of container ports to the same ports on your host machine. If any of these ports are in use, the event broker will not activate.</p>
+          <MadCap:dropDown>
+            <MadCap:dropDownHead>
+              <MadCap:dropDownHotspot>Ports Used in this Example</MadCap:dropDownHotspot>
+            </MadCap:dropDownHead>
+            <MadCap:dropDownBody>
+              <pre class="Code">80
+443
+943
+1883
+5671
+5672
+8000
+8080
+8443
+8883
+9000
+9443
+55555
+55003
+55443
+1936</pre>
+            </MadCap:dropDownBody>
+          </MadCap:dropDown>
+        </div>
+        <pre class="Code" xml:space="preserve">docker-compose -f singleNode.yml up -d</pre>
+        <p>If the event broker creation is successful, the following output is displayed in the terminal:</p>
+        <pre class="Code">Creating pubSubStandardSingleNode ... done</pre>
+      </li>
+    </ol>
+    <h2 class="with-rule"><a name="Configure-Broker"/>Step 2: Configure a Microgateway on the PubSub+ Software Event Broker</h2>
+    <p>Before your event broker can process events, you need to configure a Microgateway on a message VPN.</p>
+    <p>You can configure your event broker using one of the following methods:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Configure-Broker-SEMP">Configure a Microgateway using SEMP</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Configure-Broker-CLI">Configure a Microgateway using the Solace CLI</MadCap:xref>
+      </li>
+    </ul>
+    <p>To learn more about the components that constitute a Microgateway, refer to <MadCap:xref href="Microgateway-Traffic-Mgmt-Example.htm">Traffic Management to Microservices</MadCap:xref>.</p>
+    <h3><a name="Configure-Broker-SEMP"/>Configure a Microgateway using SEMP</h3>
+    <p>To configure a Microgateway on your event broker using the sample management application below (which uses <MadCap:xref href="../Admin/SEMP/Using-SEMP.htm">SEMP</MadCap:xref> requests to set up each component):</p>
+    <ol>
+      <li> Click <b>Run Pen</b> to load the application.</li>
+      <li>Click <b>Setup</b>.</li>
+    </ol>
+    <p>If the configuration is successful, the following is displayed in the <b>Response</b> field:</p>
+    <pre class="Code">default VPN exists  --&gt; creating queue gtwQ
+created queue gtwQ
+changed VPN mode to gateway
+added topic subscription to gtwQ
+added RDP to gtwQ
+binding RDP to gtwQ
+created rest consumer for rdp  gtwRdp</pre>
+    <p>If the <b>Response</b> field does not display any information, you may need to wait a minute for the event broker to finish activating and try again. </p>
+    <p data-height="575" data-theme-id="dark" data-slug-hash="Zjydwp" data-default-tab="result" data-user="solacecloud" data-pen-title="Solace PubSub+ Configure MicroGateway" data-preview="true" class="codepen">See the Pen <a href="https://codepen.io/solacecloud/pen/Zjydwp/">Solace PubSub+ Configure MicroGateway</a> by Solace Cloud (<a href="https://codepen.io/solacecloud">@solacecloud</a>) on <a href="https://codepen.io">CodePen</a>.</p>
+    <script async="async" src="https://static.codepen.io/assets/embed/ei.js">
+        </script>
+    <h3><a name="Configure-Broker-CLI"/>Configure a Microgateway using the Solace CLI</h3>
+    <p>To configure a Microgateway on your event broker using the Solace CLI:</p>
+    <ol>
+      <li>
+        <p>Enter the following <code>docker exec</code> command to access your event broker's  CLI.</p>
+        <pre class="Code" xml:space="preserve">docker exec -it pubSubStandardSingleNode /usr/sw/loads/currentload/bin/cli -A</pre>
+      </li>
+      <li>
+        <p>Enter the following commands.</p>
+        <MadCap:dropDown>
+          <MadCap:dropDownHead>
+            <MadCap:dropDownHotspot>Example</MadCap:dropDownHotspot>
+          </MadCap:dropDownHead>
+          <MadCap:dropDownBody>
+            <pre class="Code" xml:space="preserve">enable
+config
+message-spool message-vpn default
+create queue gtwQ
+permission all consume
+subscription topic GET/&gt;
+no shutdown
+exit
+exit
+message-vpn default
+service rest
+mode gateway
+exit
+exit
+rest
+create rest-delivery-point gtwRdp
+create queue-binding gtwQ
+exit
+create rest-consumer gwConsumer
+remote
+host ip-api.com
+port 80
+exit
+no shutdown
+exit
+no shutdown			</pre>
+          </MadCap:dropDownBody>
+        </MadCap:dropDown>
+      </li>
+      <li>
+        <p> Enter the following show command to verify that  the event broker is ready to process requests (both the <code>Admin State</code> and <code>Oper State</code> flags are <code>Up</code>). </p>
+        <MadCap:dropDown>
+          <MadCap:dropDownHead>
+            <MadCap:dropDownHotspot>Example</MadCap:dropDownHotspot>
+          </MadCap:dropDownHead>
+          <MadCap:dropDownBody>
+            <pre class="Code" xml:space="preserve">show message-vpn default rest rest-delivery-point gtwRdp
+							
+Total REST Delivery Points (up):                       1
+Total REST Delivery Points (configured):               1
+Total REST Consumers (up):                             1
+Total REST Consumers (configured):                     1
+Total REST Consumer Outgoing Connections (up):         3
+Total REST Consumer Outgoing Connections (configured): 3
+Total Queue Bindings (up):                             1
+Total Queue Bindings (configured):                     1
+
+Flags Legend:
+A - Admin State (U=Up, D=Down)
+O - Oper State (U=Up, D=Down)
+
+                                                  REST
+                                                 Consumer
+                                                 Outgoing     Queue       Conns
+                                        Status    Conns      Bindings    Blocked
+RDP Name             Message VPN         A O    (up/conf)    (up/conf)     (%)
+-------------------- ------------------ ------ ----------- ------------- -------
+gtwRdp               default             U U   3 / 3       1 / 1              0</pre>
+          </MadCap:dropDownBody>
+        </MadCap:dropDown>
+      </li>
+    </ol>
+    <h2 class="with-rule"><a name="Publish-Event"/>Step 3: Publish an Event</h2>
+    <p>To  publish an event with the sample application provided below:</p>
+    <ol>
+      <li>Click <b>Run Pen</b> to load the application.</li>
+      <li>Click <b>Connect</b> to connect to your  event broker.</li>
+      <li>Enter an IP address in the <b>IP (get geo location)</b> field.</li>
+      <li>Click <b>Request</b> to publish the event through your event broker to the  Geo Finder endpoint.</li>
+    </ol>
+    <p>The geographical information associated with the IP address you passed into the request is displayed in the <b>Response</b> field.</p>
+    <p data-height="625" data-theme-id="dark" data-slug-hash="rrwEXy" data-default-tab="result" data-user="solacecloud" data-pen-title="Event Driven Microservice (Solace PubSub+)" data-preview="true" class="codepen">See the Pen <a href="https://codepen.io/solacecloud/pen/rrwEXy/">Event Driven Microservice (Solace PubSub+)</a> by Solace Cloud (<a href="https://codepen.io/solacecloud">@solacecloud</a>) on <a href="https://codepen.io">CodePen</a>.</p>
+    <script async="async" src="https://static.codepen.io/assets/embed/ei.js">
+        </script>
+    <h2 class="with-rule"><a name="Cleanup"/>Step 4: Cleanup</h2>
+    <p>To remove the event broker and clean up all associated resources, enter the following <code>docker-compose</code> command: </p>
+    <pre class="Code" xml:space="preserve">docker-compose -f singleNode.yml down -v</pre>
+    <h2 class="with-rule"><a name="Next-Steps"/>Next Steps</h2>
+    <p>At this point you'll have created a Solace PubSub+ software event broker, configured a Microgateway on it, and published an event through the event broker to an existing REST HTTP endpoint. </p>
+    <p>This example should provide you with some ideas as to how you can use a Solace Microgateway to add event-driven applications to an existing request/reply architecture as part of your migration to an event-driven architecture.</p>
+    <p>From here, we encourage you to review the following topics to learn more about other capabilities that are enabled with the Microgateway feature:</p>
+    <ul>
+      <li>
+        <p>
+          <MadCap:xref href="Microgateway-Use-Cases.htm">Microgateway Use Cases</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <MadCap:xref href="Microgateways-Overview.htm">Microgateways</MadCap:xref>
+      </li>
+    </ul>
+    <p> </p>
+  </body>
+</html>

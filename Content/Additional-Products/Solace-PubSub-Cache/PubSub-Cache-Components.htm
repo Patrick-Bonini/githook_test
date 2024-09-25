@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>PubSub+ Cache Components</h1>
+    <p>PubSub+ Cache uses a distributed structure so that it can be scaled as necessary. Therefore, as message rates and topic space grows, the topic space can be divided amongst multiple Cache Clusters.</p>
+    <p>As a distributed caching solution, PubSub+ Cache is composed of the following components:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Designated-Router">Designated Router</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Dist-Caches">Distributed Caches</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Cache-Clusters">Cache Clusters</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Instances">PubSub+ Cache Instances</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Designated-Router"/>Designated Router</h2>
+    <p>A Designated Router is a specific event broker through which a Distributed Cache and all of its associated Cache Clusters and PubSub+ Cache Instances are configured and managed. An event broker can act as a Designated Router when a Message VPN is configured on that router (refer to <MadCap:xref href="../../Features/VPN/Configuring-VPNs.htm">Configuring a Message VPN</MadCap:xref>).</p>
+    <p MadCap:conditions="Default.HideFromAllOutput">Prior to 10.0.1, a Designated Router is a specific event broker through which a Distributed Cache and all of its associated Cache Clusters and PubSub+ Cache Instances are configured and managed. An event broker can act as a Designated Router when a Message VPN configured on that router has distributed-cache-management services enabled (see  <MadCap:xref href="../../Features/VPN/Configuring-VPNs.htm">Configuring a Message VPN</MadCap:xref>).</p>
+    <p>The Designated Router is the central repository and management point for the Distributed Cache configuration. A network operator can perform PubSub+ Cache configuration, management, and monitoring tasks on the Designated Router through the event broker Command Line Interface (CLI).</p>
+    <p>The Designated Router uses an internal client, known as the Cache Manager, to automatically provide the operations, administration, and management (OA&amp;M) functionality required to manage many Cache Clusters and their associated PubSub+ Cache Instances. For example, the Cache Manager is responsible for tasks such as:</p>
+    <ul>
+      <li>Propagating configuration changes to a Cache Cluster, and ensuring that each PubSub+ Cache instance in the Cache Cluster has a consistent configuration</li>
+      <li>Disseminating topic space information throughout the Distributed Cache, so that each Cache Cluster has an up-to-date list of topics for its PubSub+ Cache Instances to listen for and knows of the topics that PubSub+ Cache Instances in all other Cache Clusters are listening for</li>
+      <li>Resynchronizing of PubSub+ Cache Instances that disconnect and subsequently reconnect to the network</li>
+    </ul>
+    <h2 class="with-rule"><a name="Dist-Caches"/>Distributed Caches</h2>
+    <p>A Distributed Cache is a collection of one or more Cache Clusters that belong to the same Message VPN.</p>
+    <p>Each Cache Cluster in a Distributed Cache is configured to subscribe to a different set of topics. This effectively divides up the configured topic space, to provide scaling to very large topic spaces or very high cached message throughput.</p>
+    <p>A Distributed Cache and all of its associated Cache Clusters are configured from the same Designated Router. The Cache Manager automatically ensures that each PubSub+ Cache instance in a Cache Cluster gets configured with:</p>
+    <ul>
+      <li>The list of topics that the Cache Cluster (and subsequently its PubSub+ Cache Instance) is responsible for</li>
+      <li>The lists of topics that are served by other Cache Clusters in the Distributed Cache, and the names of the Cache Clusters serving up those topics</li>
+    </ul>
+    <p>Allowing Cache Clusters to know of each other’s assigned topic sets ensures that when a cache request is made to either the Distributed Cache or a specific Cache Cluster in the Distributed Cache, any matching cached messages in the Distributed Cache are returned, regardless of what Cache Cluster they are cached in.</p>
+    <p>The following two figures  show simple Distributed Cache examples. In these examples, Cache Cluster <code>bob</code> has been configured to handle “animals/cats/&gt;”, Cache Cluster <code>joe</code> has been configured to handle “animals/bears/&gt;”, and Cache Cluster <code>fred</code> has been configured to handle “animals/dogs/&gt;”. Client applications have been set up to always send cache requests to <code>bob</code>, although they could just as easily send their requests to <code>joe</code> or <code>fred</code>.</p>
+    <p>The first example shows a scenario in which all three Cache Clusters contain topics that match the cache request. </p>
+    <p class="GraphicCaption">Distributed Cache Example 1</p>
+    <p class="GraphicCaption">
+      <img src="Images/Distributed SolCache Example 1.png" style="width: 622px;height: 531px;" alt=""/>
+    </p>
+    <p>The next example shows a scenario in which the topic space requested is fully contained in Cache Cluster <code>joe</code>.</p>
+    <p class="GraphicCaption">Distributed Cache Example 2</p>
+    <p class="GraphicCaption">
+      <img src="Images/Distributed SolCache Example 2.png" style="width: 622px;height: 531px;" alt=""/>
+    </p>
+    <h2 class="with-rule"><a name="Cache-Clusters"/>Cache Clusters</h2>
+    <p>A Cache Cluster is a collection of one or more PubSub+ Cache Instances that subscribe to exactly the same topics.</p>
+    <p>PubSub+ Cache Instances are grouped together in a Cache Cluster for the purpose of fault tolerance and load balancing. As published messages are received, the event broker message bus sends these live data messages to the PubSub+ Cache Instances in the Cache Cluster. This enables client cache requests to be served by any of PubSub+ Cache Instances in the Cache Cluster.</p>
+    <p>The message bus load-balances client cache requests amongst these PubSub+ Cache Instances as determined by the priorities assigned to the individual PubSub+ Cache Instances through the configuration file.</p>
+    <p>Each Cache Cluster in a Distributed Cache must use a different set of topic subscriptions; that is, the subscriptions assigned to each Cache Cluster must not overlap.</p>
+    <p>Each Cache Cluster can be configured through the Designated Router’s CLI or SEMP interface (refer to <MadCap:xref href="Configuring-Cache-Clusters.htm">Configuring Cache Clusters</MadCap:xref>). The Designated Router ensures that the configuration is propagated to all PubSub+ Cache Instances in the Cache Cluster. Configuration parameters for the Cache Cluster are stored persistently in the Designated Router’s internal, non-volatile database, and are backed up and restored along with all the other configuration information for that router.</p>
+    <h2 class="with-rule"><a name="Instances"/>PubSub+ Cache Instances</h2>
+    <p>A PubSub+ Cache Instance is a single PubSub+ Cache process that belongs to a single Cache Cluster. At least one PubSub+ Cache Instance is required for a Cache Cluster, although up to 16 can be used.</p>
+    <p>PubSub+ Cache Instances are installed on standalone Linux systems through a Solace installation package provided by Solace, and a corresponding PubSub+ Cache Instance object that is created through the Solace CLI. </p>
+    <p>The initial configuration for a PubSub+ Cache Instance is provided by a configuration file that is used when the PubSub+ Cache Instance is started. The Designated Router that the PubSub+ Cache Instance establishes a connection to also disseminates configuration information to the PubSub+ Cache Instance.</p>
+    <p>PubSub+ Cache Instances listen for and cache live data messages that match the topic subscriptions configured for their parent Cache Cluster.</p>
+    <p>Each PubSub+ Cache Instance in a Cache Cluster caches a published live data message if all the following are true:</p>
+    <ul>
+      <li>its topic matches a topic subscription configured for the Cache Cluster (wild card topics are supported)</li>
+      <li>the PubSub+ Cache Instance is not administratively shutdown</li>
+      <li>it does not violate configured constraints such as maximum memory or maximum number of topics</li>
+      <li>when an Ingress Message Plug-in is being used, the Plug-in function returns an operation code that directs the PubSub+ Cache Instance to cache the message. For information, refer to <MadCap:xref href="Using-Ingress-Message-Plugins.htm">Using Ingress Message Plug-Ins</MadCap:xref>.</li>
+    </ul>
+    <p>Client cache requests are load-balanced amongst the PubSub+ Cache Instances in a Cache Cluster.</p>
+    <h3><a name="Interact-With-Designated-Router"/>PubSub+ Cache Instance Interactions With the Designated Router</h3>
+    <p>Each PubSub+ Cache Instance uses a configuration file that provides parameters required to establish a connection with a host event broker (for example, username, password, event broker host to connect to). This configuration information is required on start up for the PubSub+ Cache Instance to connect to and register with the Designated Router. (For more information on the content of the PubSub+ Cache configuration file, refer to the configuration file template (<code>sampleConfig.txt</code>) provided with the <code>SolCacheInstance </code>package).</p>
+    <p>If the PubSub+ Cache Instance successfully establishes a connection, the Designated Router’s Cache Manager downloads additional configuration information and topic information to the PubSub+ Cache Instance.</p>
+    <p class="Note">If the Designated Router for a PubSub+ Cache Instance goes offline or restarts, the PubSub+ Cache Instance continues to run with the configuration that it last received from the Designated Router. Once the Designated Router comes back online, it resends the configuration information to the PubSub+ Cache Instances that it is responsible for managing.</p>
+    <p>A PubSub+ Cache Instance has the following additional interactions with the Designated Router:</p>
+    <ul>
+      <li><u>CLI</u>: Administrative and configuration changes made through the CLI on the Designated Router are sent between the Cache Manager and PubSub+ Cache Instances.</li>
+      <li><u>Event</u>: Events are generated on PubSub+ Cache Instances and sent back to the Designated Router for reporting through the message bus.</li>
+      <li><u>Heartbeats</u>: A heartbeat request is periodically sent by a PubSub+ Cache Instance to the Designated Router to confirm the presence of each other. If three or more heartbeat requests are lost, then a PubSub+ Cache Instance must reconnect and resynchronize its configuration with the Designated Router. It does not delete any of its cache content through this process unless it learns of topics no longer required to be cached. When it is trying to reconnect to the Designated Router, the PubSub+ Cache Instance stays “in service” (that is, continues to service cache requests).</li>
+    </ul>
+    <h3><a name="Remove-Data"/>Removing Data Messages from PubSub+ Cache Instances</h3>
+    <p>Messages are removed from Cache Instances where they are cached when any of the following conditions arise:</p>
+    <ul>
+      <li>A scheduled delete operation occurs.</li>
+      <li>An administrative delete message &lt;topic&gt; operation is issued from the Designated Router.</li>
+      <li>Configured limits, such as the lifetime or maximum number of messages per topic, are exceeded.</li>
+      <li>A change to the topic set defined on the Cache Cluster occurs at which time messages for topics cached outside of the configured topics set are deleted.</li>
+      <li>A PubSub+ Cache Instance or its parent Cache Cluster or Distributed Cache is deleted.</li>
+      <li>Any termination of the PubSub+ Cache Instance process. That is, the cache contents are volatile and are lost if the PubSub+ Cache Instance process dies or is reset.</li>
+    </ul>
+    <p>Cached messages are not removed from a PubSub+ Cache Instance when the PubSub+ Cache Instance or its parent Cache Cluster or Distributed Cache is shutdown. However, when the PubSub+ Cache Instance is subsequently enabled, or if an administrative start is performed (refer to <MadCap:xref href="Performing-PubSub-Cache-Admi.htm#configuring_and_managing_solcache_541341864_270635">Starting PubSub+ Cache Instances</MadCap:xref>), and there is another active PubSub+ Cache Instance in the Cache Cluster, the restarted PubSub+ Cache Instance’s cached messages are removed and replaced with those of the PubSub+ Cache Instance with which it is synchronized.</p>
+    <h2 class="with-rule"><a name="Cache-Requests-Responses"/>Cache Requests and Responses</h2>
+    <p>Client applications can use the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging APIs for JCSMP, Java RTO, C, .NET, or JavaScript  to make cache requests for topics. The cache requests must include the name of the Distributed Cache, Cache Cluster, or PubSub+ Cache Instance to issue the request to and the topics requested.</p>
+    <p>Cache requests made using the JCSMP, Java RTO, C, and .NET APIs can either be synchronous or asynchronous. If the request is synchronous, then the API call blocks until the response is received (or a time-out occurs).</p>
+    <p>Cache requests made using JavaScript only allows asynchronous cache requests.</p>
+    <p>If a cache request is made to a Distributed Cache or a Cache Cluster, the request is delivered to one of the PubSub+ Cache Instances in a Cache Cluster that are configured to listen for the same topics, and that single PubSub+ Cache Instance responds to the cache request.</p>
+    <p>Cache responses are addressed back to the originating client on an automatically generated peer-to-peer topic contained within the request.</p>
+    <p>The result of a cache request is indicated by return codes or events provided by the Cache Instance. Any messages that are returned for the request are handled through message receive callback or delegate associated with the session that the cache session is created in.</p>
+    <p>For information on how to design an application to make cache requests and handle cache responses using the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging APIs, see <MadCap:xref href="../../API/API-Developer-Guide/cache/using-pubsub-cache.htm">Using [%=Product-Names.pubsub_brand_only%] Messaging APIs with [%=Product-Names.pubsub_cache_short%]</MadCap:xref>.</p>
+    <h3><a name="Open-Tech"/>Non-Solace Technologies</h3>
+    <p><MadCap:variable name="Product-Names.pubsub_brand_only"/> allows customer applications to publish messages to and receive messages over using the following standardized, non-Solace-specific technologies:</p>
+    <ul>
+      <li>Open Middleware Agnostic Messaging API (OpenMAMA)</li>
+      <li>Message Queuing Telemetry Transport (MQTT) protocol</li>
+      <li>Representational State Transfer (REST) messaging service</li>
+    </ul>
+    <p>Of these non-Solace technologies, only client applications using the OpenMAMA API may use PubSub+ Cache to make cache requests for topics—applications using REST or MQTT cannot (although MQTT publish messages may be cached). For information on how to implement the PubSub+ Cache facility with OpenMAMA applications, see  <MadCap:xref href="../../API/Solace-OpenMama/Solace-OpenMAMA-Overview.htm">Solace OpenMAMA</MadCap:xref>.</p>
+  </body>
+</html>

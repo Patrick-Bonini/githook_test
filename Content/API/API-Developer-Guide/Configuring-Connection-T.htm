@@ -1,0 +1,419 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><a name="top"/>Configuring Connection Time-Outs and Retries</h1>
+    <p>You can configure the connection time-outs and the number of retries for client applications to connect to event brokers. You can use channel properties for the JCSMP API, or session properties for Java RTO , C, and .NET APIs. For information on how to set these properties, see:</p>
+    <ul>
+      <li>
+        <p>
+          <MadCap:xref href="#Connecti">Connection Time-Out</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Connect">Connect Retries</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Reconnec">Reconnect Retries</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Reconnec2">Reconnect Retry Wait</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Connect2">Connect Retries Per Host</MadCap:xref>
+        </p>
+      </li>
+    </ul>
+    <p>For an example of how these session properties work in relation to one another when a list of potential hosts are provided for client connection attempts, see <MadCap:xref href="#Sample">Sample Connect Retry Scenario</MadCap:xref> and for more information on listing multiple hosts, see <MadCap:xref href="Session-Props-Required.htm#Creating_ent_sessions_sess_props_host">Host</MadCap:xref>.</p>
+    <p class="Note">The default values for connection time-outs, retries, and retry wait times differ among the different APIs. To check the defaults, see the reference documentation for the different <MadCap:xref href="../Messaging-APIs/Solace-APIs-Overview.htm#Messagi">[%=Product-Names.pubsub_brand_only%] Messaging APIs</MadCap:xref>.</p>
+    <h4 MadCap:conditions="Default.HideFromAllOutput">Session property values for HA pairs</h4>
+    <p MadCap:conditions="Default.HideFromAllOutput">When using HA redundant event broker pairs, a failover from one event broker to its mate will typically occur in under 30 seconds; however, applications should attempt to reconnect for at least 5 minutes. To allow for a reconnect duration of 5 minutes for HA redundant event brokers, set the following session properties to these values:</p>
+    <ul MadCap:conditions="Default.HideFromAllOutput">
+      <li>connect retries: 1</li>
+      <li>reconnect retries: 20</li>
+      <li>reconnect retry wait: 3,000 ms</li>
+      <li>connect retries per host: 5</li>
+    </ul>
+    <h2 class="with-rule"><a name="Connecti"/>Connection Time-Out</h2>
+    <p>The connection time-out property is the maximum amount of time (in milliseconds) allowed for a Session to establish an initial connection to an event broker.</p>
+    <p>When a host list is used, the amount of time set for the Connection Time-Out property is applied to each connection attempt to a host. So, for example, if four host entries are listed, a worst-case scenario would be that an application would have to wait for the connection time-out to occur for each host entry, times the number of connect attempts, before receiving a notice of an established connection or a connection failure. This wait time is also extended by the Reconnect Retry Wait time that occurs after each unsuccessful attempt to connect to a host.</p>
+    <p class="Note">A connection attempt can terminate quicker if a failure is detected by the socket layer.</p>
+    <h4>Considerations when using JCSMP</h4>
+    <p>When using JCSMP, the following considerations also apply:</p>
+    <ul>
+      <li>If the operating system used by the client application uses a maximum TCP connect timeout value that is less than the API connect timeout value (<code>ConnectTimeoutInMillis</code>), the operating system’s maximum TCP connect timeout will determine when the connection attempt will timeout.</li>
+      <li>If a client can't authenticate with the event broker within the amount of time configured for the read timeout (<code>readTimeoutInMillis</code>) property, the Session will be disconnected. If this occurs, you can increase the read timeout value.</li>
+      <li>
+        <p>When publishing large JMS messages (90MB or more), the processing time may take longer than the default read timeout period of 10s. You can change the read timeout value by using the following command:</p>
+        <pre class="Code" xml:space="preserve">setReadTimeoutInMillis
+public void setReadTimeoutInMillis(int readTimeoutInMillis)</pre>
+        <p>Take a look at the <a href="https://docs.solace.com/API-Developer-Online-Ref-Documentation/java/com/solacesystems/jcsmp/JCSMPChannelProperties.html#setReadTimeoutInMillis(int)" class="link-internal">JCSMP</a> reference guide for more information.</p>
+      </li>
+    </ul>
+    <h4>To set a connection Time-Out value</h4>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Property</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>JCSMPChannelProperties.setConnectTimeoutInMillis(...)</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>SessionHandle.PROPERTIES.CONNECT_TIMEOUT_MS</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>SOLCLIENT_SESSION_PROP_CONNECT_TIMEOUT_MS</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>SessionProperties.ConnectTimeoutInMsecs</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>solace.SessionProperties.connectTimeoutInMsecs</code>
+            </p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="Connect"/>Connect Retries</h2>
+    <p>The Connect Retries property sets the number of times to retry to establish an initial connection for a Session to a host event broker.</p>
+    <p>The valid range for the Connect Retries property is –1 or greater. A value of –1 means retry forever; a value of 0 means no automatic connection retries (that is, try once and give up).</p>
+    <p>If a host list is used, the API attempts to establish a connection to the first listed event broker. If that attempt fails, the API waits for the amount of time set for the Reconnect Retry Wait property before attempting another connection to either the same host. (The value of Connect Retries Per Host property sets the number times to attempt to connect to one host before moving to the next listed host.) The API attempts to connect to the host entries sequentially in the order they are listed.</p>
+    <p>If the Connect Retries property is greater than 0, the API can retry a connection attempt at the beginning of the host list if no connection could be established to any of the entries in the list. Each time the API works through the host list without establishing a connection is considered a connect retry. For example, for a Connect Retries value of 2, the API could possibly work through all of the listed hosts without connecting to them three times: one time through for the initial connect attempt, and then two times through for each connect retry. Each connect retry begins with the first host listed.</p>
+    <h4>For JCSMP</h4>
+    <p> The connect retries value refers to the total number of connection attempts, including the initial connection attempt. For example, setting the connect retries value to 3 in JCSMP results in a maximum of 3 connection attempts: the initial attempt and two retries.</p>
+    <h4>For the Java RTO, C, and .NET APIs</h4>
+    <p> The connect retries value refers strictly to the total number of connection retries and doesn't include the initial connection attempt. For example, setting the connect retries value to 3 in the Java RTO, C, or .NET APIs results in a maximum of 4 connection attempts: the initial attempt and three retries.</p>
+    <h4>To set the number of Connect Retries</h4>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API
+                    </th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">
+                       Property
+                    </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>JCSMPChannelProperties.setConnectRetries(...)</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>SessionHandle.PROPERTIES.CONNECT_RETRIES</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>SOLCLIENT_SESSION_PROP_CONNECT_RETRIES</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>SessionProperties.ConnectRetries</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>solace.SessionProperties.connectRetries</code>
+            </p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="Reconnec"/>Reconnect Retries</h2>
+    <p>The Reconnect Retries property sets the number of times to try to reconnect to a host after a connected Session goes down.</p>
+    <p>The valid range is greater than or equal to –1. A value of –1 means retry forever; a value of 0 means no automatic reconnection attempts.</p>
+    <p>If a host list is used, this property sets the number of times the API will traverse the host list in an attempt to reconnect to one of the hosts in the list. That is, if the API cannot connect to the first event broker on the list (that is, the preferred event broker), it attempts to connect to the next listed event broker, and so on. The API attempts to connect to each host for the number of times set for the Connect Retries Per Host property before attempting to connect to the next host.</p>
+    <p>After each unsuccessful connection attempt, the API waits for the amount of time set for the Reconnect Retry Wait property to expire before attempting to connect to the same host, the next listed host, or, after all of the listed hosts have been attempted, to the first host on the list again.</p>
+    <p>Multiple reconnects should be specified when the Session is working with a host for which event broker redundancy has been enabled (that is, the IP address listed as a host is used by a pair of redundant event brokers). Disabling reconnect retries could affect activity switches that might occur when active/active redundancy is used and could cause service disruptions. For example, in a failover scenario, if no reconnect retries are enabled, a connection attempt cannot be made to the redundant event broker.</p>
+    <p>Solace recommends that you set the Reconnect Retries value to the maximum number of attempts that you are willing to try before moving to an alternative error handling approach. In this case you may have encountered an issue that cannot be resolved by reconnecting the session to the host, and further consideration is required. For example, investigating an issue with the event broker.</p>
+    <h4>JCSMP</h4>
+    <p>An automatic reconnect frequency limit is used to prevent a client from reconnecting more than ten times (default) within four seconds. If the event broker permits the replacement of duplicate client connections during authentication, when multiple clients with the same client user name are used, they could enter a cycle where one client connects and then is disconnected when another client connects. If these clients have a non-zero Reconnect Retries value, each time one disconnected client successfully reconnects, it disconnects another connected client. The automatic reconnect frequency limit ensures that this client connect/reconnect cycle does not occur indefinitely.</p>
+    <p>For information on how to enable the replacement of duplicate client connections during authentication, see <MadCap:xref MadCap:unresolvedLink="import-link:managing_client_authentication_and_authorization_3377806447_57353" href="../../Security/Configuring-Client-Authentication.htm#Dup-Connect-Behav">Configuring Duplicate Client Connect Behavior</MadCap:xref>.</p>
+    <h4>To set the number of Reconnect Retries</h4>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Property</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>JCSMPChannelProperties.setReconnectRetries(...)</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>SessionHandle.PROPERTIES.RECONNECT_RETRIES</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>SOLCLIENT_SESSION_PROP_RECONNECT_RETRIES</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>SessionProperties.ReconnectRetries</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>solace.SessionPropertiess.reconnectRetries</code>
+            </p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="Reconnec2"/>Reconnect Retry Wait</h2>
+    <p>The Reconnect Retry Wait property sets the time  to wait (in milliseconds) after an unsuccessful attempt to reconnect to the same host that the client was connected to. After this time expires, another reconnect attempt can be made. The valid range for the Reconnect Retry Wait property is 1 or greater.</p>
+    <p class="Note">If the API works through all of the entries in the host list without establishing a connection, and a connect retry is permitted because the Connect Retry property is greater than 0, the API waits for the amount of time set for the Reconnect Retry Wait property before retrying to connect to the first host in the host list.</p>
+    <h4>To set the Reconnect Retry Wait Times</h4>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Property</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>JCSMPChannelProperties.setReconnectRetryWaitInMillis(...)</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>SessionHandle.PROPERTIES.RETRY_WAIT_MS</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>SOLCLIENT_SESSION_PROP_RECONNECT_RETRY_WAIT_MS</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>SessionProperties.ReconnectRetriesWaitInMsecs</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>solace.SessionProperties.reconnectRetryWaitInMsecs</code>
+            </p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="Connect2"/>Connect Retries Per Host</h2>
+    <p>When using a host list, the Connect Retries Per Host property sets how many times to try to connect or reconnect the Session to one host before moving to the next host in the list.</p>
+    <p>A value of 0 means make a single connection or reconnection attempt (that is, 0 retries). A value of –1 means attempt an infinite number of connect or reconnect retries (in this case, the API only tries to connect or reconnect to first host listed).</p>
+    <p>If a connect or reconnect attempt to a host is not successful, the API must wait for the amount of time set for the Reconnect Retry Wait property, before making another connect or reconnect attempt.</p>
+    <h4>Application disconnection and Guaranteed messages</h4>
+    <p>If a client application gets disconnected, the API will attempt to reconnect to the event broker it was connected to, and if that fails it will attempt to reconnect to the next listed host, and so on. If the application had published Guaranteed messages prior to being reconnected to a new host, the new host will not have the required Guaranteed messaging publisher state to agree with the API on which messages were last received / acknowledged. Therefore, the API will reset the publisher flow state, renumber and resend any unacknowledged messages. </p>
+    <p>If the new host was configured as a Replication mate of the original host, resending messages may create duplicates because the original messages may have been successfully delivered to the mate even though from the API’s perspective they were unacknowledged. In this case, it is up to the receiving application to resolve this duplication in an appropriate manner.<br/>For API versions prior to 7.1.2, if a reconnect to a different host occurred after publishing Guaranteed messages, the API would close the newly created session and raise a session event—the application was responsible for reconnecting and resending any unacknowledged published messages. To use this legacy behavior, you must change the reconnect fail action channel or session property to the appropriate non-default value. For more information, see <MadCap:xref href="../Messaging-APIs/Solace-APIs-Overview.htm">APIs &amp; Protocols</MadCap:xref>.</p>
+    <h4>To set the Connect Retries Per Host</h4>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Property</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>JCSMPChannelProperties.setConnectRetriesPerHost(...)</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>SessionHandle.PROPERTIES.CONNECT_RETRIES_PER_HOST</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>SOLCLIENT_SESSION_PROP_CONNECT_RETRIES_PER_HOST</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>SessionProperties.ConnectRetriesPerHost</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>solace.SessionProperties.connectRetriesPerHost</code>
+            </p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="Sample"/>Sample Connect Retry Scenario</h2>
+    <p>The figure below shows how the Connect Try and Retry properties can affect a client’s connection attempt behavior when a host list is used. For demonstration purposes, this example shows the worst case scenario where all potential connection attempts are unsuccessful.</p>
+    <p>The Connect Retries property behaves differently according to which messaging API is used. See <MadCap:xref href="#Connect">Connect Retries</MadCap:xref> for more information.</p>
+    <h4>Connection Attempt Behavior When Using a Host List</h4>
+    <p>
+      <img src="Images/connect_props.jpg" alt=""/>
+    </p>
+    <p>Each time the API works through all of the entries in the host list without establishing a connection is considered a Connect Try or Retry. So, if a connection to one of the listed hosts isn't established during the initial Connect Try, a Connect Retry value of 2 means that API can work through the host list two more times (again, each listed host can be attempted up to two times for each Connect Retry). Each Connect Retry begins with the first host and works through the entries in the order in which they are listed.</p>
+    <p>Therefore, in the worst case scenario, the API could possibly work through the host list three times without making a connection to a host (one time through for the initial Connect Try, and then two times through for the Connect Retries), and because the Connect Retry Per Host value of 2 causes each host to be attempted twice, a maximum of 32 connection attempts can be made.</p>
+  </body>
+</html>

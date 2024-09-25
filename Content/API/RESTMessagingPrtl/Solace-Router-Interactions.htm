@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Solace PubSub+ Event Broker Interactions</h1>
+    <p>The following sections contain details of how the Solace REST messaging feature interacts with the Solace PubSub+ event broker.</p>
+    <h2 class="with-rule"><a name="VPN-Selection"/>Solace PubSub+ Event Broker Message VPN Selection</h2>
+    <p>Each Message VPN is configured with its own set of TCP ports to support REST clients. Therefore, Message VPNs are selected by connecting to the correct TCP port configured on the event broker.</p>
+    <p>The table below summarizes how REST clients can select Message VPNs and be authenticated.</p>
+    <p class="GraphicCaption">Message VPN Selection through REST Protocol</p>
+    <table style="width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">PRTCL</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Transport</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Auth Scheme</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Message VPN</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Username</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td rowspan="4" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">REST</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">HTTP &amp; HTTPS</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Basic</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">TCP port (either plain-text or SSL port)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">HTTP Header: Authorization</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">None</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">TCP port (either plain-text or SSL port)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Not provided.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>OAuth</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>TCP port (either plain-text or SSL port)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Extracted from the token provided to the event broker. Refer to <MadCap:xref href="../../Security/Client-Authentication-Overview.htm#OAuth">OAuth Authentication</MadCap:xref> for further details. </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">HTTPS</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">Client Certificate</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">TCP port (SSL port)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">Common Name</p>
+            <p class="Tbl_Body">Frequency: once, on connect</p>
+            <p class="Tbl_Body">The Common Name in the Client Certificate Subject field holds the Username.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="Client"/>Client Authentication</h2>
+    <p>The REST protocol supports basic, SSL, and OAuth authentication for clients. </p>
+    <h3><a name="Basic"/>Basic Client Authentication</h3>
+    <p>For HTTP basic authentication, the HTTP client provides an "Authorization" HTTP header whose value is a “username:password” pair is encoded into a single base64 string, which spans the “:”. If no password is required, then the “username” is encoded into a base64 string without the “:”.</p>
+    <p>Sequential HTTP POST requests to the event broker using the same persistent HTTP/1.1 connection may each provide their own "Authorization" header. If a subsequent HTTP POST request has no "Authorization" header, or if the "Authorization" header value matches that of the preceding "Authorization" header, then the event broker does not re-authenticate the REST producer client. </p>
+    <p>If an HTTP POST request has a different "Authorization" header value from the preceding "Authorization" header, then the HTTP connection is re-authenticated according to the new "Authorization" header. This may result in the HTTP connection being attributed to a different event broker client session. (It may be necessary for the event broker to re-authenticate client connections if the HTTP connections are coming through an HTTP proxy or switch that is multiplexing from some number of connections from the actual HTTP client to a smaller number of HTTP connections to the event broker.) Refer to <MadCap:xref href="#VPN-Selection">Solace Router Message VPN Selection</MadCap:xref> for further details.</p>
+    <p>If the first HTTP POST request of a new connection contains no "Authorization" header, then the event broker will authenticate with the client username named <code>default</code>.</p>
+    <p>A username can contain up to 189 alphanumeric characters (not case-sensitive). The “_” and “-” characters are also permitted, but the ? and * characters are not allowed.  The maximum length for a password is 128 bytes; there are no character restrictions imposed by REST messaging.</p>
+    <h3><a name="SSL"/>SSL – Client Certificate</h3>
+    <p>After an HTTPS connection is established, the Solace Message VPN for the connection is already determined based on the TCP port.</p>
+    <p>When a Client Certificate authentication scheme with SSL transport is used, by default, the username is taken from the Common Name of the certificate. Alternatively, you can configure a Message VPN to use a different source for the  client username  (refer to <MadCap:xref href="../../Security/Configuring-Client-Authentication.htm#Username-Source">Configuring Client Username Sources</MadCap:xref>). In either case, an HTTP Authorization Header should not be provided, because only one authentication scheme should be used. If an HTTP Authorization Header is provided, it is ignored.</p>
+    <h3>OAuth Authentication</h3>
+    <p>Refer to <MadCap:xref href="../../Security/Client-Authentication-Overview.htm#OAuth">OAuth Authentication</MadCap:xref> for further details. </p>
+    <h3>Solace Client Name</h3>
+    <p>An HTTP client may optionally provide a "Solace-Client-Name" HTTP header specifying the client name in each HTTP POST request. This name uniquely identifies a Solace client session; if the same Solace client name is already in use with an existing Solace client session, then the event broker will log out one of the client sessions contending for the name. On subsequent HTTP POST requests on the same persistent HTTP/1.1 connection, if the HTTP client does not support a "Solace-Client-Name", the event broker treats the client names as being unchanged.</p>
+    <p>The HTTP client may provide a different "Solace-Client-Name" on subsequent HTTP POST requests. This will change the client name for the event broker's client sessions without re-authenticating the client. However, the proviso that the Solace client name must be unique remains true on client name changes: if an HTTP client changes the "Solace-Client-Name" to a client name already in use, then the event broker will log out one of the client sessions contending for that name.</p>
+    <p>If an HTTP client does not provide a "Solace-Client-name" HTTP header in the first HTTP POST request on an HTTP connection, the event broker will generate a unique client name for that HTTP connection during authentication.</p>
+    <p>In all HTTP responses, the event broker will send the "Solace-Client-Name" HTTP header containing the client name associated with the client session. </p>
+    <h3>Solace PubSub+ Event Broker Client Sessions</h3>
+    <p>The event broker considers a sequence of HTTP POST requests received on the same persistent HTTP/1.1 connection, with the same (implicit or explicit) authentication and client name parameters, to belong to the same client session for the purposes of client statistics and event logging.</p>
+    <p>An HTTP client may provide "Authorization" and "Solace-Client-Name" HTTP headers on any HTTP POST request.</p>
+    <h2 class="with-rule"><a name="Interact"/>Interactions with Solace Messaging APIs</h2>
+    <h3><a name="Solace-APIs"/>Solace APIs – Accessing HTTP Content Type and Content Encoding</h3>
+    <p>As explained in Section <MadCap:xref href="Solace-REST-Message-Encoding.htm#_Ref393980206" class="ParaTextOnly">HTTP Content Entity Headers and Message Payload Types</MadCap:xref>, the HTTP “Content-Type” and “Content-Encoding” headers are preserved in the resulting Solace message. These fields are also accessible by Solace Enterprise APIs. This means uses of the following APIs can set and retrieve these fields from a Solace message.</p>
+    <ul>
+      <li>Solace JMS messaging API</li>
+      <li>Solace JCSMP messaging API</li>
+      <li>Solace Java RTO messaging API</li>
+      <li>Solace C messaging API</li>
+      <li>Solace .NET messaging API</li>
+    </ul>
+    <p>The Solace JMS messaging API is a standardized API and therefore has a unique way of accessing these Solace message fields. This is shown in its own section below. The other Solace APIs have a common way of accessing these fields so the Solace JCSMP messaging API is used as an example but this is equally applicable to the other APIs.</p>
+    <h4>HTTP Content Type and Content Encoding Access Using JMS</h4>
+    <p>In the Solace JMS messaging API, the HTTP headers Content Type and Content-Encoding are accessed as follows:</p>
+    <p class="Code">MessageConsumer consumer = session.createConsumer(queue);<br/>Message msg = consumer.receive();<br/>String httpContentType = msg.getStringProperty(<br/>           SupportedProperty.SOLACE_JMS_PROP_HTTP_CONTENT_TYPE);<br/>String httpContentEncoding = msg.getStringProperty(<br/>SupportedProperty.SOLACE_JMS_PROP_HTTP_CONTENT_ENCODING);<br/>Setting the properties when sending a message would follow a similar pattern as show here:<br/>Message msg = session. createTextMessage();<br/>msg.setStringProperty(<br/>           SupportedProperty.SOLACE_JMS_PROP_HTTP_CONTENT_TYPE,<br/>“application/json”);<br/>msg.setStringProperty(<br/>SupportedProperty.SOLACE_JMS_PROP_HTTP_CONTENT_ENCODING,<br/>“gzip”);</p>
+    <h4>HTTP Content Type and Content Encoding Access Using Other Solace APIs</h4>
+    <p>This section applies to the following Solace APIs:</p>
+    <ul>
+      <li>Solace JCSMP  Messaging API</li>
+      <li>Solace Java RTO Messaging API</li>
+      <li>Solace C Messaging API</li>
+      <li>Solace .NET Messaging API</li>
+    </ul>
+    <p>In these APIs, the HTTP headers Content Type and Content-Encoding are accessed as regular message properties as is done with other message properties such as delivery mode. The example uses the .NET API for illustration:</p>
+    <p class="Code">public static void HandleMessageEvent(Object source,<br/>MessageEventArgs args)<br/>{<br/>    IMessage message = args.Message;<br/> <br/>    // Process the message<br/>    Console.WriteLine(“HTTP Content Type”);<br/>    Console.WriteLine(message.HTTPContentType);<br/>    Console.WriteLine(“HTTP Content Encoding”);<br/>    Console.WriteLine(message.HTTPContentEncoding);<br/> <br/>    message.Dispose();<br/>}</p>
+    <p>Setting the properties when sending a message would follow a similar pattern as show here:</p>
+    <p class="Code">IMessage message = ContextFactory.Instance.CreateMessage();<br/>message.HTTPContentType = “application/json”;<br/>message.HTTPContentEncoding = “gzip”;</p>
+    <h3><a name="Solace2"/>JMS Interactions – Text Messages</h3>
+    <p>The Solace JMS implementation is flexible and allows for several encoding formats for text messages. Specifically, the JMS message property “Text Messages are XML” controls whether published text messages can have an XML payload. By default, this field is set to false so that it is disabled. A disabled state is recommended for JMS clients to inter-operate with REST clients. Therefore, you should disable this property in the Solace JNDI configuration. For information on how to set this property, refer to <MadCap:xref href="../Solace-JMS-API/Message-Properties.htm#jms_properties_39190069_304117">XML Payload</MadCap:xref>.</p>
+  </body>
+</html>

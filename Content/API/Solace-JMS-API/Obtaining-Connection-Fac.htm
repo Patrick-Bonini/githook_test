@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Obtaining Connection Factories</h1>
+    <p>A Connection Factory, or an XA Connection Factory, can be obtained through one of the following ways:</p>
+    <ul>
+      <li><MadCap:xref href="#establishing_connections_577400906_326490">Programmatically Creating Connection Factories</MadCap:xref>.</li>
+      <li>
+        <MadCap:xref href="#establishing_connections_577400906_303166">Looking Up Connection Factories from Solace JNDI Stores</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#establishing_connections_577400906_317143">Looking Up Connection Factories from LDAP-Based JNDI Stores</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="establishing_connections_577400906_326490"/>Programmatically Creating Connection Factories</h2>
+    <p>The figure below shows the basic process for programmatically creating a new instance of a Connection Factory object (the same process is used to create an XA Connection Factory, but the method calls differ). Instead of looking up an existing Connection Factory from a JNDI store, the client provides the Connection Factory properties that are required to establish a data channel connection to an event broker in the compiled application.</p>
+    <p class="GraphicCaption">Programmatically Creating a Connection Factory</p>
+    <p class="GraphicCaption">
+      <img src="../../Resources/Images/Solace-JMS-API/jms_programmatic_connect.png" alt=""/>
+    </p>
+    <p>To programmatically create a Solace proprietary implementation of a ConnectionFactory object, call <code>SolJmsUtility.createConnectionFactory(...)</code>.</p>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">The IP address, and optional port, of the event broker to establish the JMS connection to can be set through the <code>Host</code> Connection Factory property. This <code>Host</code> value overrides the value that is implicitly set through the <code>URL</code> property used for the JNDI connection.</p>
+    <p>The following code snippet shows how to programmatically create a Connection Factory.</p>
+    <p class="Code">   try {<br/>       // Create the connection factory<br/>       SolConnectionFactory cf = SolJmsUtility.createConnectionFactory();<br/>       cf.setHost(“192.168.1.1”);<br/>       cf.setUsername(“user1”);<br/>       cf.setPassword(“mypassword”);<br/>       cf.setDirectTransport(false);<br/>       if (vpn != null) {<br/>       cf.setVPN(“myvpn”);<br/>       }</p>
+    <p style="font-weight: bold;">Related Samples</p>
+    <p>For a complete example of how to programmatically create a new Connection Factory object, refer to the <code>SolJMSProgConsumer.java</code> sample.</p>
+    <h2 class="with-rule"><a name="establishing_connections_577400906_303166"/>Looking Up Connection Factories from Solace JNDI Stores</h2>
+    <p>The figure below shows the process for connecting a JMS client when the Connection Factory used to create the JMS connection is looked up from the JNDI store on the event broker. The basic steps are as follows:</p>
+    <ol>
+      <li>Establish a JNDI connection (refer to <MadCap:xref href="Establishing-Connections.htm#establishing_connections_577400906_336926">Working with JNDI</MadCap:xref>).</li>
+      <li>A SolConnection Factory is obtained through a lookup to the JNDI store on the event broker. (To look up an SolXAConnection Factory, the same basic process is used, but the method calls differ.)</li>
+      <li>Using the obtained SolConnection Factory, create a JMS connection.
+			</li>
+    </ol>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">The properties set for the JNDI connection are inherited by the subsequent JMS connection that is required. A client can use these same JMS properties for the JMS connection or choose to override them with new values when making the JMS connection. </p>
+    <p class="GraphicCaption">Looking Up a Connection Factory from the Solace JNDI Store</p>
+    <p class="GraphicCaption">
+      <img src="../../Resources/Images/Solace-JMS-API/jms_connect.png" alt=""/>
+    </p>
+    <p>The following code snippet shows a JNDI environment that is configured by passing in properties using a hash table; an <code>InitialContext</code> is then created, and a lookup for a <code>SolConnectionFactory</code> in the JNDI store that resides on the event broker is performed.</p>
+    <p class="Code">Hashtable&lt;String,Object&gt; environment = new Hashtable&lt;String,Object&gt;();<br/>environment.put(InitialContext.INITIAL_CONTEXT_FACTORY, "com.solacesystems.jndi.SolJNDIInitialContextFactory");<br/>environment.put(InitialContext.PROVIDER_URL, "smf://192.168.1.1:55555");<br/>environment.put(Context.SECURITY_PRINCIPAL, "userName");<br/>environment.put(Context.SECURITY_CREDENTIALS, "userPassword");<br/>environment.put(SupportedProperty.SOLACE_JMS_VPN, "vpnName");<br/>InitialContext initialContext = new InitialContext(environment);<br/>ConnectionFactory cf = (ConnectionFactory)initialContext.lookup("connectionFactoryName");</p>
+    <h2 class="with-rule"><a name="establishing_connections_577400906_317143"/>Looking Up Connection Factories from External JNDI Stores</h2>
+    <p>JMS clients can look up Solace Connection Factory objects that have been added to an external JNDI store on a remote host.</p>
+    <p>The figure below shows the process for connecting a JMS client when the Connection Factory used to create the JMS connection is looked up from a JNDI store that resides on an external JNDI server.</p>
+    <p>The steps are: </p>
+    <ol>
+      <li>Establish a JNDI connection (refer to <MadCap:xref href="Establishing-Connections.htm#establishing_connections_577400906_336926">Working with JNDI</MadCap:xref>).</li>
+      <li>Obtain a SolConnectionFactory through a lookup to the JNDI store on a configured external JNDI server. (To look up an SolXAConnectionFactory, the same basic process is used, but the method calls differ.)</li>
+      <li>Using the obtained SolConnectionFactory, create a JMS connection.
+			<p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">The IP address, and optional port, of the event broker to establish the JMS connection to can be set through the <code>Host</code> Connection Factory property. This <code>Host</code> value overrides the value that is implicitly set through the <code>URL</code> property used for the JNDI connection.</p></li>
+    </ol>
+    <p class="GraphicCaption">Looking Up a Connection Factory From an External JNDI Store</p>
+    <p class="GraphicCaption">
+      <img src="../../Resources/Images/Solace-JMS-API/External-Store.png" alt=""/>
+    </p>
+    <p>The following code snippet shows a JNDI environment that is configured by passing in properties using a hash table; an <code>InitialContext</code> is then created, and a lookup for a <code>SolConnectionFactory</code> in the JNDI store that resides in the external store is performed.</p>
+    <p>Use the class name <code>com.solacesystems.jms.SolXAConnectionFactoryImpl</code> and <code>com.solacesystems.jms.SolConnectionFactoryImpl</code>  for XA and non-XA (local) lookup respectively.</p>
+    <p>Although it's possible to create a non-XA (local) lookup by calling <code>SolConnectionFactory cf = (SolConnectionFactory)ctx.lookup(CF_OBJECT_NAME);</code> even when the <code>com.solacesystems.jms.SolXAConnectionFactoryImpl</code> class is set in JNDI. However, it's not recommended. For clarity, you should use the appropriate and distinct class names.</p>
+    <p>For connection factories, the connection factory type is solely determined by the configured <code>javaClassName</code>, which can be either <code>com.solacesystems.jms.SolConnectionFactoryImpl</code> or <code>com.solacesystems.jms.SolXAConnectionFactoryImpl</code>and the XA property value has no effect.</p>
+    <p class="Code">// Create the Initial Context<br/>// JNDI_PROVIDER_INITIAL_CONTEXT_FACTORY is the provider’s<br/>// specific InitialContextFactory implementation’s class name<br/>Hashtable&lt;String,String&gt; env = new Hashtable&lt;String,String&gt;();<br/>env.put(Context.INITIAL_CONTEXT_FACTORY, JNDI_PROVIDER_INITIAL_CONTEXT_FACTORY);<br/>env.put(Context.PROVIDER_URL, providerURL);<br/>env.put(Context.REFERRAL, "throw");<br/>env.put(Context.SECURITY_PRINCIPAL, providerUsername);<br/>env.put(Context.SECURITY_CREDENTIALS, providerPassword);<br/>ctx = new InitialContext(env);<br/><br/>// Lookup the connection factory by name<br/>// assuming CF_OBJECT_NAME has been configured in provider JNDI<br/><br/>// Example for non-XA connection factory<br/>SolConnectionFactory cf = (SolConnectionFactory)ctx.lookup(CF_OBJECT_NAME);<br/>cf.setHost(routerIP);<br/>cf.setUsername(username);<br/>cf.setPassword(password);<br/>cf.setVPN(vpn);<br/><br/>// Example for XA connection factory<br/>SolXAConnectionFactory cf = (SolXAConnectionFactory)ctx.lookup(CF_OBJECT_NAME);<br/>cf.setHost(routerIP);<br/>cf.setUsername(username);<br/>cf.setPassword(password);<br/>cf.setVPN(vpn);<br/><br/>// Create JMS connection to the Solace router<br/>Connection connection = cf.createConnection();</p>
+    <br/>
+    <p>
+      <b>Related Samples</b>
+    </p>
+    <ul>
+      <li>For an example of how to add/bind Solace implementations of JMS Connection Factory, Factory, Queue, and Topic objects to an LDAP-based JNDI store, refer to the <code>SolJMSLDAPBind.java</code> sample.</li>
+      <li>For an example of how to look up JMS-administered objects from an LDAP‑based JNDI store, refer to the <code>SolJMSLDAPLookup.java</code> sample.</li>
+    </ul>
+  </body>
+</html>

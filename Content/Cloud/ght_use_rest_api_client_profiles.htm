@@ -1,0 +1,413 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Managing Client Profiles with the <MadCap:variable name="Product-Names.cloud_product_titlecase"/> REST API</h1>
+    <MadCap:snippetBlock src="../Resources/Snippets/Cloud/REST-API/pointv2APIs.flsnp" MadCap:conditions="SAP.SapHideFromOutput"/>
+    <p>In <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.cloud_product_long"/></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><MadCap:variable name="Product-Names.cloud_product_firstuse"/></MadCap:conditionalText>, the REST APIs and API tokens allow you to create, update, and delete client profiles programmatically. For more information about client profiles, see <MadCap:xref href="client-profiles.htm">Using Client Profiles</MadCap:xref>.</p>
+    <p>This tutorial  shows you how to:</p>
+    <ul>
+      <li>Create a client profile on your <MadCap:variable name="Product-Names.broker_cloud_short"/>. For more information, see <MadCap:xref href="#create-profile">Creating a Client Profile</MadCap:xref>.</li>
+      <li>Retrieve the status of a POST request based on the identifier of a client profile. For more information, see <MadCap:xref href="#get-post-requestid">Getting the Status of a POST command</MadCap:xref>.</li>
+      <li>Retrieve the client profile info. For more information, see <MadCap:xref href="#get-profile">Getting Client Profile Details</MadCap:xref>.</li>
+      <li>Update a client profile. For more information, see <MadCap:xref href="#update-profile">Updating a Client Profile</MadCap:xref>.</li>
+      <li>Delete a client profile. For more information, see <MadCap:xref href="#delete-profile">Deleting a Client Profile</MadCap:xref>.</li>
+    </ul>
+    <h2>Before you Begin</h2>
+    <p>Before you can start this tutorial, you'll require:</p>
+    <ul>
+      <li>An account with <MadCap:variable name="Product-Names.cloud_product_short"/> and an <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li>
+      <li>Your account must be assigned the Administrator or <MadCap:variable name="Product-Names.cluster_mgr"/> Editor role. The account is required more to validate your results in the <MadCap:variable name="Product-Names.console_ui_long"/> and to create an API token; if you have an API token created, you can perform all the steps in this tutorial.</li>
+      <li>An API token must be available in the account with at least the following permissions:
+
+                <ul><li>Either <b>Get My Services with Management Credentials</b> (From <b>Mission Control</b>) or <b>Get Services with Management Credentials</b> from (<b>Organization Services</b>). Both are recommended for this tutorial.</li><li>From <b>Organization Services</b>:                <ul><li><b>Get Service Requests</b></li><li><b>Create / Update / Delete / Client Profiles</b></li></ul></li></ul><p>For more information, see <MadCap:xref href="ght_api_tokens.htm#Create">Creating an API Token</MadCap:xref>.</p></li>
+      <li>
+        <p>A way to send REST messages from your development environment. We use Postman in this tutorial. You can use the <a href="https://documenter.getpostman.com/view/4953125/SVmtzzzk?version=latest" target="_blank" class="link-offsite">Solace Blogs – Solace Cloud Client Profile Management</a> Postman collection and click the <b>Run in Postman</b> button to import the collection to Postman, which permits you to easily work through the steps in this tutorial. Alternatively, you can simply make each call by specifying it REST API in Postman after you've set up the environment in Postman to use your API token. For more information about setting up Postman, see <MadCap:xref href="ght_api_tokens.htm">Using an API Token with Postman</MadCap:xref>.</p>
+        <MadCap:snippetBlock src="../Resources/Snippets/Cloud/restapi_checktoken.flsnp"/>
+      </li>
+    </ul>
+    <h2><a name="create-profile"/>Creating a Client Profile</h2>
+    <p class="Note" MadCap:conditions="SAP.SapHideFromOutput">You can perform this procedure using our feature rich and consistent v2 REST API. See the <a href="https://api.solace.dev/cloud/reference/createclientprofile" target="_blank" class="link-offsite">Create a Client Profile v2 REST API</a> in <a href="https://api.solace.dev/cloud/reference/using-the-v2-rest-apis-for-pubsub-cloud" target="_blank" class="link-offsite">Solace's REST API Reference</a> for more information. </p>
+    <p>After you have your API Token configured for use with Postman, you can use the <MadCap:variable name="Product-Names.cloud_product_short"/> REST API  to create a client profile. To create a client profile, follow these steps:</p>
+    <ol>
+      <li>In the Postman Collection <b>Solace Blogs - Solace Cloud Client Profile Management</b>, select the request <b>Create a Client Profile</b>.
+The POST request would be to the URL, <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{serviceId}/requests/clientProfileRequests</code>.				</li>
+      <li>
+        <p>In the POST request URL,  replace the <code>{serviceId}</code> variable with the identifier of the service for which you want to create a client profile. In the body of the request, use the <code>clientProfileName</code> property to specify the name of your client profile and set the <code>operation</code>property to <code>create</code>. The other properties can be changed to fit your needs to configure the client profile. For more information about each setting, see 
+ <MadCap:xref href="#advanced-client-profile-settings">Client Profile Settings for the[%=Product-Names.cloud_product_short%] REST API</MadCap:xref>. Depending on the version of the Postman Collection <b>Solace Blogs - Solace Cloud Client Profile Management</b>, some properties are not listed in the default body request such as:</p>
+        <ul>
+          <li>
+            <code>allowSharedSubscriptionsEnabled</code>
+          </li>
+          <li>
+            <code>elidingEnabled</code>
+          </li>
+          <li>
+            <code>rejectMsgToSenderOnNoSubscriptionMatchEnabled</code>
+          </li>
+          <li>
+            <code>serviceMinKeepaliveTimeout</code>
+          </li>
+          <li>
+            <code>serviceSmfMinKeepaliveEnabled</code>
+          </li>
+        </ul>
+        <p>Here's what your body for the POST request may look like if you specify all the client profile properties:</p>
+        <pre xml:space="preserve">{
+  "operation": "create",
+  "clientProfile": {
+  "clientProfileName": "myClientProfile",
+  "allowGuaranteedMsgSendEnabled": "true",
+  "allowGuaranteedMsgReceiveEnabled": "true",
+  "allowUseCompression": "true",
+  "replicationAllowClientConnectWhenStandbyEnabled": "true",
+  "allowTransactedSessionsEnabled": "true",
+  "allowBridgeConnectionsEnabled": "true",
+  "allowGuaranteedEndpointCreateEnabled": "true",
+  "allowSharedSubscriptionsEnabled": "true",
+  "apiQueueManagementCopyFromOnCreateName": "",
+  "apiQueueManagementCopyFromOnCreateTemplateName": "",					
+  "apiTopicEndpointManagementCopyFromOnCreateName": "",
+  "apiTopicEndpointManagementCopyFromOnCreateTemplateName": "",
+  "serviceMinKeepaliveTimeout": "30",
+  "serviceSmfMinKeepaliveEnabled": "false",
+  "serviceWebInactiveTimeout": "30",
+  "serviceWebMaxPayload": "1000000",
+  "maxConnectionCountPerClientUsername": "100",
+  "serviceSmfMaxConnectionCountPerClientUsername": "1000",
+  "serviceWebMaxConnectionCountPerClientUsername": "1000",
+  "maxEndpointCountPerClientUsername": "100",
+  "maxEgressFlowCount": "100",
+  "maxIngressFlowCount": "100",
+  "maxSubscriptionCount": "1000",
+  "maxTransactedSessionCount": "100",
+  "maxTransactionCount": "500",
+  "queueGuaranteed1MaxDepth": "20000",
+  "queueGuaranteed1MinMsgBurst": 66000,
+  "queueDirect1MaxDepth": "20000",
+  "queueDirect1MinMsgBurst": "4",
+  "queueDirect2MaxDepth": "20000",
+  "queueDirect2MinMsgBurst": "4",
+  "queueDirect3MaxDepth": "20000",
+  "queueDirect3MinMsgBurst": "4",
+  "queueControl1MaxDepth": "20000",
+  "queueControl1MinMsgBurst": "6",
+  "tcpCongestionWindowSize": "2",
+  "tcpKeepaliveCount": "5",
+  "tcpKeepaliveIdleTime": "3",
+  "tcpKeepaliveInterval": "1",
+  "tcpMaxSegmentSize": "1460",
+  "tcpMaxWindowSize": "256",
+  "elidingDelay": "0",
+  "elidingEnabled": "false",
+  "elidingMaxTopicCount": "256",
+  "rejectMsgToSenderOnNoSubscriptionMatchEnabled": "false",
+  "tlsAllowDowngradeToPlainTextEnabled": "true",
+  "eventClientProvisionedEndpointSpoolUsageThreshold": {
+     "setPercent": "80",
+     "clearPercent": "60"
+    }
+  }
+}</pre>
+        <p>Note that if you don't specify a client profile property in the body, a default value is used for that property. For the list of properties that you can configure and their defaults, see <MadCap:xref href="#advanced-client-profile-settings">Client Profile Settings</MadCap:xref>.</p>
+      </li>
+      <li>Click <b>Send</b>.
+			<p><div class="thumbnail-container"><img src="../Resources/Images/Cloud/restapi/use_api_create_clientprofile.png" class="solacethumbnail" alt=""/></div></p><p>You should see a 202 response confirming that the request was accepted.</p></li>
+      <li>You can check the status of the request, use the <b>GET Service Request</b> method in the Postman collection using the <code>id</code> from the response. For more information, see <MadCap:xref href="#get-post-requestid">Getting the Status of a POST command</MadCap:xref>.</li>
+    </ol>
+    <p>Now that we have confirmed that our request is marked <code>completed</code>, we can retrieve the client profile we just created using the API.</p>
+    <h2><a name="get-post-requestid"/>Getting the Status of a POST command</h2>
+    <p>Because the Create Client Profile command is a POST command, you can use the <MadCap:variable name="Product-Names.cloud_product_short"/> REST API  to get the status. To check the status of the POST request , you need the <code>id</code> from the response. For example, after of calling the <b>Update a Client Profile</b> method, you may see the following response:</p>
+    <p>
+      <div class="thumbnail-container">
+        <img class="solacethumbnail" src="../Resources/Images/Cloud/restapi/use_api_update_clientprofile.png" alt=""/>
+      </div>
+    </p>
+    <ol>
+      <li>In the Postman Collection <b>Solace Blogs - Solace Cloud Client Profile Management</b>, select the request <b>Get Service Request</b>.
+ The GET URL is <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{serviceId}/requests/{requestId}</code>.</li>
+      <li>In the GET URL,   replace the <code>{serviceId}</code> variable with the identifier of the service you want to get the client profile information from and replace the <code>{requestId}</code>with the value of <code>id</code> from the running the POST  request. 		</li>
+      <li class="solacethumb">Click <b>Send</b>.
+			<p> </p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/restapi/use_api_get_clientprofile_requestid.png" alt=""/></div><p> You should see a JSON response confirming that the request was accepted with the response that indicates the status of the request  marked <code>completed</code>. </p></li>
+    </ol>
+    <h2><a name="get-profile"/>Getting the Details of a Client Profile</h2>
+    <p class="Note" MadCap:conditions="SAP.SapHideFromOutput">You can perform this procedure using our feature rich and consistent v2 REST API. See the <a href="https://api.solace.dev/cloud/reference/getclientprofile" target="_blank" class="link-offsite">Get a specific client profile for <MadCap:variable name="Product-Names.broker_cloud_short"/> by name v2 REST API</a> in <a href="https://api.solace.dev/cloud/reference/using-the-v2-rest-apis-for-pubsub-cloud" target="_blank" class="link-offsite">Solace's REST API Reference</a> for more information. </p>
+    <p>After you have created a profile, you can <MadCap:variable name="Product-Names.cloud_product_short"/> REST API to retrieve the client profile details. To get client profile details, follow these steps:</p>
+    <ol>
+      <li>In the <b>Solace Blogs - Solace Cloud Client Profile Management</b> Postman Collection, select the <b>Get Client Profile</b> request. The GET request would be to the URL, <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{serviceId}/clientProfiles/{clientProfileName}</code>.</li>
+      <li>In the GET URL,   replace the <code>{serviceId}</code> variable with the identifier of the service you want to get the client profile information from and replace the <code>{clientProfileName}</code>with the value of name of the profile you want to get information about. <![CDATA[	]]></li>
+      <li>Click <b>Send</b>.<p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/restapi/use_api_get_clientprofile_profilename.png" alt=""/></div></p><p>You should see the details of the client profile you specified in the bottom panel.</p></li>
+    </ol>
+    <h2><a name="update-profile"/>Updating a Client Profile</h2>
+    <MadCap:snippetBlock src="../Resources/Snippets/Cloud/REST-API/update_client_v2.flsnp"/>
+    <p>You can use the <MadCap:variable name="Product-Names.cloud_product_short"/> REST API to update an existing client profile and change some of its properties.</p>
+    <ol>
+      <li>In the  <b>Solace Blogs - Solace Cloud Client Profile Management</b> Postman Collection, select the <b>Update a Client Profile</b> request. The POST request would be to the URL, <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{serviceId}/requests/clientProfileRequests</code>.</li>
+      <li>In the POST URL, replace the <code>{serviceId}</code> variable with the identifier of the service that the client profile exists in.
+                <p>You can include any properties you want to change in the body of the request. Properties that are not included will be left unchanged. You can see a list of client profile properties in <MadCap:xref href="#advanced-client-profile-settings">Client Profile Settings for the [%=Product-Names.cloud_product_short%] REST API</MadCap:xref>. You can retrieve a list of client profile properties for your <MadCap:variable name="Product-Names.broker_cloud_short"/> by performing a GET, see <MadCap:xref href="#get-profile">Getting the Details of a Client Profile</MadCap:xref>.</p><p>If you are using the   Postman Collection <b>Solace Blogs - Solace Cloud Client Profile Management</b> example, you must change the  following client profile properties as listed:<ul><li><code>clientProfileName</code>: Set to the name of the client profile you want to update. </li><li><code>allowGuaranteedMsgSendEnabled</code>: Set to false.</li><li><code>allowGuarenteedMsgReceiveEnabled</code>: Set to false.</li></ul></p><p> Depending on the version of the Postman Collection <b>Solace Blogs - Solace Cloud Client Profile Management</b>, some properties are not listed in the example body request such as:<ul><li><code>allowSharedSubscriptionsEnabled</code></li><li><code>elidingEnabled</code></li><li><code>rejectMsgToSenderOnNoSubscriptionMatchEnabled</code></li><li><code>serviceMinKeepaliveTimeout</code></li><li><code>serviceSmfMinKeepaliveEnabled</code></li></ul></p><pre xml:space="preserve">{
+  "operation": "update",
+  "clientProfile": {
+  "clientProfileName": "myClientProfile",
+  "allowGuaranteedMsgSendEnabled": "true",
+  "allowGuaranteedMsgReceiveEnabled": "true",
+  "allowUseCompression": "true",
+  "replicationAllowClientConnectWhenStandbyEnabled": "true",
+  "allowTransactedSessionsEnabled": "true",
+  "allowBridgeConnectionsEnabled": "true",
+  "allowGuaranteedEndpointCreateEnabled": "true",
+  "allowSharedSubscriptionsEnabled": "true",
+  "apiQueueManagementCopyFromOnCreateName": "",
+  "apiQueueManagementCopyFromOnCreateTemplateName": "",					
+  "apiTopicEndpointManagementCopyFromOnCreateName": "",
+  "apiTopicEndpointManagementCopyFromOnCreateTemplateName": "",
+  "serviceMinKeepaliveTimeout": "30",
+  "serviceSmfMinKeepaliveEnabled": "false",
+  "serviceWebInactiveTimeout": "30",
+  "serviceWebMaxPayload": "1000000",
+  "maxConnectionCountPerClientUsername": "100",
+  "serviceSmfMaxConnectionCountPerClientUsername": "1000",
+  "serviceWebMaxConnectionCountPerClientUsername": "1000",
+  "maxEndpointCountPerClientUsername": "100",
+  "maxEgressFlowCount": "100",
+  "maxIngressFlowCount": "100",
+  "maxSubscriptionCount": "1000",
+  "maxTransactedSessionCount": "100",
+  "maxTransactionCount": "500",
+  "queueGuaranteed1MaxDepth": "20000",
+  "queueGuaranteed1MinMsgBurst": 66000,
+  "queueDirect1MaxDepth": "20000",
+  "queueDirect1MinMsgBurst": "4",
+  "queueDirect2MaxDepth": "20000",
+  "queueDirect2MinMsgBurst": "4",
+  "queueDirect3MaxDepth": "20000",
+  "queueDirect3MinMsgBurst": "4",
+  "queueControl1MaxDepth": "20000",
+  "queueControl1MinMsgBurst": "6",
+  "tcpCongestionWindowSize": "2",
+  "tcpKeepaliveCount": "5",
+  "tcpKeepaliveIdleTime": "3",
+  "tcpKeepaliveInterval": "1",
+  "tcpMaxSegmentSize": "1460",
+  "tcpMaxWindowSize": "256",
+  "elidingDelay": "0",
+  "elidingEnabled": "false",
+  "elidingMaxTopicCount": "256",
+  "rejectMsgToSenderOnNoSubscriptionMatchEnabled": "false",
+  "tlsAllowDowngradeToPlainTextEnabled": "true",
+  "eventClientProvisionedEndpointSpoolUsageThreshold": {
+     "setPercent": "80",
+     "clearPercent": "60"
+    }
+  }
+}</pre></li>
+      <li> Click <b>Send</b>.</li>
+      <li>You can check the status of the request, use the <b>GET Service Request</b> method in the Postman collection using the <code>id</code> from the response. For more information, see <MadCap:xref href="#get-post-requestid">Getting the Status of a POST command</MadCap:xref>.</li>
+    </ol>
+    <h2><a name="delete-profile"/>Deleting a Client Profile</h2>
+    <p class="Note" MadCap:conditions="SAP.SapHideFromOutput">You can perform this using our feature rich and consistent v2 REST API. See the <a href="https://api.solace.dev/cloud/reference/deleteclientprofile" target="_blank" class="link-offsite">Delete a client profile v2 REST API</a> in <a href="https://api.solace.dev/cloud/reference/using-the-v2-rest-apis-for-pubsub-cloud" target="_blank" class="link-offsite">Solace's REST API Reference</a> for more information. </p>
+    <p>You can delete a client profile. Typically, you only want to delete a client as part of clean-up. To delete a client profile, follow these steps.</p>
+    <ol>
+      <li>The POST request would be to the URL, <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{serviceId}/requests/clientProfileRequests</code> .  </li>
+      <li>
+        <p>In the POST URL,   replace the <code>{serviceId}</code> variable with the identifier of the service where the client profile exists. In the body, specify the <code>operation</code>as <code>delete</code> and the name of the client profile that you want to delete in the <code>clientProfileName</code> properties. For example, we are deleting a profile called <code>myClientProfile</code>: </p>
+        <pre xml:space="preserve">{<br/>  operation": "delete",<br/>  "clientProfile": {<br/>    "clientProfileName": "myClientProfile"<br/>  }<br/>}</pre>
+      </li>
+      <li>
+        <p>Click <b>Send</b>.</p>
+        <p>
+          <div class="thumbnail-container">
+            <img class="solacethumbnail" src="../Resources/Images/Cloud/restapi/use_api_delete_clientprofile.png" alt="">
+                        </img>
+          </div>
+        </p>
+      </li>
+    </ol>
+    <p>You should receive a <code>202 Accepted</code> response confirming that the delete request was received. To confirm that the client profile was deleted, call the <b>GET Client Profile</b> request once more. The response should indicate that the client profile is not found.
+</p>
+    <p>You can check the status of the request, use the <b>GET Service Request</b> method in the Postman collection using the <code>id</code> from the response. For more information, see <MadCap:xref href="#get-post-requestid">Getting the Status of a POST command</MadCap:xref>.</p>
+    <h2><a name="advanced-client-profile-settings"/>Client Profile Settings for the <MadCap:variable name="Product-Names.cloud_product_short"/> REST API</h2>
+    <MadCap:snippetBlock src="../Resources/Snippets/Cloud/REST-API/update_client_v2.flsnp"/>
+    <p>You can specify settings for the client profile. To do so, you use the same endpoint, but specify additional properties as parameters. If a JSON property is not specified, the default value for the setting is used. </p>
+    <p>To send a request with all the settings, you send a request to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{serviceId}/requests/clientProfileRequests</code>.</p>
+    <p>For example, to send a request to configure all settings, it would look like the following:
+				</p>
+    <pre xml:space="preserve">{
+"clientProfile": {
+	"id": "default",
+	"clientProfileName": "default",
+	"allowGuaranteedMsgSendEnabled": "true",
+	"allowGuaranteedMsgReceiveEnabled": "true",
+	"allowUseCompression": "true",
+	"replicationAllowClientConnectWhenStandbyEnabled": "true",
+	"allowTransactedSessionsEnabled": "true",
+	"allowBridgeConnectionsEnabled": "true",
+	"allowGuaranteedEndpointCreateEnabled": "true",
+	"allowSharedSubscriptionsEnabled": "true",
+	"apiQueueManagementCopyFromOnCreateName": "",
+	"apiQueueManagementCopyFromOnCreateTemplateName": "",					
+	"apiTopicEndpointManagementCopyFromOnCreateName": "",
+	"apiTopicEndpointManagementCopyFromOnCreateTemplateName": "",
+	"serviceSmfMinKeepaliveEnabled": "false",
+	"serviceWebInactiveTimeout": "30",
+	"serviceWebMaxPayload": "1000000",
+	"maxConnectionCountPerClientUsername": "100",
+	"serviceSmfMaxConnectionCountPerClientUsername": "1000",
+	"serviceWebMaxConnectionCountPerClientUsername": "1000",
+	"maxEndpointCountPerClientUsername": "100",
+	"maxEgressFlowCount": "100",
+	"maxIngressFlowCount": "100",
+	"maxSubscriptionCount": "1000",
+	"maxTransactedSessionCount": "100",
+	"maxTransactionCount": "500",
+	"queueGuaranteed1MaxDepth": "20000",
+	"queueGuaranteed1MinMsgBurst": 66000,
+	"queueDirect1MaxDepth": "20000",
+	"queueDirect1MinMsgBurst": "4",
+	"queueDirect2MaxDepth": "20000",
+	"queueDirect2MinMsgBurst": "4",
+	"queueDirect3MaxDepth": "20000",
+	"queueDirect3MinMsgBurst": "4",
+	"queueControl1MaxDepth": "20000",
+	"queueControl1MinMsgBurst": "6",
+	"tcpCongestionWindowSize": "2",
+	"tcpKeepaliveCount": "5",
+	"tcpKeepaliveIdleTime": "3",
+	"tcpKeepaliveInterval": "1",
+	"tcpMaxSegmentSize": "1460",
+	"tcpMaxWindowSize": "256",
+	"elidingDelay": "0",
+	"elidingEnabled": "false",
+	"elidingMaxTopicCount": "256",
+	"rejectMsgToSenderOnNoSubscriptionMatchEnabled": "false",
+	"tlsAllowDowngradeToPlainTextEnabled": "true",
+	"eventClientProvisionedEndpointSpoolUsageThreshold": {
+		"setPercent": "80",
+		"clearPercent": "60"
+	},
+	"type": "clientProfile"
+	},
+	"operation": "update"
+}</pre>
+    <h3>Basic settings</h3>
+    <p>These settings are commonly modified when creating a client profile are as follows:</p>
+    <dl>
+      <dt><code>clientProfileName</code> (Profile Name)</dt>
+      <dd>The name of the client profile. The name can be up to 32 alphanumeric characters (case-sensitive) and can also include underscores and dashes.</dd>
+      <dt><code>allowGuaranteedMsgSendEnabled</code> (Send guaranteed messages)</dt>
+      <dd>Allow clients assigned to the client profile to publish Guaranteed Messages (that is  non-persistent or persistent messages). This option is enabled (<code>true</code>) by default .</dd>
+      <dt><code>allowGuaranteedMsgReceiveEnabled</code> (Receive guaranteed messages) </dt>
+      <dd>Allow clients assigned to the client profile to bind to topic endpoints or queues. This option is enabled (<code>true</code>) by default.</dd>
+      <dt><code>allowTransactedSessionsEnabled</code> (Use transacted sessions)</dt>
+      <dd>Transacted sessions (that is, local transacted sessions and/or XA Sessions) are supported by the <MadCap:variable name="Variables.CompanyName"/> messaging APIs (e.g., JMS, Java, Java RTO, JCSMP, C, and .NET APIs messaging APIs). XA Sessions are only supported by the <MadCap:variable name="Variables.CompanyName"/> JMS messaging API. This option is enabled (<code>true</code>) by default.</dd>
+      <dt><code>allowBridgeConnectionsEnabled</code> (Connect as a bridge) </dt>
+      <dd>Allow for inter-connection between the Message VPN in the HA group to another HA group using DMR links. This option is enabled (<code>true</code>) by default.</dd>
+      <dt><code>allowUseCompression</code> (Use Compression)</dt>
+      <dd>Allow client applications to transfer data using compression. This option is disabled (<code>false</code>) by default.</dd>
+      <dt><code>replicationAllowClientConnectWhenStandbyEnabled</code> (Connect When Replication Standby)</dt>
+      <dd>Allow client applications to remain connected to the Message VPN with a Standby Replication state when the Message VPN Replication state changes from Active to Standby. This option is disabled (<code>false</code>) by default.</dd>
+      <dt><code>allowGuaranteedEndpointCreateEnabled</code> (Allow client to create endpoints )</dt>
+      <dd>Allow client applications assigned to the client profile to create queues or topic endpoints. This option is enabled by default. </dd>
+      <dd>Optionally, you can specify to copy settings from an existing queue or topic endpoint:
+					<ul><li><code>apiQueueManagementCopyFromOnCreateName</code> (<b>Copy settings from queue name</b>): The name of the queue to copy the settings from</li><li><code>apiQueueManagementCopyFromOnCreateTemplateName</code> (<b>Copy settings from queue template</b>): The name of the queue template to copy the settings from </li><li><code>apiTopicEndpointManagementCopyFromOnCreateName </code>(<b>Copy settings from topic endpoint name</b>): The name of the topic endpoint to copy the settings from.</li><li><code>apiTopicEndpointManagementCopyFromOnCreateTemplateName </code>(<b>Copy settings from topic endpoint template</b>): The name of the topic endpoint template to copy the settings from.</li></ul></dd>
+      <dd>
+        <p class="Note">When a client using a <MadCap:variable name="Variables.CompanyName"/> messaging API dynamically creates an endpoint, its configuration is determined first by those endpoint properties and provision flags that the client can provide with the API  to create a queue or topic endpoint. Any remaining endpoint parameters to be configured are then filled by the values specified in the copy settings from the specified queue or topic endpoint. <MadCap:snippetText src="../Resources/Snippets/receive-guranteed-messages.flsnp"/></p>
+      </dd>
+    </dl>
+    <h3>Advanced Profile Settings</h3>
+    <p>These are advanced settings to further configure  messaging settings for client applications. </p>
+    <dl>
+      <dt><code>allowSharedSubscriptionsEnabled</code> (Add Shared Subscriptions)</dt>
+      <dd>Because allowing indiscriminate access to MQTT and SMF shared subscriptions is a potential security issue (where a client could join a shared subscription and siphon off a portion of the traffic), you can configure whether specific clients can use shared subscriptions. This option is enabled (<code>true</code>) by default.</dd>
+      <dd>Allowing shared subscriptions is an all or nothing setting. This means that clients permitted to use shared subscriptions are allowed to subscribe to all shared subscriptions in the Message VPN. If you want to control access to specific shared subscriptions, you can use an ACL to configure a list of share names that are permitted (or denied) and then associate it with a client profile.</dd>
+      <dt><code>elidingEnabled</code> (Enable Message Eliding) </dt>
+      <dd>Eliding allows you to define a custom per-topic rate for client applications so they can effectively consume relevant messages, rather than queuing up outdated messages. For example, when eliding is configured, clients could receive direct messages for their topic subscriptions at a rate of at most five per second, per topic – even though the source is publishing updates at a much higher rate. This option is disabled (<code>false</code>) by default.</dd>
+      <dt><code>elidingDelay</code> [Eliding Delay (ms)] </dt>
+      <dd>The amount of time to delay the delivery of messages to a client after the initial message has been delivered. You can specify a value from 0-6000 milliseconds. The default is 0.</dd>
+      <dt><code>elidingMaxTopicCount</code> (Maximum Eliding Topics Per Client Connection) </dt>
+      <dd>The maximum number of topics the <MadCap:variable name="Product-Names.broker_cloud_short"/> that can  track for performing the eliding function on each client connection. You can specify a value from 1-320000. The default is 256. </dd>
+      <dt><code>maxConnectionCountPerClientUsername</code> (Maximum client connections per client username)</dt>
+      <dd>For a given client profile, you can configure the maximum, permitted number of simultaneous client connections to the <MadCap:variable name="Product-Names.broker_cloud_short"/> that can be made using the same client username. This limit applies to client connections using any supported service type. That is, this limit applies to all client connections regardless of whether they use Solace Message Format (SMF), Web transport, REST, MQTT, or AMQP protocols. The default is 100.</dd>
+      <dt><code>serviceSmfMinKeepaliveEnabled</code> (Enable Minimum Keepalive Timeout for SMF)</dt>
+      <dd>You can choose whether to prevent the <MadCap:variable name="Product-Names.broker_cloud_short"/> from enforcing the minimum keepalive timeout (<code>serviceMinKeepaliveTimeout</code>) on SMF connections using a boolean value. This option is disabled by default (<code>false</code>). To have the <MadCap:variable name="Product-Names.broker_cloud_short"/> enforce the minimum keepalive timeout for XMF connections, set the value to <code>true</code>.</dd>
+      <dt><code>serviceMinKeepaliveTimeout</code> (Minimum Keepalive)</dt>
+      <dd>The minimum period of time (in seconds) that the <MadCap:variable name="Product-Names.broker_cloud_short"/> will tolerate inactivity on the client connection. The default is 30 and valid ranges are 3–3600.</dd>
+      <dd>This keepalive value is enforced for MQTT and SMF (Solace Message Format) connections. The keepalive timeout value is calculated based on the client provided timeout interval (3 x the keepalive interval for SMF, 1.5 x the keepalive interval for MQTT). For SMF clients, this minimum value is ignored when <code>serviceSmfMinKeepaliveEnabled</code> is set to <code>false</code>.</dd>
+      <dt><code>serviceSmfMaxConnectionCountPerClientUsername</code> (SMF client connections per client username)</dt>
+      <dd><MadCap:variable name="Product-Names.cloud_product_short" MadCap:conditions="SAP.SapHideFromOutput"/><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><MadCap:variable name="Product-Names.cloud_product_short_initialcase"/></MadCap:conditionalText> uses the Solace Message Format (SMF) as its underlying messaging transport protocol.</dd>
+      <dd>For the client profile, you can configure the maximum permitted number of simultaneous SMF client connections to the event broker that can be made using the same client username account. The default is 1000.</dd>
+      <dt><code>serviceWebMaxConnectionCountPerClientUsername</code> (Web transport client connections per client username)</dt>
+      <dd>
+                The maximum permitted number of simultaneous Web transport client connections to the event broker service 
+				that can be made using the same client username account. The default is 1000.
+</dd>
+      <dt><code>serviceWebInactiveTimeout</code> [Web Transport - Inactive Timeout (sec)]</dt>
+      <dd>The number of seconds a Web client has to send a request before its session times out and be terminated for being inactive. The default is 30 seconds. <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">For more information, see <MadCap:xref href="../Security/Configuring-Client-Profiles.htm#Config-Inactive-Timeouts">Configuring Inactivity Timeouts</MadCap:xref>. </MadCap:conditionalText></dd>
+      <dt><code>serviceWebMaxPayload</code> [Web Transport - Maximum Web Transport Payload Size (B)]</dt>
+      <dd>Allows you to set the maximum transport payload size.</dd>
+      <dd>Solace Message Format (SMF) messages that are sent to a consuming Web client are contained within a Web transport message that the event broker sends in its HTTP response to that client. Each Web transport message that is sent can contain multiple SMF messages or partial SMF messages.</dd>
+      <dd>The maximum Web payload value sets the maximum number of bytes allowed in a single Web transport message (not including the header). This value determines the number of SMF messages that can be sent in a single HTTP response and the size of the Web transport message sent in the HTTP response. The value range is 300 to 10000000, in bytes.  The default is 1000000 bytes.</dd>
+      <dd>
+        <MadCap:snippetBlock src="../Resources/Snippets/configuring-max-web-payloads.flsnp"/>
+      </dd>
+      <dt><code>maxEndpointCountPerClientUsername </code>(Maximum queues and topic endpoints created per client username) </dt>
+      <dd>The maximum number of durable and non-durable queues and topic endpoints that can be owned by the clients using the same client username within a client profile. The default is 100.</dd>
+      <dt><code>maxEgressFlowCount</code> (Maximum outgoing flows per client)</dt>
+      <dd>The maximum number of egress flows (that is, Guaranteed Message client receive flows or consumer flows) that can be created by a single client associated with this client profile. The default is 100.</dd>
+      <dt><code>maxIngressFlowCount</code> (Maximum incoming flows per client)</dt>
+      <dd>The maximum number of ingress flows (that is, Guaranteed Message client publish flows) that can be created by a single client associated with this client profile. The default is 100.</dd>
+      <dt><code>maxSubscriptionCount</code> (Maximum subscriptions per client)</dt>
+      <dd>The maximum number of subscriptions for a single client in the client profile. When you set this option, consider the total maximum number of permitted topic subscriptions and the total maximum number of client connections for the type of event broker that is used. That is, to ensure reliable system performance, you must find the right balance for your network, while staying within the system limits mentioned. The balance is generally between allowing the creation of many client applications and allowing each client to add a large number of topic subscriptions. The default is 1000.</dd>
+      <dt><code>maxTransactedSessionCount</code> (Maximum transacted sessions per client)</dt>
+      <dd>The maximum number of simultaneous transacted sessions and/or XA Sessions allowed for a single client associated with the client profile. The default is 100.</dd>
+      <dt><code>maxTransactionCount</code> (Maximum transactions per client)
+</dt>
+      <dd>The total maximum number of simultaneous transactions (both local transactions and transactions within the XA transaction branches) allowed for a single client associated with the client profile. The default is 500.</dd>
+      <dt><code>tcpCongestionWindowSize</code> (Initial TCP congestion window size)
+</dt>
+      <dd>The TCP initial congestion window size is used when starting up a TCP connection or on recovery from idle (that is, no traffic). This setting is the number of segments that TCP sends before waiting for an acknowledgment from the peer. Larger values of the initial window allows a connection to come up to speed more quickly. For further details, refer to RFC 2581. </dd>
+      <dd>Changing the TCP initial congestion window size from its default of 2 results in non-compliance with RFC 2581. Further,  if this setting is set to a value too high, it may cause congestion in the network. <a href="../get-support.htm" class="link-internal">Contact <MadCap:variable name="Variables.CompanyName"/></a> before you attempt to change this TCP parameter.</dd>
+      <dt><code>tcpKeepaliveCount</code> (TCP keep alive retry count)</dt>
+      <dd>The maximum number of <code>keepalive</code> probes (from 2 to 5 ) that TCP should send before dropping the connection. The default is 5. </dd>
+      <dt><code>tcpKeepaliveIdleTime</code> (TCP keep alive idle time)
+            </dt>
+      <dd>The time (from 3 to 120 seconds) a connection must remain idle before TCP begins sending <code>keepalive</code> probes. The default is 3.</dd>
+      <dt><code>tcpKeepaliveInterval</code> (TCP keep alive interval)
+</dt>
+      <dd>The time (from 1 to 30 seconds) to set as the interval between individual keepalive probes. The default is 1.</dd>
+      <dt><code>tcpMaxSegmentSize</code> (Maximum TCP segment size)</dt>
+      <dd>The TCP maximum segment size (MSS) used for client to the event broker service. The default is 1460. </dd>
+      <dt><code>tcpMaxWindowSize</code> (Maximum TCP window size)</dt>
+      <dd>The TCP window size between the <MadCap:variable name="Product-Names.broker_cloud_short"/> and the client. </dd>
+      <dd>If the maximum window size is set to less than the bandwidth-delay product, then the TCP connection operates below its maximum potential throughput. If the maximum window is set to less than about twice the bandwidth-delay product, then occasional packet loss causes the TCP connection to operate below its maximum potential throughput as it handles the missing acknowledgments and retransmissions. The default is 256. </dd>
+      <dd>Alternatively, if the TCP maximum window size is set too large, in the presence of a high offered load, TCP gradually increases its congestion window size until either:<ul><li>the congestion window size reaches the maximum window size</li><li>packet loss occurs in the network</li></ul></dd>
+      <dd>Initially, when the TCP congestion window size is small, the physical bandwidth-delay of the network acts as a memory buffer for packets in flight. But as the congestion window crosses the bandwidth-delay product, the buffering of in-flight packets moves to queues in <MadCap:variable name="Product-Names.broker_cloud_short"/>s and other equipment throughout the network. As the TCP congestion window continues to increase in size, these various equipment queues overflow, causing packet loss and TCP backoff.</dd>
+      <dt><code>rejectMsgToSenderOnNoSubscriptionMatchEnabled</code> (Reject Messages to Sender On No Subscription Match Discard)</dt>
+      <dd>Set that NACKs should be returned for published Guaranteed messages that do not have Guaranteed message subscription matches. This option is disabled by default (<code>false</code>).</dd>
+      <dt><code>tlsAllowDowngradeToPlainTextEnabled</code> (TLS Port: allow downgrading connection to plain-text)</dt>
+      <dd>Allow TLS/SSL encryption to protect the clients' credentials but don't encrypt the data that is transmitted after the clients are authenticated and authorized. This setting allows connecting client applications to request to downgrade of their TLS/SSL connections to the Message VPN to a plain-text connection, and if that Message VPN allows TLS/SSL connection downgrades, after the clientsʼ login handshake are finished, their connections are downgraded. This means that the clientsʼ authentication data is still encrypted, but the subsequent application data that is transmitted is sent as non-encrypted plain-text. This option is enabled by default (<code>true</code>). </dd>
+      <dt><code>eventClientProvisionedEndpointSpoolUsageThreshold</code> [Provisioned Endpoint Spool Usage Alert Thresholds (%)]</dt>
+      <dd>Set the clear and raise threshold values that determine when to generate events for the percentage amount of the message spool used by all endpoints provisioned by clients for the given client profile. The following are set as subparmeters nested within <code>eventClientProvisionedEndpointSpoolUsageThreshold</code>:<dl><dt><code>clearPercent</code> (Clear Percent)</dt><dd> The clear threshold value for the message spool usage (as a percentage). The default is 60.</dd><dt><code>setPercent</code> (Raise Percent)</dt><dd> The raise threshold value for the message spool usage (as a percentage). The default is 80.</dd></dl></dd>
+      <dt><code>queueGuaranteed1MaxDepth</code> (Priority Queues - G-1 Maximum Depth)</dt>
+      <dd>Set the egress queue maximum depth for Guaranteed Messages that represents the  number of work units for the client priority queues. The valid range is 2 to 262144. The default is 20000.  For more information about egress queues, see <MadCap:xref href="client-profiles.htm#Client">Client Egress Structure Overview </MadCap:xref>. <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">For more information, see <MadCap:xref href="../Messaging/Managing-Event-Delivery-Resources.htm#managing_msg_delivery_resources_2491525118_201448">Configuring Max Egress Queue Depths</MadCap:xref>.</MadCap:conditionalText></dd>
+      <dt><code>queueGuaranteed1MinMsgBurst</code> (Priority Queues - G-1 Minimum Burst)</dt>
+      <dd>Set the minimum number of messages that must be on the Guaranteed Message queue before the queue’s depth is checked against the maximum depth setting (thereby allowing the queue to absorb a burst of large messages that exceeds the number of allowed work units). A valid range is 0 to 262144 with the default of  255. The value of 255 is recommended for memory usage optimized configurations, such as message applications; a value of 66000 is for WAN optimized configurations. </dd>
+      <dt><code>queueDirect1MaxDepth</code> (Priority Queues - D-1 Maximum Depth)</dt>
+      <dd>Set the egress queue maximum depth for Direct Messages 1 [Class of Service (COS) 1] that represents the  number of work units for the client priority queues. The valid range is 2 to 262144. The default is 20000.  For more information about egress queues, see <MadCap:xref href="client-profiles.htm#Client">Client Egress Structure Overview </MadCap:xref>. <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">For more information, see <MadCap:xref href="../Messaging/Managing-Event-Delivery-Resources.htm#managing_msg_delivery_resources_2491525118_201448">Configuring Max Egress Queue Depths</MadCap:xref>.</MadCap:conditionalText></dd>
+      <dt><code>queueDirect1MinMsgBurst</code> (Priority Queues - D-1 Minimum Burst Depth)</dt>
+      <dd>Set the minimum number of messages that must be on the Direct 1 (COS 1) queue before the queue’s depth is checked against the maximum depth setting (thereby allowing the queue to absorb a burst of large messages that exceeds the number of allowed work units). A valid range is 0 to 262144 with the default of  4.  For more information about egress queues, see <MadCap:xref href="client-profiles.htm#Client">Client Egress Structure Overview </MadCap:xref>.<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">For more information, see <MadCap:xref href="../Messaging/Managing-Event-Delivery-Resources.htm#managing_msg_delivery_resources_2491525118_201457">Configuring Egress Queue Minimum Message Bursts</MadCap:xref>.</MadCap:conditionalText></dd>
+      <dt><code>queueDirect2MaxDepth</code> (Priority Queues - D-2 Maximum Depth)</dt>
+      <dd>Set the egress queue maximum depth for Direct Messages 2  (COS 2) that represents the  number of work units for the client priority queues. The valid range is 2 to 262144. The default is 20000.  For more information about egress queues, see <MadCap:xref href="client-profiles.htm#Client">Client Egress Structure Overview</MadCap:xref>. <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">For more information, see <MadCap:xref href="../Messaging/Managing-Event-Delivery-Resources.htm#managing_msg_delivery_resources_2491525118_201448">Configuring Max Egress Queue Depths</MadCap:xref>.</MadCap:conditionalText></dd>
+      <dt><code>queueDirect2MinMsgBurst</code> (Priority Queues - D-2 Minimum Burst Depth</dt>
+      <dd>Set the minimum number of messages that must be on the Direct 2 (COS 2) queue before the queue’s depth is checked against the maximum depth setting (thereby allowing the queue to absorb a burst of large messages that exceeds the number of allowed work units). A valid range is 0 to 262144 with the default of  4.  For more information about egress queues, see <MadCap:xref href="client-profiles.htm#Client">Client Egress Structure Overview</MadCap:xref>. <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> For more information, see <MadCap:xref href="../Messaging/Managing-Event-Delivery-Resources.htm#managing_msg_delivery_resources_2491525118_201457">Configuring Egress Queue Minimum Message Bursts</MadCap:xref>.</MadCap:conditionalText></dd>
+      <dt><code>queueDirect3MaxDepth</code> (Priority Queues - D-3 Maximum Depth)</dt>
+      <dd>Set the egress queue maximum depth for Direct Messages 3 [Class of Service (COS) 3] that represents the  number of work units for the client priority queues. The valid range is 2 to 262144. The default is 20000.  For more information about egress queues, see <MadCap:xref href="client-profiles.htm#Client">Client Egress Structure Overview </MadCap:xref>.<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> For more information, see <MadCap:xref href="../Messaging/Managing-Event-Delivery-Resources.htm#managing_msg_delivery_resources_2491525118_201448">Configuring Max Egress Queue Depths</MadCap:xref>.</MadCap:conditionalText></dd>
+      <dt><code>queueDirect3MinMsgBurst</code> (Priority Queues - D-3 Minimum Burst Depth)</dt>
+      <dd>Set the minimum number of messages that must be on the Direct 3 (COS 3) queue before the queue’s depth is checked against the maximum depth setting (thereby allowing the queue to absorb a burst of large messages that exceeds the number of allowed work units). A valid range is 0 to 262144 with the default of  4.  For more information about egress queues, see <MadCap:xref href="client-profiles.htm#Client">Client Egress Structure Overview</MadCap:xref>. <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> For more information, see <MadCap:xref href="../Messaging/Managing-Event-Delivery-Resources.htm#managing_msg_delivery_resources_2491525118_201457">Configuring Egress Queue Minimum Message Bursts</MadCap:xref>.</MadCap:conditionalText></dd>
+      <dt><code>queueControl1MaxDepth</code> (Priority Queues - C-1 Maximum Depth)</dt>
+      <dd>Set the egress queue maximum depth for Control 1  that represents the  number of work units for the client priority queues. The valid range is 2 to 262144. The default is 20000.  For more information about egress queues, see <MadCap:xref href="client-profiles.htm#Client">Client Egress Structure Overview</MadCap:xref>. </dd>
+      <dt><code>queueControl1MinMsgBurst</code> (Priority Queues - C-1 Minimum Burst Depth)</dt>
+      <dd>Set the minimum number of messages that must be on the Direct 1 (COS 1) queue before the queue’s depth is checked against the maximum depth setting (thereby allowing the queue to absorb a burst of large messages that exceeds the number of allowed work units). A valid range is 0 to 262144 with the default of 4. For more information about egress queues, see <MadCap:xref href="client-profiles.htm#Client">Client Egress Structure Overview</MadCap:xref>. <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> For more information, see <MadCap:xref href="../Messaging/Managing-Event-Delivery-Resources.htm#managing_msg_delivery_resources_2491525118_201457">Configuring Egress Queue Minimum Message Bursts</MadCap:xref>.</MadCap:conditionalText></dd>
+    </dl>
+  </body>
+</html>

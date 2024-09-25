@@ -1,0 +1,397 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Configuring Queues</h1>
+    <p>Queues can be <a href="Endpoints.htm#Durable" class="link-internal">durable</a> or <a href="Endpoints.htm#Temporary" class="link-internal">temporary</a> (non-durable). Temporary queues are dynamically created and destroyed by client applications. This section discusses how to create and configure durable queues.</p>
+    <p>To provision a durable queue in a given Message VPN, enter the following CONFIG commands:</p>
+    <pre class="Code">solace(configure)# message-spool message-vpn &lt;vpn-name&gt;
+solace(configure/message-spool)# create queue &lt;name&gt;</pre>
+    <p>To edit the properties of an existing, durable queue on a given Message VPN, enter the following CONFIG command:</p>
+    <pre class="Code">solace(configure)# message-spool message-vpn &lt;vpn-name&gt;
+solace(configure/message-spool)# queue &lt;name&gt; </pre>
+    <p style="text-decoration: underline;">Where:</p>
+    <p><code>&lt;name&gt;</code> is a queue name of up to 200 characters (only reserved queue names can begin with # and invalid characters are '&lt;&gt;*?&amp;;). If the name contains a hierarchy of levels  (for example, "a/b") each level of the hierarchy must contain one or more valid characters, and the name can't begin or end with a slash. Each queue name in a Message VPN must be unique. </p>
+    <p class="Note">A temporary queue differs from a durable queue provisioned through the <MadCap:variable name="Product-Names.solace_cli"/> or <MadCap:variable name="Product-Names.pubsubmanager_long"/> in that it's dynamically provisioned by a client application and can only exist as long as the client is connected.</p>
+    <p>The <code>no</code> version of this command, <code>no queue &lt;name&gt;</code>, deletes the specified durable message queue from the Message VPN. However, the queue cannot be deleted until it's shutdown, which disables client access to it. For more information, see <MadCap:xref href="#enable-disable-access">Enabling / Disabling Client Access to Queues</MadCap:xref>.</p>
+    <p>The following sections discuss how you can configure the parameters and features associated with a durable queue. </p>
+    <p>You can also watch these videos about the different ways to configure queues:</p>
+    <ul>
+      <li>
+        <a href="https://www.youtube.com/watch?v=zt2E_kAhYCM" alt="Link to video" class="link-offsite" title="Link to video">How many ways to create queues - Part 1?</a>
+      </li>
+      <li>
+        <a href="https://www.youtube.com/watch?v=KtM9ZNf8-tA" alt="Link to video" class="link-offsite" title="Link to video">How many ways to create queues - Part 2?</a>
+      </li>
+      <li>
+        <a href="https://www.youtube.com/watch?v=NcbzAdcfyaE" alt="Link to video" class="link-offsite" title="Link to video">How many ways to create queues - Part 3?</a>
+      </li>
+      <li>
+        <a href="https://www.youtube.com/watch?v=_hBZlygopIc" alt="Link to video" class="link-offsite" title="Link to video">How many ways to create queues - Part 4?</a>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Configur12"/>Configuring Access Types</h2>
+    <p>To configure the client <a href="Queues.htm#queue-access-types" class="link-internal" target="_blank">access type</a> for durable message queues on <MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers on a per-queue basis, enter the following CONFIG command.</p>
+    <p class="Note">The client access type cannot be changed until client access to the durable message queue is disabled. For more information, see <MadCap:xref href="#enable-disable-access">Enabling/Disabling Client Access to Queues</MadCap:xref>.
+		</p>
+    <pre class="Code">PubSub+(configure/message-spool/queue)# access-type {exclusive | non-exclusive}</pre>
+    <p><u>Where</u>:</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/queue-access-type-exclusive.flsnp"/>
+    <MadCap:snippetBlock src="../../Resources/Snippets/queue-access-type-non-exclusive.flsnp"/>
+    <p>The no version of this command, <code>no access-type</code>, reverts the setting back to the default (exclusive).</p>
+    <h2 class="with-rule"><a name="Configur14"/>Configuring Max Number of Flows That May Bind</h2>
+    <p>To configure the maximum number of flows that can bind to a durable message queue on a <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker on a per-queue basis, enter the following CONFIG command.</p>
+    <pre class="Code">PubSub+(configure/message-spool/queue)# max-bind-count &lt;value&gt;</pre>
+    <p style="text-decoration: underline;">Where:</p>
+    <p><code>&lt;value&gt;</code> is the integer value specifying the maximum number of flows that can bind to a durable message queue. The valid range is 0 to 10,000. The default value is 1,000.</p>
+    <p>The no version of this command, <code>no max-bind-count</code>, resets the maximum number of flows that can bind to a durable message queue back to the default.
+</p>
+    <p class="Note">A single client can create multiple flows, and flows may originate from one or more clients.
+        </p>
+    <h2 class="with-rule"><a name="Enabling"/>Enabling / Disabling Propagating Consumer Acks to Replicated VPNs</h2>
+    <p>By default, endpoints on an active replication Message VPN propagate consumer acks that they received to the standby replication Message VPN.</p>
+    <p>To prevent the queue from propagating consumer acks to the standby Replication Message VPN, enter the following CONFIG command:</p>
+    <pre class="Code">solace(configure/message-spool/queue)# no consumer-ack-propagation</pre>
+    <p>Alternatively, if the queue was allowed to propagate consumer acks to the standby replication Message VPN, enter the following CONFIG command to allow it to do so:</p>
+    <pre class="Code">solace(configure/message-spool/queue)# consumer-ack-propagation</pre>
+    <p class="Note">Bridges cannot bind to queues configured with consumer-ack-propagation disabled.</p>
+    <h2 class="with-rule"><a name="Configur13"/>Configuring Queue Event Thresholds</h2>
+    <p>To configure the thresholds that control when message spool-related events are generated for the given queue, enter the following CONFIG command:</p>
+    <pre class="Code">solace(configure/message-spool/queue)# event</pre>
+    <p>The CLI is now at a  level at which you can configure the set and clear thresholds for various message spool events for the queue.</p>
+    <p class="Note">For specific information on the available Message VPN-level message spool events that are generated for a queue and how to set the set and clear thresholds for generating those events, see <MadCap:xref MadCap:unresolvedLink="import-link:configuring_event_output_and_thresholds_3996511907_74834" href="../../Monitoring/Configuring-VPN-M-Spool-Event-Thresholds.htm#montoring_and_management_1462237600_255601">Queue Event Thresholds</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="managing_guaranteed_messaging_1810020758_455709"/>Configuring Max Permitted Number of Delivered Unacked Messages</h2>
+    <p>For a given queue you can configure the maximum number of Guaranteed messages that can be delivered to a client through a subscriber flow (that is, an egress flow) but remain unacknowledged by that client. That is, how many outstanding non-returned message acknowledgments are acceptable per flow bound to the queue.</p>
+    <p>After this maximum number of delivered but unacknowledged messages is exceeded, the <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker stops delivering messages to the client on the flow until the client acknowledges messages that are already delivered.</p>
+    <p>To configure a limit for maximum outstanding number of delivered but unacknowledged messages per flow, enter the following CONFIG command:</p>
+    <pre class="Code">solace(configure/message-spool/topic-queue)# max-delivered-unacked-msgs-per-flow &lt;max&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;max&gt;</code> is an integer value specifying the maximum number of messages that can be delivered to a client on a subscriber flow but remain unacknowledged by the client. The valid range is 1 to the maximum value supported by the event broker. The maximum value depends on the type of <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker used. The default value is 10000. If the maximum number of delivered but unacknowledged messages amongst all clients is reached, the event broker will stop delivering messages to all clients until some clients return acknowledgments back to the event broker.</p>
+    <p>The no version of this command, <code>no max-delivered-unacked-msgs-per-flow</code>, resets the maximum number unacknowledged messages back to the default value.</p>
+    <h4>Possible performance impact</h4>
+    <p>Modifying <code>max-delivered-unacked-msgs-per-flow</code> may negatively impact performance if it's set lower than the transport window size used by consuming clients. </p>
+    <p>Provided the application is using at least Version 10.0.2 of the JCSMP or JMS APIs, or at least Version 7.2.5 of the C, .NET, or Java RTO APIs, the API learns about the configured <code>max-delivered-unacked-msgs-per-flow</code> at bind time and adjusts its ACK threshold accordingly for best performance. If the <code>max-delivered-unacked-msgs-per-flow</code> is changed while clients are bound, the clients may need to be disconnected and allowed to reconnect to receive the new value.</p>
+    <p>Older versions of the APIs don't adjust their ACK threshold based on the <code>max-delivered-unacked-msgs-per-flow</code> setting. If applications using older versions of the API bind to the queue, its <code>max-delivered-unacked-msgs-per-flow</code> must be set to a value greater than or equal to the transport window size used by the applications to ensure performance.</p>
+    <h2 class="with-rule"><a name="Configur17"/>Configuring Max Permitted Message Sizes</h2>
+    <p>To configure the maximum message size for the given durable queue, enter the following CONFIG command.</p>
+    <pre class="Code">solace(configure/message-spool/queue)# max-message-size &lt;size&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;size&gt;</code> is an integer value specifying the maximum message size (in bytes) permitted for the queue. </p>
+    <p>The no version of this command, <code>no max-message-size</code>, resets the permitted message size available for use by the queue back to the default.</p>
+    <h2 class="with-rule"><a name="Configur15"/>Configuring Max Redelivery Attempts</h2>
+    <p>You can use the <code>max-redelivery</code> option to configure the maximum number of times the queue can attempt to redeliver a message to a client. If the number of redelivery attempts for a given message exceeds the <code>max-redelivery</code> value, the message is either discarded, or, if a dead message queue (DMQ) has been created and is ready to accept messages, the message is removed and placed in the DMQ.</p>
+    <p>To configure the maximum number of times a queue can attempt to redeliver a message to a client, enter the following CONFIG command:</p>
+    <pre class="Code">solace(configure/message-spool/queue)# max-redelivery &lt;count&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;count&gt;</code> is the maximum message redelivery attempts possible. The valid range is 0 to 255. 0 means try forever. The default is 0.</p>
+    <p>The no version of this command, <code>no max-redelivery</code>, resets the max-redelivery value back to the default value.</p>
+    <h2 class="with-rule"><a name="Configur3"/>Configuring a Message Redelivery Delay</h2>
+    <p>When client applications are consuming messages from an event broker, they may occasionally encounter conditions where they are temporarily unable to process a message. In this scenario, the application may rollback the transaction to force a redelivery of a message.</p>
+    <p>Redelivering the message immediately often does not help, as it does not allow sufficient time for the transient condition to be resolved. Configuring a message redelivery delay  can help in this scenario, by suspending message delivery to the client following a transaction rollback, until a configured redelivery delay time has passed. You can also configure a multiplier to allow for exponential back-off of redelivery attempts. </p>
+    <p>When you configure a  message redelivery delay, it applies only when the broker attempts to redeliver a message to a client following an application-initiated local transaction rollback. Other types of redelivery will occur without a delay.</p>
+    <div class="Caution">
+      <p>Configuring a message redelivery delay is a Controlled Availability (CA) feature. Please <a href="../../get-support.htm" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a> to find out if this feature is supported for your use case.</p>
+    </div>
+    <p>To configure a message redelivery delay, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">solace(configure/message-spool/queue)# redelivery-delay</pre>
+    <p>The CLI is now at a level where you can configure the initial interval, maximum interval, and delay interval multiplier the queue uses when it attempts to redeliver a message to a client following an application-initiated local transaction rollback.</p>
+    <ul>
+      <li>
+        <p>To configure the initial interval, enter the following command:</p>
+        <pre class="Code" xml:space="preserve">solace(.../message-spool/queue/redelivery-delay)# initial-interval &lt;value&gt;</pre>
+        <p><u>Where</u>:</p>
+        <p><code>&lt;value&gt;</code> is an integer value specifying the delay between the first two delivery attempts, in milliseconds. The valid range of values is 1 to 3600000. The default  is 1000.</p>
+        <p>The no form of this command, <code>no inital-interval</code>, resets the value to the default. </p>
+      </li>
+      <li>
+        <p>To configure the maximum interval, enter the following command:</p>
+        <pre class="Code" xml:space="preserve">solace(.../message-spool/queue/redelivery-delay)# max-interval &lt;value&gt;</pre>
+        <p><u>Where</u>:</p>
+        <p><code>&lt;value&gt;</code> is an integer value specifying the maximum delay to be used between any two redelivery attempts, in milliseconds. The valid range of values is 1 to 10800000. The default is 64000. </p>
+        <p>The no form of this command, <code>no max-interval</code>, resets the value to the default. </p>
+      </li>
+      <li>
+        <p>To configure the delay interval multiplier, enter the following command:</p>
+        <pre class="Code" xml:space="preserve">solace(.../message-spool/queue/redelivery-delay)# multiplier &lt;value&gt;</pre>
+        <p><u>Where</u>:</p>
+        <p><code>&lt;value&gt;</code> is a floating point value specifying the amount that each delay interval is multiplied by after each failed delivery attempt. The valid range of values is 1.00 to 5.00. The default is 2.00.</p>
+        <p>The no form of this command, <code>no multiplier</code>, resets the value to the default. </p>
+      </li>
+    </ul>
+    <p>To enable the message redelivery delay configuration, enter the following command:</p>
+    <pre xml:space="preserve">solace(.../message-spool/queue/redelivery-delay)# no shutdown</pre>
+    <p>To disable the message redelivery delay configuration, enter the following command:</p>
+    <pre xml:space="preserve">solace(.../message-spool/queue/redelivery-delay)# shutdown</pre>
+    <h2 class="with-rule"><a name="Configur"/>Configuring Message Redelivery</h2>
+    <p>By default, the maximum number of times the queue can attempt to redeliver a message to a client is controlled by the <code>max-redelivery</code> command. For more information, see <MadCap:xref href="#Configur15">Configuring Max Redelivery Attempts</MadCap:xref>. </p>
+    <p>You can instead disable this functionality. When message redelivery is disabled, a given message will
+          only be attempted to be delivered from the queue once.</p>
+    <div class="Caution">
+      <p>Disabling message redelivery is a Controlled Availability (CA) feature. Please <a href="../../get-support.htm" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a> to find out if this feature is supported for your use case.</p>
+    </div>
+    <p>To disable message redelivery attempts, enter the following CONFIG command:</p>
+    <pre class="Code" xml:space="preserve">solace(configure/message-spool/queue)# no redelivery</pre>
+    <p>To enable message redelivery attempts, enter the following CONFIG command.</p>
+    <pre class="Code" xml:space="preserve">solace(configure/message-spool/queue)# redelivery</pre>
+    <h2 class="with-rule"><a name="Config_Message_Delivery_Count"/>Configuring Message Delivery Count</h2>
+    <p>You can use the <code>delivery-count</code> option to enable or disable the delivery count property for messages. When enabled, each message sent from the queue to a consumer contains a property indicating whether this is the 1<sup>st</sup>, 2<sup>nd</sup>, ... or n<sup>th</sup> attempt to deliver the message to a consumer. By default, the delivery count is disabled.</p>
+    <p>The message count has the following behaviors:</p>
+    <ul>
+      <li>For message browsers, the message count has the value that the next non-browser consumer will see. Browsing messages does not affect their delivery count.</li>
+      <li>In the case of a redundancy (HA) failover, message counts greater than <code>1</code> are reset to <code>2</code>.</li>
+    </ul>
+    <div class="Caution">
+      <p>Enabling the message delivery count is a Controlled Availability (CA) feature. Please <a href="../../get-support.htm" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a> to find out if this feature is supported for your use case.</p>
+    </div>
+    <p>To enable the delivery count for messages on the queue, enter the following CONFIG command:</p>
+    <pre class="Code" xml:space="preserve">solace(configure/message-spool/queue)# delivery-count</pre>
+    <p>To disable the delivery count for messages, enter the following CONFIG command.</p>
+    <pre class="Code" xml:space="preserve">solace(configure/message-spool/queue)# no delivery-count</pre>
+    <h2 class="with-rule"><a name="Configur2"/>Configuring Delayed Delivery</h2>
+    <p>By default, messages published to queues are immediately published to connected consumers. There are many use cases in which published messages must not be delivered to consumers immediately, but  delivered only after a fixed delay. One example is a retry mechanism within a payment processing system. After receiving a customer order, you may want to implement a  delivery delay to retry credit card transactions when the processing of the transaction fails for any reason. For more information, see <MadCap:xref href="Delayed-Delivery.htm">Delayed Delivery</MadCap:xref>.</p>
+    <p>You can use the <code>delivery-delay</code> option to   configure a delivery delay for a queue, such that all messages destined to a queue are not eligible to be delivered for a fixed period of time.</p>
+    <p class="Note">If you are currently using dead message queues (DMQ) to implement a delivery delay, <a href="../../get-support.htm" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a> for guidance on migrating your implementation to use  the <code>delivery-delay</code> option instead.</p>
+    <p>To configure a delivery delay on the queue,  enter the following CONFIG command:</p>
+    <pre class="Code" xml:space="preserve">solace(configure/message-spool/queue)# delivery-delay &lt;delay&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;delay&gt;</code> is the delay, in seconds, to apply to messages arriving on the queue before the messages are eligible for delivery. The valid range is 0 to 4294967295. The default is 0. </p>
+    <p>The no version of this command, <code>no delivery-delay</code>,  resets the <code>delivery-delay</code> value back to the default.</p>
+    <h2 class="with-rule"><a name="Configur16"/>Configuring Max Spool Usage Values</h2>
+    <p>To configure the maximum amount of message spool that the given queue may use, enter the following CONFIG command:</p>
+    <pre class="Code">solace(configure/message-spool/queue)# max-spool-usage &lt;size&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;size&gt;</code> is an integer value specifying the maximum amount of message spool disk space permitted for the queue in MB.</p>
+    <p>The no version of this command, <code>no max-spool-usage</code>, resets the permitted message spool usage quota available for use by the queue back to the default.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/link-to-max-spool-values.flsnp"/>
+    <h4>Setting Maximum Message Spool Usage to Zero</h4>
+    <p>Setting the maximum message spool usage to 0 enables the Last Value Queue feature and disables endpoint quota checking. However, global quota checking and Message VPN quota checking are unaffected. </p>
+    <p>When this setting is 0 for a queue, the event broker enforces a queue depth of one by deleting older messages from the endpoint upon receiving new messages (that is, it stores only the last message spooled to it). If the queue is <a href="#configure-partitioned-queues" class="link-internal">partitioned</a>, each of its partitions holds the last message spooled to that partition. </p>
+    <p>For more information, see <MadCap:xref MadCap:unresolvedLink="import-link:working_with_guaranteed_messages_3625246657_44937" href="Queues.htm#lvq">Last Value Queues</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Configur18"/>Configuring Queue Owners</h2>
+    <p>The queue owner has full unlimited permissions for the queue. That is, the owner can consume, delete, or modify topics in the queue. The ownership of a queue is established in the following manner:</p>
+    <ol>
+      <li>If a client application dynamically provisions a queue through a <MadCap:variable name="Product-Names.pubsub_brand_only"/> messaging API, the client username associated with the client is automatically given ownership of that queue.</li>
+      <li>If a CLI user manually provisions a queue through the <MadCap:variable name="Product-Names.solace_cli"/>, no client username is automatically given ownership of that queue.</li>
+      <li>Any CLI user with read-write or admin access to the Message VPN that the queue belongs to has full permissions on the queue (that is, management has ownership).</li>
+    </ol>
+    <p class="Note">Client access to the durable message queue must first be disabled before assigning an owner. For more information, see <MadCap:xref href="#enable-disable-access">Enabling/Disabling Client Access to Queues</MadCap:xref>.</p>
+    <p>To give ownership of the given queue to any clients associated with a particular client username, enter the following CONFIG command:</p>
+    <pre class="Code">solace(configure/message-spool/queue)# owner &lt;owner&gt;</pre>
+    <p><code>&lt;owner&gt;</code> is the username of an existing client username account. Default owner is management.</p>
+    <p>The no version of this command, <code>no owner</code>, resets the owner of the queue back to the default.</p>
+    <h4>Restrictions on client initiated deletions</h4>
+    <ul>
+      <li>Clients can't delete subscriptions on a queue if those subscriptions were added using CLI or SEMP by management users.</li>
+      <li>Clients can't delete a queue if the queue was created using CLI or SEMP by a management user.</li>
+    </ul>
+    <h2 class="with-rule"><a name="Configur19"/>Configuring Permissions for Non-Owner Clients</h2>
+    <p>To configure the permission levels for all clients other than the owner of the given durable queue, enter the following CONFIG command:</p>
+    <p class="Note">Client access to the durable message queue must first be disabled before queue permissions can be configured. For more information, see  <MadCap:xref href="#enable-disable-access">Enabling/Disabling Client Access to Queues</MadCap:xref>.</p>
+    <pre class="Code" xml:space="preserve">solace(configure/message-spool/queue)# permission all {no-access | read-only | consume | modify-topic | delete}</pre>
+    <p><u>Where</u>:</p>
+    <p><code>no-access</code> disallows  access to the queue. </p>
+    <p><code>read-only</code> provides clients with read-only access permission to messages spooled to the queue.</p>
+    <p><code>consume</code> provides clients with read-only permission and the ability to delete messages from the queue.</p>
+    <p><code>modify-topic</code> provides clients with consume permission and the ability to modify the topic or selector assigned to the queue.</p>
+    <p><code>delete</code> provides clients with modify-topic permission and the ability to  delete the queue. Note that clients cannot delete a queue if it was created using the CLI or SEMP by a management user.</p>
+    <p>The no version of this command, <code>no permission</code>, resets the permission levels for all clients other than the owner of the queue to none; that is, no access. A client access level of none is the default permission level.</p>
+    <p class="Note">Permission levels are ignored for client-usernames with Guaranteed Endpoint Permission Override enabled. For more information, see <MadCap:xref href="../../Security/Configuring-Client-Usernames.htm#Enabling-Endpoint-Permissions">Enabling Endpoint Permission Overrides</MadCap:xref>.</p>
+    <h4>Receiving messages on topics that would otherwise be denied by clients' subscribe-topic ACLs</h4>
+    <p>If a client binds to a queue that they do not own, they receive all the messages on the queue, including the messages that match topics that they would be denied for subscription to due to the assigned ACL.  For example, if there is a queue subscribed to topic <code>a/b</code>, and a client successfully binds to that queue, then that client will receive all the messages on the queue, even if that client is subject to an ACL that prohibits a subscription to topic <code>a/b</code>.</p>
+    <h4>Restrictions on client initiated subscription changes</h4>
+    <ul>
+      <li>Clients must have modify-topic permission set to add or remove a subscription from a queue.For more information, see <MadCap:xref href="#Adding">Adding Topic Subscriptions to Queues</MadCap:xref>.</li>
+      <li>Clients cannot delete subscriptions on a queue if management users added those subscriptions using CLI or SEMP.</li>
+    </ul>
+    <h2 class="with-rule"><a name="Enabling2"/>Enabling Rejection of Low-Priority Messages</h2>
+    <p>To protect against message congestion scenarios where such a large number of messages are published to a queue that system performance decreases, you can enable the queue to discard low‑priority messages but continue to spool high‑priority published messages. The queue can selectively discard low-priority messages only after the total number of low‑priority and high‑priority messages spooled exceeds the value set for the reject low‑priority message limit . </p>
+    <p>By default, the reject low‑priority message feature is not enabled for endpoints.</p>
+    <div class="Note">
+      <ul>
+        <li>To avoid inadvertently discarding all low-priority messages, it's recommended that you change the default value of 0 for the reject low‑priority message limit before enabling the reject low‑priority message feature to something more appropriate for your network. For more information, see <MadCap:xref href="#Configur20">Configuring Reject Low‑Priority Message Limits</MadCap:xref>.</li>
+        <li>When this feature is enabled, the reject message to sender on discard option must also be enabled for the queue so that session events are sent to the publishing clients whenever messages are not enqueued on the queue and are discarded. For more information, see <MadCap:xref href="#Message-Discard-Handling">Configuring Message Discard Handling</MadCap:xref>,</li>
+      </ul>
+    </div>
+    <p>To enable the reject low‑priority message feature for a queue, enter the following CONFIG command:</p>
+    <pre class="Code">solace(configure/message-spool/queue)# reject-low-priority-msg </pre>
+    <p>The no version of this command, <code>no reject-low-priority-msg</code>, configures the durable queue to not perform reject low‑priority message limit checking on published messages (default configuration).</p>
+    <h4>Assigning message priorities</h4>
+    <p>Client applications can use the <MadCap:variable name="Product-Names.pubsub_brand_only"/> messaging APIs to assign message priorities through the Class of Service (COS) property.</p>
+    <h2 class="with-rule"><a name="Configur20"/>Configuring Reject Low‑Priority Message Limits</h2>
+    <p>To configure a reject low‑priority message limit for a queue, enter the following CONFIG command:</p>
+    <pre class="Code">solace(configure/message-spool/queue)# reject-low-priority-msg-limit &lt;limit&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;limit&gt;</code> is the total number of low- and high‑priority messages spooled. When this value is exceeded, the queue discards any further published low-priority messages but spools published high-priority messages. Valid values are from 0 through 4294967295. If a value of 0 is set, the queue spools only high-priority messages.</p>
+    <h2 class="with-rule"><a name="Message-Discard-Handling"/>Configuring Message Discard Handling</h2>
+    <p>The <code>reject-msg-to-sender-on-discard</code> option configures how a durable queue should handle ingress messages discards that occur due to one or more of the following conditions:</p>
+    <ul>
+      <li>adding the published message will exceed the configured message quota for the queue</li>
+      <li>the published message exceeds the maximum message size allowed for the queue</li>
+      <li>the client published the message to a topic it has also subscribed to and has an active flow with "No Local Delivery"</li>
+    </ul>
+    <p>If a published message is not spooled because of any of the conditions above, the following will occur:</p>
+    <ul>
+      <li><u>If the <code style="text-decoration: underline;">reject-msg-to-sender-on-discard</code> option is enabled for the queue (this is the default)</u>: The message is discarded, and a nack is returned to the sender. In this case, the message cannot be spooled to any other queue or topic endpoint (regardless of whether those endpoints have the reject-msg-to-sender-on-discard option enabled or disabled).
+			
+			
+				<ul><li>A nack is only sent to the client if the message was originally published with a non-persistent or persistent delivery mode. If the message was published with a Direct delivery mode, but was changed to non-persistent because of a topic match, and was then discarded, a nack is not returned to the sender.</li><li>How to handle the nack is the responsibility of the publishing application—not <MadCap:variable name="Product-Names.pubsub_brand_only"/> APIs. <MadCap:variable name="Product-Names.pubsub_brand_only"/> APIs do not retransmit nacked messages.</li></ul></li>
+      <li><u>If the <code style="text-decoration: underline;">reject-msg-to-sender-on-discard</code> option is not enabled for a queue</u>: The ingress message is "silently" discarded (that is, it discards the message but returns an acknowledgment to the sender). In this case, other endpoints can spool the message—if they do not encounter any of the conditions listed above.</li>
+    </ul>
+    <p>To enable the <code>reject-msg-to-sender-on-discard</code> option for a durable queue, enter the following CONFIG command:</p>
+    <pre class="Code">solace(configure/message-spool/queue)# reject-msg-to-sender-on-discard [including-when-shutdown]</pre>
+    <p><u>Where</u>:</p>
+    <p><code>including-when-shutdown</code> specifies to return Nacks to clients publishing messages topics if the endpoint has a matching subscription but is shutdown. Note that this parameter specifically targets messages published to topics because messages published to a queue are always nacked when <code>reject-msg-to-sender </code>is enabled and the queue is shutdown.</p>
+    <p>The no version of this command, <code>no reject-msg-to-sender-on-discard</code>, disables the <code>reject-msg-to-sender-on-discard</code> option on a durable queue.</p>
+    <h4>Impact on transacted sessions</h4>
+    <p>The <code>reject-msg-to-sender-on-discard</code> option also affects the behavior of transacted sessions. If "acks" are being returned to the sender, then the transacted session commit succeeds. If a nack is returned to the sender, then the commit fails. For more information, see <MadCap:xref MadCap:unresolvedLink="import-link:using_local_transactions_4171207135_99441" href="../../API/API-Developer-Guide/Using-Local-Transactions.htm">Using Local Transactions</MadCap:xref> for <MadCap:variable name="Product-Names.pubsub_brand_only"/> SMF APIs and <MadCap:xref MadCap:unresolvedLink="import-link:using_transacted_sessions_1389810721_56149" href="../../API/Solace-JMS-API/Using-Transacted-Sessions.htm">Using Transacted Sessions</MadCap:xref> for the <MadCap:variable name="Product-Names.pubsub_brand_only"/> JMS API.</p>
+    <h2 class="with-rule"><a name="Configur21"/>Configuring Max Message TTLs</h2>
+    <p>You can configure a maximum time-to-live (TTL) value for a durable endpoint so that received messages are provided with expiration value to limit how long they can remain on that durable endpoint when a max TTL is used. If a message is not consumed and its expiration time is reached, the message is discarded or is moved to a DMQ (if the publisher has flagged the message as DMQ-eligible).</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/Admin/publisher-ttl.flsnp"/>
+    <p>To define a maximum TTL for the endpoint to apply to messages to be spooled, enter the following CONFIG command:</p>
+    <pre class="Code">solace(configure/message-spool/queue)# max-ttl &lt;ttl&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;ttl&gt;</code> is maximum number of seconds that messages can stay on a queue that has the Respect TTL option enabled.</p>
+    <p><u>Conditions</u>:</p>
+    <ul>
+      <li>A max TTL value is only applied to messages when the Respect TTL option is enabled for the endpoint.</li>
+      <li>Any messages already on the queue endpoint when this parameter is configured or changed will not be impacted; those messages will continue to use the TTL assigned to them (if any) when they were spooled to the endpoint.</li>
+      <li>A max TTL cannot be set on DMQs, queues associated with Replication bridges, or queues associated with Config-Sync bridges.</li>
+    </ul>
+    <p>The no version of this command, <code>no max-ttl</code>, sets the default max TTL value to 0 (Disabled), which means that no expiry time is applied to any received messages spooled to that endpoint.</p>
+    <h4>Max TTL &amp; Message VPN Bridges</h4>
+    <p>Although max TTL values can be configured on queues associated with Message VPN bridges, it's recommended that you configure max TTLs on the endpoints that are the published messages' ultimate destinations to prevent messages from being discarded on the bridge queue when there are expectant downstream consumers.</p>
+    <h4>Max TTL &amp; Performance</h4>
+    <p>Using max TTL increases the amount of state that needs to be maintained for each message stored in the endpoint and will affect the Guaranteed messaging performance.</p>
+    <h2 class="with-rule"><a name="Enforcin"/>Enforcing Whether to Respect TTLs</h2>
+    <p>You can configure a queue to either respect or ignore messages' time‑to-live (TTL) expiration values. This includes both the TTL value that can be set by publishing clients and the TTL value set on an endpoint through its configured max TTL property. By default, the DMQ is set to ignore message TTL expiry times.</p>
+    <p>When a queue is configured to respect message TTLs, messages' TTL values are checked. If a message’s TTL is expired, it is either removed from the message spool and discarded, or, if the message is eligible for a DMQ, it is moved to a DMQ provisioned on the event broker. If a message does not have an assigned TTL, then it will never expire.</p>
+    <p>When a queue is configured to ignore message TTLs, spooled messages are not removed, even if they have been spooled for an amount of time that exceeds their set TTL value.</p>
+    <p>To configure a durable queue to respect message TTLs, enter the following CONFIG command:</p>
+    <pre class="Code">solace(configure/message-spool/queue)# respect-ttl</pre>
+    <p>The no version of this command, <code>no respect-ttl</code>, configures a durable endpoint to ignore message TTL expiry times (the default configuration).</p>
+    <p class="Note">If a queue's respect-ttl option is enabled after messages with a TTL value have been spooled, those existing spooled messages are not removed—even if their TTL expiration value has been exceeded. Only ingress messages with TTL values that are received after the respect-ttl option is enabled can be removed because of TTL violations.</p>
+    <h2 class="with-rule"><a name="Enforcing-Priority"/>Enforcing Whether to Respect Message Priority Values</h2>
+    <p>You can configure a queue to either respect or ignore messages' priority values.</p>
+    <p>When a queue is configured to respect message priority, the priority field in all received messages is used to deliver the message in the appropriate order. In other words messages with a higher priority are sent before messages with a lower priority.</p>
+    <p class="Note">Partitioned queues do not respect message priority, even if they are configured to respect it.</p>
+    <p>The event broker recognizes ten levels of priority from 0 (lowest) to 9 (highest). If the priority field in the message is greater than 9, then the event broker treats it as priority 9. Received messages that do not have a priority field are treated as priority 4. </p>
+    <p>When transitioning from priority respected to ignored, all messages  remain at their existing priorities. Although the queue does not respect priority values in new messages, priority values in existing messages are respected. Since new messages are treated as priority 9, when the queue is configured to ignore message priority, new messages may bypass messages that were received before the transition.</p>
+    <p class="Note">You must fully shut down a queue before you can change whether it respects or ignores priority values.</p>
+    <p>To configure a durable queue to respect message priority values, enter the following CONFIG command:</p>
+    <pre class="Code">solace(configure/message-spool/queue)# respect-message-priority</pre>
+    <p>The no version of this command, <code>no respect-message-priority</code>, configures a durable queue to ignore message priority values (the default configuration).</p>
+    <div class="Caution">
+      <p>Enforcing message priority increases the chance that duplicate messages will be delivered to a consuming client after it recovers from a connection failure.</p>
+    </div>
+    <h2 class="with-rule"><a name="configure-partitioned-queues"/>Configuring Partitioned Queues</h2>
+    <p>A partitioned queue consists of a parent non-exclusive queue, along with a child queue for each partition. For more information, see <MadCap:xref href="Queues.htm#partitioned-queues">Partitioned Queues</MadCap:xref>.</p>
+    <h3>Creating Queue Partitions</h3>
+    <p>To create  queue partitions for a non-exclusive queue in a given Message VPN, enter the following CONFIG commands:</p>
+    <pre class="Code" xml:space="preserve">solace(configure/message-spool/queue)# partition
+solace(configure/message-spool/queue/partition)# count &lt;num-partitions&gt;
+</pre>
+    <p style="text-decoration: underline;">Where:</p>
+    <p style="text-decoration: none;"><code>&lt;num-partitions&gt;</code>
+ specifies the number of partitions for the queue. The valid range depends on the <a href="../../Software-Broker/System-Scaling-Parameters.htm#max-client-connections" target="_blank" class="link-internal">maximum number of client connections</a> the broker supports. The default value is 0 (that is, not partitioned). A partition count of 1 results in a partitioned queue with a parent queue and a single partition. If a queue has partitions, bound clients receive messages from individually assigned partitions instead of in a round-robin fashion.</p>
+    <p style="text-decoration: none;">The no version of this command <code>no count</code>, returns the value to the default, which removes all queue partitions and causes the queue to become a non-exclusive, non-partitioned queue. For more information, see <MadCap:xref href="#Configur12">Configuring Access Types</MadCap:xref>.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/Queue-to-partioned-queue.flsnp"/>
+    <p>We recommend that you ensure that messages are drained from the queue before changing the number of partitions. For more information, see <MadCap:xref href="Partition-Scaling.htm">Partition Scaling</MadCap:xref>.</p>
+    <p class="Caution">Partition scaling is service affecting. Ensure that you follow the exact procedures provided in <MadCap:xref href="Partition-Scaling.htm" target="_blank">Partition Scaling</MadCap:xref> to add or remove partitions.</p>
+    <h3>Configuring the Timers for Partition Rebalancing</h3>
+    <p>When the number of clients drawing from a partitioned queue changes, partition rebalancing is triggered. For more information, see <MadCap:xref href="Partition-Rebalancing.htm">Partition Rebalancing</MadCap:xref>. </p>
+    <p>When an event broker performs partition rebalancing, two  timers are used: the rebalancing delay, and the maximum handoff timer. Depending on your deployment, you may want to change the duration of these timers. </p>
+    <h4>Configuring the Rebalancing Delay</h4>
+    <p>
+By default, event brokers wait five seconds before triggering a rebalance once it is required.</p>
+    <p>You can configure this to balance the needs of your consumer scaling strategy and stability of your consumer connections. Smaller values mean that client connects and disconnects are acted upon more quickly; larger values minimize the number of partition reassignments when clients are frequently, temporarily disconnected or when client disconnections/reconnections occur in groups (for example, with client autoscaling).</p>
+    <p>To configure the delay before a rebalance is started after it is triggered, enter the following CONFIG commands:</p>
+    <pre class="Code" xml:space="preserve">solace(configure/message-spool/queue/partition)# rebalance
+solace(...ssage-spool/queue/partition/rebalance)# delay &lt;seconds&gt;</pre>
+    <p style="text-decoration: underline;">Where:</p>
+    <p style="text-decoration: none;"><code>&lt;seconds&gt;</code> specifies the delay (in seconds) before a rebalance is started after it is triggered. The valid range is 0 to 4294967295. The default is five seconds. </p>
+    <p style="text-decoration: none;">The no form of this command, <code>no delay</code>, returns the value to the default. </p>
+    <h4>Configuring the Maximum Handoff Time</h4>
+    <p>When partition <a href="Partition-Rebalancing.htm" class="link-internal">rebalancing</a> occurs, it may cause a handoff of partitions from one consumer to another. While handoffs are designed to be as unobtrusive as possible, remapping and scaling of partitions may cause application-level errors as the flow of messages belonging to one partition is moved from one consumer to another. For more information, see <MadCap:xref href="Partition-Handoff.htm">Partition Handoff</MadCap:xref>.</p>
+    <p>By default, event brokers wait (pause message ingress) for a maximum of three seconds to allow messages to drain prior to handing off a partition while rebalancing. If there are no messages to be drained, the handoff proceeds immediately.</p>
+    <p>To configure the maximum time to wait before the event broker hands off a partition while rebalancing, enter the following CONFIG commands:</p>
+    <pre class="Code" xml:space="preserve">
+solace(configure/message-spool/queue/partition)# rebalance
+solace(...ssage-spool/queue/partition/rebalance)# max-handoff-time &lt;seconds&gt;</pre>
+    <p style="text-decoration: underline;">Where:</p>
+    <p style="text-decoration: none;"><code>&lt;seconds&gt;</code> specifies the maximum time (in seconds) to wait before handing off a partition while rebalancing. The valid range is 0 to 4294967295. The default is three seconds.</p>
+    <p style="text-decoration: none;">The no form of this command, <code>no max-handoff-time</code>, returns the value to the default.</p>
+    <h3>Monitoring Partitioned Queues</h3>
+    <p>To display information about queue partitions, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">show queue &lt;name&gt; [message-vpn &lt;vpn-name&gt;] partitions</pre>
+    <p style="text-decoration: underline;">Where:</p>
+    <p style="text-decoration: none;"><code>&lt;name&gt;</code> is the full name of the message queue, or part of the queue name with the wildcard character ? used to represent one character of the name, or the wildcard character * used to represent zero or more characters of the name, where entering only the wildcard character * for the name displays all message queues.</p>
+    <p><code>&lt;vpn-name&gt;</code> is the name of the Message VPN the queue belongs to.</p>
+    <p style="text-decoration: underline;">Example:</p>
+    <p style="text-decoration: none;">This example shows a queue with four partitions and several messages spooled in each partition.</p>
+    <pre class="Code" xml:space="preserve">solace(configure)# show queue test partitions
+
+Name                                 : test
+Message VPN                          : default
+Partition Count                      : 4
+  Operational                        : 4
+Rebalance
+  Delay (Seconds)                    : 5
+  Max Handoff Time (Seconds)         : 3
+Scaling Status                       : Ready
+Rebalancing Status                   : Ready
+
+ST(Status): UA(Unassigned), R(Ready), P(Paused), UB(Unbound)
+
+     Queue Name                                                      Messages
+Num  Assigned Client                                           ST     Spooled
+---- --------------------------------------------------------- -- -----------
+0    #pq/bff82b2e8c82d8c1/00000                                UA          12
+
+1    #pq/bff82b2e8c82d8c1/00001                                UA          13
+
+2    #pq/bff82b2e8c82d8c1/00002                                UA          13
+
+3    #pq/bff82b2e8c82d8c1/00003                                UA          12
+</pre>
+    <MadCap:snippetBlock src="../../Resources/Snippets/PQ-show-queue.flsnp"/>
+    <h3><a name="Deleting-from-PQ"/>Deleting Messages from Partitioned Queues</h3>
+    <p>To delete messages that are spooled in a child queue, you must specify the name of the child queue in the <code>delete-messages</code> command. For example, to delete messages from partition 3 in the preceding example, run the following command:</p>
+    <pre xml:space="preserve">solace(admin/message-spool)# delete-messages test #pq/bff82b2e8c82d8c1/00003</pre>
+    <p>If you run the <code>delete-messages</code> command on the parent queue (that is, without specifying a partition), the event broker deletes any messages that were spooled directly to the parent queue before it became partitioned.</p>
+    <h2 class="with-rule"><a name="Adding"/>Adding Topic Subscriptions to Queues</h2>
+    <p>To add a topic subscription to the given durable message queue so that Guaranteed messages published to those topics are also delivered to the queue, enter the following CONFIG command:</p>
+    <pre class="Code">solace(configure/message-spool/queue)# subscription topic &lt;topic&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;topic&gt;</code> is the name of the topic subscription to be added in the form a/b/c.</p>
+    <p>The no version of this command, <code>no subscription topic</code>, deletes the specified topic subscription from the durable queue.</p>
+    <p><u>Conditions</u>:</p>
+    <ul>
+      <li>Adding or deleting a topic subscription does not affect the messages that are already stored in the queue.</li>
+      <li>The <code>subscription topic</code> Queue CONFIG command and <code>no subscription topic </code>Queue CONFIG command can be entered multiple times to add or delete multiple topic subscriptions to the queue.</li>
+      <li>The queue subscriptions are constrained by the same limits put on per client subscriptions and the event broker-wide constraint of number of supported subscriptions.</li>
+    </ul>
+    <h4>Restrictions on subscription changes</h4>
+    <ul>
+      <li>Clients using <MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging APIs can't remove topic subscriptions from a queue that an administrator has added through CLI or SEMP.</li>
+      <li>To permit clients to add or remove subscriptions from a queue that have not been added by an administrator, a permission level of modify-topic or delete must be configured for the queue (refer to <MadCap:xref href="#Configur19">Configuring Permissions for Non-Owner Clients</MadCap:xref>), or the clients must be assigned a client profile that has the guaranteed endpoint permission override enabled (refer to <MadCap:xref href="../../Security/Configuring-Client-Profiles.htm#Allow-G-Msg-Creates">Allowing Guaranteed Endpoint Creates</MadCap:xref>).</li>
+      <li>Adding or removing a subscription from a queue is fully supported in a redundant event broker configuration. That is, topic subscriptions in queues can be managed on the active event broker and those subscriptions survive activity switches between event broker pairs.</li>
+    </ul>
+    <h2 class="with-rule"><a name="Adding2"/>Adding Topic Subscription Exceptions to Queues</h2>
+    <p>To add a topic subscription exception to the given durable message queue so that Guaranteed messages published to those topics are not delivered to the queue, repeat the steps to add a  subscription and add a  leading "!" character to the topic name. </p>
+    <p>In other words, to add a topic subscription exception to the queue enter the following CONFIG command:</p>
+    <pre class="Code">solace(configure/message-spool/queue)# subscription topic !&lt;topic&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;topic&gt;</code> is the name of the topic subscription you want to exclude from the queue in the form a/b/c.</p>
+    <p>Subscription exceptions are enabled by default. If subscription exceptions are disabled, the leading "!" is treated as a literal character. For more information about enabling and disabling subscription exceptions, see <MadCap:xref href="System-Level-Subscription-Exception-Config.htm">System-Level Subscription Exception Configuration</MadCap:xref>. </p>
+    <h2 class="with-rule"><a name="enable-disable-access"/>Enabling / Disabling Client Access to Queues</h2>
+    <p>By default, clients are disabled from publishing and binding to queues. </p>
+    <p>To enable client access to the specified durable queue, enter the following CONFIG command:</p>
+    <pre class="Code">solace(configure/message-spool/queue)# no shutdown [ingress | egress | full]</pre>
+    <p>To disable client access to the specified durable queue, enter the following CONFIG command:</p>
+    <pre class="Code">solace(configure/message-spool/queue)# shutdown [ingress | egress | full]</pre>
+    <p><u>Where</u>:</p>
+    <p><code>ingress</code> specifies to enable or disable clients from publishing to the queue.</p>
+    <p><code>egress</code> specifies to enable or disable clients from binding to the queue.</p>
+    <p><code>full</code> specifies to enable or disable clients from publishing to the queue and  binding to the queue.</p>
+  </body>
+</html>

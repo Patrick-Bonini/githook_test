@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditionTagExpression="include[SnippetConditions.snpt-bm-core], exclude[SnippetConditions.snpt-bm-cloud]">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Cloud;Appliance;Software"/>Message Spooling</h1>
+    <p>When an  event broker  receives a Guaranteed message, it processes the message to determine if there are any registered topic subscriptions or queues that match the topic the message was published to. If there is a topic subscription match or a matching queue on the event broker, the message and all the matches are spooled, and then the event broker acknowledges receipt of the message. After acknowledging the message, the event broker attempts to deliver it to all the matching clients and event brokers. As each client and event broker acknowledges receipt of the message, the associated match is deleted from the match list of the message. Once there are no matches left associated with a message, the message itself is deleted from the spool. </p>
+    <p>If one or more of the clients are offline or have fallen behind, the message is held in persistent storage until it can be delivered. If there are too many messages to hold in memory, messages are written to the disk in large blocks. This means only messages for slow or offline clients need to be written to the disk, and they can be written in an efficient manner. If all of the clients acknowledge the message quickly enough, the message doesn't need to be written to disk.</p>
+    <p>A message may not be spooled because of resource or operating limitations. The event broker performs a variety of checks before a message is spooled. These include:</p>
+    <ul>
+      <li>Would spooling the message exceed the event broker-wide message spool quota?</li>
+      <li>Would spooling the message exceed the Message VPN’s message spool quota?</li>
+      <li>Would spooling the message exceed the endpoint’s message spool quota?</li>
+      <li>Would spooling the message exceed the endpoint’s maximum permitted message size?</li>
+      <li>Would the message exceed the endpoint’s maximum message size?</li>
+      <li>Is the destination endpoint shutdown?</li>
+      <li>If the message is a low-priority message, would spooling the message exceed the endpoint’s reject low‑priority message limit?</li>
+    </ul>
+    <p>Depending on the reason for why the message was not spooled to the endpoint, either no acknowledgment is returned to the publisher, or a negative acknowledgment (that is, a ‘nack’) is returned, and it's up to the publisher to handle these possibilities. A statistic is then incremented on the event broker.</p>
+    <div class="Note">
+      <ul>
+        <li>If a subscription is deleted when a message is spooled for that subscription, the message will still be delivered.</li>
+        <li>If an endpoint is deleted (for example, through the <MadCap:variable name="Product-Names.solace_cli"/>) while a message is spooled to that endpoint, the message will not be delivered.</li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="spool_files"/>Message Spool Files</h2>
+    <MadCap:snippetBlock src="../../Resources/Snippets/about-message-spool-files.flsnp"/>
+    <p MadCap:conditions="SAP.SapHideFromOutput"> For more information, see <MadCap:xref href="../../Cloud/Configure-Message-Spools.htm">Configuring Message Spool Sizes</MadCap:xref> for <MadCap:variable name="Product-Names.cloud_product_short"/> and <MadCap:xref MadCap:unresolvedLink="import-link:managing_guaranteed_messaging_3523843102_60980" href="../../Monitoring/Configuring-System-Event-Thresholds.htm#spool-file-thresholds">Spool Files Thresholds</MadCap:xref> for <MadCap:variable name="Product-Names.broker_sw_short"/>s and <MadCap:variable name="Product-Names.broker_appliance_short"/>s.</p>
+    <p MadCap:conditions="SAP.SapOnlyOutput"> For more information, see <MadCap:xref href="../../Cloud/Configure-Message-Spools.htm">Configuring Message Spool Sizes</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="windowed_acks"/>Windowed Acknowledgment</h2>
+    <p>A windowed acknowledgment mechanism is used at the transport level between the event broker and individual clients publishing and receiving Guaranteed messages.</p>
+    <p>A windowed acknowledgment prevents the round-trip acknowledgment time from becoming the limiting factor for message throughput. It does this by allowing a configurable number of messages to be in transit between an event broker and a publishing or subscribing client before an acknowledgment is required. The window size can be configured through a Solace messaging API flow property. </p>
+    <p><MadCap:variable name="Variables.CompanyName"/> APIs also batch acknowledgments from the application to the event broker. The figure below shows a client application sending multiple acknowledgments for Guaranteed messages, which the API consolidates into a single acknowledgment on the wire that is returned to the event broker. The size of the batch is configured through an API flow property.</p>
+    <p class="Note">With any windowed acknowledgment scheme there is the possibility of failure in the time between a message being received by the client, and the time at which the event broker receives the acknowledgment. A failure at this time requires all non-acknowledged messages in transit to be sent again. Thus, the number of messages redelivered increases and is directly proportional to the combination of window size and acknowledgment threshold.</p>
+    <p class="GraphicCaption" MadCap:conditions="SAP.SapHideFromOutput">Cumulative ACK and Acknowledgment Thresholds</p>
+    <p style="text-align: left;" MadCap:conditions="SAP.SapHideFromOutput">
+      <img src="../../Resources/Images/Guaranteed-Msg/window_ack.png" style="margin-left: 5.99976px;margin-top: 5.99976px;margin-right: 5.999752px;margin-bottom: 6.000484px;" alt=""/>
+    </p>
+    <h2 class="with-rule"><a name="de_but_unacked"/>Delivered-But-Unacknowledged Messages</h2>
+    <p>There is a hard limit for the number of Guaranteed messages that can be delivered through a consumer flow to a bound client without that client returning an acknowledgment for those messages. On reaching this limit<MadCap:conditionalText MadCap:conditions="SAP.SAPTempHide"> (plus one window size of messages)</MadCap:conditionalText>, the event broker stops delivering messages to the client until the client acknowledges messages that have already been delivered.</p>
+    <p class="Note" MadCap:conditions="SAP.SAPTempHide">You can configure the maximum number of delivered‑but‑unacknowledged messages limit for a queue or topic endpoint provisioned on a Message VPN (refer to <MadCap:xref MadCap:unresolvedLink="import-link:managing_guaranteed_messaging_3523843102_21102" href="VPN-Level-Msg-Spool-Config.htm">Message VPN-Level Guaranteed Messaging Configuration</MadCap:xref>).</p>
+    <p>An event broker has a system-level limit for the maximum number delivered‑but‑unacknowledged messages for all clients at a given time. On reaching this maximum, no more messages are delivered to clients until some clients return acknowledgments back to the event broker, or they are disconnected. The maximum number delivered‑but‑unacknowledged messages supported is dependent on the event broker version. </p>
+    <p>By default, an event is generated when the number of outstanding messages that have not been acknowledged by their receiving clients reaches 80 percent of the system maximum (the set value), and this is followed by a further event the number of client-unacknowledged messages returns below 60 percent of the system maximum (the clear value).<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> The thresholds for when these events are generated are configurable (refer to <MadCap:xref MadCap:unresolvedLink="import-link:configuring_event_output_and_thresholds_3101754740_73930" href="../../Monitoring/Configuring-System-Event-Thresholds.htm#montoring_and_management_1462237600_255180">Delivered Unacked Thresholds</MadCap:xref>).</MadCap:conditionalText></p>
+    <h2 class="with-rule"><a name="Message_Expiry"/>Message Expiry</h2>
+    <p>To set a limit on the amount of time that published messages have to be consumed and acknowledged, you can assign Time‑to-Live (TTL) expiry values to them.</p>
+    <ul>
+      <li>If your application is using the <MadCap:variable name="Variables.CompanyName"/> messaging APIs or REST service to publish Guaranteed messages, you can set a Time‑to-Live (TTL) expiry value on each published Guaranteed message to indicate how long the message should be considered valid. A publisher TTL expiration starts when a message is published and counts down as the message passes through the network.</li>
+      <li>You can  configure a Max Time to Live (TTL) value for a durable endpoint so that received messages are provided with expiration value to limit how long they can remain on that durable endpoint when a Max TTL is used. The Max TTL only applies when a message is on the endpoint.</li>
+    </ul>
+    <p> When TTL values are applied to messages in either or both of these ways, messages that are not consumed and acknowledged before their expiration times are reached are discarded or moved to a Dead Message Queue (DMQ) . If a message has both a publisher-assigned TTL and an endpoint-assigned Max TTL, the event broker will use the minimum of the two TTL values when the message is on the endpoint.</p>
+    <p class="Note">If a Message VPN bridge is used so that published messages that match topic subscriptions can be delivered from a remote Message VPN on one event broker to a local Message VPN on another event broker, the amount of time the message spends on each event broker is counted. That is, the amount of time a message spends on the remote event broker is counted, and its remaining time to live is updated when it is sent to the local Message VPN. For example,  with a publisher-provided TTL of eight seconds, if a message spends two seconds on the first event broker, before it reaches the local Message VPN on the second event broker, it will have a TTL of six seconds.</p>
+    <p>Using TTLs to expire messages that have not been processed quickly can help prevent stale messages from being delivered to consumers. However, it should be noted that monitoring and processing messages using TTLs can affect the system-level limits for Guaranteed message delivery<MadCap:conditionalText MadCap:conditions="SAP.SAPTempHide"> (for more information, see <MadCap:xref href="G-Msg-Queueing-Limits.htm">Guaranteed Message Queuing Limits</MadCap:xref>)</MadCap:conditionalText>.</p>
+    <h2 class="with-rule" MadCap:conditions="SAP.SapHideFromOutput"><a name="max-spool-usage"/>Maximum Spool Usage</h2>
+    <p MadCap:conditions="SAP.SapHideFromOutput">You can set a maximum value for the amount of spool disk space (<code>max-spool-usage</code>) that can be consumed by various objects on the event broker. The following tables list the default settings for this value and for the corresponding event thresholds.</p>
+    <p style="font-weight: bold;" MadCap:conditions="SAP.SapHideFromOutput">System-Level Settings</p>
+    <table style="margin-left: 0;margin-right: auto;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0" MadCap:conditions="SAP.SapHideFromOutput">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="vertical-align: middle;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;border-right-style: solid;border-right-width: 2px;border-right-color: #e1e1e1;border-bottom-style: solid;border-bottom-width: 1px;border-bottom-color: #e1e1e1;">Broker Type</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Max Spool Usage (MB)</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Set Threshold (%)</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Clear Threshold (%)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Software Event Broker </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Default: 1,500</p>
+            <p>Maximum: 6,000,000</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>80</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>60</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Appliance (3230/3530)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Default: 60,000</p>
+            <p>Maximum: 800,000</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>80</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>60</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Appliance (3260/3560)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Default: 60,000</p>
+            <p>Maximum: 6,000,000</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>80</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>60</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-weight: bold;" MadCap:conditions="SAP.SapHideFromOutput">Message VPN Settings</p>
+    <table style="margin-left: 0;margin-right: auto;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0" MadCap:conditions="SAP.SapHideFromOutput">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="vertical-align: middle;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;border-right-style: solid;border-right-width: 2px;border-right-color: #e1e1e1;border-bottom-style: solid;border-bottom-width: 1px;border-bottom-color: #e1e1e1;">Broker Type</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Max Spool Usage (MB)</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Set Threshold (%)</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Clear Threshold (%)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>All </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Default: 0</p>
+            <p>Maximum: Same as the maximum for the System-level setting for <code>max-spool-usage</code></p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>80</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>60</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-weight: bold;" MadCap:conditions="SAP.SapHideFromOutput">Settings for Queues / Queue Templates / Topic Endpoints / Topic Endpoint Templates / Client-Provisioned Endpoints</p>
+    <table style="margin-left: 0;margin-right: auto;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0" MadCap:conditions="SAP.SapHideFromOutput">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="vertical-align: middle;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;border-right-style: solid;border-right-width: 2px;border-right-color: #e1e1e1;border-bottom-style: solid;border-bottom-width: 1px;border-bottom-color: #e1e1e1;">Broker Type</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Max Spool Usage (MB)</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Set Threshold (%)</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Clear Threshold (%)</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Set Threshold (MB)</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Clear Threshold (MB)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>All</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Default: 5000</p>
+            <p>Maximum: Same as the maximum for the System-level setting for <code>max-spool-usage</code></p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>25</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>18</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>1250</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>900</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p MadCap:conditions="SAP.SapHideFromOutput">See the following links for information on setting <code>max-spool-usage</code> values:</p>
+    <ul MadCap:conditions="SAP.SapHideFromOutput">
+      <li>
+        <a href="System-Level-Msg-Spool-Config.htm#Config-Max-Spool" class="link-internal">at the system level</a>
+      </li>
+      <li>
+        <a href="Configuring-Queues.htm#Configur16" class="link-internal">for queues</a>
+      </li>
+      <li>
+        <a href="Configuring-Endpoint-Templates.htm#max-spool-usage-queue-template" class="link-internal">for queue templates</a>
+      </li>
+      <li>
+        <a href="Configuring-DTEs.htm#max-spool-usage" class="link-internal">for topic endpoints</a>
+      </li>
+      <li>
+        <a href="Configuring-Endpoint-Templates.htm#max-spool-usage-topic-endpoint-template" class="link-internal">for topic endpoint templates</a>
+      </li>
+    </ul>
+    <p MadCap:conditions="SAP.SapHideFromOutput">See the following links for information on setting the event thresholds for message spool usage:</p>
+    <ul MadCap:conditions="SAP.SapHideFromOutput">
+      <li>
+        <a href="../../Monitoring/Configuring-System-Event-Thresholds.htm#spool-usage-thresholds" class="link-internal">at the system level</a>
+      </li>
+      <li>
+        <a href="../../Monitoring/Configuring-VPN-M-Spool-Event-Thresholds.htm#queue-spool-usage-threshold" class="link-internal">for queues</a>
+      </li>
+      <li>
+        <a href="../../Monitoring/Configuring-VPN-M-Spool-Event-Thresholds.htm#queue-template-spool-usage-threshold" class="link-internal">for queue templates</a>
+      </li>
+      <li>
+        <a href="../../Monitoring/Configuring-VPN-M-Spool-Event-Thresholds.htm#topic-endpoint-spool-usage-threshold" class="link-internal">for topic endpoints</a>
+      </li>
+      <li>
+        <a href="../../Monitoring/Configuring-VPN-M-Spool-Event-Thresholds.htm#topic-endpoint-template-spool-usage-threshold" class="link-internal">for topic endpoint templates</a>
+      </li>
+      <li>
+        <a href="../../Monitoring/Configuring-Client-Event-Thresholds.htm#montoring_and_management_1462237600_255777" class="link-internal">for client-provisioned endpoints</a>
+      </li>
+    </ul>
+  </body>
+</html>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>How Global Caching Works</h1>
+    <p>As shown in the example shown below, when a cache request for a global topic is made, the following steps are used:</p>
+    <ol>
+      <li>A client sends a cache request to the local Distributed Cache.</li>
+      <li>A local PubSub+ Cache Instance that receives the request checks whether it has any messages with matching topics cached locally. If there are any messages, it returns them to the client.</li>
+      <li>If the PubSub+ Cache Instance does not have any matching messages cached locally, and the topic matches a global topic prefix, the PubSub+ Cache Instance does the following:         <ul><li>it adds a subscription for the requested topic to the local Cache Cluster;</li><li>it then sends the request to the configured home Cache Cluster that is caching messages for the topic.</li></ul><p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">Global caching supports only non-wildcard requests for topics. Wildcard requests will not return any messages from home clusters because the requests are not sent to the home Cache clusters. If  wildcard requests are made that span local and global topics, matching local topics may be returned but no global topics will be returned.</p></li>
+      <li>The local Cache Instance receives the cached messages from the home Cache Cluster.       <p>In addition, because of its locally added subscription it begins to cache live data messages for that topic locally. This allows the local Cache Instance to then fulfill subsequent client cache requests for that topic.</p><p>This assumes that if one client is interested in the topic, then it is likely that other clients will also be interested. It would waste WAN bandwidth to send each client’s request to the home Cache Cluster, especially at times of day when many clients come online and request large numbers of topics from home Cache Clusters.</p></li>
+      <li>The local Distributed Cache returns the cached messages to the API. They are provided to the client application through the received message callback.</li>
+    </ol>
+    <p class="GraphicCaption">Global Caching Example</p>
+    <p class="GraphicCaption">
+      <img src="Images/global_cache.png" alt=""/>
+    </p>
+  </body>
+</html>

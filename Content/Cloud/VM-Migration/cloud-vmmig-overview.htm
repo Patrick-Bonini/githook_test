@@ -1,0 +1,436 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="Default.OnlyForPDF">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>
+      <MadCap:concept term="Cloud"/>
+      <span>Using Replication for the Migration of <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</span>
+    </h1>
+    <p class="Warning" MadCap:conditions="Default.HideFromAllOutput">INTERNAL NOTE: This content for VM Migration is not visible in the live docs on the website. Instead, a PDF is available. This is to control its availability.</p>
+    <p><MadCap:variable name="Product-Names.broker_cloud_short_intitalcap"/>s deployed in VM-based infrastructure are now deprecated. No new services can be created using VM-based infrastructure. Existing services must be migrated to Kubernetes-based datacenters (regions).</p>
+    <p>
+      <span><MadCap:variable name="Variables.CompanyName"/> offers replication as the solution for the migration of <MadCap:variable name="Product-Names.broker_cloud_short"/>s that you can use when:</span>
+    </p>
+    <ul>
+      <li>your event-driven architecture and client applications cannot tolerate any downtime during the migration</li>
+      <li>you have messages that can be queued on the <MadCap:variable name="Product-Names.broker_cloud_short"/> that cannot be lost</li>
+    </ul>
+    <p>When performing migration, we use replication-specific terminology. In the sections that follow, we use the following terminology interchangeably:</p>
+    <ul>
+      <li>The VM-based  <MadCap:variable name="Product-Names.broker_cloud_short"/> that you migrate from is called the <i>Source</i> service. We use the following replication-specific terms for the Source service:<ul><li>during migration and when you configure the replication feature, your VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/> is referred to as the <i>Primary site</i></li><li>   at the start of migration, the site where the Message VPN of the VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/> has a replication status of <code>active</code> is referred to as the <i>Active site</i></li><li>after migration, it becomes the <i>Standby site</i> and is also referred to as <i>formerly Active site</i></li></ul></li>
+      <li>The new  Kubernetes-based <MadCap:variable name="Product-Names.broker_cloud_short"/> where you migrate to is called the <i>Target</i> service. We use the following replication-specific terms for the Target service:<ul><li>during migration when you configure the replication feature, the replicated site is referred to as the <i>Backup site</i></li><li> at the start of migration, the site which you are migrating to is in <code>standby</code> status and is referred to as the <i>Standby site</i></li><li>after migration,  it becomes the <i>Active site</i> it is also referred to as <i>newly Active site</i></li></ul></li>
+    </ul>
+    <h2>Overview of Using Replication for Migration of VM-Based <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</h2>
+    <p>You can configure replication and migrate using any of the supported deployment ownership models (<MadCap:variable name="Product-Names.public_region"/>, <MadCap:variable name="Product-Names.dedicated_region"/>, and <MadCap:variable name="Product-Names.customer-controlled_region"/>) for your migration. You can also migrate your <MadCap:variable name="Product-Names.broker_cloud_short"/> between different ownership models. There are <a href="#Limitati" class="link-internal">limitations</a> to using replication for migration that we recommend that you review.</p>
+    <p>When you use replication for migration, you clone the source <MadCap:variable name="Product-Names.broker_cloud_short"/>, a process that creates a copy of it with most of its configurations copied as well. <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput"> you must first create an <MadCap:variable name="Product-Names.broker_cloud_short"/> (Target service) in a Kubernetes-based region and then copy the service configuration shown in the <MadCap:variable name="Product-Names.console_ui_long"/> from the VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/> (Source service) to  that Target service. </MadCap:conditionalText>Prior to using replication for migration, your client applications must be configured to use custom hostnames to connect to the <MadCap:variable name="Product-Names.broker_cloud_short"/>s. </p>
+    <p class="Tip">If you have not configured a custom hostname on the VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/>, you should do this first and validate that your client applications  use the hostname instead of the initially, generated hostname for the VM-based  <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+    <p>The following illustrations show the terminology used before migration when you use replication:</p>
+    <p>
+      <img src="../../Resources/Images/Cloud-VMMigration/vmmigration-before-overview.png" alt="A diagram that illustrates what the surrounding text describes"/>
+    </p>
+    <p>The following illustration shows the terminology used before migration when you use replication:</p>
+    <p>
+      <img src="../../Resources/Images/Cloud-VMMigration/vmmigration-after-overview.png" alt="A diagram that illustrates what the surrounding text describes"/>
+    </p>
+    <p MadCap:conditions="SAP.SapHideFromOutput,Default.NotForPDF">For more information about replication, see the following:</p>
+    <ul MadCap:conditions="SAP.SapHideFromOutput,Default.NotForPDF">
+      <li>
+        <MadCap:xref href="../../Features/DR-Replication/Data-Center-Replication-Overview.htm">Replication Overview</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="../../Features/DR-Replication/How-Replication-Works.htm">How Replication Works</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="../../Features/DR-Replication/Sync-Asynch-Replication.htm">Synchronous and Asynchronous Message replication</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="../../Features/DR-Replication/Switching-Service-Overview.htm">Switching Service Between Sites</MadCap:xref>
+      </li>
+    </ul>
+    <h3>
+      <a name="replication-limitaitons-cloud"/>
+      <span>Limitations of Using Replication for Migration</span>
+    </h3>
+    <p>The following are the limitations of using replication for the migration of <MadCap:variable name="Product-Names.broker_cloud_short"/>s from VM-based deployments to a Kubernetes-based deployments.</p>
+    <ul>
+      <li MadCap:conditions="SAP.SapHideFromOutput">
+        <p>Only Enterprise services with high-availability (broker version 10.0 or later) are supported. Standalone and <MadCap:variable name="Product-Names.class_100"/> services are not supported. For more information about the types of services, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../service-class-limits.htm">Service Class Options for [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/service-class-limits.htm" target="_blank" class="link-offsite">Service Class Options for [%=Product-Names.broker_cloud_short_title%]s</a></MadCap:conditionalText>.</p>
+      </li>
+      <li MadCap:conditions="SAP.SapOnlyOutput">
+        <p>Only <MadCap:variable name="Product-Names.broker_cloud_short"/>s that use high-availability  are supported. <MadCap:variable name="Product-Names.class_100"/> services are not supported. For more information about the types of services, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../service-class-limits.htm">Service Class Options for [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/service-class-limits.htm" target="_blank" class="link-offsite">Service Class Options for [%=Product-Names.broker_cloud_short_title%]s</a></MadCap:conditionalText>.</p>
+      </li>
+      <li>
+        <p>You can only migrate to and from <MadCap:variable name="Product-Names.broker_cloud_short"/>s that use 10.0. The Target service must be deployed in Kubernetes-based infrastructure.</p>
+      </li>
+      <li>
+        <p>Replication  is not supported for <MadCap:variable name="Product-Names.broker_cloud_short"/>s that are configured in an event mesh. <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">We recommend that you temporarily remove your <MadCap:variable name="Product-Names.broker_cloud_short"/> from an event mesh, migrate it, and re-add the migrated <MadCap:variable name="Product-Names.broker_cloud_short"/> back to your event mesh.</MadCap:conditionalText></p>
+      </li>
+      <li>
+        <p>The Active site (Source service) must be configured with a custom hostname. <MadCap:variable name="Variables.CompanyName"/> recommends that customers use one hostname, but you can choose to have more. For more information, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../configure-hostnames.htm">Configuring Custom Hostnames for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/configure-hostnames.htm" target="_blank" class="link-offsite">Configuring Custom Hostnames for an [%=Product-Names.broker_cloud_short_title%]</a></MadCap:conditionalText>.</p>
+        <p class="Note">As part of migration, the custom hostname is moved from the Source service (Active site) to the Target service. It can up to five minutes to move each custom hostname between services. This may extend the time it takes for the migration to complete. </p>
+        <p>Client applications must only connect to the <MadCap:variable name="Product-Names.broker_cloud_short"/> using  the custom hostname configured for the replication pair. Client applications must not use the IP addresses or the initially generated hostname for the <MadCap:variable name="Product-Names.broker_cloud_short"/> because during failover, they won’t be able to connect to the correct site. <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">In addition, client applications are not permitted to connect to Standby sites.</MadCap:conditionalText>  Client applications fail to connect until the Standby site becomes the Active site (switched to an Active status and the custom hostname is moved to the Standby site). </p>
+      </li>
+      <li>
+        <p> The replication configuration information and statistics for replication are not monitored by <MadCap:variable name="Variables.CompanyName"/><MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput"> for replication</MadCap:conditionalText>. See <MadCap:xref href="#monitoring-limitations">Monitoring Best Practices</MadCap:xref> for options.</p>
+      </li>
+      <li MadCap:conditions="Default.HideFromAllOutput">
+        <p>To set up a replication pair, the Message VPN names must match. You cannot change the name of the Message VPN after service creation in <MadCap:variable name="Product-Names.cloud_product_short"/>. </p>
+        <p>If you do not set the matching Message VPN name for your replication pair, you must delete the service and recreate it. For more information about how to set the Message VPN name at service creation time, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../create-service.htm#Set-Message-VPN-Name">Setting the Message VPN Name</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/create-service.htm#Set-Message-VPN-Name" class="link-offsite">Setting the Message VPN Name</a></MadCap:conditionalText>.</p>
+      </li>
+      <li MadCap:conditions="Default.HideFromAllOutput">
+        <p>Advanced configuration options performed in the <MadCap:variable name="Product-Names.console_ui_long"/> using <MadCap:variable name="Product-Names.cluster_mgr"/> must be manually synchronized. In addition, some configuration is not synchronized between the replicated pairs because there are properties that are considered unique to the <MadCap:variable name="Product-Names.broker_cloud_short"/> in <MadCap:variable name="Product-Names.cloud_product_short"/>. You are responsible to validate that the required configuration, permissions, and network connectivity is identical between the <MadCap:variable name="Product-Names.broker_cloud_short"/>s. For more information, see <MadCap:xref href="#eb-best-practices">[%=Product-Names.broker_cloud_short_title%]  Best Practices</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>Most of the configuration from the Source service is copied when you clone it. See <MadCap:xref href="cloud-vmmig-clone-broker-to-k8s.htm#Consider">Considerations for Cloning an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref> for a list of what is, and what isn't cloned. </p>
+      </li>
+      <li>
+        <p>The port configurations are not copied when cloning the <i>source</i> <MadCap:variable name="Product-Names.broker_cloud_short"/> by default. You can configure the ports when you clone the source service. Alternately, you can  configure the connection endpoints on the Target service after it is created. See <MadCap:xref href="../edit-port-configuration.htm" MadCap:conditions="Default.NotForPDF">Changing the Port Configuration for  [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/edit-port-configuration.htm" target="_blank" class="link-offsite">Changing the Port Configuration for <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</a></MadCap:conditionalText>.</p>
+      </li>
+      <li>
+        <p>Some configuration is not synchronized between the replicated pairs because there are properties that are considered unique to the <MadCap:variable name="Product-Names.broker_cloud_short"/> in <MadCap:variable name="Product-Names.cloud_product_short"/>. You are responsible to validate that the required configuration, permissions, and network connectivity is identical between the <MadCap:variable name="Product-Names.broker_cloud_short"/>s. For more information, see <MadCap:xref href="#eb-best-practices">[%=Product-Names.broker_cloud_short_title%]  Best Practices</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>You must not have replication for disaster recovery configured on your VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/> prior to using this procedure.</p>
+      </li>
+    </ul>
+    <p class="Warning "> Replication only starts copying messages from the point in time when it is configured​​​​​​​ (enabled) and the replication topics are set for those queues. Any long-lived messages in the queue before replication is configured and before the replication topics are configured are not copied over to the replication mate.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput,Default.OnlyForPDF">For more information about replication on the <MadCap:variable name="Variables.CompanyName"/> documentation site:</p>
+    <ul MadCap:conditions="SAP.SapHideFromOutput,Default.OnlyForPDF">
+      <li>
+        <a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Features/DR-Replication/Data-Center-Replication-Overview.htm" class="link-offsite">Replication Overview</a>
+      </li>
+      <li>
+        <a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Features/DR-Replication/How-Replication-Works.htm" class="link-offsite">How Replication Works</a>
+      </li>
+      <li>
+        <a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Features/DR-Replication/Sync-Asynch-Replication.htm" class="link-offsite">Synchronous and Asynchronous Message replication</a>
+      </li>
+      <li>
+        <a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Features/DR-Replication/Switching-Service-Overview.htm#Switching_Service_Between_Sites" class="link-offsite">Switching Service Between Sites</a>
+      </li>
+    </ul>
+    <h2>
+      <a name="replication-cloud-roles-responsibilities"/>
+      <span>Roles and Responsibilities for Migration of <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</span>
+    </h2>
+    <p>You (the customer) are responsible for the migration  of <MadCap:variable name="Product-Names.broker_cloud_short"/>s. When you use replication to migrate, you are responsible for:</p>
+    <ul>
+      <li>Cloning the source <MadCap:variable name="Product-Names.broker_cloud_short"/>, and applying configurations that did not copy, such as port configuration, to the Target service.
+                <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput"> creating a new <MadCap:variable name="Product-Names.broker_cloud_short"/> and then copying and applying the configuration from your VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/> to the newly created service.</MadCap:conditionalText></li>
+      <li>validating that the clone <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">copy of the configuration </MadCap:conditionalText>is accurate and configured correctly to migrate client applications</li>
+      <li>configuring replication on the <MadCap:variable name="Product-Names.broker_cloud_short"/>s and the topics to replicate</li>
+      <li>performing replication failover to migrate the <MadCap:variable name="Product-Names.broker_cloud_short"/></li>
+      <li>verifying that your client applications function with the newly migrated <MadCap:variable name="Product-Names.broker_cloud_short"/> </li>
+      <li>deleting your VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/></li>
+    </ul>
+    <p>The following table lists the various roles and responsibilities for using replication to migrate your <MadCap:variable name="Product-Names.broker_cloud_short"/>s with <MadCap:variable name="Product-Names.cloud_product_short"/>. Though you are responsible for configuring, managing, and migrating  your <MadCap:variable name="Product-Names.broker_cloud_short"/>s, you can <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><a href="../../get-support.htm" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a></MadCap:conditionalText> <MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF">contact <MadCap:variable name="Variables.CompanyName"/></MadCap:conditionalText> for support. Note that:</p>
+    <ul>
+      <li>Support tickets are generated to document your conversations and interactions with <MadCap:variable name="Variables.CompanyName"/>.</li>
+      <li>You own the process of configuring replication and migrating <MadCap:variable name="Product-Names.broker_cloud_short"/>s, as well as validating that you correctly created the copy of your <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li>
+    </ul>
+    <table style="width: 100%;margin-left: 0;margin-right: auto;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Activity</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">You (the customer)</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">
+            <MadCap:variable name="Variables.CompanyName"/>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Creating a clone <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">copy </MadCap:conditionalText>of the VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/> <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">configuration </MadCap:conditionalText>on a Kubernetes-based <MadCap:variable name="Product-Names.broker_cloud_short"/> and validating that clone <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">copy </MadCap:conditionalText>has exactly the same configuration.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Yes"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/cross-mark-gray.png" alt="unsupported"/>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Configuing your client applications to connect to your existing VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/> using  custom hostnames.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Yes"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/cross-mark-gray.png" alt=""/>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Providing CLI Access to <MadCap:variable name="Product-Names.broker_cloud_short"/>s in VM-based deployments for <MadCap:variable name="Product-Names.public_region"/>s and <MadCap:variable name="Product-Names.dedicated_region"/>s.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/cross-mark-gray.png" alt=""/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Yes"/>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Providing CLI Access to <MadCap:variable name="Product-Names.broker_cloud_short"/>s in VM-based deployments for <MadCap:variable name="Product-Names.customer-controlled_region"/>s. Note, assistance may be required from <MadCap:variable name="Variables.CompanyName"/> depending on the configuration of the <MadCap:variable name="Product-Names.customer-controlled_region"/>.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Yes"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/check-mark-gray.png" alt="Supported, but may not be fully tested."/>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Providing CLI Access to <MadCap:variable name="Product-Names.broker_cloud_short"/>s in Kubernetes-based deployments  for <MadCap:variable name="Product-Names.public_region"/>s, <MadCap:variable name="Product-Names.dedicated_region"/>, and <MadCap:variable name="Product-Names.customer-controlled_region"/>s. For more information, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../edit-port-configuration.htm">Changing the Port Configuration for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/edit-port-configuration.htm" target="_blank" class="link-offsite">Changing the Port Configuration for <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</a></MadCap:conditionalText>.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Yes"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/cross-mark-gray.png" style="width: 20px;height: 19px;" alt=""/>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Providing the Global-Admin account for the <MadCap:variable name="Product-Names.broker_cloud_short"/>s. For more information, see <MadCap:xref href="getting-global-admin-account.htm">Getting a Global-Admin Access Account</MadCap:xref>.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/cross-mark-gray.png" style="width: 20px;height: 19px;" alt=""/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Yes"/>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Planning and implementation of replication for the migration of  <MadCap:variable name="Product-Names.broker_cloud_short"/>s.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Yes"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/cross-mark-gray.png" alt=""/>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Validating the configuration of the VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/> with the new <MadCap:variable name="Product-Names.broker_cloud_short"/>. This includes an special configuration, such as certificates, custom domain names, etc.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Yes"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/cross-mark-gray.png" alt=""/>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Creating the <MadCap:variable name="Product-Names.broker_cloud_short"/> (the replication mate) at the Backup (Target service) site.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Yes"/>
+            </p>
+            <p>We recommend that <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><a href="../../get-support.htm" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF">contact <MadCap:variable name="Variables.CompanyName"/></MadCap:conditionalText> and provide notification that you plan to configure replication for migration.</p>
+          </td>
+          <td style="text-align: center;" class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/cross-mark-gray.png" alt=""/>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Configuring replication and validating that the required configuration, permissions, and network connectivity is identical between the <MadCap:variable name="Product-Names.broker_cloud_short"/>s.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Yes"/>
+            </p>
+          </td>
+          <td style="text-align: center;" class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/cross-mark-gray.png" alt=""/>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Testing replication</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Yes"/>
+            </p>
+          </td>
+          <td style="text-align: center;" class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/cross-mark-gray.png" alt=""/>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Performing a failover for the migration of the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Yes"/>
+            </p>
+            <p>You are responsible for notifying <MadCap:variable name="Variables.CompanyName"/> <span>that you are testing your replication configuration prior to migration.</span></p>
+          </td>
+          <td style="text-align: center;" class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/cross-mark-gray.png" alt=""/>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <span>Testing client applications function as expected and stability of the <MadCap:variable name="Product-Names.broker_cloud_short"/> that you migrated to</span>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Yes"/>
+            </p>
+          </td>
+          <td style="text-align: center;" class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/cross-mark-gray.png" alt=""/>
+            </p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2><a name="Limitati"/>Considerations and Best Practices for Using Replication <span>for Migration</span></h2>
+    <p>The following is a list of considerations, limitations, and best practices for using  replication of <MadCap:variable name="Product-Names.broker_cloud_short"/>s in <MadCap:variable name="Product-Names.cloud_product_short"/>:</p>
+    <h3><a name="monitoring-limitations"/>Monitoring Best Practices During Migration</h3>
+    <p>It is your responsibility to monitor the replication sites if you choose to during the migration process. The replication configuration information and statistics for replication are not monitored by <MadCap:variable name="Variables.CompanyName"/>. You have these options:</p>
+    <ol>
+      <li>
+        <p>(Recommended) If you have subscribed to <MadCap:variable name="Product-Names.insights_long"/>, you can monitor the following SYSLOG in Datadog using <MadCap:variable name="Product-Names.insights_short"/>:</p>
+        <ul>
+          <li>
+            <code>VPN_REPLICATION_SERVICE_DEGRADED</code>
+          </li>
+          <li>
+            <code>SYSTEM_CFGSYNC_DOWN</code>
+          </li>
+        </ul>
+        <p> With <MadCap:variable name="Product-Names.insights_short"/>, you can also use the following metrics to monitor replication:</p>
+        <ul>
+          <li>
+            <code>derived_metrics.vpn.replication_status</code>
+            <li>
+              <code>derived_metrics.vpn.replication_sync_eligible.reject</code>
+            </li>
+            <li>
+              <p>
+                <code>derived_metrics.vpn.replication_sync_eligible.downgrade</code>
+              </p>
+            </li>
+          </li>
+        </ul>
+        <p MadCap:conditions="SAP.SapHideFromOutput">For more information for monitoring with <MadCap:variable name="Product-Names.insights_short"/>, see <MadCap:xref href="../Insights/Advanced-Monitoring/about-dashboards.htm" MadCap:conditions="Default.NotForPDF">Understanding [%=Product-Names.insights_long%] Dashboards for Advanced Monitoring</MadCap:xref><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/Insights/Advanced-Monitoring/using-dashboards.htm" MadCap:conditions="Default.OnlyForPDF" class="link-offsite">Understanding [%=Product-Names.insights_long%] Dashboards for Advanced Monitoring</a>.</p>
+      </li>
+      <li>Monitoring <MadCap:variable name="Product-Names.broker_cloud_short"/>s using SYSLOG, you must monitor for these broker events:</li>
+      <ul>
+        <li>
+          <code>VPN_REPLICATION_SERVICE_DEGRADED</code>
+        </li>
+        <li>
+          <code>SYSTEM_CFGSYNC_DOWN</code>
+        </li>
+      </ul>
+      <li MadCap:conditions="SAP.SapHideFromOutput">Monitor replication of the <MadCap:variable name="Product-Names.broker_cloud_short"/> as described in <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../../Features/DR-Replication/Monitoring-Replication.htm" MadCap:conditions="Default.NotForPDF">Monitoring Replication</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Features/DR-Replication/Monitoring-Replication.htm" class="link-offsite">Monitoring Replication</a></MadCap:conditionalText>. <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">We recommend that you monitor the queue depth to verify that messages are being replicated across both sites and that there are no delays prior to performing a failover to cutover service. For more information, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../../Features/DR-Replication/Monitoring-Replication.htm">Monitoring Replication </MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Features/DR-Replication/Monitoring-Replication.htm" class="link-offsite">Monitoring Replication</a></MadCap:conditionalText>.</MadCap:conditionalText></li>
+    </ol>
+    <h3><a name="eb-best-practices"/><MadCap:variable name="Product-Names.broker_cloud_short_title"/>  Best Practices</h3>
+    <p>The following are best practices when you create an <MadCap:variable name="Product-Names.broker_cloud_short"/> for migration purposes:</p>
+    <ul>
+      <li>
+        <p>VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/>s do not support port connection endpoints (they have only a Default port configuration), but on a Kubernetes-based service, it does. You  can create a public connection endpoint, private connection endpoint, or both based on the required connectivity for your client applications. </p>
+        <p> For more information about port connection endpoints, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../edit-port-configuration.htm">Changing the Port Configuration for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/edit-port-configuration.htm" target="_blank" class="link-offsite">Changing the Port Configuration for <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</a></MadCap:conditionalText>.</p>
+      </li>
+      <li>
+        <p>Message spool sizes must be the same size on the VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/> and the one your create to migrate to.</p>
+      </li>
+    </ul>
+    <p>The following are best practices when configuring your <MadCap:variable name="Product-Names.broker_cloud_short"/>s for replication:</p>
+    <ul>
+      <li>
+        <p>
+          <span><MadCap:variable name="Variables.CompanyName"/> recommends that you stop any new  configuration changes (or freeze) on the VM-based service (Source service) prior to copying the configuration to the <MadCap:variable name="Product-Names.broker_cloud_short"/> to migrate to (Target service), and <b>before</b> configuring replication.</span>
+        </p>
+        <p><MadCap:variable name="Variables.CompanyName"/> also recommends  that you synchronize all service configuration in the <MadCap:variable name="Product-Names.console_ui_short"/> between the <MadCap:variable name="Product-Names.broker_cloud_short"/>s  <b>before</b> you enable replication.</p>
+        <p>If you make changes <b>after</b> replication is enabled, you must synchronize all  the configuration changes in the <MadCap:variable name="Product-Names.console_ui_long"/> <b>before</b> you make any changes in <MadCap:variable name="Product-Names.pubsubmanager_long"/>.  The configuration must be manually synchronized between the <MadCap:variable name="Product-Names.broker_cloud_short"/>s using <b>Cluster Manager &gt; Manage</b> in the <MadCap:variable name="Product-Names.console_ui_long"/>.</p>
+        <p class="Tip">If you are making multiple configuration changes, you can remove the replication feature, make and manually synchronize the configuration changes between the <MadCap:variable name="Product-Names.broker_cloud_short"/>s, and then  re-enabling replication feature.</p>
+      </li>
+      <li>
+        <p><a name="configuration-limitations"/>Config-Sync synchronizes the configuration between the replication pairs, such as client profiles and client usernames between the Target service (Primary site) and  Source service(Backup sites). However, advanced configuration options must be manually synchronized in the <MadCap:variable name="Product-Names.console_ui_long"/> using <MadCap:variable name="Product-Names.cluster_mgr"/>. </p>
+      </li>
+      <li>
+        <p>Some configuration is not synchronized between the replicated pairs because they are properties that are considered unique to the <MadCap:variable name="Product-Names.broker_cloud_short"/>. <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">For more information, see <MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Features/Config-Sync/Configuring-Config-Sync.htm#Properti" class="link-offsite">Config-Sync Reference</a></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../../Features/Config-Sync/Configuring-Config-Sync.htm">Config-Sync Configuration</MadCap:xref></MadCap:conditionalText></MadCap:conditionalText>.</p>
+        <p>These configuration options must be manually synchronized from your VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/> (Source service) to the <MadCap:variable name="Product-Names.broker_cloud_short"/> (Target service) you are migrating to and are not handled by Config-Sync:</p>
+        <ul>
+          <li>
+            <p>log forwarding</p>
+          </li>
+          <li>
+            <p>authentication user names and passwords</p>
+          </li>
+          <li>
+            <p>certificates</p>
+          </li>
+          <li>
+            <p> LDAP authentication</p>
+            <p class="Caution">If replication is enabled, the LDAP profiles must be synchronized prior to using LDAP authentication. If you use an LDAP profile before it is synchronized on the Standby site, this may cause Config-Sync state to go down.</p>
+          </li>
+          <li>
+            <p>Setting for SEMP request over message bus</p>
+          </li>
+        </ul>
+      </li>
+    </ul>
+  </body>
+</html>

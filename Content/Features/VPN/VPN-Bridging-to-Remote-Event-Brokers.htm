@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Bridging to Remote Event Brokers That Use Redundancy</h1>
+    <p>You can establish Message VPN bridge connections to remote PubSub+ <MadCap:variable name="Product-Names.broker_sw_short"/>s and <MadCap:variable name="Product-Names.broker_appliance_short"/>s when they are deployed in a redundant configuration to provide fault tolerance. </p>
+    <p>There are three different redundancy models:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Active-Standby">Bridging With Event Brokers Using Active/Standby Redundancy</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#n+1">Bridging With N+1 Redundancy Using Alternate Remote Connections</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#n+1-DNS-Redirect">Bridging With N+1 Redundancy Using DNS Redirection</MadCap:xref>
+      </li>
+    </ul>
+    <p class="Note">To keep the examples simple, not all configuration commands required to create a bridge are shown—only those commands that are unique to the redundancy models being described are shown.</p>
+    <h2>Bridging to Remote Software Event Brokers Versus Appliances</h2>
+    <p>The process of bridging to remote event brokers that use redundancy is similar between <MadCap:variable name="Product-Names.broker_sw_short"/>s and <MadCap:variable name="Product-Names.broker_appliance_short"/>s. The differences are as follows:</p>
+    <ul>
+      <li>
+        <p>Appliances support IP address take-over. Therefore, an event broker that is initiating the bridge connection always connects to the same address regardless of which appliance is active from the remote appliances that use redundancy. </p>
+        <p>For <MadCap:variable name="Product-Names.broker_appliance_short"/>s that are configured in high-availability (HA) redundant pairs using the active/standby model, <MadCap:variable name="Variables.CompanyName"/> recommends that you configure the redundancy role as <code>primary</code> or <code>backup</code>. For more information, see <MadCap:xref href="../HA-Redundancy/Configuring-Appliance-Redundancy-Parameters.htm#assign-active-standby-role">Assigning the Active/Standby Role</MadCap:xref>. If you do not configure the redundancy role, then the Message VPN bridges that have their virtual router configured as <code>auto</code> won't  be operational. For more information, see <MadCap:xref href="Configuring-VPN-Bridges.htm">Configuring VPN Bridges</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>With <MadCap:variable name="Product-Names.broker_sw_short"/>s, the primary and backup event brokers that form a redundant group have unique IP addresses, and a host list must be used to connect to the active event broker. The event broker that is initiating the bridge connection tries to connect to the first address on this host list. If it doesn't connect, it tries the second address, and so on. When configuring a bridge to a remote <MadCap:variable name="Product-Names.broker_sw_short"/> that is in a redundant configuration, you must configure the host list for the remote redundant group. </p>
+        <p MadCap:conditions="Default.HideFromAllOutput">For deployments where your HA group of <MadCap:variable name="Product-Names.broker_sw_short"/>s are fronted by a loadbalancer that directs connections to the active event broker, a hostlist is not required because the loadbalancers redirects traffic to the active event broker. &lt;DOC-4967&gt;</p>
+        <p>For more information, see <MadCap:xref href="#configuring-a-host-list-for-software-event-brokers">Configuring a Host List for Software Event Brokers</MadCap:xref>.</p>
+      </li>
+    </ul>
+    <h3><a name="configuring-a-host-list-for-software-event-brokers"/>Configuring a Host List for Software Event Brokers</h3>
+    <p>Configuring a host list specifies the IP addresses that an event broker uses to initiate a bridge connection to remote <MadCap:variable name="Product-Names.broker_sw_short"/>s in a redundant configuration. To configure this host list,  you can repeat the following command  up to four times on the bridge so that up to four distinct Remote Message VPNs can be configured:</p>
+    <pre>create message-vpn &lt;vpn-name&gt; {router &lt;virtual-router-name&gt; | connect-via &lt;addr&gt; [interface &lt;phys-intf&gt;]} </pre>
+    <p>Where: </p>
+    <ul>
+      <li>
+        <p><code>&lt;vpn-name&gt;</code> is the remote Message VPN name.</p>
+      </li>
+      <li>
+        <p><code>&lt;virtual-router-name&gt;</code> is the name of the virtual remote router where the Message VPN is located.</p>
+      </li>
+      <li>
+        <p><code>&lt;addr&gt; [interface &lt;phys-intf&gt;</code> is the IP address (and optional port) where the remote router should be reached. This IP address can be a static or virtual address of the remote router. For bridges that are looping back to a Message VPN on this router, use the 127.0.0.1 IP address (for example, 192.1.2.3:12345).</p>
+      </li>
+    </ul>
+    <p>Each combination of <code>&lt;vpn-name&gt;</code> and either <code>&lt;virtual‑router-name&gt;</code> or <code>&lt;addr&gt; &lt;phys-intf&gt;</code> must be unique, and a mixture of the two possible combinations is not allowed. </p>
+    <p>This creates an internal host list, which provides potential redundant hosts for the bridge. When adding a new host source entry, it is appended to the end of the existing host list. Its position can be modified through the connect-order Remote Message VPN Bridge CONFIG command (see <MadCap:xref href="Configuring-VPN-Bridges.htm#Config-Connect-Orders">Configuring Connect Orders</MadCap:xref>).</p>
+    <h2 class="with-rule"><a name="Active-Standby"/>Bridging With Event Brokers Using Active/Standby Redundancy</h2>
+    <p>The figure below shows a pair of event brokers (<code>solace2</code> and <code>solace3</code>) that have been configured to operate in an active/standby configuration. Message VPN <code>Green</code> on <code>solace1</code> is configured with a VPN bridge connection to Message VPN <code>Yellow</code> on <code>solace2</code>, so that Message VPN <code>Green</code> can receive messages from VPN <code>Yellow</code>.</p>
+    <p>If <code>solace2</code> goes offline for any reason, <code>solace3</code> takes over for the primary IP addresses of <code>solace2</code>, and provides service for all of the Message VPNs on <code>solace2</code>.</p>
+    <p class="GraphicCaption">VPN Bridging with Active/Standby Redundancy</p>
+    <p class="GraphicCaption">
+      <img src="../../Resources/Images/VPN/VPN_Bridging_wActiveStandbyRedundancy.jpg" alt="Illustration depicting the concepts described in the surrounding text."/>
+    </p>
+    <p>No special configuration is needed on <code>solace1</code> to make use of this redundancy model. The  <code>solace1</code> event broker is simply configured with a bridge connection from Message VPN <code>Green</code> (primary), to Message VPN <code>Yellow</code> on <code>solace2</code>, connecting through the primary address of <code>solace2</code> (or the Domain Name System [DNS] name corresponding to that primary address):</p>
+    <p class="Code">solace1(configure)# create bridge To-Yellow message-vpn Green primary<br/>solace1(configure/bridge)# create remote message-vpn Yellow connect-via solace2</p>
+    <p>To have Message VPN <code>Yellow</code> on <code>solace2</code> connect to Message VPN <code>Green</code> on <code>solace1</code>, <code>solace2</code> needs to be configured with a bridge connection from Message VPN <code>Yellow</code> (primary) to Message VPN <code>Green</code> on <code>solace1</code> connecting through the primary address of <code>solace1</code> (or the DNS name corresponding to that primary address).</p>
+    <p class="Note">When Config-Sync is enabled for both event brokers in the redundant pair, the configuration parameters between them are automatically synchronized. Therefore, a bridge connection from Message VPN <code>Yellow</code> (backup) on <code>solace3</code> to Message VPN <code>Green</code> on <code>solace1</code> is also created.</p>
+    <h2 class="with-rule"><a name="n+1"/>Bridging With N+1 Redundancy Using Alternate Remote Connections</h2>
+    <p>The figure below shows a set of event brokers (<code>solace2</code>, <code>solace3</code>, and <code>solace4</code>) deployed in an N+1 redundancy configuration. The  <code>solace4</code> event broker acts as a backup event broker for the Message VPNs configured on the <code>solace2</code> and <code>solace3</code> event brokers. In this configuration, clients connecting to <code>solace2</code> use the hostlist feature in the PubSub+ Messaging APIs to connect to <code>solace4</code>, if <code>solace2</code> is unreachable. Similarly, clients connecting to <code>solace3</code> use the host list feature to connect to <code>solace4</code>, if <code>solace3</code> is unreachable.</p>
+    <p>Message VPN <code>Green</code> on <code>solace1</code> is configured with a bridge connection to Message VPN <code>Yellow</code> on <code>solace2</code> so that it can receive messages from Message VPN <code>Yellow</code>.</p>
+    <p>In this case, the Message VPN bridge on the  <code>solace1</code> event broker must be configured with multiple “remote” parameters, to identify the fallback connection for the bridge if the primary connection cannot be established:</p>
+    <p class="Code">solace1(configure)# create bridge To-Yellow message-vpn Green primary<br/>solace1(configure/bridge)# create remote message-vpn Yellow connect-via solace2<br/>solace1(configure/bridge/remote)# connect-order 1<br/>solace1(configure/bridge/remote)# exit<br/>solace1(configure/bridge)# create remote message-vpn Yellow connect-via solace4</p>
+    <p class="Code">solace2(configure/bridge/remote)# connect-order 2</p>
+    <p class="GraphicCaption">Bridging with N+1 Redundancy Using Alternate Remote Connections</p>
+    <p class="GraphicCaption">
+      <img src="../../Resources/Images/VPN/VPN_Bridging_Redundancy.jpg" alt="Illustration depicting the concepts described in the surrounding text."/>
+    </p>
+    <p>To guard against situations whereby a temporary loss of connectivity to <code>solace2</code> causes the bridge connection to be inadvertently established to <code>solace4</code>, it is recommended that the <b>remote retry count</b> and <b>remote retry delay</b> Bridge VPN CONFIG command parameters for the bridge be set to a sufficiently high value to debounce any transient network outages that may occur.</p>
+    <p>Alternatively, many network operators choose to administratively disable through the <b>shutdown</b> command the Message VPNs on the backup event broker, and only enable through the <b>no shutdown</b> command a particular backup instance of a VPN when the primary event broker for that VPN has gone offline. However, such a policy increases failover times substantially, since manual intervention is required to bring the backup VPN instances online.</p>
+    <p>In cases where VPN Yellow on <code>solace2</code> wishes to connect to Message VPN <code>Green</code> on <code>solace1</code>, the <code>solace2</code> and <code>solace4</code> event brokers need to be configured with a bridge connection to Message VPN <code>Green</code> on <code>solace1</code>:</p>
+    <p class="Note">Since active/standby redundancy is not being used in this case, the bridge connection is a primary connection on both the <code>solace2</code> and <code>solace4</code> event brokers.</p>
+    <p class="Code">solace2(configure)# create bridge To-Green message-vpn Yellow primary<br/>solace2(configure/bridge)# create remote message-vpn Green connect-via solace1</p>
+    <p class="Code">solace4(configure)# create bridge To-Green message-vpn Yellow primary<br/>solace4(configure/bridge)# create remote message-vpn Green connect-via solace1</p>
+    <p>For such a configuration, it's strongly recommended that the Message VPNs on the backup event broker be administratively disabled through the shutdown command under normal operating conditions, and only enabled for activation when the primary event broker has failed. Otherwise, the Message VPN bridges on the backup event broker always attract traffic from the event brokers to which they are connected, even when the Message VPNs are on standby, and do not have active subscribers connected to them.</p>
+    <h2 class="with-rule"><a name="n+1-DNS-Redirect"/>Bridging With N+1 Redundancy Using DNS Redirection</h2>
+    <p>The N+1 redundancy model when using DNS redirection is virtually identical to the redundancy model that makes use of alternate remote connections, as shown in the figure above. However, when using DNS redirection, the same event broker DNS name is used at all times, so there is no need to configure an alternate connection. The configuration on the  <code>solace1</code> event broker becomes the following:</p>
+    <p class="Code">solace1(configure)# create bridge To-Yellow message-vpn Green primary<br/>solace1(configure/bridge)# create remote message-vpn Yellow connect-via solace2<br/>solace1(configure/bridge/remote)# exit</p>
+    <p>The disadvantage of this redundancy approach is that in a failover scenario, the network operator must reconfigure DNS, such that requests for the address of <code>solace2</code> return the IP address of <code>solace4</code>.</p>
+    <p class="Note">All the recommendations around shutdown of the Message VPNs on the backup event broker discussed in <MadCap:xref href="#n+1">Bridging With N+1 Redundancy Using Alternate Remote Connections</MadCap:xref> apply also to redundancy using DNS redirection.</p>
+  </body>
+</html>

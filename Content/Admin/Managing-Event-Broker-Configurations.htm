@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Backing Up and Restoring Event Broker Configurations</h1>
+    <p>This section describes how to:</p>
+    <ul>
+      <li>back up configuration files both locally (to the internal event broker database) and to an external file server for <MadCap:variable name="Product-Names.broker_sw_short"/>s and <MadCap:variable name="Product-Names.broker_appliance_short"/>s</li>
+      <li>schedule regular configuration backups for <MadCap:variable name="Product-Names.broker_sw_short"/>s and <MadCap:variable name="Product-Names.broker_appliance_short"/>s</li>
+      <li>restore a configuration from a backed up configuration file for <MadCap:variable name="Product-Names.broker_sw_short"/>s and <MadCap:variable name="Product-Names.broker_appliance_short"/>s</li>
+    </ul>
+    <p class="Caution">The information in this section applies to both appliances and software event brokers, unless stated otherwise. Information in this section does not apply to <MadCap:variable name="Product-Names.broker_cloud_short"/>s in <MadCap:variable name="Product-Names.cloud_product_short"/>. For information about backing up <MadCap:variable name="Product-Names.broker_cloud_short"/>s, see <MadCap:xref href="../Cloud/backup-brokers-messaging.htm">Backing Up [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref>.</p>
+    <p>Good configuration file management ensures that backups are created automatically and regularly, and that the backup process has a minimal impact on system performance.</p>
+    <p class="Tbl_BranchingSingleStepResult">Backing up configuration files allows you to recover from hardware or software failures with minimal loss of management data. You can also move configuration files from one event broker to another, for example, to facilitate hardware upgrades.</p>
+    <h2>What Configuration Is Backed Up?</h2>
+    <p>A configuration backup is a Linux <code>.tar</code> file that contains the system configuration files needed to restore the event broker its previous state at the time that the backup was created. You can create backup files manually or you can schedule the event broker to create backups automatically.</p>
+    <p>The user account information that is preserved through a backup is not same for an appliance and a software event broker.</p>
+    <ul>
+      <li>Appliance—A backup performed on an appliance maintains the passwords set for the admin, support, and root users, and it maintains any created CLI users and their passwords.</li>
+      <li>Software event broker—A backup performed on a software event broker does <b>not</b> maintain the passwords set for the admin, support, and root users, and it does <b>not</b> maintain any created CLI users and their passwords.</li>
+    </ul>
+    <MadCap:snippetBlock src="../Resources/Snippets/broker-config-not-backed-up.flsnp"/>
+    <h2>Restoring Backed Up Configurations</h2>
+    <p>A backed up appliance configuration can be restored to the same appliance or a new appliance. Similarly, a backed up  software event broker configuration can be restored to the same software event broker instance or a new instance.</p>
+    <div class="Caution">
+      <ul>
+        <li>If your event broker network is live, consider the timing of the backup or restore with respect to system load and the locking out of essential services. Make sure that you understand the potential impact of any backup or restore configuration command before entering it to avoid unforeseen disruptions to customer service.</li>
+        <li>Never rename or move local backup configuration files on the event broker. This ensures that if the event broker needs to automatically restore the backup configuration file, the correct backup file is available.</li>
+      </ul>
+    </div>
+    <p class="Note">PubSub+ event brokers can operate with mixed software versions up to one major or minor version difference in a deployed network. Features that depend on a newer  release (for example, configuring of multiple IP addresses) may not be fully functional until all software versions match, but no features common to both versions should be affected.<br/>While being downgraded (or upgraded), the event broker is unavailable for a short time. All other event brokers continue to operate at full capacity. All logs are preserved during a downgrade (or upgrade).</p>
+    <h2>Prerequisites</h2>
+    <p>Observe all prerequisites specified in this section:</p>
+    <ul>
+      <li>Before using the configuration backup and restore procedures in this chapter, verify whether there are any services, such as PubSub+ Cache and Web transport, that require a product key to be used. If there are locked services, the product keys for those services should be manually recorded because they are not saved through a backup operation. In addition, the product keys for the services are needed to restore a configuration.
+        <p>To view the system product keys and features that they unlock, enter the following User EXEC command:</p><p class="Code">solace&gt; show product-key</p></li>
+      <li>Before using the external backup and restore procedures in this chapter, ensure that the event brokers have access to an external file server on the network using either SFTP or SCP, and verify the IP connectivity between the event brokers and file server using the <b>ping</b> User EXEC command:
+        <p class="Code">ping &lt;ip-addr&gt;</p><p>Where:</p><p><code>&lt;ip-addr&gt;</code> is the IP address of the host you want to verify, specified in the dotted decimal notation form nnn.nnn.nnn.nnn</p><p class="Note">File server access is not required for the rollback, downgrade, or local file restore procedures.</p><p>Example:</p><p class="Code">solace&gt; ping 192.168.1.1</p><p>Ensure that sufficient disk space is available on the external file server to contain two weeks of backups. Generally, there should be twice as much storage available for backup as there is for the main configuration file.</p></li>
+      <li>Before using the configuration file backup and restore procedures in this chapter, if necessary, manually backup the following files on the event broker as they are not included with the event broker backup and restore processes:<ul><li>all CA certificates in the <code>/usr/sw/jail/certs</code> directory</li><li>all CLI command files in the <code>/cliscripts</code> directory</li></ul></li>
+    </ul>
+  </body>
+</html>

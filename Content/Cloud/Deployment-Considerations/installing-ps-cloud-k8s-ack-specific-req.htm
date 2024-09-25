@@ -1,0 +1,476 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Installing <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.cloud_product_titlecase"/></MadCap:conditionalText> in Alibaba Cloud Container Service for Kubernetes (ACK)</h1>
+    <p>Alibaba Cloud Container Service for Kubernetes (ACK) integrates virtualization, storage, networking, and security capabilities. ACK allows you to deploy applications in high-performance and scalable containers and provides full lifecycle management of enterprise-class containerized applications. For more information about ACK, see the <a href="https://www.alibabacloud.com/help/en/container-service-for-kubernetes" class="link-offsite">Alibaba Container Service for Kubernetes</a> documentation.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/k8s-environment-specific-intro.flsnp"/>
+    <p>The process to deploy <MadCap:variable name="Product-Names.broker_cloud_short"/>s in an ACK private data center is completed in collaboration with a <MadCap:variable name="Variables.CompanyName"/> representative. The steps that you (the customer) perform are as follows:</p>
+    <ol>
+      <li>Create  a Kubernetes cluster as described in the <MadCap:xref href="#ack-prerequsites">ACK Cluster Specifications</MadCap:xref>. For customer-owned deployments, you are  responsible for the set up of the Kubernetes cluster, and the maintenance and operation of the cluster. <ul><li><MadCap:snippetText src="../../Resources/Snippets/CloudDeployment/china-require-custom-domain.flsnp"/>For more information, see <MadCap:xref href="deployments-restricted-regions-china.htm">Deployments in China</MadCap:xref>.</li></ul></li>
+      <li MadCap:conditions="Default.HideFromAllOutput"><MadCap:xref href="#deploy-cloud-agent-gke">Deploying the [%=Product-Names.cloud_agent_short%] on ACK</MadCap:xref>.  You are responsible to  run the commands in your customer-controlled deployment.</li>
+    </ol>
+    <h2><a name="ack-prerequsites"/>ACK Cluster Specifications</h2>
+    <p>Before you (the customer) install the <MadCap:variable name="Product-Names.cloud_agent_short"/>, you must configure the ACK cluster with the technical specifications listed in the sections that follow. </p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Alibaba">Alibaba ACK Prerequisites</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#deployments-china">Considerations for Deployments in China Regions</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#networking">Planning Network Requirements</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#VPC">VPC and vSwitch Requirements</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#cloud-nat">NAT Gateway Requirements</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Creating">Creating the ACK Cluster</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Node">Node Pool Configuration</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Instance">Instance Types Requirements</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Storage">Storage Class Configuration</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#LoadBala">LoadBalancer Configuration </MadCap:xref>
+      </li>
+    </ul>
+    <p>For more information about using Alibaba ACK, see the <i><a href="https://www.alibabacloud.com/help/en/container-service-for-kubernetes/latest/user-guide-for-kubernetes-clusters" class="link-offsite">User Guide for Kubernetes Clusters</a></i> on the Alibaba Cloud site.</p>
+    <p>When created with the following specifications, the ACK cluster has multiple node pools, and  is designed to be auto-scaled when new <MadCap:variable name="Product-Names.broker_cloud_short"/>s are created. Each node pool provides the exact resources required by each plan to help optimize the cluster's utilization.</p>
+    <p>
+      <img src="../../Resources/Images/Cloud-Deployment-Guides/ack_vpc_config.png" title="Example of an ACK cluster" alt="Example of an ACK cluster as outlined in the preceding paragraph"/>
+    </p>
+    <h3><a name="Alibaba"/>Alibaba ACK Prerequisites</h3>
+    <p>The following are the technical prerequisites for an Alibaba ACK deployment to deploy <MadCap:variable name="Product-Names.broker_cloud_short"/>s:</p>
+    <dl>
+      <dt>Permissions</dt>
+      <dd>An Alibaba account with the following permissions is required to create an ACK cluster: </dd>
+    </dl>
+    <ul>
+      <li>Resource Access Management (RAM) and role-based access control (RBAC) must be activated and configured appropriately in the RAM console, see <a href="https://www.alibabacloud.com/help/en/container-service-for-kubernetes/latest/authorization-overview" class="link-offsite" style="font-style: italic;">Authorization overview</a> in the Alibaba Cloud documentation.</li>
+      <li>Auto Scaling must be activated in the Auto Scaling console.</li>
+    </ul>
+    <h3><a name="deployments-china"/>Considerations for Deployments in China Regions</h3>
+    <p>Additional considerations are required if the private region you deploy to is within China.</p>
+    <ul>
+      <li>
+        <p>Instead of the GCP registry, you must use the Azure China registry. The Azure China registry uses a different secret that's required when you later deploy the <MadCap:variable name="Product-Names.cloud_agent_short"/>. For example, run the following command where the <i>&lt;username&gt;</i> and <i>&lt;password&gt;</i> is provided by <MadCap:variable name="Variables.CompanyName"/>.</p>
+        <pre xml:space="preserve">kubectl create secret docker-registry cn-reg-secret --namespace kube-system \ <br/>--docker-server=solacecloud.azurecr.cn --docker-username=&lt;username&gt;  --docker-password=&lt;password&gt;</pre>
+        <p MadCap:conditions="Default.HideFromAllOutput">To use <MadCap:variable name="Variables.CompanyName"/>'s version of the AWS Load Balancer Controller, contact <a href="../../get-support.htm" target="_blank" class="link-internal"><MadCap:variable name="Variables.CompanyName"/></a> when you ready to deploy setup your Kubernetes cluster (<code>helm install</code>).</p>
+        <p MadCap:conditions="Default.HideFromAllOutput">In the Helm chart, customers would add:</p>
+        <pre xml:space="preserve" MadCap:conditions="Default.HideFromAllOutput">--set image.repository=solacecloud.azurecr.cn/aws-load-balancer-controller 
+--set imagePullSecrets[0].name=cn-reg-secret</pre>
+      </li>
+    </ul>
+    <h3><a name="networking"/>Planning Your Network Requirements</h3>
+    <p>When creating your ACK cluster, you must specify CIDR blocks for the virtual private cloud (VPC), vSwitches, pods, and Services. It is important to ensure that the CIDR block of the pods and services do not overlap with the CIDR block of the VPC. Therefore <MadCap:variable name="Variables.CompanyName"/> recommends that you plan the IP address of each before you create an ACK cluster. The table below outlines the configuration requirements that should be met for each CIDR block.</p>
+    <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Parameter</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Configuration</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">VPC CIDR</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>You can choose to use an existing VPC, or create a VPC to host your cluster. If creating a new VPC, you will need to define an IPv4 CIDR Block for it and also for the first vSwitch which be created at the same time as the VPC. .</p>
+            <p>The primary IPv4 CIDR Block for the VPC can use one of the following:</p>
+            <ul>
+              <li>10.0.0.0/8</li>
+              <li>172.16.0.0/12</li>
+              <li>192.168.0.0/16</li>
+              <li>Custom CIDR block (except 100.64.0.0/10, 224.0.0.0/4, 127.0.0.0/8, 169.254.0.0/16, and their subnets)</li>
+            </ul>
+            <p>The first vSwitch also requires a CIDR Block within the following limits:</p>
+            <ul>
+              <li>
+                <p>The CIDR block of a vSwitch must be a proper subset of the CIDR block of the VPC to which the vSwitch belongs. For example, if the CIDR block of a VPC is 192.168.0.0/16, the CIDR block of a vSwitch in the VPC can range from 192.168.0.0/17 to 192.168.0.0/29.</p>
+              </li>
+              <li>
+                <p>The first IP address and last three IP addresses of a vSwitch CIDR block are reserved. For example, if a vSwitch CIDR block is 192.168.1.0/24, the IP addresses 192.168.1.0, 192.168.1.253, 192.168.1.254, and 192.168.1.255 are reserved.</p>
+              </li>
+              <li>
+                <p>If a vSwitch is required to communicate with vSwitches in other VPCs or with data centers, make sure that the CIDR block of the vSwitch does not overlap with the destination CIDR blocks.</p>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">vSwitch CIDR</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The IP addresses of ECS (Elastic Compute Service) instances are assigned from the vSwitches. This allows nodes in the cluster to communicate with each other. The CIDR blocks that you specify when you creating vSwitches in the VPC must be subsets of the VPC CIDR block. This means that the vSwitch CIDR blocks must fall within or be the same as the VPC CIDR block. When you set this parameter, take note of the following: </p>
+            <ul>
+              <li>IP addresses from the CIDR block of a vSwitch are allocated to the ECS instances that are attached to the vSwitch.</li>
+              <li>You can create multiple vSwitches in a VPC. However, the CIDR blocks of these vSwitches cannot overlap with each other.</li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>POD CIDR Block</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The IP addresses of pods are allocated from the pod CIDR block, allowing pods to communicate with each other. When you set configure the this parameter, take note of the following items:</p>
+            <ul>
+              <li>The CIDR block of the pods cannot overlap with the CIDR blocks of the vSwitches.</li>
+              <li>The CIDR block of the pods cannot overlap with the CIDR block specified by a Service.</li>
+            </ul>
+            <p>For example, if the VPC CIDR block is 172.16.0.0/12, the CIDR block of pods cannot be 172.16.0.0/16 or 172.17.0.0/16, because these CIDR blocks are subsets of 172.16.0.0/12.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">Service CIDR</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>The CIDR block of Services. Service is an abstraction in Kubernetes. When you set this parameter, take note of the following items:</p>
+            <ul>
+              <li>The IP address of a Service is effective only within the Kubernetes cluster.</li>
+              <li>The CIDR block of Services cannot overlap with the CIDR blocks of vSwitches.</li>
+              <li>The CIDR block of Services cannot overlap with Pod CIDR Block.</li>
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>In brief, considering <MadCap:variable name="Variables.CompanyName"/> requires only one VPC, and the CIDR block for the VPC is specified when it is created, you simply need to ensure that the CIDR block of pods and the Services do not overlap with the CIDR block of the VPC.</p>
+    <h3><a name="VPC"/>VPC and vSwitch Requirements</h3>
+    <p>One you have planned the CIDR blocks, the VPC and vSwitches can be created.</p>
+    <p>The cluster requires a single VPC, create it, select its region, name it anything you choose, enter a description, and select a resource group to which it will belong.</p>
+    <p>During this step, you will must specify an IPv4 CIDR block for the VPC following the information outlined in <MadCap:xref href="#networking">Planning Network Requirements</MadCap:xref> above.</p>
+    <p>At this stage you also add the vSwitches. <MadCap:variable name="Variables.CompanyName"/> recommends that you create at least three vSwitches for every VPC. Each vSwitch must be deployed in different zones to implement cross-zone disaster recovery. For example, the vSwitches could be configured as follows: </p>
+    <ul>
+      <li>
+        <p>vSwitch-1 in Zone A</p>
+      </li>
+      <li>
+        <p>vSwitch-2 in Zone B</p>
+      </li>
+      <li>
+        <p>vSwitch-3 in Zone C</p>
+      </li>
+    </ul>
+    <p>When you create the vSwitches, you must specify their private IP address ranges in CIDR notation, see <MadCap:xref href="#networking">Planning Network Requirements</MadCap:xref> for information.</p>
+    <h3><a name="cloud-nat"/>NAT Gateway Requirements</h3>
+    <p>The cluster requires two NAT gateways, each set up in a different zone. This is required so the <MadCap:variable name="Product-Names.cloud_agent_short"/> can communicate with the <MadCap:variable name="Product-Names.home_cloud_long"/> and our monitoring solution can ship metrics and logs. </p>
+    <p>When configuring the NAT gateways, they must be configured so that vSwitch-1 and vSwitch-2 do not share the same gateway. </p>
+    <p>vSwitch-3 can be configured to share one of the NAT gateways with either vSwitch-1 or vSwitch-2. This ensures that one zone is always capable of maintaining outgoing internet connections if the other zone goes down. </p>
+    <h3><a name="Creating"/>Creating the ACK Cluster</h3>
+    <p>Once the VPC, vSwitches, and a NAT Gateway are configured, the cluster can be created from the ACK Console. When creating the cluster, configure the parameters with the settings as outlined in the table below. For any parameters where the settings are not specified in the table, you can leave them in their default value.</p>
+    <p MadCap:conditions="Default.HideFromAllOutput">To use the ACK cluster, activate it and if this is the first time using ACK, you nee d to assign default roles to ACK with your Alibaba Cloud account. You will then need to activate the cloud services you require, see <MadCap:xref href="#Alibaba">Alibaba ACK Prerequisites</MadCap:xref>.</p>
+    <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Parameter</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Configuration</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Container runtime</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Docker 19.03.5 </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">K8S Version</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Select 1.16 or above</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">vSwitche zones</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Select the three vSwitches you created when creating the VPC.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">CNI</td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">Flannel </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Configure SNAT</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Enabled</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Service Account Token Volume Projection</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Enabled</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Keypair</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Create a new keypair or use existing</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">Operating System</td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">CentOS based image</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Remaining Settings</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Default values</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">Worker Nodes</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">2 x ecs.n2.large (4 core, 16GB)</td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="Node"/>Node Pool Configuration</h3>
+    <p>Every node pool you configure must have the following settings: </p>
+    <ul>
+      <li>
+        <p>Auto scaling</p>
+      </li>
+      <li>
+        <p>Data disk of 40 GB.</p>
+      </li>
+      <li>
+        <p>CentOS</p>
+      </li>
+    </ul>
+    <p>The following table lists any additional resource and setting requirements for each node pool. <MadCap:variable name="Variables.CompanyName"/> recommends that you configure the node pools at the same time as the cluster.</p>
+    <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">NodePool</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Requirements</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">prod1k-a</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li>At least 4 cores and 16 GB of RAM</li>
+              <li>Must be associated with vSwitch-1 in Zone A</li>
+              <li>Must have the following labels:<ul><li><code>nodeType: messaging </code></li><li><code>serviceClass: prod1k</code></li></ul></li>
+              <li>Must have the following taints:<ul><li><code>nodeType=messaging:NoExecute</code></li><li><code>serviceClass=prod1k:NoExecute</code></li></ul></li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">prod1k-b</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li>At least 4 core and 16 GB of RAM</li>
+              <li>Must be associated with vSwitch-2 in Zone B</li>
+              <li>Must have the following labels:<ul><li><code>nodeType: messaging</code></li><li><code>serviceClass: prod1k</code></li></ul></li>
+              <li>Must have the following taints:<ul><li><code>nodeType=messaging:NoExecute</code></li><li><code>serviceClass=prod1k:NoExecute</code></li></ul></li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">prod10k-a</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li>At least 4 cores and 32 GB of RAM</li>
+              <li>Must be associated with vSwitch-1 in Zone A</li>
+              <li>Must have the following labels:<ul><li><code>nodeType: messaging</code></li><li><code>serviceClass: prod10k</code></li></ul></li>
+              <li>Must have the following taints:<ul><li><code>nodeType=messaging:NoExecute</code></li><li><code>serviceClass=prod10k:NoExecute</code></li></ul></li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">prod10k-b</td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <ul>
+              <li>At least 4 cores and 32 GB of RAM</li>
+              <li>Must be associated with vSwitch-2 in Zone B</li>
+              <li>Must have the following labels:<ul><li><code>nodeType: messaging</code></li><li><code>serviceClass: prod10k</code></li></ul></li>
+              <li>Must have the following taints:<ul><li><code>nodeType=messaging:NoExecute</code></li><li><code>serviceClass=prod10k:NoExecute</code></li></ul></li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">prod100k-a</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li>At least 8 Cores and 64 GB of RAM</li>
+              <li>Must be associated with vSwitch-1 in Zone A</li>
+              <li>Must have the following labels:<ul><li><code>nodeType: messaging</code></li><li><code>serviceClass: prod100k</code></li></ul></li>
+              <li>Must have the following taints:<ul><li><code>nodeType=messaging:NoExecute</code></li><li><code>serviceClass=prod100k:NoExecute</code></li></ul></li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">prod100k-b</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li>At least 8 Cores and 64 GB of RAM</li>
+              <li>Must be associated with vSwitch-1 in Zone B</li>
+              <li>Must have the following labels:<ul><li><code>nodeType: messaging</code></li><li><code>serviceClass: prod100k</code></li></ul></li>
+              <li>Must have the following taints:<ul><li><code>nodeType=messaging:NoExecute</code></li><li><code>serviceClass=prod100k:NoExecute</code></li></ul></li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">monitor</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <ul>
+              <li>At least 4 Cores and 8 GB of RAM</li>
+              <li>Must be associated with vSwitch-3 in Zone C</li>
+              <li>Must have the following labels:<ul><li><code>nodeType: monitoring</code></li></ul></li>
+              <li>Must have the following taints:<ul><li><code>nodeType=monitoring:NoExecute</code></li></ul></li>
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="Instance"/>Instance Types Requirements</h3>
+    <p>Alibaba cloud recommends that worker nodes have at least 4 cores. <MadCap:variable name="Variables.CompanyName"/> also requires all instances to be Intel compatible and meet the requirements outlined in the following table:</p>
+    <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Node Pools</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Scaling Tier</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Plans Included</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Worker Node Cores</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Worker Node RAM (GiB)</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Example Instance Types</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">prod1k-a<br/>prod1k-b</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">prod1k</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1"><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">Developer</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">Standard</MadCap:conditionalText>, <MadCap:variable name="Product-Names.class_250"/> and <MadCap:variable name="Product-Names.class_1k"/></td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">4</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">16</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">ecs.g6.xlarge<br/>ecs.g5.xlarge</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">prod10k-a<br/>prod10k-b</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">prod10k</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1"><MadCap:variable name="Product-Names.class_5k"/> and <MadCap:variable name="Product-Names.class_10k"/></td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">4</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">32</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">ecs.r6.xlarge<br/>ecs.r5.xlarge</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">prod100k-a<br/>prod100k-b</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">prod100k</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1"><MadCap:variable name="Product-Names.class_50k"/> and <MadCap:variable name="Product-Names.class_100k"/></td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">8</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">64</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">ecs.r6.2xlarge<br/>exc.r5.2xlarge</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">monitor</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">monitor</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">All Enterprise (HA) plans</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">2</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">8</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">ecs.n4.xlarge<br/>ecs.n1.large<br/>ecs.c6.xlarge</td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="Autoscal"/><a name="Autoscaling"/>Autoscaling</h3>
+    <p>Your cluster requires autoscaling in order to provide the appropriate level of available resources for your <MadCap:variable name="Product-Names.broker_cloud_short"/>s as their demands change. <MadCap:variable name="Variables.CompanyName"/> recommends using the Kubernetes Cluster Autoscaler, which you can find in the Kuberenetes GitHub repository here: <a href="https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler" class="link-offsite">https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler</a>.</p>
+    <p>You should refer to the <a href="https://www.alibabacloud.com/help/en/container-service-for-kubernetes/latest/auto-scaling-of-nodes" class="link-offsite" style="font-style: italic;">Auto scaling of nodes</a> documentation on the Container Service for Kubernetes (ACK), User guide for  Kubernetes Clusters documentation site to implement the Cluster Autoscaler.</p>
+    <h3><a name="Storage"/>Storage Class Configuration for Autoscaling</h3>
+    <p>Three scaling groups will be required by an auto scaleable cluster.  Each of the scaling groups must be configured to use only one of the vSwitches so that each scaling group covers a specific availability zone.  This is necessary as the auto-scaling is unable to trigger scale-ups a single group spanning multiple availability zones when using the availability zone nodeSelectors.</p>
+    <p>The autoscaling for ACK clusters requires a primary and backup <code>StorageClasses</code> for each zone. This allows the autoscaler's predicates to detect which of the zones need to be scaled up. These <code>StorageClasses</code> must be created before deploying the <MadCap:variable name="Product-Names.cloud_agent_short"/>.</p>
+    <p>To support scale-up, the <code>StorageClass</code> must contain the <code>allowVolumeExpansion</code> property, and have it set to "<code>true</code>"</p>
+    <p>When deploying the <MadCap:variable name="Product-Names.cloud_agent_short"/>, the helm parameters for <code>primaryStorageClass</code> and <code>backupStorageClass</code> must be set to the names of the two storage classes you created. For example, in the <code>StorageClass.yaml</code> file below, the names of the storage classes are: <code>alicloud-disk-ssd-primary</code> and<code> alicloud-disk-ssd-backup</code> .</p>
+    <pre xml:space="preserve">allowVolumeExpansion: true
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: alicloud-disk-ssd-primary
+parameters:
+  type: cloud_ssd
+  csi.storage.k8s.io/fstype: xfs
+provisioner: diskplugin.csi.alibabacloud.com
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+allowedTopologies:
+- matchLabelExpressions:
+  - key: topology.diskplugin.csi.alibabacloud.com/zone
+    values:
+    - &lt;Zone of vSwitch1&gt;
+---
+allowVolumeExpansion: true
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: alicloud-disk-ssd-backup
+parameters:
+  type: cloud_ssd
+provisioner: diskplugin.csi.alibabacloud.com
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+allowedTopologies:
+- matchLabelExpressions:
+  - key: topology.diskplugin.csi.alibabacloud.com/zone
+    values:
+    - &lt;Zone of vSwitch2&gt;
+---
+allowVolumeExpansion: true
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: alicloud-disk-ssd-topology
+parameters:
+  type: cloud_ssd
+provisioner: diskplugin.csi.alibabacloud.com
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer</pre>
+    <p>To apply the storage classes run the following command:</p>
+    <pre>kubectl apply -f StorageClass.yaml</pre>
+    <h3><a name="LoadBala"/>LoadBalancer Configuration </h3>
+    <p>Each <MadCap:variable name="Product-Names.pubsub_brand_only"/> <MadCap:variable name="Product-Names.broker_cloud_short"/> created will use one Server Load Balancer (SLB).  By default, a shared SLB with a public IP address (EIP) will be created for each service.</p>
+    <p>The <MadCap:variable name="Product-Names.cloud_agent_short"/> accepts a list of arbitrary annotations that will be passed to the <code>LoadBalancer</code> services that it creates for <MadCap:variable name="Product-Names.broker_cloud_short"/>s.  This allows it to define various configurations settings on the SLB it creates. </p>
+    <p> For example to make an SLB private (No EIP public IP) you would need to specify the "<code>service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: intranet</code>" annotation, along with another annotation to configure where the SLB will be connecting to (vSwitch or VPC).</p>
+    <h2 MadCap:conditions="Default.HideFromAllOutput"><a name="deploy-cloud-agent-gke"/>Deploying the <MadCap:variable name="Product-Names.cloud_agent_short"/> on <MadCap:annotation MadCap:createDate="2022-10-07T15:32:27.7852914-04:00" MadCap:creator="GilYu" MadCap:initials="GI" MadCap:comment="Delete to go with flow" MadCap:editor="GilYu" MadCap:editDate="2022-10-07T15:32:28.3220646-04:00">ACK</MadCap:annotation></h2>
+    <p MadCap:conditions="Default.HideFromAllOutput">As discussed in 
+                <MadCap:xref href="prerequisites-k8s.htm"><MadCap:xref href="prerequisites-k8s.htm">Common Kubernetes Prerequisite</MadCap:xref>s</MadCap:xref>, before you (the customer) can deploy the <MadCap:variable name="Product-Names.cloud_agent_short"/>, you can obtain the following from <MadCap:variable name="Variables.CompanyName"/> as examples that you modify and can use for your customer-controlled deployment. Here's an overview of the sample files you modify to deploy the <MadCap:variable name="Product-Names.cloud_agent_short"/> : </p>
+    <ul>
+      <li MadCap:conditions="Default.HideFromAllOutput">A file containing registry credentials,  provided by <MadCap:variable name="Variables.CompanyName"/> and downloaded through the Private Region tab (see <MadCap:xref href="../private_regions_tab.htm#Download">Downloading the Image Pull Secret File to Access Registry Credentials</MadCap:xref>). The file you download will be based on your Kubernetes configuration and is either:<ul><li MadCap:conditions="Default.HideFromAllOutput">A JSON file used to create the Docker registry secret to pull images
+                from <MadCap:variable name="Variables.CompanyName"/>'s official <code>GCR.IO</code> registry.
+                In the examples below, it is called <code>&lt;datacenter-id&gt;-registry-credentials.json</code>.   </li><li MadCap:conditions="Default.HideFromAllOutput">A YAML file used to create the Docker registry secret to pull images from <MadCap:variable name="Variables.CompanyName"/>'s official <code>GCR.IO</code> registry. In the examples below, it is called <code>&lt;datacenter-id&gt;-pull-secret.yaml</code>. </li></ul></li>
+      <li MadCap:conditions="Default.HideFromAllOutput">The YAML file (<code>values.yaml</code>) containing the parameters required by the Helm
+                chart.  <MadCap:variable name="Variables.CompanyName"/>  creates this file with input from the you about your Kubernetes cluster. You can modify this file as required and are responsible to maintain and modify it for your deployment. </li>
+      <li MadCap:conditions="Default.HideFromAllOutput">The <code>storage-class.yaml</code> file which is used to apply the storage class in two regions (the monitoring node does not need a PVC). This file assumes that the primary and backup nodes are deployed in zone A and zone B respectively.</li>
+      <li MadCap:conditions="Default.HideFromAllOutput">The URL to the <MadCap:variable name="Product-Names.cloud_agent_short"/>'s Helm
+                chart, which is provided from <MadCap:variable name="Variables.CompanyName"/>.</li>
+    </ul>
+    <ol MadCap:conditions="Default.HideFromAllOutput">
+      <li>Unzip the package provided by <MadCap:variable name="Variables.CompanyName"/> and containing the files listed above. </li>
+      <li>Configure <code>kubectl</code> to connect to your ACK cluster.</li>
+      <li>Use the <code>storage-class.yaml</code> file to apply the storage class by running the following command:<pre class="Code">kubectl apply -f storage-class.yml</pre></li>
+      <li>
+                Create the <MadCap:variable name="Product-Names.cloud_agent_short"/>'s namespace in the
+                cluster by running the following command:<pre class="Code">kubectl create namespace solace</pre></li>
+      <li>Create the Docker registry secret to pull images from <MadCap:variable name="Variables.CompanyName"/>'s GCR.IO registry one of the commands below based on the file you <a href="../private_regions_tab.htm#Download">downloaded from the Private Region</a> tab: <![CDATA[
+            
+                ]]><ul><li><code><code>&lt;datacenter-id&gt;-registry-credentials.json</code></code> . You can use any name for the namespace (e.g., <code>myorgabc</code>). Note the email value (<code>any@anywhere.com</code>) can be any valid-formatted email; it's a required parameter for the command, but is not used.<![CDATA[
+						]]><pre class="Code">kubectl create secret docker-registry gcr-reg-secret --namespace solace \
+--docker-server=https://gcr.io --docker-username=_json_key --docker-email=any@mail.com \
+--docker-password="$(cat ./<code>&lt;datacenter-id&gt;-registry-credentials.json</code>)"</pre></li><li><code>&lt;datacenter-id&gt;-pull-secret.yaml</code>.
+You can use any name for the namespace (e.g., <code>myorgabc</code>).				<pre xml:space="preserve">
+kubectl apply -f &lt;datacenter-id&gt;-pull-secret.yaml -n &lt;namespace&gt;		</pre></li></ul></li>
+      <li>Install the <MadCap:variable name="Product-Names.cloud_agent_short"/>'s Helm chart, using the Helm
+				chart URL and <code>values.yaml</code>:</li>
+      <pre class="Code">helm install cloud-agent-rel \
+https://cloud-agent-helm.s3.eu-north-1.amazonaws.com/solace-cloud-ca-0.6.0.tgz --namespace solace \
+--values values.yaml</pre>
+      <li>Verify that you can create a service successfully.</li>
+    </ol>
+  </body>
+</html>

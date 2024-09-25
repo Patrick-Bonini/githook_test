@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><a name="Creating"/>Creating Queues with the Java API</h1>
+    <p>You can create non-durable queues using the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Java API when you create a<code> PersistentMessageReceiver</code>. To create a non-durable queue, pass <code>Queue.nonDureableExclusiveQueue(queueName)</code> into the parameters of the <code>build()</code> method. The queue is  provisioned on the <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker when you call the <code>start()</code> method on your <code>PersistentMessageReceiver</code>. This non-durable queue is deleted after the client application that created the queue disconnects from the event broker. The following example shows how to create a non-durable queue:</p>
+    <pre xml:space="preserve">
+/* Creates an instance of PersistentMessageReceiverBuilder, which is used to create PersistentMessageReceiver objects. */              
+final PersistentMessageReceiver receiver = service.createPersistentMessageReceiverBuilder()			
+	.build(Queue.nonDurableExclusiveQueue("QUEUE_NAME")); // If it does not exist, this configuration will provision the non-durable queue on the broker when the start() method is called. 
+	.start();                                            // Causes the service to resume regular duties. Before this method is called, the service is considered off-duty.</pre>
+    <p class="Note">If the client disconnects unexpectedly (for example, due to a networking issue), the queue is not deleted until 60 seconds later. This allows auto-reconnect logic to reconnect the client to the queue before it disappears.</p>
+    <p>To create a durable queue, call the <code>withMissingResourcesCreationStrategy()</code>method when building your <code>PersistentMessageReceiver</code> object. This interface takes a parameter that has two possible values: </p>
+    <ul>
+      <li>
+        <p><code>MissingResourcesCreationStrategy.DO_NOT_CREATE</code>—The default value, which disables any attempt to create missing resources. </p>
+      </li>
+      <li>
+        <p><code>MissingResourcesCreationStrategy.CREATE_ON_START</code>— Creates the queue provided in the <code>build()</code> method as long as the client has sufficient permissions (an exception is thrown otherwise).</p>
+      </li>
+    </ul>
+    <p> The queue is provisioned on the event broker when you call the <code>start()</code> method on your <code>PersistentMessageReceiver</code>.</p>
+    <p class="Note"> For the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Java API, durable endpoint provisioning is implemented using the Missing Resource Creation Strategy, which means that you cannot deprovision the endpoints.</p>
+    <p>The following example shows how to create a durable queue using the Missing Resource Creation Strategy: </p>
+    <pre xml:space="preserve">
+/* Creates an instance of PersistentMessageReceiverBuilder, which is used to create PersistentMessageReceiver objects. */              
+final PersistentMessageReceiver receiver = service.createPersistentMessageReceiverBuilder()
+	.withMissingResourcesCreationStrategy(                      // Configures the missing resources creation strategy.
+		MissingResourcesCreationStrategy.CREATE_ON_START)   // The strategy to attempt create missing resources when the connection is established.
+	.build(Queue.durableExclusiveQueue("QUEUE_NAME"))           // If it does not exist, this configuration will provision the non-durable queue on the broker when the start() method is called.
+	.start();                                            // Causes the service to resume regular duties. Before this method is called, the service is considered off-duty.</pre>
+    <p>The event broker may be configured with queue templates, which allow you to set custom attributes on queues you create with the Java API. When using the Missing Resource Creation Strategy, queue templates will only override the default queue attributes if the name of the queue you create matches the name of the template. For information about queue templates see <MadCap:xref href="../../Messaging/Guaranteed-Msg/Endpoints.htm#Endpoint">Endpoint Templates</MadCap:xref>, and for instructions on how to configure a queue template using the <MadCap:variable name="Variables.CompanyName"/> CLI see <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-Endpoint-Templates.htm">Configuring Endpoint Templates</MadCap:xref>.</p>
+    <div class="Note">
+      <p>You cannot use the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Java API to deprovision queues created with the Missing Resource Creation Strategy. Use SEMP or the <MadCap:variable name="Variables.CompanyName"/><MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker Command Line Interface (CLI) to deprovision these queues.</p>
+    </div>
+  </body>
+</html>

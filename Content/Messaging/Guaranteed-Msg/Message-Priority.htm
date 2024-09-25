@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud;Appliance;Software"/>Message Priority</h1>
+    <p>Message queues and topic endpoints can optionally support priority message delivery. When you enable an endpoint to respect message priority, the priority field in messages from publishers are respected for all guaranteed and promoted direct messages. In other words, the queue or topic endpoint delivers queued messages in priority order; meaning that all messages of a higher priority are delivered before any messages of a lower priority.</p>
+    <p>In order to provide high message delivery throughput to consumers, <MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers and APIs have a message prefetch pipeline for messages to be sent to client consumer flows. In the process of loading this prefetch pipeline, the event broker respects priority (high priority messages are fed into the pipeline ahead of low priority messages). However, once messages are loaded into the pipeline, new high priority messages added to the pipeline will never jump ahead of lower priority messages already in the pipeline. This pipeline consists of two stages:</p>
+    <ul>
+      <li>
+        <p>The event broker fetch stage, which attempts to ensure there are messages to send to a consumer when the transport allows it.</p>
+      </li>
+      <li>
+        <p>The transport/delivery stage. This is a shared responsibility of the network layer transport from broker to API, as well as a queuing strategy implemented within client APIs.</p>
+      </li>
+    </ul>
+    <p>The event  broker prefetch stage is not tunable. The implication of this is that no matter how much the depth of the transport/delivery stage of the pipeline is reduced, it will always be possible for an application to receive up to 100 low priority messages after a high priority message is received by the event broker and placed into the pipeline. The actual number may be less than 100, depending on the precise state of the broker at the time the high priority message is received.</p>
+    <p>The implementation details of the transport/delivery stage of the pipeline vary to some degree based on the particular client API that is used. One tool that is available on the event broker side, and therefore consistently available to all clients, is the ability to configure a queue's <code>max-delivered-unacked-msgs-per-flow</code>. This value indicates the maximum number of messages that the event broker can send to a consumer before the client application acknowledges the sent messages. In other words, this value bounds both:</p>
+    <ul>
+      <li>
+        <p>the number of messages in the transport/delivery stage of the pipeline.</p>
+      </li>
+      <li>
+        <p>the number of messages received, but not yet acknowledged by the client application.</p>
+      </li>
+    </ul>
+    <p>Reducing this value to its minimum value of 1 minimizes the number of low priority messages that can be delivered ahead of a high priority message. However, this may impact the performance of the application. When reducing this value,  you should experiment to determine how far it can be safely lowered with different network environments without negatively impacting message delivery performance.</p>
+    <h2>Priority Levels</h2>
+    <p><MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers support ten levels of priority from 0 (lowest) to 9 (highest). If the priority field in the received message is greater than 9, then the message is treated as priority 9. Messages that do not have a priority field are treated as priority 4.</p>
+    <h4 MadCap:conditions="Default.HideFromAllOutput">Upgrade Behavior</h4>
+    <p MadCap:conditions="Default.HideFromAllOutput">Upon upgrade from a load that doesn't support message priority to a load that does, all existing messages for each queue or topic endpoint are treated as having the highest priority value, priority 9. Message priority is preserved on subsequent upgrades.</p>
+    <h2>Considerations When Enabling Support For Message Priority</h2>
+    <p>You should understand the following considerations when deciding to enable an endpoint to respect message priority:</p>
+    <ul>
+      <li>When you enable an endpoint to respect message priority, high priority message latency is improved while delivering spooled messages.</li>
+      <li>Enforcing message priority increases the chance that duplicate messages will be delivered to a consuming client after it recovers from a connection failure.</li>
+      <li>Although message priority is maintained between replication sites and respected after a failover, enforcement of message priority on replication queues and topics is always disabled. In other words, replication bridge links do not respect the priority of replicated messages.</li>
+      <li>When the event broker is streaming messages (messages are consumed faster than they are produced), each message is delivered as it's received, which may not be in priority order.</li>
+      <li>Dead message queues can be configured to respect message priority.</li>
+      <li>Last value queues always store the last message received, regardless of the priority value of the message.</li>
+      <li>Message priority is not respected for queue browsers. Messages are delivered to browsers in the order in which they were published.</li>
+      <li>Message priority is not respected for bridges. However, the priority information is maintained. Messages are delivered by the bridge in the order in which they were published.</li>
+      <li>Message priority is not respected for partitioned queues, even if they are configured to respect it.</li>
+      <li>Message priority does not apply to MQTT queues (MQTT queues cannot be configured to respect message priority).</li>
+      <li>Messages consumed in a transaction respect message priority.</li>
+    </ul>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For information describing how to enable an endpoint to respect message priority using the <MadCap:variable name="Product-Names.solace_cli"/>, see <MadCap:xref href="Configuring-Queues.htm">Configuring Queues</MadCap:xref> or <MadCap:xref href="Configuring-DTEs.htm">Configuring Topic Endpoints</MadCap:xref>.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For more information about enabling respect for message priority for queues in <MadCap:variable name="Product-Names.pubsubmanager_long"/>,  see <a href="../../Cloud/Broker-Manager/configuring-queues-broker-manager.htm#configuring_message_delivery" class="link-internal">Configuring Message Delivery options for <MadCap:variable name="Product-Names.cloud_product_short"/></a> or <a href="../../Admin/Broker-Manager/configuring-queues-broker-manager.htm#configuring_message_delivery" class="link-internal">Configuring Message Delivery options for <MadCap:variable name="Product-Names.broker_sw_short"/>s and <MadCap:variable name="Product-Names.broker_appliance_short"/>s</a>.</p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">For more information about enabling respect for message priority for queues, see <MadCap:xref href="../../Cloud/Broker-Manager/configuring-queues-broker-manager.htm#configuring_message_delivery">Configuring Message Delivery Options</MadCap:xref>.</p>
+  </body>
+</html>

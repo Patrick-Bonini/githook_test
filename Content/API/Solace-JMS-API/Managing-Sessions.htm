@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Managing Sessions</h1>
+    <p>A Session is a single‑threaded context through which a JMS client application can create producers and consumers. JMS applications can create one or more Session per connection. The Solace JMS API supports transacted and non‑transacted Sessions</p>
+    <p class="Note"> For information on working with XA Sessions, see <MadCap:xref href="Using-XA-Transactions.htm">Using XA Transactions</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Creating"/>Creating Sessions</h2>
+    <p>To create a Session, call <code>connection.createSession(boolean transacted, int acknowledgeMode)</code></p>
+    <p><u>Where</u>:</p>
+    <p><code>transacted</code> indicates whether the Session is to be transacted. A local transacted Session can group a set of message sends and a set of message receives into an atomic unit of work. By default, this value is set to false, and the Session is not transacted. (For more information on transacted Sessions, see <MadCap:xref href="Using-Transacted-Sessions.htm">Using Transacted Sessions</MadCap:xref>.)</p>
+    <p><code>acknowledgeMode</code> is the message acknowledgment mode to use. For more information, see <MadCap:xref href="#establishing_connections_577400906_258682">Acknowledgment Modes</MadCap:xref> below.</p>
+    <p class="Note">For a transacted Session, the acknowledgment mode is ignored because messages in a transaction are only acknowledged when <code>commit()</code> is called for the transaction.</p>
+    <h3><a name="establishing_connections_577400906_258682"/>Acknowledgment Modes</h3>
+    <p>For a non-transacted Session, four acknowledgment options are supported:</p>
+    <ul>
+      <li>
+        <code>Session.AUTO_ACKNOWLEDGE</code>
+        <p>The Session automatically acknowledges a client’s receipt of a message either when the Session successfully returns from a call to receive or when the message listener the Session calls to process the message successfully returns.</p>
+      </li>
+      <li>
+        <code>Session.DUPS_OK_ACKNOWLEDGE</code>
+        <p>The Session may lazily acknowledge the delivery of each message by acknowledging them collectively as a windowed group. This acknowledgment option can reduce the amount of work the Session must perform to ensure that no duplicate messages are delivered, but in the event of a system failure, it can also result in the delivery of duplicate messages.</p>
+      </li>
+      <li>
+        <code>Session.CLIENT_ACKNOWLEDGE</code>
+        <p>The client explicitly calls the <code>acknowledge()</code> method to acknowledge a consumed message. This automatically acknowledges the receipt of all messages that have been delivered by the Session.</p>
+        <p class="Note"> A single Session can hold multiple JMS consumers. Therefore, when <code>CLIENT_ACKNOWLEDGE</code> is used, it is possible for one consumer to acknowledge another consumer’s messages. This could occur if the two consumers do not take the same amount of time to process their messages. In this case, the acknowledgments might not be returned in the order in which they were received.</p>
+      </li>
+      <li>
+        <code>com.solacesystems.jms.SupportedProperty.SOL_CLIENT_ACKNOWLEDGE</code>
+        <p>This is a Solace-defined message acknowledgment mode. When there are multiple consumers on a single Session, this option allows each consumer to only acknowledge messages that it receives—a consumer cannot acknowledge messages that another consumer receives. When this mode is used, each call to <code>Message.acknowledge()</code> only acknowledges the message received by the consumer.</p>
+        <p class="Note">A Session and its message producers and consumers can only be accessed by one thread at a time. Their behavior is undefined if multiple threads access them simultaneously.</p>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="establishing_connections_577400906_329588"/>Configuring Connection Time-Outs and Retries</h2>
+    <p>The following properties are used to configure a client’s JNDI and JMS connect and reconnect behavior.</p>
+    <p class="Note">When using high-availability (HA) redundant event broker pairs, a failover from one event broker to its mate will typically occur in under 30 seconds, however, applications should attempt to reconnect for at least five minutes. To allow for a reconnect duration of five minutes for HA redundant event brokers, set the following Session property values:</p>
+    <ul>
+      <li>connect retries—1</li>
+      <li>reconnect retries—20</li>
+      <li>reconnect retry wait—3000 ms</li>
+      <li>connect retries per host—5</li>
+    </ul>
+    <h3><a name="Connect"/>Connect Retries</h3>
+    <p>The connect retries property specifies the maximum number of times to attempt to establish a connection after the first connect fails.</p>
+    <p>The valid range is an integer greater than or equal to –1. A value of –1 specifies an unlimited number of connect retires is allowed; a value of 0 specifies no automatic connection retries (that is, try once and give up).</p>
+    <p>If a host list is used, each connect retry will traverse the host list according to the value set for the Connect Retries property. For example, if a connect retry value of 2 is used, the API may successively attempt to establish a JNDI connection to each entry in the host list. If it is not successful, the second connect retry will begin again with the first host entry and successively attempt each host entry. If there is no success, no further connect retries are attempted. The number of times a connection attempt may be made for each entry as it traverses that list is determined by the connection retries per host property (see <MadCap:xref href="#establishing_connections_577400906_329661">Connection Retries Per Host</MadCap:xref>).</p>
+    <p>The connect retries value can be set through the Connect Retries property for the JNDI connection. For more information, see <MadCap:xref href="JNDI-Connection-Properti.htm">JNDI Connection Properties</MadCap:xref>.</p>
+    <h3><a name="Connect2"/>Connect Time-Out</h3>
+    <p>The connect time-out property specifies the maximum amount of time (in milliseconds) that is allowed for establishing an initial connection.</p>
+    <p>When a host list is used, the amount of time set for the Connection Time-Out property is applied to each connection attempt to a host. For example, if there are four host entries, it is possible that an application would have to wait for the connection time-out to occur for each host entry—multiplied by the number of connect attempts—before receiving a notice of an established connection or a connection failure. This wait time is also extended by the Reconnect Retry Wait time that occurs after each unsuccessful attempt to connect to a host.</p>
+    <p class="Note">A connection attempt can terminate more quickly if a failure is detected by the socket layer.</p>
+    <p>The connection time-out value can be set through the Connect Timeout property for the JNDI or data connection. For more information, see <MadCap:xref href="JMS-Properties-Reference.htm">JMS Properties Reference</MadCap:xref>.</p>
+    <h3><a name="Reconnec"/>Reconnect Retries</h3>
+    <p>The reconnect retries property specifies the number of times to try to reconnect to a host after a disconnect. If a host list is used, this property sets the number of times the API will traverse the host list in an attempt to reconnect to one of the hosts in the list.</p>
+    <p>The valid range is an integer greater than or equal to –1. A value of –1 specifies an unlimited number of reconnect retires is allowed; a value of 0 specifies no automatic reconnect retries (that is, try once and give up).</p>
+    <p>When a host list is used, if the API cannot connect to the first event broker on the list (that is, the preferred event broker), the API attempts to connect to the next listed event broker, and so on. The API attempts to connect to each host for the number of times set for the Connect Retries Per Host property before attempting to connect to the next host.</p>
+    <p>After each unsuccessful connection attempt, the API waits for the amount of time set by the Reconnect Retry Wait property before attempting to connect to the same host, the next listed host, or, after all of the listed hosts have been attempted, to the first host on the list again.</p>
+    <p>Multiple reconnects should be specified when using a host for which event broker redundancy has been enabled (that is, the IP address listed as a host is used by a pair of redundant event brokers). Disabling reconnect retries could affect activity switches that might occur when active/active redundancy is used and could cause service disruptions. For example, in a fail‑over scenario, if no reconnect retries are enabled, a connection attempt cannot be made to the redundant event broker.</p>
+    <p class="Note">An automatic reconnect frequency limit is used to prevent a client from reconnecting more than four times within ten seconds. If the replacement of duplicate client connections during authentication is permitted by the event broker, when multiple clients with the same client user name are used, they could enter a cycle where one client connects, and then is disconnected when another client connects. If these clients have a non-zero Reconnect Retries value, each time one disconnected client successfully reconnects, it disconnects another connected client. The automatic reconnect frequency limit ensures that this client connect/reconnect cycle does not occur indefinitely.</p>
+    <p>For information on how to enable the replacement of duplicate client connections during authentication, see <MadCap:xref MadCap:unresolvedLink="import-link:managing_client_authentication_and_authorization_3377806447_57353" href="../../Security/Configuring-Client-Authentication.htm#Dup-Connect-Behav">Configuring Duplicate Client Connect Behavior</MadCap:xref>.</p>
+    <p>The reconnect retries value can be set through the Reconnect Retries property for the JNDI or data connection. For more information, see <MadCap:xref href="JMS-Properties-Reference.htm">JMS Properties Reference</MadCap:xref>.</p>
+    <h3><a name="Reconnec2"/>Reconnect Retry Wait</h3>
+    <p>The reconnect retry wait property sets the amount of time (in milliseconds) to wait after an unsuccessful attempt to reconnect to the same host that the client was connected to. After this time expires, another reconnect attempt can be made. Valid values are 1 or greater.</p>
+    <p class="Note">If the API works through all of the entries in the host list without establishing a connection, and a Connect Retry is permitted because the Connect Retry property is greater than 0, the API waits for the amount of time set for the Reconnect Retry Wait property before retrying to connect to the first host in the host list.</p>
+    <p>The reconnect retry wait value can be set through the Reconnect Retry Wait property for the JNDI or data connection. For more information, see <MadCap:xref href="JMS-Properties-Reference.htm">JMS Properties Reference</MadCap:xref>.</p>
+    <h3><a name="establishing_connections_577400906_329661"/>Connection Retries Per Host</h3>
+    <p>When using a host list, the connection retries per host property sets how many times to try to connect or reconnect to one host before moving to the next host in the list. When traversing the list, each entry is attempted for the number of times set for the connection retries per host property + 1.</p>
+    <p>A value of 0 means do not attempt a single connection or reconnection attempt. A value of –1 means attempt an infinite number of connect or reconnect retries (in this case, the API only tries to connect or reconnect to the first host listed).</p>
+    <p>If a connect or reconnect attempt to a host is not successful, the API must wait for the amount of time set for the Reconnect Retry Wait property before making another connect or reconnect attempt.</p>
+    <p class="Note">If a client application gets disconnected, the API will attempt to reconnect to the event broker it was connected to, and if that fails it will attempt to reconnect to the next listed host, and so on. If the application had published Guaranteed messages prior to being reconnected to a new host, the new host will not have the required Guaranteed messaging publisher state to agree with the API on which messages were last received/acknowledged. Therefore, the API will reset the publisher flow state, renumber and resend any unacknowledged messages. Note that if the new host was configured as a Replication mate of the original host, resending messages may create duplicates because the original messages may have been successfully delivered to the mate even though from the API’s perspective they were unacknowledged. In this case, it is up to the receiving application to resolve this duplication in an appropriate manner.<br/>Note that for API versions prior to 7.1.2, if a reconnect to a different host occurred after publishing Guaranteed messages, the API would close the newly created session and raise a session event—the application was responsible for reconnecting and resending any unacknowledged published messages. To use this legacy behavior, you must change the Guaranteed Delivery Reconnect Fail Action property to the appropriate non-default value. For more information, see the <MadCap:xref href="JMS-Properties-Reference.htm">JMS Properties Reference</MadCap:xref>.</p>
+    <p>The connect retries per host value can be set through the Connection Retries Per Host property for the JNDI or data connection. For more information, see <MadCap:xref href="JMS-Properties-Reference.htm">JMS Properties Reference</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Handling"/>Handling JMS Connection Events</h2>
+    <p>The Solace JMS implementation offers a callback listener (<code>SolConnectionEventListener</code>) for the JMS connection events (for example, <code>SolReconnectedEvent</code>and <code>SolReconnectingEvent</code>).</p>
+    <p> For your JMS applications to receive asynchronous notifications when <code>SolConnection </code>events occur, you must implement the <code>SolConnectionEventListener </code>interface and register with a <code>SolConnectionEventSource</code>.</p>
+    <p class="Note">Event notifications can occur on the Connections I/O and event threads.</p>
+    <h2 class="with-rule"><a name="establishing_connections_577400906_353149"/>Closing Sessions</h2>
+    <p>To close a Session, call <code>Session.closeSession()</code>.</p>
+    <p>When this method is invoked, the producers and consumers created in that same Session are closed. That is, they do not have to be explicitly closed before <code>Session.closeSession()</code> is invoked.</p>
+    <p>The <code>Session.closeSession()</code> call blocks until a receive call or message listener in progress has completed. A blocked message consumer receive call returns <code>null</code> when this Session is closed.</p>
+    <p>Closing a transacted Session will roll back any transaction that is in progress.</p>
+    <p>This method is the only method for the Session interface that can be called concurrently.</p>
+    <p class="Note">If a provider has allocated resources for the Session outside the JVM, those resources should be closed before calling <code>Session.closeSession()</code> because relying on garbage collection to eventually reclaim those resources may not be timely enough.</p>
+  </body>
+</html>

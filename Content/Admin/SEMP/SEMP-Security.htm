@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <title/>
+  </head>
+  <body>
+    <h1>SEMP Authentication and Authorization</h1>
+    <p class="Note" MadCap:conditions="SAP.SapOnlyOutput">Although SEMP supports a number of security features for authentication and access control, the features you can use depend on what you have enabled within <MadCap:variable name="Product-Names.missionctrl_short"/>.<MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput"> For more information, see <MadCap:xref href="../../Cloud/ght_authentication.htm">Configuring Authentication to [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref></MadCap:conditionalText></p>
+    <p>SEMP v2 supports a number of security features for authentication and access control:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Basic">Basic Authentication</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#OAuth">OAuth Authentication</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Sessions">SEMP Sessions</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Role-Bas">Role-Based Access Control</MadCap:xref>
+      </li>
+    </ul>
+    <p>These features are discussed in the sections that follow.</p>
+    <p class="Note">Authentication is required for all requests.</p>
+    <h2 class="with-rule"><a name="Basic"/>Basic Authentication</h2>
+    <p>SEMP uses management usernames and passwords for HTTP Basic authentication.</p>
+    <p> To use basic authentication:</p>
+    <ol>
+      <li>
+        <p>Format the credentials as <code>&lt;username&gt;:&lt;password&gt;</code>. For example <code MadCap:conditions="SAP.SapHideFromOutput">solly:super_otter_123</code><code MadCap:conditions="SAP.SapOnlyOutput">sap:strong_pswd_123</code>.</p>
+      </li>
+      <li>
+        <p>Base-64 encode the formatted credentials. In this example, the result is <code MadCap:conditions="SAP.SapHideFromOutput">c29sbHk6c3VwZXJfb3R0ZXJfMTIz</code><code MadCap:conditions="SAP.SapOnlyOutput">c2FwOnN0cm9uZ19wc3dkXzEyMw==</code>.</p>
+      </li>
+      <li>
+        <p>Include the encoded result in  the HTTP Authorization header:</p>
+      </li>
+    </ol>
+    <p>For example, a request using these credentials could be:</p>
+    <pre xml:space="preserve">curl --location 'http://192.168.133.81:8080/SEMP/v2/monitor/msgVpns/msgVPN1/queues?select=accessType%2Cdurable' \
+--header 'Authorization: Basic <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">c29sbHk6c3VwZXJfb3R0ZXJfMTIz</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">c2FwOnN0cm9uZ19wc3dkXzEyMw==</MadCap:conditionalText>'</pre>
+    <pre xml:space="preserve">GET /SEMP/v2/monitor/msgVpns/msgVPN1/queues?select=accessType,durable HTTP/1.1
+Host: 192.168.133.81:8080
+Authorization: Basic <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">c29sbHk6c3VwZXJfb3R0ZXJfMTIz</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">c2FwOnN0cm9uZ19wc3dkXzEyMw==</MadCap:conditionalText>
+Cookie: Session=viyDrD0kRXgTGcqQkC4wLWeTqKEZwoEajuGdEdVEdj0</pre>
+    <p>If authentication is successful, a <a href="#Sessions" class="link-internal">session</a> is created and the broker returns a cookie containing a session token. </p>
+    <p>SEMP supports both HTTP and HTTPS connections. </p>
+    <h2 class="with-rule"><a name="OAuth"/>OAuth Authentication</h2>
+    <p>To authenticate using OAuth, a SEMP client must include one or more OAuth tokens in the HTTP Authorization header as a bearer token. The bearer token in the Authorization header must be provided on every request. </p>
+    <p>In general, the <code>iss</code> claim in the ID token (for OpenID Connect) or access token (for OAuth 2.0), if present, is used by the event broker to identify which OAuth profile to use.</p>
+    <p>A specific OAuth profile can also be selected by adding ~base64(&lt;issuer&gt;)~ to the beginning of the bearer token. Base64 padding should not be used. For example, to use an OAuth profile called <code MadCap:conditions="SAP.SapHideFromOutput">solace</code><code MadCap:conditions="SAP.SapOnlyOutput">sap</code> that has an issuer of <code MadCap:conditions="SAP.SapHideFromOutput">https://www.solace.com</code><code MadCap:conditions="SAP.SapOnlyOutput">https://www.sap.com</code> with an access token:</p>
+    <pre>Bearer ~<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">aHR0cHM6Ly93d3cuc29sYWNlLmNvbQ</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">aHR0cHM6Ly93d3cuc2FwLmNvbQ==</MadCap:conditionalText>~&lt;access_token&gt;</pre>
+    <p>If a profile cannot be identified from the <code>iss</code> claim in the token, and no issuer prefix is provided in the Authorization header, the default profile is used.</p>
+    <h4>Single token</h4>
+    <p> In most case, a single OAuth token is used for authentication. The following format is used to pass a single token in the authentication header: <code>Authorization: Bearer &lt;token&gt;</code>. </p>
+    <p>Example:</p>
+    <pre>Authorization: Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6ImYwdDZrMUVyWVNXeDdCSmRzNHVkOU8wa2wzcEFxOHVTV3RTdnJHVTJaRmkiLCJ0eXAiOiJKV1QifQ.eyJhdWQiOiJTa2MxSmpsLyIsImVtYWlsIjoic29sbHlAZXhhbXBsZS5jb20iLCJleHAiOjE2MzY2NTA0MjMsImdyb3VwcyI6WyJPdHRlcnMiLCJNYW1tYWxzIl0sImlhdCI6MTYzNjY0NjgyMywiaXNzIjoiaHR0cHM6Ly9teS1vYXV0aC1wcm92aWRlci5leGFtcGxlLmNvbSIsInN1YiI6IlJpaEJDQmszIn0.oIo9gDbjx3qW3Rg-IiKw4B67KIcJ6_l7dTdlI5inwI9lH84moyG_GM0cN1yFnjVioVjUN7h5Ok5ubHW2BaSaSifC1JjpDzFB55bHSA8ygjZaEtCWXCFDUbs-8yN6BWr7jhKbJ6Iffg285Sm5C2H4rXkBC4Z50bu5k2-hK8OVkF5hi0amOl7-K0S6UtiFkqPaGtru5JHhOJ6m8b7tIfB3YYwIT1xGtkqr_4AfQO3tFziUJFXtZ7-dRMlqQhsS2nO_kA18Aa_5RNyAdRx-HGq3W_DMcxlNj1E3VURrLhLx6s-mxAZSTpwIXWv_KTUblUjAc7gp-sYZFwrXdbDhx-4B3A</pre>
+    <h4>Multiple tokens</h4>
+    <p>When an OpenID Connect provider issues both an ID token and an access token together, the ID token may contain a reduced number of claims. In such cases, the event broker may require both the ID token and the corresponding access token—authenticating the user through the ID token, and using the access token to retrieve additional claims from the OpenID Connect Userinfo endpoint for the username or group information. The following format is used to pass multiple tokens in the authentication header: <code>Authorization: Bearer &lt;id-token&gt;/&lt;access-token&gt;</code>.</p>
+    <p>Example:</p>
+    <pre>Authorization: Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6ImYwdDZrMUVyWVNXeDdCSmRzNHVkOU8wa2wzcEFxOHVTV3RTdnJHVTJaRmkiLCJ0eXAiOiJKV1QifQ.eyJhdF9oYXNoIjoiMG5CUGZPUm5uX0l0Z2RTTUNsR2dHUSIsImF1ZCI6IktpQWVIMWtuIiwiZXhwIjoxNjM2NjUwNzYyLCJpYXQiOjE2MzY2NDcxNjIsImlzcyI6Imh0dHBzOi8vbXktb2F1dGgtcHJvdmlkZXIuZXhhbXBsZS5jb20iLCJzdWIiOiJPMjlWTmtvKyJ9.ZMQge6iyjmduO4IY0TaBB3ynqX1NeAmiMfYqZdsPn4bFSs9A0J7aAsc_iuJQcOQrZjEtv-3OXhrAsulTcmLYFCHUTlhWR5oA1eC0cbK1d3gYDeSFo6YUrxlGM9cRYQbr_0fG6VbRc5ivRyowAqmursnk5TVbje4H_Jpug2qnZVrYspZkixqlIkZN6nEbT2Uxzqypvo1o5y1H19uq1t5SF8KKsA9Y22Pgq88mpGg8U27Ov_CY0NKGh_U5KMRVrlQ1X84E0SmpJSWosM9L5Gy7nYGuGhvVGH91eGwxh24L0lpy6HcQkCS7wCiLseVntWcIvu5BUo4mMPCqvQDmg47I7A/zOvubUTO7ig+u2+2NWAibm2U5Tg/pKE4JcwTCwM+qNw=</pre>
+    <h2 class="with-rule"><a name="Sessions"/>SEMP Sessions</h2>
+    <p>When a client makes its first SEMPv2 request, it must supply a username and password using HTTP Basic authentication, or an OAuth token or tokens using HTTP Bearer authentication.</p>
+    <p>When HTTP Basic authentication is used, the broker returns a cookie containing  a session key. The client can omit the username and password from subsequent requests, because the broker now uses the session cookie for authentication instead. When the session expires or is deleted, the client must provide the username and password again, and the broker creates a new session.</p>
+    <p>There are a limited number of session slots available on the broker. The broker returns <code>529 No SEMP Session Available</code> if it is not able to allocate a session.</p>
+    <p>If certain attributes—such as a user's password—are changed, the broker automatically deletes the affected sessions.  However, changes in external user configuration data stored on a RADIUS or LDAP server do not trigger the broker to delete the associated session(s), therefore you must do this manually, if required.</p>
+    <p>The session is deleted if:</p>
+    <ul>
+      <li> the client logs out.</li>
+      <li>the session times out due to inactivity.</li>
+      <li>the session reaches its maximum lifetime.</li>
+      <li>the client's user credentials are altered on the broker. This includes password updates, username changes, and user deletion. It does not include access level changes. If the user credentials change, the event broker deletes all sessions for that user.</li>
+      <li>the broker's <code>auth-type</code> configuration changes (for example, from Radius to LDAP, or from one LDAP profile to another). If the <code>auth-type</code> configuration changes, the event broker deletes all sessions.</li>
+      <li>an admin user deletes the client's session(s) via SEMPv2 or the <MadCap:variable name="Product-Names.solace_cli"/>.</li>
+      <li>the broker restarts.</li>
+    </ul>
+    <p>When the session terminates for any reason, the associated token immediately becomes invalid and cannot be used again. The client must authenticate again to create a new session cookie.</p>
+    <p>A client can retrieve its current session information using the <code>/about/user</code> endpoint and delete its own session using the <code>/about/user/logout</code> endpoint. A client with appropriate permissions can also manage all sessions using the <code>/sessions</code> endpoint.</p>
+    <p>Sessions are not created when authenticating with an OAuth token or tokens using HTTP Bearer authentication. If a session cookie is provided, it is ignored.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For information about configuring sessions, see <MadCap:xref href="../../Services/Managing-Services.htm#manage-SEMP-sessions">Managing SEMP Sessions</MadCap:xref>.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Sessions are also used by <MadCap:variable name="Product-Names.pubsubmanager_short"/>. For details, see <MadCap:xref href="../Broker-Manager/PubSub-Manager-Sessions.htm">[%=Product-Names.pubsubmanager_short%] Sessions</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Role-Bas"/>Role-Based Access Control</h2>
+    <p>SEMP supports role-based access control. When executing commands against an event broker, the SEMP user will be authenticated as an event broker <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">management</MadCap:conditionalText> <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">Administrator </MadCap:conditionalText>user <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">(equivalent to a <MadCap:variable name="Product-Names.solace_cli"/> user) </MadCap:conditionalText>and receive the access level and scope assigned to that <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">management </MadCap:conditionalText>user. The following is a brief summary of role-based access control on event brokers. For more details refer to <MadCap:xref href="../Configuring-Mgmt-and-Shell-Users.htm" MadCap:conditions="SAP.SapHideFromOutput">Management &amp; Shell Users</MadCap:xref><MadCap:xref href="../../Cloud/cloud-user-management.htm" MadCap:conditions="SAP.SapOnlyOutput">Managing Users, Groups, Roles, and Permissions</MadCap:xref>, which provides full details of the rules and how they work together to provide access control.</p>
+    <p>There are two command scopes supported on the event broker:</p>
+    <ul>
+      <li>Global</li>
+      <li>Message VPN</li>
+    </ul>
+    <p>There are four user access levels in the event broker:</p>
+    <ul>
+      <li>none</li>
+      <li>read-only</li>
+      <li> read-write</li>
+      <li>admin</li>
+    </ul>
+    <p>Each attribute of a SEMP Resource is assigned a minimum access scope and user access level.</p>
+    <p>A <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">management </MadCap:conditionalText>user is then assigned access levels for both the global level and for one or more Message VPNs. This forms the <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">management </MadCap:conditionalText>user's role-based access control. For example:</p>
+    <ul>
+      <li>A system-wide event broker administrator would be assigned a global access level of admin, which allows that user to read and modify any attribute of any resource in the API, whether it is a global-scoped or Message VPN-scoped attribute.</li>
+      <li>A Message VPN administrator would be assigned a global access level of none and a Message VPN access level of read-write for the Message VPN the administrator is responsible for.</li>
+    </ul>
+    <p class="Note" MadCap:conditions="SAP.SapOnlyOutput">By default, no user has a global access level of admin. To grant a user with this access-level <a href="../../get-support.htm" target="_blank" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a>.</p>
+    <p>There are many more examples of how you can effectively use the scope and access level for different types of users. For more examples see the documentation referenced above.</p>
+    <p>In general, in the SEMP API all resources under <code>/msgVpns/&lt;msgVpnName&gt;/...</code> are part of the Message VPN scope. All other top-level resources form part of the global scope. The <code>/msgVpns/&lt;msgVpnName&gt;</code> is one resource where the scope of attributes is mixed. Some attributes require global scope and some require Message VPN-level scope. In all cases, the <MadCap:xref href="SEMP-API-Ref.htm">SEMP API Reference</MadCap:xref> makes it clear which scope and access level is required for each SEMP resource.</p>
+    <p class="Note">The PUT method respects attribute scope levels, and updates every attribute in a resource. Attributes that are not specified in the body of a PUT request are reset to their default values. However, if a user does not have sufficient role based access scope to modify an attribute, then the attribute will not be returned to its default value. In effect, some more powerful user has chosen a different default and the attribute is ignored, but the PUT request will still be successful. This makes the SEMP API useable by SEMP users with global scope and message VPN scope with consistent behavior.</p>
+  </body>
+</html>

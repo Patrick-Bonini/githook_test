@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Replication Best Practices</h1>
+    <p>This section describes considerations that should be made when your client applications are to be used with Solace PubSub+ event brokers using the Replication facility, which provides a data center redundancy and disaster recovery solution for Solace PubSub+.</p>
+    <h2 class="with-rule"><a name="Messagin"/>Messaging API Versions</h2>
+    <p>It is strongly recommended that Replication-aware applications use release 7.1.2  or later Solace enterprise messaging APIs. These versions support automatic handling of replication failovers. When a replication failover occurs, the API properly handles any in-progress messages or transactions. </p>
+    <h2 class="with-rule"><a name="Host"/>Host Lists</h2>
+    <p>Applications should be configured with a host list of two addresses, one for the Guaranteed Messaging-enabled virtual router at each site. The addresses can be either IP addresses or hostnames.</p>
+    <p>When the application attempts to connect to a standby event broker, the connection will be rejected by the event broker. After the specified number of retries per host, the API will attempt to connect to the other host in the host list. Normally, for an application to be used with Replication, if a connection fails for one host it would be good to immediately attempt to connect to the other host before retrying the same host. Therefore, setting a reconnect retries per host of 1 is recommended.</p>
+    <p class="Note">Host lists should not be used if you are using an active/active Replication deployment, where clients are consuming messages from endpoints on the Replication active Message VPN or on its mate Replication standby Message VPN. For such a deployment, each consuming client should only attempt to connect to the Replication active Message VPN on one host or the Replication standby Message VPN on its mate.</p>
+    <h2 class="with-rule"><a name="Automati"/>Automatic Reconnect</h2>
+    <p>When using a Solace messaging API's automatic reconnect feature, it should be noted that the duration of a Replication failover will be minutes or hours because operator intervention is required for the switchover. Therefore, it is recommended to set the number of reconnect retries to -1, which allows a client application to attempt to reconnect indefinitely.</p>
+    <p>For an example of how to handle Replication reconnects, see the <code>Replication</code> sample that is included with the Solace messaging API that you are using.</p>
+    <h2 class="with-rule"><a name="Queue"/>Queue Network Names</h2>
+    <p>The queue network name interface has been deprecated in the APIs with the release of Replication. The reason is that queue network names change between different virtual routers, but Replication applications need to ensure queue naming is consistent within a paired Replication site.</p>
+    <p>For the C messaging API, it is recommended to provide the application queue name directly as the <code>SOLCLIENT_ENDPOINT_PROP_NAME</code> and the <code>SOLCLIENT_FLOW_PROP_BIND_NAME</code>, rather than obtaining the name from a call to <code>solClient_createQueueNetworkName()</code>, which is a deprecated function.</p>
+    <p>For the JCSMP Messaging API, it is recommended to call <code>JCSMPFactory.createQueue(String name)</code> rather than <code>JCSMPFactory.createQueue(String name, String virtualRouterName</code>. The latter is a deprecated method.</p>
+  </body>
+</html>

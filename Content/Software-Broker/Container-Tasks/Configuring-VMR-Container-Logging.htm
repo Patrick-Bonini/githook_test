@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Software"/>Configuring Container Logging</h1>
+    <p>By default, the Solace PubSub+ software event broker generates log messages, based on the format defined in RFC 3164,  and directs them to log files for each logging facility in <code>/var/lib/solace/jail/logs</code>. In addition, you can use the Solace CLI to direct each of the logging facilities to a remote syslog receiver. With the container package of the PubSub+ software event broker, you can also use configuration keys when you create the  container to configure the event broker to direct the logging facilities to <code>stdout</code> . If you direct the logging facilities to <code>stdout</code>, you can modify the output format and use the container runtime logging drivers to forward the output to an alternate location, for example an external log aggregator, for additional storage, analysis, and reporting. </p>
+    <p>For more information about event broker logging, including a detailed description of the default syslog message format, see the <MadCap:xref href="../../Monitoring/Monitoring-and-Management.htm">Monitoring Guide</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Select-Log-Fac"/>Selecting Logging Facilities</h2>
+    <p>When you use configuration keys to format or direct log output, you must  include the logging facility name in the configuration key name. This allows you to control the output destination and format of each facility independently.</p>
+    <p>You can configure the output destination, and format (if <code>stdout</code> is specified as the destination) for each of the following  logging facilities:</p>
+    <table style="margin-left: 0;margin-right: auto;caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Logging Facility</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>debug</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Actions performed or errors encountered by debug processes used for internal debugging.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>command</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Actions performed or errors encountered by commands issued at the Solace Command Line Interface (CLI) prompt, by CLI script files, or by SEMP.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>system</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Incidents or errors encountered by event broker processes that relate to the health of the event broker. The <code>system</code> facility is a subset of the <code>event</code> facility.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <code>event</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">Incidents or errors encountered by event broker processes, for example event broker events related to publishers and subscribers.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <code>kernel</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">Action performed or errors encountered by low level processes  used for internal debugging.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>For example:</p>
+    <pre class="Code" xml:space="preserve">logging_command_output=stdout
+logging_system_output=all</pre>
+    <p>In this example, output for the <code>command</code> facility is directed to <code>stdout</code> and output for the <code>system</code> facility is directed to both a file on the local host and <code>stdout</code>.</p>
+    <h2 class="with-rule"><a name="Config-Output-Dest"/>Configuring the Log Output Destination</h2>
+    <p>To configure the software event broker logging facility output destination,  include the <code>logging/&lt;log_facility&gt;/output</code> configuration key during container initialization and specify one of the following  values: </p>
+    <table style="margin-left: 0;margin-right: auto;caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Output Destination</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>file</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Default output destination. Directs the logging facility to the appropriate log file in  <code>/usr/sw/jail/logs</code> on the local host.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>stdout</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Directs the logging facility to <code>stdout</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>all</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Directs the logging facility to both a log file on the local host and <code>stdout</code>. </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <code>none</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>Directs the logging facility to neither a log file nor to <code>stdout</code> (effectively NULL). </p>
+            <p>Be aware that setting the logging facility output destination to <code>none</code> is equivalent to disabling the logging facility.</p>
+            <p> Solace recommends against this setting because logs generated for the corresponding facility are effectively lost.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>For example:</p>
+    <pre class="Code">logging_debug_output=all
+logging_command_output=all
+logging_system_output=all
+logging_event_output=all
+logging_kernel_output=all</pre>
+    <p>In this example, output for all logging facilities is directed to both a log file on the local host and the software event broker container's <code>stdout</code> I/O stream. </p>
+    <p>If you direct multiple logging facilities  to <code>stdout</code>, all facilities are combined into a single stream. To extract the facilities from the output, use a log aggregator (Logstash, Fluentd) and filter on the logging facility field you are interested in.</p>
+    <h2 class="with-rule"><a name="Config-Out-Form"/>Configuring the Log Output Format</h2>
+    <p>To configure the logging facility output format for a container, include the <code>logging/&lt;log_facility&gt;/format</code> configuration key during container initialization and specify one of the following values:</p>
+    <table style="margin-left: 0;margin-right: auto;caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Log Output Format</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>graylog</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>JSON format that is supported by Graylog, Logstash, and Fluentd.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>rfc5424</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Syslog format that is supported by syslog and log aggregators such as Logstash and Fluentd via plugins.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>raw</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>No formatting is applied to the logging facility. </p>
+            <p class="Note">If you select this value, log output does not include timestamp information.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <code>legacy</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>Default syslog format. This is the format that all logs are written in when you specify the <code>file</code> output destination.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>For example:</p>
+    <pre class="Code" xml:space="preserve">logging_debug_format=graylog
+logging_command_format=graylog
+logging_system_format=graylog
+logging_event_format=graylog
+logging_kernel_format=graylog</pre>
+    <p>In this example,  logging facility output is converted to a JSON format that is supported by Graylog log aggregators such as Logstash or Fluentd.</p>
+    <p class="Note">Changing this value affects only the format of logging facilities sent to <code>stdout</code>. The log files in <code>/usr/sw/jail/logs</code> are always in the <code>legacy</code> format. </p>
+    <h2 class="with-rule"><a name="Config-Out-Drive"/>Forwarding the Log Output</h2>
+    <p>If you configure the output destination for the software event broker container logs to <code>stdout</code>, you can use logging drivers to forward the combined log stream  for further storage, reporting, and analysis.</p>
+    <p>For Docker or Podman, include the <code>--log-driver &lt;string&gt;</code> create option during container initialization and specify a supported logging driver, in combination with the appropriate <code>--log-opt &lt;value&gt;</code> options, to forward the log stream to your desired destination.</p>
+    <p>For example: </p>
+    <pre class="Code" xml:space="preserve">--log-driver syslog
+--log-opt syslog-format=rfc5424micro
+--log-opt syslog-address=tcp://192.168.1.1:12201</pre>
+    <p>In this example, all logging facilities directed to <code>stdout</code> are forwarded to an external syslog server located at <code>192.168.1.1:12201</code>.</p>
+    <p>For more information about using logging drivers and corresponding options to forward the <code>stdout</code> I/O stream, as well as which logging drivers are supported, see:</p>
+    <ul>
+      <li><a href="https://docs.docker.com/config/containers/logging/configure/" class="link-offsite" target="_blank">Configure Logging Drivers</a> in the Docker documentation</li>
+      <li><code>--log-driver=driver</code> entry in the <a href="https://docs.podman.io/en/latest/markdown/podman-run.1.html" target="_blank" class="link-offsite">Podman run</a> documentation</li>
+    </ul>
+  </body>
+</html>

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>How Specify Message QoS</h1>
+    <p>It's possible to specify whether a message is being published as Persistent (Guaranteed), Non-Persistent, or Direct , and in this section we'll describe how to do each:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#How">How To Publish Persistent Messages</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#How2">How To Publish Non-Persistent Messages</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#How3">How To Publish Direct Messages</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="How"/>How To Publish Persistent Messages</h2>
+    <h4>Set</h4>
+    <ul>
+      <li><code>Send-Settle-Mode</code> in the attach frame with <code>role=sender</code> from the client to either <code>unsettled</code> (0) or <code>mixed</code> (2).</li>
+      <li>the <code>Durable</code> field in the message header to <code>true</code>.</li>
+    </ul>
+    <h4>Example Code Snippets</h4>
+    <ul>
+      <li>with Qpid JMS, this is the default QoS. To explicitly specify it, format the url as</li>
+      <p class="Code">"amqp://" + host + ":" + port + "?jms.presettlePolicy.presettleProducers=false"</p>
+      <p>and specify the delivery mode in the <code>send</code></p>
+      <p class="Code">producer.send(txMessage,DeliveryMode.PERSISTENT, 0, txLongData);</p>
+      <li>with node-amqp10</li>
+      <p class="Code">var policy = amqp.Policy.merge({<br/>    attach: { sndSettleMode: 0},<br/>    header: {'durable' : encoder(['boolean', true])}<br/>});<br/>var client = new AMQPClient(policy);<br/>...<br/>client.connect(uri)<br/>  .then(function() {<br/>    return Promise.all([<br/>      client.createSender('', policy),<br/>    ]);<br/>  })<br/>.spread(function(sender) {<br/>    var promises = [];<br/>    promises.push(sender.send('message', policy));<br/>...<br/>});</p>
+      <li>with Qpid Proton and Python bindings</li>
+      <p class="Code">message = Message(durable=True, body='message')<br/>self.sender.send(message)</p>
+      <li>with Qpid Proton and C++ bindings</li>
+      <p class="Code">sender.snd_settle_mode = sender.SND_UNSETTLED<br/>message = Message(durable=True, body='message')</p>
+    </ul>
+    <h2 class="with-rule"><a name="How2"/>How To Publish Non-Persistent Messages</h2>
+    <h4>Set</h4>
+    <ul>
+      <li><code>Send-Settle-Mode</code> in the attach frame with <code>role=sender</code> from the client to either <code>unsettled</code> (0) or <code>mixed</code> (2).</li>
+      <li>the <code>Durable</code> field in the message header to <code>false</code>.</li>
+    </ul>
+    <h4>Example Code Snippets</h4>
+    <ul>
+      <li>with Qpid JMS format the url as</li>
+      <p class="Code">"amqp://" + host + ":" + port + "?jms.presettlePolicy.presettleProducers=false"</p>
+      <p>and specify the delivery mode in the send:</p>
+      <p class="Code">producer.send(txMessage,DeliveryMode.NON_PERSISTENT,…</p>
+      <li>with node-amqp10</li>
+      <p class="Code">var policy = amqp.Policy.merge({<br/>    attach: { sndSettleMode: 0},<br/>    header: {'durable' : encoder(['boolean', false])}<br/>});<br/>var client = new AMQPClient(policy);<br/>...<br/>client.connect(uri)<br/>  .then(function() {<br/>    return Promise.all([<br/>      client.createSender('', policy),<br/>    ]);<br/>  })<br/>.spread(function(sender) {<br/>    var promises = [];<br/>    promises.push(sender.send('message', policy));<br/>...<br/>});</p>
+      <li>with Qpid Proton and Python bindings</li>
+      <p class="Code">message = Message(durable=False, body='message')<br/>self.sender.send(message)</p>
+      <li>with Qpid Proton and C++ bindings</li>
+      <p class="Code">sender.snd_settle_mode = sender.SND_UNSETTLED<br/>message = Message(durable=False, body='message')</p>
+    </ul>
+    <h2 class="with-rule"><a name="How3"/>How To Publish Direct Messages</h2>
+    <h4>Set</h4>
+    <ul>
+      <li><code>Send-Settle-Mode</code> in the attach frame with <code>role=sender</code> from the client to <code>settled</code> (1).</li>
+      <li>the <code>Settled</code> field in the message header to <code>true</code>.</li>
+      <p>Most clients automatically set the <code>Settled</code> field in the message header consistent with the specified <code>Send-Settle-Mode</code>.</p>
+    </ul>
+    <h4>Example Code Snippets</h4>
+    <ul>
+      <li>with Qpid JMS, format the url as</li>
+      <p class="Code">"amqp://" + host + ":" + port + "?jms.presettlePolicy.presettleProducers=true”</p>
+      <li>with node-amqp10</li>
+      <p class="Code">var policy = amqp.Policy.merge({<br/>    attach: { sndSettleMode: 1},<br/>    header: {'durable' : encoder(['boolean', false])}<br/>});<br/>var client = new AMQPClient(policy);<br/>...<br/>client.connect(uri)<br/>  .then(function() {<br/>    return Promise.all([<br/>      client.createSender('', policy),<br/>    ]);<br/>  })<br/>.spread(function(sender) {<br/>    var promises = [];<br/>    promises.push(sender.send('message', policy));<br/>...<br/>});</p>
+      <li>with Qpid Proton and Python bindings</li>
+      <p class="Code">self.sender = event.container.create_sender(self.url, options=AtMostOnce())</p>
+      <li>with Qpid Proton and C++ bindings</li>
+      <p class="Code">sender.snd_settle_mode = sender.SND_SETTLED</p>
+    </ul>
+  </body>
+</html>

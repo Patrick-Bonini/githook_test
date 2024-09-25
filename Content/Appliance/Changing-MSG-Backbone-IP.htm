@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><MadCap:concept term="Appliance"/>Changing Msg-Backbone IPs for Replicated Appliances</h1>
+    <p>The following procedure provides an example of the steps that are required to change the msg-backbone IP (primary or backup) used by a redundant pair of Solace PubSub+ appliances that are part of a Replicated site. </p>
+    <p>To perform this procedure, Config-Sync must be up.</p>
+    <ol>
+      <li>Shut down the msg-backbone service on both primary and backup appliances at the primary replication site (site A, in this example).        
+<pre class="Code">site-a-primary(configure)# service msg-backbone shutdown
+All clients will be disconnected.
+Do you want to continue (y/n)? y 
+
+site-a-backup(configure)# service msg-backbone shutdown
+All clients will be disconnected.
+Do you want to continue (y/n)? y</pre></li>
+      <li>Shut down replication for each replicated Message VPN on the primary                appliances at both the primary replication site and the backup replication site (site B, in this example).<pre class="Code" xml:space="preserve">site-a-primary(configure)# message-vpn &lt;vpnName&gt;
+site-a-primary(configure/message-vpn)# replication shutdown
+					
+site-b-primary(configure)# message-vpn &lt;vpnName&gt;
+site-b-backup(configure/message-vpn)# replication shutdown</pre><p>Repeat this step for each Replication-enabled Message VPN.</p></li>
+      <li>Shut down redundancy on both primary and backup appliances at the primary Replication site.
+<pre class="Code">site-a-primary(configure)# redundancy shutdown
+site-a-backup(configure)# redundancy shutdown</pre></li>
+      <li>If there are is a Message VPN bridge connecting remotely to a Message VPN on the primary appliance, shut down that Message VPN bridge from the remote appliance that the bridge is connecting from.
+<pre class="Code">solaceOther(configure)# bridge &lt;bridgeName&gt; message-vpn &lt;vpnName&gt;
+solaceOther(configure/bridge)# remote message-vpn &lt;vpnName&gt; connect-via 192.168.181.109 interface 1/6/lag1
+solaceOther(configure/bridge/remote/message-vpn)# shutdown</pre><p>Repeat this step for each bridge that is connecting remotely to the primary appliance.</p></li>
+      <li>Shut down the message-spool on both the primary and backup appliances at the primary replication site.
+<pre class="Code">site-a-primary(configure)# hardware message-spool shutdown
+site-a-backup(configure)# hardware message-spool shutdown</pre></li>
+      <li>Shut down the IP interfaces on both the primary and backup appliances at the primary replication site.
+                <p class="Note" MadCap:autonum="&lt;b&gt;:  &lt;/b&gt;">Only the IP interfaces that are going to be changed need to be shutdown. In this example, the primary interface of 1/6/lag1 on the primary appliance will be changed. The backup IP on the backup appliance must also be changed in this case.</p><pre class="Code">site-a-primary(configure)# ip vrf msg-backbone
+site-a-primary(configure/ip/vrf)# interface 1/6/lag1:1 primary
+site-a-primary(configure/ip/vrf/interface)# shutdown
+
+site-a-backup(configure)# ip vrf msg-backbone
+site-a-backup(configure/ip/vrf)# interface 1/6/lag1:2 backup
+site-a-backup(configure/ip/vrf/interface)# shutdown</pre></li>
+      <li>Change the IP address.
+            <p class="Note" MadCap:autonum="&lt;b&gt;:  &lt;/b&gt;">If the primary IP is changed, the backup appliance’s backup IP must match this. If the backup IP is changed, the backup appliance’s primary IP must match this.</p><pre class="Code">site-a-primary(configure)# ip vrf msg-backbone
+site-a-primary(configure/ip/vrf)# interface 1/6/lag1:1 primary
+site-a-primary(configure/ip/vrf/interface)# ip-address 192.168.181.110/19
+
+site-a-backup(configure)# ip vrf msg-backbone
+site-a-backup(configure/ip/vrf)# interface 1/6/lag1:2 backup
+site-a-backup(configure/ip/vrf/interface)# ip-address 192.168.181.110/19</pre></li>
+      <li>Start the interfaces that were stopped.
+<pre class="Code">site-a-primary(configure)# ip vrf msg-backbone
+site-a-primary(configure/ip/vrf)# interface 1/6/lag1:1 primary
+site-a-primary(configure/ip/vrf/interface)# no shutdown
+
+site-a-backup(configure)# ip vrf msg-backbone
+site-a-backup(configure/ip/vrf)# interface 1/6/lag1:2 backup
+site-a-backup(configure/ip/vrf/interface)# no shutdown</pre></li>
+      <li>Enter the <code>assert-disk-ownership</code> command on both the primary and backup appliances.
+<pre class="Code">site-a-primary# admin
+site-a-primary(admin)# system message-spool assert-disk-ownership
+This disk wwn must only be in use by this router and its mate if paired.
+Do you want to continue (y/n)? y
+
+site-a-backup# admin
+site-a-backup(admin)# system message-spool assert-disk-ownership
+This disk wwn must only be in use by this router and its mate if paired.
+Do you want to continue (y/n)? y</pre></li>
+      <li>Start the message spool that was shut down on both appliances.
+<pre class="Code">site-a-primary(configure)# no hardware message-spool shutdown primary
+
+site-a-backup(configure)# no hardware message-spool shutdown backup</pre></li>
+      <li>Start redundancy on both appliances.
+<pre class="Code">site-a-primary(configure)# no redundancy shutdown
+
+site-a-backup(configure)# no redundancy shutdown</pre></li>
+      <li>Edit the replication mate on the standby replication site to connect with the new IP.
+<pre class="Code">site-b-primary(configure)# replication mate virtual-router-name v:site-a-primary connect-via 192.168.181.110</pre></li>
+      <li>Enable all replicated Message VPNs that were shut down on the primary appliances at both replication sites.
+<pre class="Code">site-a-primary(configure)# message-vpn &lt;vpnName&gt;
+site-a-primary(configure/message-vpn)# no replication shutdown
+
+site-b-primary(configure)# message-vpn &lt;vpnName&gt;
+site-b-backup(configure/message-vpn)# no replication shutdown</pre><p>Repeat this step for each replication-enabled Message VPN.</p></li>
+      <li>Do one of the following, as appropriate:</li>
+      <ol style="list-style-type: lower-alpha;">
+        <li>If the remote bridges that were previously shut down are connecting with a DNS name, reconfigure the DNS name to resolve to the new IP and re-enable the remote Message VPNs on the bridge from the remote appliance:
+<pre class="Code">solaceOther(configure)# bridge &lt;bridgeName&gt; message-vpn &lt;vpnName&gt;
+solaceOther(configure/bridge)# remote message-vpn &lt;vpnName&gt; connect-via site-a-primary interface 1/6/lag1
+solaceOther(configure/bridge/remote/message-vpn)# no shutdown</pre></li>
+        <li>If the remote bridges that were previously shut down are connecting with an IP address, remove the remote Message VPN from the bridge and create a new remote Message VPN on the bridge that is configured to connect with the new IP:
+<pre class="Code">solaceOther(configure)# bridge &lt;bridgeName&gt; message-vpn &lt;vpnName&gt;
+solaceOther(configure/bridge)# no remote message-vpn &lt;vpnName&gt; connect-via 192.168.181.109 interface 1/6/lag1
+solaceOther(configure/bridge)# create remote message-vpn &lt;vpnName&gt; connect-via 192.168.181.110 interface 1/6/lag1
+solaceOther(configure/bridge/remote/message-vpn)# no shutdown</pre></li>
+      </ol>
+      <li>Start the msg-backbone service that was shut down on both appliances.
+<pre class="Code">site-a-primary(configure)# no service msg-backbone shutdown
+
+site-a-backup(configure)# no service msg-backbone shutdown</pre></li>
+    </ol>
+  </body>
+</html>

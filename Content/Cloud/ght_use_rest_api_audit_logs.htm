@@ -1,0 +1,506 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1 class="title"><MadCap:concept term="Cloud"/>Managing Audit Logs with the <MadCap:variable name="Product-Names.cloud_product_titlecase"/> REST API</h1>
+    <p>In <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.cloud_product_long"/></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><MadCap:variable name="Product-Names.cloud_product_firstuse"/></MadCap:conditionalText>, the REST APIs allow you to retrieve the audit logs for only your user profile or for all users in your account (organization). </p>
+    <MadCap:snippetBlock src="../Resources/Snippets/Cloud/audit-log-intro.flsnp"/>
+    <p>This tutorial  shows you how to use the REST API in <MadCap:variable name="Product-Names.cloud_product_short"/> to retrieve the audit logs. Optionally, you can use parameters to filter and sort the audit logs that are retrieved. For more information about the REST API calls, see the following table:</p>
+    <table style="caption-side: top;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">REST API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1"><code>GET</code> <code><MadCap:variable name="Manifest-Products-Links.CloudRestAPIBaseURL"/><MadCap:variable name="Manifest-Products-Links.CloudRestAPIv2"/>audit/logs</code></td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Retrieves audit logs. Optionally, you can specify query parameters to filter the audit logs that are retrieved. For more information, see <MadCap:xref href="#download-audit-log">Retrieving and Downloading Audit Logs Using the [%=Product-Names.cloud_product_titlecase%] REST API</MadCap:xref>.</p>
+            <p>For information about the response, see <MadCap:xref href="#details-audit-log-response">Details about the Audit Log Response</MadCap:xref>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1"><code>GET</code> <code><MadCap:variable name="Manifest-Products-Links.CloudRestAPIBaseURL"/><MadCap:variable name="Manifest-Products-Links.CloudRestAPIv2"/>audit/categories</code></td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>Retrieves the event categories and available event types for each category. For more information, see <MadCap:xref href="#retrieve-categories-event-types">Retrieving the Available Categories and Event Types for Audit Logs</MadCap:xref>.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2>Before You Begin</h2>
+    <p>To use this tutorial, you require the following:</p>
+    <ul>
+      <li>An account with <MadCap:variable name="Product-Names.cloud_product_short"/> and an <MadCap:variable name="Product-Names.broker_cloud_short"/>.<ul><li>Users with the Administrator role can access the audit logs for the whole organization. They can view and track actions performed by all other users and retrieve all audit logs within the account.</li><li>Users without the Administrator role can access only their own audit logs and retrieve them.</li></ul></li>
+      <li>An API token must be available in the account with at least one of the following permissions to retrieve audit logs:
+                <ul><li><b>Retrieve my audit logs</b>—permits you to retrieve the  audit logs that pertain to you</li><li><b>Retrieve my organization's audit logs</b>—permits you to retrieve the audit logs for the organization for which you belong</li></ul><p>For more information, see <MadCap:xref href="ght_api_tokens.htm#Create">Creating an API Token</MadCap:xref>.</p></li>
+      <li>
+        <p>Audit logs are collected that provide records for user access in <MadCap:variable name="Product-Names.cloud_product_short"/> and management activities of <MadCap:variable name="Product-Names.broker_cloud_short_intitalcap"/>. The audit logs are not used for the monitoring of the messaging statistics of the <MadCap:variable name="Product-Names.broker_cloud_short"/>s. If you require logs for the messaging activities on <MadCap:variable name="Product-Names.broker_cloud_short"/>s, see how to forward logs from an <MadCap:variable name="Product-Names.broker_cloud_short"/> to a server or an external log monitoring system that you control. For more information, see <MadCap:xref href="cloud-syslog-forwarding.htm">Forwarding Logs to an External System</MadCap:xref> or consider using <MadCap:variable name="Product-Names.insights_long"/>.</p>
+      </li>
+      <li>
+        <p>To run the commands, you require a REST client of your choice. For testing purposes, you can use Postman, which is a visual REST API development tool. At this time, there is no Solace Blog available. To  use Postman for the Audit Log REST API, you can type the REST API call after you've set up Postman.</p>
+        <MadCap:snippetBlock src="../Resources/Snippets/Cloud/restapi_checktoken_nosolaceblog.flsnp"/>
+      </li>
+    </ul>
+    <h2><a name="download-audit-log"/>Retrieving Audit Logs Using the <MadCap:variable name="Product-Names.cloud_product_titlecase"/> REST API</h2>
+    <p>You can use the <MadCap:variable name="Product-Names.cloud_product_short"/> REST API  to retrieve the audit logs. Optionally, you can use query parameters to sort and apply filtering to the audit logs:</p>
+    <ol>
+      <li>Using Postman, enter a GET request to <code><MadCap:variable name="Manifest-Products-Links.CloudRestAPIBaseURL"/><MadCap:variable name="Manifest-Products-Links.CloudRestAPIv2"/>audit/logs</code>.</li>
+      <li>
+        <p>(Optional) In the GET request URL (or using the <b>Params</b> tab in Postman), specify query parameters to sort, control pagination, control the download format, or filter the audit logs:</p>
+        <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+          <col class="TableStyle-Table_Num-Column-Column1"/>
+          <col class="TableStyle-Table_Num-Column-Column1"/>
+          <thead>
+            <tr class="TableStyle-Table_Num-Head-Header1">
+              <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Query Parameters</th>
+              <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p> </p>
+                <code>pageSize=&lt;page-size&gt;</code>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p>An integer for size that lists the number of audit logs for each page. The default is 25. </p>
+                <p>For example, four results per page: <code><MadCap:variable name="Manifest-Products-Links.CloudRestAPIBaseURL"/><MadCap:variable name="Manifest-Products-Links.CloudRestAPIv2"/>audit/logs?pageSize=4</code>.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <code>pageNumber=&lt;page&gt;</code>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p>An integer to specify  the page to retrieve. </p>
+                <p>For example: <code><MadCap:variable name="Manifest-Products-Links.CloudRestAPIBaseURL"/><MadCap:variable name="Manifest-Products-Links.CloudRestAPIv2"/>audit/logs?pageNumber=4</code>.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <code>sort=&lt;sortField&gt;:&lt;sortDirection&gt;</code>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p>Specify the sort order of the results using one of the following parameters:</p>
+                <ul>
+                  <li>
+                    <p>For <code>sortField</code>, you can use <code>endTime</code> or <code>startTime</code>.</p>
+                  </li>
+                  <li>
+                    <p>For <code>sortDirection</code>, you can use <code>asc</code> for ascending order) or <code>desc</code> (descending order), which is the default option.</p>
+                  </li>
+                </ul>
+                <p>For example, to sort the starting time by ascending order: <code><MadCap:variable name="Manifest-Products-Links.CloudRestAPIBaseURL"/><MadCap:variable name="Manifest-Products-Links.CloudRestAPIv2"/>audit/logs?sort=startTime:asc</code>.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+                <code>startTime=&lt;start-time&gt;</code>
+              </td>
+              <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+                <p>The start time of the audit log that is specified using ISO 8601 Date/Time format. Filters based on logs after the specified start time.</p>
+                <p> For example: <code><MadCap:variable name="Manifest-Products-Links.CloudRestAPIBaseURL"/><MadCap:variable name="Manifest-Products-Links.CloudRestAPIv2"/>audit/logs?startTime=2022-08-22T18:36:23.830Z</code>.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <code>endTime=&lt;end-time&gt;</code>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p>The end time of the audit log that is specified using ISO 8601 Date/Time format.  Filters based on logs prior to the specified end time.</p>
+                <p>For example: <code><MadCap:variable name="Manifest-Products-Links.CloudRestAPIBaseURL"/><MadCap:variable name="Manifest-Products-Links.CloudRestAPIv2"/>audit/logs?endTime=2022-08-22T19:36:23.830Z</code>.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <code>traceId=&lt;trace-id&gt;</code>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p>The trace identifier used for the audit log.</p>
+                <p> For example: <code><MadCap:variable name="Manifest-Products-Links.CloudRestAPIBaseURL"/><MadCap:variable name="Manifest-Products-Links.CloudRestAPIv2"/>audit/logs?traceId=f558c08b86f6b291</code>.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <code>eventCategory=&lt;category&gt;</code>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p>The category of the audit log. You can specify one of the following categories:</p>
+                <ul>
+                  <li><code>SERVICE</code>—service lifecycle and management activities that occur to the <MadCap:variable name="Product-Names.broker_cloud_short"/>s in the account</li>
+                  <li><code>IAM</code>—user access activities that occur to the account </li>
+                </ul>
+                <p>For example, to find all logs about access to the account, <code><MadCap:variable name="Manifest-Products-Links.CloudRestAPIBaseURL"/><MadCap:variable name="Manifest-Products-Links.CloudRestAPIv2"/>audit/logs?eventCategory=IAM</code>.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+                <code>eventType=&lt;type&gt;</code>
+              </td>
+              <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+                <p>Based on what you specified for the <code>eventCategory</code> parameter, you can further filter based on these type of activities:</p>
+                <ul>
+                  <li>
+                    <p>For <code>SERVICE</code>, you can filter event types, such as <code>SERVICE_CREATE</code>, <code>SERVICE_UPDATE</code>, <code>SERVICE_UPGRADE</code>. </p>
+                  </li>
+                  <li>
+                    <p>For <code>IAM</code>, you filter on event types, such as <code>LOGIN</code>, <code>LOGOUT</code>, <code>USER_CREATION</code>, <code>USER_DELETION</code>. </p>
+                  </li>
+                </ul>
+                <p>You can use a REST API to determine the available event types for the <code>SERVICE</code> and <code>IAM</code> categories. For more information, see <MadCap:xref href="#retrieve-categories-event-types">Retrieving the Available Categories and Event Types for Audit Logs</MadCap:xref>.</p>
+                <p>For example, to find all logs for creating an <MadCap:variable name="Product-Names.broker_cloud_short"/>, <code><MadCap:variable name="Manifest-Products-Links.CloudRestAPIBaseURL"/><MadCap:variable name="Manifest-Products-Links.CloudRestAPIv2"/>audit/logs?eventCategory=SERVICE&amp;eventType=SERVICE_CREATE</code>.</p>
+              </td>
+            </tr>
+            <tr MadCap:conditions="" class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+                <code>downloadType=&lt;format&gt;</code>
+              </td>
+              <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+                <p>The only valid value for  <code>&lt;format&gt;</code> is <code>json</code> (for JSON-encoded format) at this time. If this parameter is used, the Content-Type header in the response is <code>application/octet-stream</code> instead of <code>application/json</code>.</p>
+                <p>For example: <code>https://api.solace.cloud/api/v2/audit/logs?downloadType=json</code></p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </li>
+      <li>In Postman, click <b>Send</b> to get the JSON response of the logs or click <b>Send and Download</b> to download the response as a JSON-encoded file.	<ul><li>If the call is successful, a  <code>200</code> response confirms the request was successful and the audit logs are returned. For information about the audit log, see <MadCap:xref href="#details-audit-log-response">Details about the Audit Log Response</MadCap:xref>.</li><li>If the call is not successful, a <code>400</code> response is returned that indicates the reason with one of the following in the response:</li><ul><li><p><code>Invalid entity type specified for the query parameter.</code>—The value is not a recognized value for the query parameter. The <code>validationDetails</code> object in the JSON response lists the valid values that can be used.</p></li><li><p><code>Invalid value &lt;your-value&gt; for query parameter &lt;API query parameter&gt;</code>—The format of your time you've specified must use ISO 8601 Date/Time format.  For example a valid Date/Time format string is <code>2022-08-22T19:36:23.830Z</code>. The <code>validationDetails</code> object lists in the error message shows the internal error message.</p></li><li><p><code>Invalid query parameter &lt;name-of-invalid-parameter-you-specified&gt;</code>—The query parameter that you specified does not exist for this REST call. Use one of the suggested parameters listed in the <code>validationDetails</code> object in the JSON response.</p></li></ul></ul><p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/restapi/get_audit_log.png" alt=""/></div></p></li>
+    </ol>
+    <h2><a name="details-audit-log-response"/>Details about the Audit Log Response</h2>
+    <p>Audit logs are returned as JSON. Each audit log is an element in a JSON array. A JSON object in the array represents an audit log with a <code>data</code> (audit logs) and <code>meta</code> (metadata for the audit logs). For example:</p>
+    <pre xml:space="preserve">
+{
+    "data": [
+        {
+            "id": "10dri30cmj1",
+            "source": "174.95.100.240",
+            "userId": "qe6mvlb39c1",
+            "resourceId": "mki3l8wy0m6",
+            "status": "FAILURE",
+            "eventCategory": "SERVICE",
+            "eventType": "SERVICE_DELETE",
+            "meta": {
+                "msg_vpn_name": "firstapp",
+                "service_class_id": "enterprise-kilo",
+                "responseCode": "200"
+            },
+            "description": "Enterprise service FirstApp failed to delete in gke-gcp-us-central1-a with version DHP-V21.1",
+            "shortDescription": "Enterprise service FirstApp failed to delete",
+            "traceId": "1d6d9998f2bf9a7e",
+            "duration": 906,
+            "orgId": "custdocteam",
+            "startTime": "2022-09-14T18:52:44.749Z",
+            "endTime": "2022-09-14T18:52:45.655Z"
+        },
+        {
+            "id": "10dri30cmhx",
+            "source": "174.95.100.240",
+            "userId": "qe6mvlb39c1",
+            "resourceId": "mki3l8wy0m6",
+            "status": "FAILURE",
+            "eventCategory": "SERVICE",
+            "eventType": "SERVICE_CREATE",
+            "meta": {
+                "msg_vpn_name": "firstapp",
+                "service_class_id": "enterprise-kilo",
+                "responseCode": "200"
+            },
+            "description": "Enterprise service FirstApp failed to create in gke-gcp-us-central1-a with version DHP-V21.1",
+            "shortDescription": "Enterprise service FirstApp failed to create",
+            "traceId": "5f67ba3ded5f4e8e",
+            "duration": 933,
+            "orgId": "custdocteam",
+            "startTime": "2022-09-14T18:51:07.521Z",
+            "endTime": "2022-09-14T18:51:08.454Z"
+        },
+...
+...
+...
+        {
+            "id": "10dri3031ff",
+            "source": "45.72.193.70",
+            "userId": "qe6mvlb39c1",
+            "status": "FAILURE",
+            "eventCategory": "SERVICE",
+            "eventType": "SERVICE_CREATE",
+            "meta": {
+                "service_class_id": "enterprise-250-sa",
+                "requestPath": "/api/v0/services",
+                "requestMethod": "POST",
+                "responseCode": "500"
+            },
+            "description": "Enterprise Standalone service Solace SA Service failed to create in gke-gcp-us-central1-a",
+            "shortDescription": "Enterprise Standalone service Solace SA Service failed to create",
+            "traceId": "3202c2193d5aa032",
+            "duration": 1,
+            "orgId": "solacedocs",
+            "startTime": "2022-09-14T13:05:45.623Z",
+            "endTime": "2022-09-14T13:05:45.624Z"
+        }
+    ],
+    "meta": {
+        "pagination": {
+            "pageNumber": 1,
+            "pageSize": 25,
+            "nextPage": 2,
+            "totalPages": 2,
+            "count": 43
+        }
+    }
+}</pre>
+    <p>The <code>data</code> object is a JSON array where each object in the log represents an audit log. The following JSON  describe the audit log as follows:</p>
+    <dl>
+      <dt>
+        <code>id</code>
+      </dt>
+      <dd>The identifier for the audit log.</dd>
+      <dt>
+        <code>source</code>
+      </dt>
+      <dd>The IP address of the where the activity originated.</dd>
+      <dt>
+        <code>userid</code>
+      </dt>
+      <dd>The identifier representing the user in the account that performed the activity.</dd>
+      <dt>
+        <code>resourceId</code>
+      </dt>
+      <dd>The service identifier or the user identifier. To determine the user, see <MadCap:xref href="ght_use_rest_api_users.htm">Managing Users with the [%=Product-Names.cloud_product_titlecase%] REST API.</MadCap:xref></dd>
+      <dt>
+        <code>status</code>
+      </dt>
+      <dd>The status of the activity</dd>
+      <dt>
+        <code>eventCategory</code>
+      </dt>
+      <dd>The category, which can be <code>SERVICE </code>or <code>IAM</code>.</dd>
+      <dt>
+        <code>eventType</code>
+      </dt>
+      <dd>The type of activity that occurred.</dd>
+      <dt>
+        <code>meta</code>
+      </dt>
+      <dd>The metadata for the audit log. For SERVICE audit logs, you have:
+                <ul><li><code>msg_vpn_name</code>—the name of the <MadCap:variable name="Product-Names.broker_cloud_short"/></li><li><code>service_class_id</code>—the service class of the <MadCap:variable name="Product-Names.broker_cloud_short"/></li><li><code>responseCode</code>—the response to the activity</li></ul></dd>
+      <dd>For IAM audit logs, you have:
+                 <ul><li><code>requestPath</code>—the REST API URL that was used for the activity</li><li><code>requestMethod</code>—the REST method used for the activity</li><li><code>responseCode</code>—the response to the activity</li></ul></dd>
+      <dt>
+        <code>description</code>
+      </dt>
+      <dd>The description for the activity and aligns with the event type. For SERVICE audit logs, this is the message of the activity. For IAM audit logs, this property is not returned.</dd>
+      <dt>
+        <code>shortDescription</code>
+      </dt>
+      <dd>For services, this is the short description message of the activity. For IAM audit logs, this <code>SUCCESS</code> or <code>FAILED</code> to indicate </dd>
+      <dt>
+        <code>traceId</code>
+      </dt>
+      <dd>An identifier useful for tracing related activities.</dd>
+      <dt>
+        <code>duration</code>
+      </dt>
+      <dd>The time in milliseconds for the activity to occur.</dd>
+      <dt>
+        <code>orgId</code>
+      </dt>
+      <dd>The organization identifier for the account. This value was assigned when you created the account.</dd>
+      <dt>
+        <code>startTime</code>
+      </dt>
+      <dd>The UTC time of when the activity started.</dd>
+      <dt>
+        <code>endTime</code>
+      </dt>
+      <dd>The UTC time when the activity completed.</dd>
+    </dl>
+    <p>The <code>meta</code> object after the JSON array describes the metadata for the audit logs and consists of a meta object that includes:</p>
+    <dl>
+      <dt>
+        <code>pagination</code>
+      </dt>
+      <dd>The pagination of the audit logs that includes the following information:</dd>
+      <dd>
+        <ul>
+          <li><code>pageNumber</code>—the current page number</li>
+          <li><code>pageSize</code>—the number of entries on each page</li>
+          <li><code>nextPage</code>—the next page</li>
+          <li><code>totalPages</code>—the total number of pages</li>
+          <li><code>count</code>—the total number of audit logs</li>
+        </ul>
+      </dd>
+    </dl>
+    <h2><a name="retrieve-categories-event-types"/>Retrieving the Categories and Event Types Using the REST API</h2>
+    <p>You can retrieve the available event categories and event types for audit logs using the REST API. </p>
+    <p>To do this, use a GET call to <code><MadCap:variable name="Manifest-Products-Links.CloudRestAPIBaseURL"/><MadCap:variable name="Manifest-Products-Links.CloudRestAPIv2"/>audit/categories</code>. </p>
+    <p MadCap:conditions="Default.HideFromAllOutput">NOTE TO WRITER: The following NOTE is should be removed and the logs correct after development fixes the logs. The logs should be updated as well. The issue tracking this https://sol-jira.atlassian.net/browse/DATAGO-62389.</p>
+    <p class="Note">The term <i>messaging services</i> in the audit logs refer to <MadCap:variable name="Product-Names.broker_cloud_short"/>s.</p>
+    <p>For example:</p>
+    <pre xml:space="preserve">[
+    <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">{
+        "category": "DISTRIBUTED_TRACING",
+        "types": [
+            {
+                "name": "DISTRIBUTED_TRACING_LIMIT_CHANGE",
+                "description": "Distributed Tracing Limit Change"
+            }
+        ]
+    },</MadCap:conditionalText>
+    {
+        "category": "IAM",
+        "types": [
+            {
+                "name": "UNKNOWN",
+                "description": ""
+            },
+            {
+                "name": "LOGIN",
+                "description": "User Login"
+            },
+            {
+                "name": "LOGOUT",
+                "description": "User Logout"
+            },
+            {
+                "name": "USER_CREATION",
+                "description": "User Creation"
+            },
+            {
+                "name": "USER_DELETION",
+                "description": "User Deletion"
+            },
+            {
+                "name": "USER_ACTIVATION",
+                "description": "User Activation"
+            },
+            <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">{
+                "name": "ROLE_UPDATE",
+                "description": "User Role Update"
+            },</MadCap:conditionalText>
+            {
+                "name": "PASSWORD_RESET",
+                "description": "User Password Reset"
+            },
+            {
+                "name": "PASSWORD_CHANGE",
+                "description": "User Password Change"
+            },<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">
+	     {
+                "name": "RESOURCE_ASSIGNMENT",
+                "description": "Resource Assignment"
+            },</MadCap:conditionalText>
+            {
+                "name": "USER_DELETE_ORGANIZATION",
+                "description": "User Organization Deletion"
+            },
+            {
+                "name": "USER_CREATE_ORGANIZATION",
+                "description": "User Organization Creation"
+            },
+            <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">{
+                "name": "ROLE_MAPPING_UPDATE",
+                "description": "Role-mapping Update"
+            },
+            {
+                "name": "GROUP_MAPPING_UPDATE",
+                "description": "Group-mapping Update"
+            },
+            {
+                "name": "USER_GROUP_ASSIGNMENT",
+                "description": "User Group Assignment"
+            },</MadCap:conditionalText>
+            {
+                "name": "ENVIRONMENT_CREATE",
+                "description": "Environment Creation"
+            },
+            {
+                "name": "ENVIRONMENT_UPDATE",
+                "description": "Environment Update"
+            },
+            {
+                "name": "ENVIRONMENT_DELETE",
+                "description": "Environment Delete"
+            }<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">,
+            {
+                "name": "USER_GROUP_CREATE",
+                "description": "User Group Creation"
+            },
+            {
+                "name": "USER_GROUP_UPDATE",
+                "description": "User Group Update"
+            },
+            {
+                "name": "USER_GROUP_DELETE",
+                "description": "User Group Delete"
+            }</MadCap:conditionalText>
+        ]
+    },
+    {
+        "category": "SERVICE",
+        "types": [
+            {
+                "name": "SERVICE_CREATE",
+                "description": "Messaging Service Creation"
+            },
+            {
+                "name": "SERVICE_CLONE",
+                "description": "Messaging Service Clone"
+            },
+            {
+                "name": "SERVICE_DELETE",
+                "description": "Messaging Service Deletion"
+            },
+            {
+                "name": "SERVICE_UPDATE",
+                "description": "Messaging Service Configuration Change"
+            },
+            {
+                "name": "SERVICE_FAILOVER",
+                "description": "Messaging Service Active Node Switch"
+            },
+            {
+                "name": "SERVICE_UPGRADE",
+                "description": "Messaging Service Upgrade"
+            },
+            {
+                "name": "SERVICE_SCALEUP",
+                "description": "Messaging Service Scale Up"
+            },
+            {
+                "name": "SERVICE_SHOW_PASSWORD",
+                "description": "Unmask password on Manage Service Settings"
+            },
+            {
+                "name": "SERVICE_SEMP_PASSWORD_CHANGE",
+                "description": "Messaging Service SEMP Password Change"
+            },
+            {
+                "name": "SERVICE_SEMP_USER_CHANGE",
+                "description": "Messaging Service SEMP User Change"
+            },
+            {
+                "name": "SERVICE_LIMIT_CHANGE_REQUEST",
+                "description": "Service Limit Change Request"
+            },
+            {
+                "name": "SERVICE_LIMIT_CHANGE",
+                "description": "Service Limit Change"
+            }<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">,
+            {
+                "name": "ENABLE_DISTRIBUTED_TRACING",
+                "description": "Enable Distributed Tracing"
+            },
+            {
+                "name": "DISABLE_DISTRIBUTED_TRACING",
+                "description": "Disable Distributed Tracing"
+            }</MadCap:conditionalText>
+        ]
+    }
+]</pre>
+  </body>
+</html>

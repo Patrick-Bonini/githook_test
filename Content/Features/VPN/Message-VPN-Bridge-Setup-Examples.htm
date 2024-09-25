@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>VPN Bridge Setup Examples</h1>
+    <p>The following examples show how to set up several types of Message VPN bridges.</p>
+    <p class="Note">By default, clients can't use the Message VPN bridge feature. Permission to use bridge connections must be enabled for their assigned client profile. For more details, refer to <MadCap:xref href="../../Security/Configuring-Client-Profiles.htm#allow-bridge-connections">Allowing Bridge Connections</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Uni"/>Uni-Directional Bridge Example</h2>
+    <p>This example shows a sample command sequence to bridge a Message VPN on the local event broker to another Message VPN with the same name on a remote event broker.</p>
+    <p>First, create the bridge (<code>bridge-490</code>) on the local event broker.</p>
+    <pre>solace(configure)# create bridge bridge-490 message-vpn vpn-490</pre>
+    <p>Next, configure the settings for the remote event broker. In the example below, the remote message VPN is also called <code>vpn-490</code>, and the IP address the bridge will use to connect to the remote event broker is 192.168.164.50.</p>
+    <pre>solace(configure/bridge)# remote
+solace(configure/bridge/remote)# create message-vpn vpn-490 connect-via 192.168.164.50</pre>
+    <p>Enable the remote message VPN.</p>
+    <pre>solace(configure/bridge/remote/message-vpn)# no shutdown
+solace(configure/bridge/remote/message-vpn)# exit</pre>
+    <p>Configure the connection to use basic authentication.</p>
+    <pre>solace(configure/bridge/remote)# authentication basic client-username default</pre>
+    <p>Configure a subscription to identify messages to be propagated over the bridge, where <code>&lt;topic&gt;</code> is the subscription topic, then exit the configuration for the remote event broker.</p>
+    <pre>solace(configure/bridge/remote)# subscription-topic &lt;topic&gt;
+solace(configure/bridge/remote)# exit</pre>
+    <p>Enable the new bridge, and then exit the configuration for it.</p>
+    <pre>solace(configure/bridge)# no shutdown
+solace(configure/bridge)# exit</pre>
+    <h2 class="with-rule"><a name="Bi"/>Bi-Directional Bridge Example</h2>
+    <p>This example shows a sample command sequence for bridging a Message VPN on the local event broker (<code>solace1</code>) to another Message VPN with the same name on a remote event broker (<code>solace2</code>). Messages can be forwarded in either direction.</p>
+    <p>In this example, the two event brokers are called <code>solace1</code> and <code>solace2</code>. A message VPN bridge called <code>bridge-490</code>is created on both event brokers. Each bridge is created on the local message VPN <code>vpn-490</code> and connects to the remote message VPN of the same name on the other event broker. The <code>solace1</code> event broker uses the <code>connect-via</code> address for the remote event broker on its side of the bridge, and <code>solace2</code> uses the virtual router name for the remote event broker on the other side of the bridge. The bridge using the <code>connect-via</code> method establishes the connection first, and then the other bridge reuses that connection. You can also use the <code>connect-via</code> address on both ends; in this case, both bridges attempt to create the connection, with the slower bridge reusing the bridge connection that was established first. The virtual router name can only be used with a bi-directional bridge and only at one end of the bridge. Both bridges are configured with the <code>&lt;topic&gt;</code> subscription topic.</p>
+    <p>First, configure the bridge on <code>solace1</code> using the <code>connect-via</code> address for <code>solace2</code>:</p>
+    <pre>solace1(configure)# create bridge bridge-490 message-vpn vpn-490
+solace1(configure/bridge)# remote
+solace1(configure/bridge/remote)# create message-vpn vpn-490 connect-via &lt;solace2-ip-address&gt;
+solace1(configure/bridge/remote/message-vpn)# no shutdown
+solace1(configure/bridge/remote/message-vpn)# exit
+solace1(configure/bridge/remote)# authentication basic client-username default
+solace1(configure/bridge/remote)# subscription-topic &lt;topic&gt;
+solace1(configure/bridge/remote)# exit
+solace1(configure/bridge)# no shutdown
+solace1(configure/bridge)# exit</pre>
+    <p>Then, configure the bridge on <code>solace2</code> using the virtual router name for <code>solace1</code>:</p>
+    <pre>solace2(configure)# create bridge bridge-490 message-vpn vpn-490
+solace2(configure/bridge)# remote
+solace2(configure/bridge/remote)# create message-vpn vpn-490 router v:solace1
+solace2(configure/bridge/remote/message-vpn)# no shutdown
+solace2(configure/bridge/remote/message-vpn)# exit
+solace2(configure/bridge/remote)# authentication basic client-username default
+solace2(configure/bridge/remote)# subscription-topic &lt;topic&gt;
+solace2(configure/bridge/remote)# exit
+solace2(configure/bridge)# no shutdown
+solace2(configure/bridge)# exit</pre>
+    <h2 class="with-rule"><a name="Uni-Loopback"/>Uni-Directional Loopback Bridge Example</h2>
+    <p>A loopback bridge is a Message VPN bridge that links two different Message VPNs on the same event broker.</p>
+    <p>Solace recommends that  you use an IP address of 127.0.0.1 for the remote Message VPN of a loopback bridge, rather than the primary IP address of the event broker.</p>
+    <p>In this example, a bridge called <code>bridge-490</code> is created between two message VPNs on the same event broker. The two message VPNs are named <code>vpn-490</code> and <code>vpn00491</code>. The bridge is configured with the <code>&lt;topic&gt;</code> subscription topic.</p>
+    <pre>solace(configure)# create bridge bridge-490 message-vpn vpn-490
+solace(configure/bridge)# remote
+solace(configure/bridge/remote)# create message-vpn vpn00491 connect-via 127.0.0.1
+solace(configure/bridge/remote/message-vpn)# no shutdown
+solace(configure/bridge/remote/message-vpn)# exit
+solace(configure/bridge/remote)# authentication basic client-username default
+solace(configure/bridge/remote)# subscription-topic &lt;topic&gt;
+solace(configure/bridge/remote)# exit
+solace(configure/bridge)# no shutdown
+solace(configure/bridge)# exit</pre>
+    <h2 class="with-rule"><a name="Bridging-Guaranteed"/>Bridging Guaranteed Messages Between VPNs Example</h2>
+    <p>Guaranteed messages may traverse a Message VPN bridge from a remote Message VPN to a local Message VPN to fulfill matching topic subscriptions. However, if you want to ensure that the delivery mode of the messages delivered to the local Message VPN is not changed to Direct to fulfill matching client topic subscriptions on the local Message VPN, queues must be used at both ends of the Message VPN bridge. That is, the Guaranteed messages must be delivered from one queue assigned an appropriate topic subscription on the remote Message VPN to another queue assigned a matching topic subscription on the local Message VPN.</p>
+    <p class="Note">If the bridge doesn't start or end with a queue, Guaranteed messages with a non-persistent delivery mode can be changed to Direct to fulfill matching client topic subscriptions on the local Message VPN. No warnings or errors are provided when changes to messages’ delivery modes occur. For more information, see <a href="../../API/API-Developer-Guide/Message-Delivery-Modes.htm#Message4" class="link-internal">Message Demotion</a>.</p>
+    <p>The following example shows how to configure a uni-directional bridge so that Guaranteed messages with matching topics can be delivered from a remote Message VPN to a local Message VPN. In this example:</p>
+    <ul>
+      <li>the message VPNs on both event brokers are called <code>my_vpn</code></li>
+      <li>the queues on both event brokers are called <code>my_queue</code></li>
+      <li><code>local_user</code>, <code>remote_user</code>, and <code>bridge_user</code> are all placeholders for the appropriate user names</li>
+      <li>the bridge is configured with the <code>&lt;topic&gt;</code> subscription topic</li>
+    </ul>
+    <ol>
+      <li>Create queues on both the local and remote event brokers. Note that although the default access type for both queues is exclusive, only the remote one must be exclusive. (Refer to step 4 in <MadCap:xref href="Managing-Message-VPN-Bridges.htm#Steps">Steps for Manually Configuring VPN Bridges</MadCap:xref> for more information on required queue access types).
+             <pre>local(configure)# message-spool message-vpn my_vpn
+local(configure/message-spool)# create queue my_queue
+local(configure/message-spool/queue)# permission all modify-topic
+local(configure/message-spool/queue)# owner local_user
+local(configure/message-spool/queue)# subscription topic &lt;topic&gt;
+local(configure/message-spool/queue)# no shutdown</pre><pre>remote(configure)# message-spool message-vpn my_vpn
+remote(configure/message-spool)# create queue my_queue
+remote(configure/message-spool/queue)# permission all modify-topic
+remote(configure/message-spool/queue)# owner remote_user
+remote(configure/message-spool/queue)# subscription topic &lt;topic&gt;
+remote(configure/message-spool/queue)# no shutdown</pre><p>For information on how to create and configure a queue in a Message VPN, refer to <MadCap:xref href="../../Messaging/Guaranteed-Msg/VPN-Level-Msg-Spool-Config.htm">Message VPN-Level Guaranteed Messaging Configuration</MadCap:xref>.</p></li>
+      <li>Create the uni-directional bridge:
+             <pre>local(configure)# create bridge guaranteed_bridge message-vpn my_vpn
+local(configure/bridge)# remote
+local(configure/bridge/remote)# create message-vpn my_vpn connect-via &lt;remote-broker-ip-address&gt;
+local(configure/bridge/remote/message-vpn)# message-spool queue my_queue
+local(configure/bridge/remote/message-vpn)# no shutdown
+local(configure/bridge/remote/message-vpn)# exit
+local(configure/bridge/remote)# authentication basic client-username bridge_user
+local(configure/bridge/remote)# exit
+local(configure/bridge)# no shutdown</pre><p>For information on how to create  a bridge and configure the remote Message VPN, refer to <MadCap:xref href="Configuring-VPN-Bridges.htm">Configuring VPN Bridges</MadCap:xref>.</p><p class="Note">For more information on how to properly configure a Message VPN bridge for Guaranteed messages, refer to <MadCap:xref MadCap:unresolvedLink="import-link:working_with_message_vpn_bridges_1466799947_81741" href="Message-VPN-Bridges-Overview.htm#working_with_bridges_GD_msging">Guaranteed Messaging Over Message VPN Bridges</MadCap:xref> and <MadCap:xref MadCap:unresolvedLink="import-link:working_with_message_vpn_bridges_1466799947_26971" href="Message-VPN-Bridges-Overview.htm#working_with_bridges_avoid_loss">Avoiding Loss of Guaranteed Messages with VPN Bridges</MadCap:xref>.</p></li>
+    </ol>
+  </body>
+</html>

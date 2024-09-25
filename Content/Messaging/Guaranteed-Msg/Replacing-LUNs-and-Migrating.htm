@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Replacing a LUN and Migrating the Disk Spool Files for a Redundant Appliance Pair</h1>
+    <p class="Note">The procedures discussed in this section are applicable only to PubSub+ appliances.</p>
+    <p>This section describes how to replace a logical unit number (LUN) for a redundant <MadCap:variable name="Product-Names.pubsub_brand_only"/> <MadCap:variable name="Product-Names.broker_appliance_short"/> pair, and then migrate the disk spool files from the old LUN to the new LUN without losing spooled Guaranteed messages. Replacing a LUN is often done to provide a larger LUN to so that the message-spool size can be increased.</p>
+    <p>If you require further assistance, or have any questions regarding this procedure, <a href="../../get-support.htm" class="link-internal">contact Solace</a>. </p>
+    <h2 class="with-rule"><a name="procedure1"/>Procedure</h2>
+    <p class="Note">This procedure is for a redundant appliance pair. If you want to migrate the LUN for standalone appliance, see  <MadCap:xref href="Replacing-LUNs-and-Migrating-Standalone.htm">Replacing a LUN and Migrating the Disk Spool Files for a Standalone Appliance</MadCap:xref>.</p>
+    <div class="Caution">
+      <ul>
+        <li>This procedure disables service on both appliances in the redundant pair.</li>
+        <li>To prevent any loss of configuration, do not make any additional unrelated configuration changes to either of the appliances in the redundant pair while performing this procedure.</li>
+      </ul>
+    </div>
+    <MadCap:snippetBlock src="../../Resources/Snippets/replace-lun-notes.flsnp"/>
+    <p>To replace a LUN for a redundant appliance pair and migrate the disk spool files, perform the following steps:</p>
+    <ol>
+      <li>Ensure that both the primary and backup appliances are in the correct state:<ol style="list-style-type: lower-alpha;"><li>On the primary appliance, run the <code>show message-spool detail</code> command and verify the following:
+<ul><li> Config Status is <code>Enabled (Primary)</code>. </li><li> Operational status is <code>AD-Active</code>.</li><li>Valid keys are shown for both primary and backup disks. The particular key values and the relationship between them are not important, as long as valid values are shown for both primary and backup keys.</li></ul><p>For example:</p><pre class="Code" xml:space="preserve">solace-primary&gt; show message-spool detail
+Config Status:                                    Enabled (Primary)
+ 
+. . .
+
+Operational Status:                               AD-Active
+
+. . . 
+                            
+Disk Contents:                 Ready
+  Disk Key (Primary):            192.168.164.180:8,3
+  Disk Key (Backup):             192.168.164.180:7,3
+</pre><div class="Note"><p>If the primary appliance does not show a status of <code>AD-Active</code> OR does not show valid keys for both disks, follow the steps below. Be aware this will cause a service disruption as activity fails over to the backup, and again as activity is reverted to the primary.</p><ol style="list-style-type: lower-roman;"><li style="color: #1565c0;">On the primary appliance, run the <code>release-activity</code> Redundancy CONFIG command to fail over to the backup appliance. See <MadCap:xref href="../../Features/HA-Redundancy/Maintaining-Event-Broker-Redundancy-All-Broker.htm#Releasing-Activity">Releasing Event Broker Activity</MadCap:xref> for instructions.</li><li style="color: #1565c0;">On the primary appliance, run the <code>no release-activity</code> Redundancy CONFIG to resume service. See <MadCap:xref href="../../Features/HA-Redundancy/Maintaining-Event-Broker-Redundancy-All-Broker.htm#Releasing-Activity">Releasing Event Broker Activity</MadCap:xref> for instructions.</li><li style="color: #1565c0;">On the backup appliance, run the  <code>redundancy revert-activity</code> Admin EXEC command to release activity. See <MadCap:xref href="../../Features/HA-Redundancy/Maintaining-Event-Broker-Redundancy-All-Broker.htm#Give-Up-Activity">Forcing Backups to Give Up Activity to Primaries</MadCap:xref> for instructions.</li><li style="color: #1565c0;">Restart this procedure at Step 1 to ensure that the primary appliance is now in the correct state.</li></ol></div></li><li>On the backup appliance, run the <code>show message-spool</code> command and verify the following:<ul><li>Config Status is <code>Enabled (Backup)</code>.</li><li>Operational Status is <code>AD-Standby</code>.</li></ul><p>For example:</p><pre class="Code">solace-backup&gt; show message-spool
+Config Status:                                    Enabled (Backup)
+ 
+. . .
+
+Operational Status:                               AD-Standby</pre></li></ol></li>
+      <li>Identify the WWN (World Wide Name) of the old LUN.
+            <p>Enter the following command on the primary appliance.</p><pre class="Code">solace-primary&gt; show message-spool
+Config Status:                                    Enabled (Primary)
+Maximum Spool Usage:                              10000 MB
+Spool While Charging:                             No
+Spool Without Flash Card:                         No
+Using Internal Disk:                              No
+Disk Array WWN:                                   <span style="color: #ff0000;">60:06:01:60:4d:30:1c:00:8e:29:1b:b6:a6:d6:e8:11</span>
+
+. . .</pre><p class="Note">The examples in this procedure use <code>60:06:01:60:4d:30:1c:00:8e:29:1b:b6:a6:d6:e8:11</code> as the WWN of the old LUN.</p></li>
+      <li>To detect the new LUN on the primary appliance, perform the following steps:</li>
+      <ol style="list-style-type: lower-alpha;">
+        <li>Enter the following command to elevate to the support user, and then enter the support user's password when prompted.
+                <pre class="Code">solace-primary# shell redundantLunMigration
+login: support
+Password:</pre></li>
+        <li>Enter the following command to elevate to the root user or a sysadmin user, and then enter the password for that user when prompted:
+
+<pre class="Code">[support@solace-primary ~]$ su -
+Password:</pre></li>
+        <li>Check that the current LUN is visible.
+                    <pre class="Code" xml:space="preserve">[root@solace-primary ~]# multipath -ll
+3600601604d301c008e291bb6a6d6e811 dm-0 DGC     ,RAID 0 size=300G features='2 queue_if_no_path
+
+. . .
+
+[root@solace-primary ~]#</pre></li>
+        <li>Rescan the SCSI bus to add the new LUN.
+<pre class="Code" xml:space="preserve">
+[root@solace-primary ~]# rescan-scsi-bus.sh --nosync -f -r -m
+[root@solace-primary ~]# rescan-scsi-bus.sh -a</pre></li>
+        <li> If the previous step failed, enter these commands: 
+					<pre class="Code" xml:space="preserve">
+[root@solace-primary ~]# rescan-scsi-bus.sh -i -a
+[root@solace-primary ~]# rescan-scsi-bus.sh --nosync -f -r -m
+[root@solace-primary ~]# rescan-scsi-bus.sh -a</pre></li>
+        <li>Check that the new LUN has been added.
+<pre class="Code" xml:space="preserve">[root@solace-primary ~]# multipath -ll
+3600601604d301c008e291bb6a6d6e811 dm-0 DGC     ,RAID 0 size=300G features='2 queue_if_no_path
+
+. . .
+
+360014057d24f4b77681435faf684d587 dm-3 LIO-ORG ,sdc1-4 size=800G features='1 queue_if_no_path' hwhandler='0' wp=rw
+
+. . .
+
+[root@solace-primary ~]#</pre><p class="Note">The examples in this procedure use <code>60:01:40:57:d2:4f:4b:77:68:14:35:fa:f6:84:d5:87</code> as the WWN of the new LUN.</p><p class="Note">If the new LUN doesn't appear, confirm that the SAN is properly configured and the HBA port is registered for the new LUN, then re-run both the <code>rescan-scsi-bus.sh --nosync -f -r -m</code> and <code>rescan-scsi-bus.sh -a</code> scripts. If the new LUN doesn't appear, you must reboot the appliance.</p></li>
+        <li>Return to the CLI:<pre class="Code">[root@solace-primary ~]# exit
+[support@solace-primary ~]$ exit</pre></li>
+      </ol>
+      <li>To detect the new LUN on the backup appliance, perform the following steps: </li>
+      <ol style="list-style-type: lower-alpha;">
+        <li>Enter the following command to elevate to the support user, and then enter the support user's password when prompted.
+<pre class="Code">solace-backup# shell redundantLunMigration
+login: support
+Password:</pre></li>
+        <li>Enter the following command to elevate to the root user or a sysadmin user, and then enter the password for that user when prompted:
+
+<pre class="Code" xml:space="preserve">[support@solace-backup ~]$ su -
+Password:</pre></li>
+        <li>Check that the current LUN is visible.
+<pre class="Code" xml:space="preserve">[root@solace-backup ~]# multipath -ll
+3600601604d301c008e291bb6a6d6e811 dm-0 DGC     ,RAID 0 size=300G features='2 queue_if_no_path
+
+. . .
+
+[root@solace-backup ~]#</pre></li>
+        <li>Rescan the SCSI bus to add the new LUN.
+<pre class="Code" xml:space="preserve">[root@solace-backup ~]# rescan-scsi-bus.sh --nosync -f -r -m
+[root@solace-backup ~]# rescan-scsi-bus.sh -a</pre></li>
+        <li> If the previous step failed, enter these commands: 
+					<pre class="Code" xml:space="preserve">
+[root@solace-primary ~]# rescan-scsi-bus.sh -i -a
+[root@solace-primary ~]# rescan-scsi-bus.sh --nosync -f -r -m
+[root@solace-primary ~]# rescan-scsi-bus.sh -a</pre></li>
+        <li>Check that the new LUN has been added.
+<pre class="Code" xml:space="preserve">[root@solace-backup ~]# sudo multipath -ll
+3600601604d301c008e291bb6a6d6e811 dm-0 DGC     ,RAID 0 size=300G features='2 queue_if_no_path
+
+. . .
+
+360014057d24f4b77681435faf684d587 dm-3 LIO-ORG ,sdc1-4 size=800G features='1 queue_if_no_path' hwhandler='0' wp=rw
+
+. . .
+
+[root@solace-backup ~]#</pre><p class="Note">If the new LUN doesn't appear, confirm that the SAN is properly configured and the HBA port is registered for the new LUN, then re-run both the <code>rescan-scsi-bus.sh --nosync -f -r -m</code> and <code>rescan-scsi-bus.sh -a</code> scripts.  If the new LUN doesn't appear, you must reboot the appliance.</p></li>
+        <li>Return to the CLI:<pre class="Code" xml:space="preserve">[root@solace-backup ~]# exit
+[support@solace-backup ~]$ exit</pre></li>
+      </ol>
+      <li><a name="create-partitions"/>Partition and create the filesystem on the new LUN. For more information, see <MadCap:xref href="Configuring-External-Disk-Arrays.htm">Configuring External Disk Arrays for Guaranteed Messaging</MadCap:xref>.</li>
+      <li><a name="find-wwn"/>On both the primary and backup appliances, run the following command to confirm that the new external disk LUN is available and referred to by the correct WWN (obtain the WWN of the new LUN from your storage administrator):
+<pre class="Code">solace-primary&gt; show hardware details</pre><pre class="Code">solace-backup&gt; show hardware details</pre><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code" xml:space="preserve">solace-primary&gt; show hardware details
+            
+. . .
+
+  Slot 1/4: Host Bus Adapter Blade
+  Product #:                HBA-0204FC-02-A
+  Serial #:                 RFC0609G02361
+  Model Name:               QLE2462
+  Model Description:        PCI-Express Dual Channel 4Gb Fibre Channel HBA
+  Driver Version:           8.04.00.03-k
+            
+. . .
+            
+  Attached devices
+  LUN 0
+    State:          Ready
+    Size:           300G
+    WWN  :          60:06:01:60:4d:30:1c:00:8e:29:1b:b6:a6:d6:e8:11
+  LUN 1
+    State:          Ready
+    Size:           800G
+   <span style="color: #ff0000;"> WWN  :          60:01:40:57:d2:4f:4b:77:68:14:35:fa:f6:84:d5:87</span></pre></MadCap:dropDownBody></MadCap:dropDown></p><p class="Note">Don't proceed further until the new LUN is visible. </p></li>
+      <li>If the Config-Sync feature is in use, enter the following command on both the primary and backup appliances to confirm that Config-Sync is operationally up:  
+<pre class="Code">solace-primary&gt; show config-sync
+Admin Status:                                    Enabled
+Oper Status:                                     Up</pre><pre class="Code">solace-backup&gt; show config-sync
+Admin Status:                                    Enabled
+Oper Status:                                     Up</pre><p class="Caution">To prevent loss of configuration, do not proceed further if Config-Sync is operationally down.</p></li>
+      <li>To stop providing service to applications, enter the following commands on the backup appliance:
+<pre class="Code">solace-backup&gt; enable
+solace-backup# configure
+solace-backup(configure)# service msg-backbone shutdown
+All clients will be disconnected.
+Do you want to continue (y/n)? y</pre></li>
+      <li>Repeat the previous step on the primary appliance:
+<pre class="Code">solace-primary&gt; enable
+solace-primary# configure
+solace-primary(configure)# service msg-backbone shutdown
+All clients will be disconnected.
+Do you want to continue (y/n)? y</pre></li>
+      <li>On the primary appliance, run the <code>show message-spool detail</code> command to confirm that:
+            <ul><li>the appliance is still active, up, and synchronized (indicated by the Operational, Datapath, and Synchronization statuses)</li><li>the appliance has successfully cleaned up all flows  (indicated by zeroes in the <code>Currently Used</code> column)</li></ul><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example <code>show message-spool details</code> Output:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code" xml:space="preserve">solace-primary(configure/service/msg-backbone)# show message-spool detail
+
+Config Status:                            Enabled (Primary)
+
+. . .
+
+Operational Status:                       <span style="color: #ff0000;">AD-Active</span>
+Datapath Status:                          <span style="color: #ff0000;">Up</span>
+Synchronization Status:                   <span style="color: #ff0000;">Synced</span>
+
+. . .
+                                       Currently Used   Max Allowed
+                                       --------------   -----------
+. . .
+
+            Total Ingress Flows:                    <span style="color: #ff0000;">0</span>       1000000
+             Total Egress Flows:                    <span style="color: #ff0000;">0</span>        100000
+            Active Egress Flows:                    <span style="color: #ff0000;">0</span>
+          Inactive Egress Flows:                    <span style="color: #ff0000;">0</span>
+           Browser Egress Flows:                    <span style="color: #ff0000;">0</span>
+
+. . .</pre></MadCap:dropDownBody></MadCap:dropDown></p></li>
+      <li>Ensure that message-spool defragmentation is not active.
+            <p>Enter the following command on both the primary and backup appliances.</p><pre class="Code">solace-primary&gt; show message-spool
+
+. . .
+            
+Defragmentation Status:                   Idle
+
+. . .</pre><pre class="Code">solace-backup&gt; show message-spool
+
+. . .
+
+Defragmentation Status:                   Idle
+
+. . .</pre><p class="Note">If the message spool defragmentation status is not <code>Idle</code> for both the primary and backup appliances, wait for the defragmentation process to complete before proceeding.</p></li>
+      <li>
+               To stop Guaranteed Messaging, enter the following commands on the primary appliance:
+<pre class="Code">solace-primary(configure)# hardware message-spool shutdown
+All message spooling will be stopped.
+Do you want to continue (y/n)? y
+solace-primary(configure)# end</pre></li>
+      <li>
+               Repeat the previous step on the backup appliance:
+                <pre class="Code">solace-backup(configure)# hardware message-spool shutdown
+All message spooling will be stopped.
+Do you want to continue (y/n)? y
+solace-backup(configure)# end</pre></li>
+      <li>On the primary appliance, perform the following steps to migrate the LUN data: <p class="Caution">If you do not perform this step, you must reset the message spool on the primary appliance after you <a href="#step-edit-max-spool-usage" class="link-internal">edit the maximum spool usage</a> later in this procedure. Resetting the message spool causes all guaranteed messaging data to be lost.</p><ol style="list-style-type: lower-alpha;"><li>Enter the following command to elevate to the support user, and then enter the support user's password when prompted:            
+<pre class="Code">solace-primary# shell redundantLunMigration
+login: support
+Password:</pre></li><li>Enter the following command to elevate to the root user or a sysadmin user, and then enter the password for that user when prompted:
+
+<pre class="Code">[support@solace-primary ~]$ su -
+Password:</pre></li><li>Migrate the AD keys within p1 and p2 of the old LUN to the new LUN, using the <code>adkey-tool</code> script.<p>These partitions are located in <code>/dev/mapper/</code> and are named <code>&lt;wwn&gt;&lt;p#&gt;</code>.</p><pre class="Code" xml:space="preserve">[root@solace-primary ~]# adkey-tool migrate --src-device /dev/mapper/&lt;old LUN wwn&gt;p1 --dest-device /dev/mapper/&lt;new LUN wwn&gt;p1
+[root@solace-primary ~]# adkey-tool migrate --src-device /dev/mapper/&lt;old LUN wwn&gt;p2 --dest-device /dev/mapper/&lt;new LUN wwn&gt;p2</pre><p>For example:</p><pre class="Code" xml:space="preserve">[root@solace-primary ~]# adkey-tool migrate --src-device /dev/mapper/3600601604d301c008e291bb6a6d6e811p1 --dest-device /dev/mapper/360014057d24f4b77681435faf684d587p1
+[root@solace-primary ~]# adkey-tool migrate --src-device /dev/mapper/3600601604d301c008e291bb6a6d6e811p2 --dest-device /dev/mapper/360014057d24f4b77681435faf684d587p2</pre><div class="Note"><p>The LUN's WWN might be prefixed by a <code>3</code> in <code>/dev/mapper</code>.</p><p>For example, from earlier in this procedure, the <a href="#find-wwn">WWN of the new LUN</a> is <code>60:01:40:57:d2:4f:4b:77:68:14:35:fa:f6:84:d5:87</code>.
+This WWN appears as <code>/dev/mapper/360014057d24f4b77681435faf684d587p1</code> and <code>/dev/mapper/360014057d24f4b77681435faf684d587p2</code> in the example above.</p></div></li><li>Create the following temporary directories:<pre class="Code">[root@solace-primary ~]# mkdir -p /tmp/old_lun_p1
+[root@solace-primary ~]# mkdir -p /tmp/old_lun_p2
+[root@solace-primary ~]# mkdir -p /tmp/new_lun_p1
+[root@solace-primary ~]# mkdir -p /tmp/new_lun_p2</pre></li><li>Mount the partition one (<code>p1</code>) and partition two (<code>p2</code>) of both the old and new LUNs.<pre class="Code">[root@solace-primary ~]# mount /dev/mapper/<b>&lt;old LUN wwn&gt;</b>p1 /tmp/old_lun_p1
+[root@solace-primary ~]# mount /dev/mapper/<b>&lt;old LUN wwn&gt;</b>p2 /tmp/old_lun_p2
+[root@solace-primary ~]# mount /dev/mapper/<b>&lt;new LUN wwn&gt;</b>p1 /tmp/new_lun_p1
+[root@solace-primary ~]# mount /dev/mapper/<b>&lt;new LUN wwn&gt;</b>p2 /tmp/new_lun_p2</pre><p>For example:
+</p><pre class="Code">[root@solace-primary ~]# mount /dev/mapper/<b>3600601604d301c008e291bb6a6d6e811p1</b> /tmp/old_lun_p1
+[root@solace-primary ~]# mount /dev/mapper/<b>3600601604d301c008e291bb6a6d6e811p2</b> /tmp/old_lun_p2
+[root@solace-primary ~]# mount /dev/mapper/<b>360014057d24f4b77681435faf684d587p1</b> /tmp/new_lun_p1
+[root@solace-primary ~]# mount /dev/mapper/<b>360014057d24f4b77681435faf684d587p2</b> /tmp/new_lun_p2
+</pre></li><li>Copy all directories and files within <code>p1</code> and <code>p2</code> of the old LUN to the new LUN:<pre class="Code">[root@solace-primary ~]# cp -a /tmp/old_lun_p1/* /tmp/new_lun_p1/
+[root@solace-primary ~]# cp -a /tmp/old_lun_p2/* /tmp/new_lun_p2/</pre></li><li>Unmount <code>p1</code> and <code>p2</code> of both the old and new LUNs:<pre class="Code">[root@solace-primary ~]# umount /tmp/old_lun_p1
+[root@solace-primary ~]# umount /tmp/old_lun_p2
+[root@solace-primary ~]# umount /tmp/new_lun_p1
+[root@solace-primary ~]# umount /tmp/new_lun_p2</pre></li><li>Return to the CLI:<pre class="Code">[root@solace-primary ~]# exit
+[support@solace-primary ~]$ exit</pre></li></ol></li>
+      <li>
+                Enter the following commands on the primary appliance and then on the backup appliance to configure the message spool to use the new external disk LUN:            
+<pre class="Code">solace-primary# configure
+solace-primary(configure)# hardware message-spool disk-array wwn <b>&lt;new LUN wwn&gt;</b></pre><pre class="Code">solace-backup# configure
+solace-backup(configure)# hardware message-spool disk-array wwn <b>&lt;new LUN wwn&gt;</b></pre><p>Where <code>&lt;new LUN wwn&gt;</code> is the WWN of the new LUN, as shown <a href="#find-wwn">earlier in this procedure.</a></p><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example: Configure the Message Spool on the Primary Appliance</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code">solace-primary# configure
+solace-primary(configure)# hardware message-spool disk-array wwn 60:01:40:57:d2:4f:4b:77:68:14:35:fa:f6:84:d5:87
+WARNING: To avoid the loss of messages it is important that the proper disk migration procedure is followed. Please consult the Feature Provisioning Guide for details.
+Do you want to continue (y/n)? y
+</pre></MadCap:dropDownBody></MadCap:dropDown></p><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example: Configure the Message Spool on the Backup Appliance</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code">solace-backup# configure
+solace-backup(configure)# hardware message-spool disk-array wwn 60:01:40:57:d2:4f:4b:77:68:14:35:fa:f6:84:d5:87
+WARNING: To avoid the loss of messages it is important that the proper disk migration procedure is followed. Please consult the Feature Provisioning Guide for details.
+Do you want to continue (y/n)? y
+</pre></MadCap:dropDownBody></MadCap:dropDown></p></li>
+      <li>To start Guaranteed Messaging and message spooling, enter the following command on the primary appliance, and then on the backup appliance: 
+<pre class="Code">solace-primary(configure)# no hardware message-spool shutdown primary</pre><pre class="Code">solace-backup(configure)# no hardware message-spool shutdown backup</pre></li>
+      <li>To start providing service to applications, enter the following commands on the primary appliance, and then on the backup appliance:
+<pre class="Code">solace-primary(configure)# no service msg-backbone shutdown</pre><pre class="Code">solace-backup(configure)# no service msg-backbone shutdown</pre></li>
+      <li>If the Config-Sync feature is in use, enter the following command on both the primary and backup appliances to confirm that Config-Sync is operationally up:  
+<pre class="Code">solace-primary&gt; show config-sync
+Admin Status:                                    Enabled
+Oper Status:                                     Up</pre><pre class="Code">solace-backup&gt; show config-sync
+Admin Status:                                    Enabled
+Oper Status:                                     Up</pre><p class="Caution">If Config-Sync does not come up, either there were configuration changes performed beyond what is described in this procedure, or one or more steps did not complete as expected. To prevent the configuration from diverging further, immediately investigate and resolve this issue.</p></li>
+      <li><a name="step-edit-max-spool-usage"/><b>Optional</b>: To edit the maximum spool usage for the new LUN, enter the following command, first on the primary appliance and then on the backup appliance:            
+<pre class="Code">solace-primary(configure)# hardware message-spool max-spool-usage &lt;size&gt;</pre><pre class="Code">solace-backup(configure)# hardware message-spool max-spool-usage &lt;size&gt;</pre><p>Where <code>&lt;size&gt;</code> is the maximum spool usage in megabytes.</p><div class="Note"><ul><li>See <MadCap:xref href="System-Level-Msg-Spool-Config.htm#Config-Max-Spool">Configuring Max Spool Usage</MadCap:xref> to set the maximum spool usage.</li><li>If you used the defaults while <a href="#create-partitions" class="link-internal">creating the partitions and filesystems</a> earlier in this procedure, the LUN will be split into two equal sized partitions. Each partition should be <MadCap:variable name="Broker-Limitations.redundant-pair-partition-size"/>.</li></ul></div></li>
+      <li>At this point, the LUN migration has succeeded. After the storage administrator has deprovisioned the original LUN, the <code>show hardware details</code> command shows that the old LUN has a state of <code>Down</code>.<p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example <code>show hardware details</code> Output:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code">solace-primary&gt; show hardware details
+
+. . .
+
+  Slot 1/4: Host Bus Adapter Blade
+  Product #:                HBA-0204FC-02-A
+  Serial #:                 RC0609G02361
+  Model Name:               QLE2462
+  Model Description:        PCI-Express Dual Channel 4Gb Fibre Channel HBA
+  Driver Version:           8.04.00.03-k
+
+. . .
+
+  Attached devices
+  LUN 0
+    State:          <span style="color: #ff0000;">Down</span>
+    Size:           300G
+    WWN  :          60:06:01:60:4d:30:1c:00:8e:29:1b:b6:a6:d6:e8:11
+  LUN 1
+    State:          Ready
+    Size:           800G
+    WWN  :          60:01:40:57:d2:4f:4b:77:68:14:35:fa:f6:84:d5:87
+</pre></MadCap:dropDownBody></MadCap:dropDown></p><p>Also, the kernel log of the appliances might contain entries reflecting that the old LUN is no longer visible.</p><p><MadCap:dropDownHead><MadCap:dropDownHotspot>Example Log Entries:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code">2016-03-01T02:43:04+0000 &lt;daemon.notice&gt; solace-primary multipathd: 3600601604d301c008e291bb6a6d6e811: sdd - emc_clariion_checker: Logical Unit is unbound or LUNZ
+2016-03-01T02:43:04+0000 &lt;daemon.notice&gt; solace-primary multipathd: 3600601604d301c008e291bb6a6d6e811: sdf - emc_clariion_checker: Logical Unit is unbound or LUNZ
+</pre></MadCap:dropDownBody></p><p>There is no operational impact from these log entries and the <code>Down</code> state of the attached device.</p></li>
+      <li>Remove the original LUN from the primary appliance.
+            <ol style="list-style-type: lower-alpha;"><li>Enter the following command to elevate to the support user, and then enter the support user’s password when prompted.
+<pre class="Code">solace-primary# shell redundantLunMigration
+login: support
+Password:</pre></li><li>Enter the following command to elevate to the root user or a sysadmin user, and then enter the password for that user when prompted:
+<pre class="Code">[support@solace-primary ~]$ su -
+Password:</pre></li><li>Check that both the original and new LUNs are visible.
+            
+                <pre class="Code" xml:space="preserve">[root@solace-primary ~]# multipath -ll
+3600601604d301c008e291bb6a6d6e811 dm-0 DGC     ,RAID 0 size=300G features='1 retain_attached_hw_handler' hwhandler='1
+
+. . .
+
+360014057d24f4b77681435faf684d587 dm-3 LIO-ORG ,sdc1-4 size=800G features='1 queue_if_no_path' hwhandler='0' wp=rw
+
+. . .</pre></li><li>Rescan the SCSI bus to remove the original LUN.<pre class="Code" xml:space="preserve">[root@solace-primary ~]# rescan-scsi-bus.sh -r</pre></li><li>Check that the original LUN is removed.
+                <pre class="Code" xml:space="preserve">[root@solace-primary ~]# multipath -ll
+360014057d24f4b77681435faf684d587 dm-3 LIO-ORG ,sdc1-4 size=800G features='1 queue_if_no_path' hwhandler='0' wp=rw</pre></li><li>Return to the CLI:<pre class="Code">[root@solace-primary ~]# exit
+[support@solace-primary ~]$ exit</pre></li></ol></li>
+      <li>Remove the original LUN from the backup appliance.
+                <ol style="list-style-type: lower-alpha;"><li>Enter the following command to elevate to the support user, and then enter the support user's password when prompted.
+<pre class="Code">solace-backup# shell redundantLunMigration
+login: support
+Password:</pre></li><li>Enter the following command to elevate to the root user or a sysadmin user, and then enter the password for that user when prompted:
+<pre class="Code" xml:space="preserve">[support@solace-backup ~]$ su -
+Password:</pre></li><li>Check that both the original and new LUNs are visible.
+            
+                <pre class="Code" xml:space="preserve">[root@solace-backup ~]# multipath -ll
+3600601604d301c008e291bb6a6d6e811 dm-0 DGC     ,RAID 0 size=300G features='1 retain_attached_hw_handler' hwhandler='1
+
+. . .
+
+360014057d24f4b77681435faf684d587 dm-3 LIO-ORG ,sdc1-4 size=800G features='1 queue_if_no_path' hwhandler='0' wp=rw
+
+. . .</pre></li><li>Rescan the SCSI bus to remove the original LUN.
+          <pre class="Code" xml:space="preserve">[root@solace-backup ~]# rescan-scsi-bus.sh -r</pre></li><li>Check that the original LUN is removed.
+          <pre class="Code" xml:space="preserve">[root@solace-backup ~]# multipath -ll
+360014057d24f4b77681435faf684d587 dm-3 LIO-ORG ,sdc1-4 size=800G features='1 queue_if_no_path' hwhandler='0' wp=rw</pre></li><li>Return to the CLI:<pre class="Code" xml:space="preserve">[root@solace-backup ~]# exit
+[support@solace-backup ~]$ exit</pre></li></ol></li>
+    </ol>
+  </body>
+</html>

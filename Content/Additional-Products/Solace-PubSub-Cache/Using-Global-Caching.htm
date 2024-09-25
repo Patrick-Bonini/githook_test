@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><a name="top"/>Using Global Caching</h1>
+    <p>
+      <span>The Global Caching feature allows client applications operating in a WAN environment to make non-wildcard requests for messages with topics that are not cached in their “local” Distributed Cache but in another Distributed Cache that may be located in another geographic location.</span>
+    </p>
+    <p>Global Caching uses the following concepts:</p>
+    <ul>
+      <li>Home Cache Cluster—A Cache Cluster that is the “definitive” Cache Cluster for a given topic. Typically, this is the local Cache Cluster for clients that are publishing to that topic.</li>
+      <li>Home Distributed Cache—A Distributed Cache that contains the home Cache Cluster for a given topic. Typically it is also the local Distributed Cache for clients that are publishing to that topic.</li>
+      <li>Local Distributed Cache—A Distributed Cache that a client sends all of its cache requests to.</li>
+      <li>Global topic—A topic that a local PubSub+ Cache Instance has a client topic subscription for, but it is “homed” on a Cache Cluster in another Distributed Cache in the network.</li>
+    </ul>
+    <p class="Note">When Global Caching is not used, there is no distinction between “local” and “home” (they are the same), and “global” topics are not supported.</p>
+    <p>To use Global Caching, a local Cache Cluster must be provided with the names of any Cache Clusters in the network that are the home Cache Clusters for topics of interest. It must also be provided with those topic prefixes that are “homed” by the listed Cache Clusters. When a client requests a cached message, wild card matches are performed for these topic prefixes—any messages with topics with matching prefixes are returned from the home Cache Clusters.</p>
+    <p>Configuring a local Distributed Cache with this information allows it to make cache requests on behalf of clients to the appropriate home Cache Cluster that is currently caching messages for the requested topic.</p>
+    <p>Global Caching is useful for client applications operating over a WAN because their cache requests do not need to specify where in the network a particular topic is being cached—clients can simply request global topics, as usual, from their local Distributed Cache. The messages that match those topics are initially retrieved from the home Cache Cluster. A topic subscription is also automatically added to a local PubSub+ Cache Instance so that new live data messages are then locally cached.</p>
+    <p>The PubSub+ Cache Instance continues to cache these messages locally, as long as it receives client requests before the interval set for the topic-lifetime (refer to <MadCap:xref href="Configuring-Global-Cachi-1.htm#Config-Topic-Lifetimes">Configuring Topic Lifetimes</MadCap:xref>). (The timer is restarted whenever a request is received for the topic.) However, if no cache requests are received before the topic-lifetime is reached, the local topic subscription is removed.</p>
+    <p>If a local PubSub+ Cache instance gets disconnected from its Designated Router, or is administratively disabled, it will miss any live updates that are published. Rather than wasting WAN bandwidth resynchronizing all of the global topics when it does reconnect, it immediately flushes its state for all global topics, and unsubscribes from them.</p>
+    <p>After the local PubSub+ Cache instance reconnects to the Designated Router, it restores state for each global topic as it receives client requests for them. Just as in the steady-state operation, the first request for a topic causes the local PubSub+ Cache instance to fetch the data from the home Cache Cluster responsible for the given topic.</p>
+  </body>
+</html>

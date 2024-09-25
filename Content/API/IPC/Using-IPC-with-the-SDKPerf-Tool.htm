@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Using IPC with the SDKPerf Tool
+</h1>
+    <p>This section provides an example of using IPC through the Solace C messaging API-based SDKPerf test tool (sdkperf_c), which is a performance and functional test tool based on the Solace C API. This section assumes that the reader is already familiar with the use of sdkperf_c.</p>
+    <p>No modifications to sdkperf_c are necessary (aside from using a version of the C API library that supports IPC) for the tool to use IPC. The tool can accept “extra” context and session properties through a command line option, which enables the tool to utilize new features in the underlying C API.</p>
+    <h2 class="with-rule"><a name="using_ipc_with_the_sdkperf_tool_2787158446_238436"/>IPC Between Two SDKPerf Instances</h2>
+    <p>The following code snippet shows two sdkperf_c instances that want to communicate through an event broker. The first instance listens for messages on topic <code>foo</code>, and the second instance publishes messages to topic <code>foo</code>.</p>
+    <p class="Code">sdkperf_c -cip=192.168.160.29 -stl=foo<br/>sdkperf_c -cip=192.168.160.29 -ptl=foo -msa=100 -mn=1000000 -mr=100000</p>
+    <p>To have the two sdkperf_c instances communicate over a shared memory IPC channel, only the host specifier has to change, as shown below. One instance has to listen for incoming IPC connections, and the other instance has to connect.</p>
+    <p class="Code">sdkperf_c -cip=listen:127.0.0.1 -stl=foo<br/>sdkperf_c -cip=shm:127.0.0.1 -ptl=foo -msa=100 -mn=1000000 -mr=100000</p>
+    <p>To use a TCP channel for IPC instead of shared memory, the protocol is specified as TCP, as shown below, or it can be left out because TCP is the default:</p>
+    <p class="Code">sdkperf_c -cip=listen:127.0.0.1 -stl=foo<br/>sdkperf_c -cip=127.0.0.1 -ptl=foo -msa=100 -mn=1000000 -mr=100000</p>
+    <p>To listen on a different port other than the default (55555), the port has to be specified, as shown below:</p>
+    <p class="Code">sdkperf_c -cip=listen:127.0.0.1:44444 -stl=foo<br/>sdkperf_c -cip=shm:127.0.0.1:44444 -ptl=foo -msa=100 -mn=1000000 -mr=100000</p>
+    <p>When using shared memory communications, you can spin the shared memory thread to have the lowest possible latency. As both sdkperf_c instances are running on the same host, you must carefully configure the processor affinities to achieve the lowest latency possible. </p>
+    <p>In the code snippet shown below, the sdkperf_c <code>-epl</code> option specifies extra properties that are not controlled by existing command line options. In this example, the <code>-epl</code> option is used to spin the internal shared memory thread and to control the shared memory thread processor affinities.</p>
+    <p class="Code">sdkperf_c -cip=listen:127.0.0.1:44444 -l -lb=2048 -lp=3 -lg=10 -stl=foo -epl=CONTEXT_IPC_SHM_SPIN,-1,CONTEXT_IPC_SHM_THREAD_AFFINITY,4<br/>sdkperf_c -cip=shm:127.0.0.1:44444 -l -ptl=foo -msa=100 -mn=1000000 -mr=100000 -epl=CONTEXT_IPC_SHM_SPIN,-1,CONTEXT_IPC_SHM_THREAD_AFFINITY,8</p>
+    <h2 class="with-rule"><a name="using_ipc_with_the_sdkperf_tool_2787158446_238467"/>IPC Between Three SDKPerf Instances</h2>
+    <p>In the following example, three sdkperf_c instances communicate with each other, so each instance can talk to the others over IPC. Each instance publishes on two different topics, and subscribes to two different topics. Each listens for incoming IPC connections, and then connects actively to one other peer.</p>
+    <p class="Code">sdkperf_c -cip=listen:127.0.0.1:55555;shm:127.0.0.1:33333;shm:127.0.0.1:44444 -ptl=e,f -stl=a,b,d -msa=100 -mn=100000 -mr=10000
+sdkperf_c -cip=listen:127.0.0.1:44444;shm:127.0.0.1:33333;shm:127.0.0.1:55555 -ptl=c,d -stl=a,b,e -msa=100 -mn=100000 -mr=10000
+sdkperf_c -cip=listen:127.0.0.1:33333;shm:127.0.0.1:44444;shm:127.0.0.1:55555 -ptl=a,b -stl=d,f -msa=100 -mn=100000 -mr=10000</p>
+  </body>
+</html>

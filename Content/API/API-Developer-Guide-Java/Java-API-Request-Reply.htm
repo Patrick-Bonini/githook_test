@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><a name="top"/>Request-Reply Messaging in the Java API</h1>
+    <p>Request-reply messaging is method of data transmission where applications simulate separate point-to-point channels: one for requests, and another for replies. In request-reply messaging, each request sent from a <i>message requestor</i> requires a reply from a <i>message replier</i>. When a message replier consumes a request message, it sends a reply back to the requestor. This messaging pattern is useful when each message sent between components in your applications requires a reply, for example when performing authentication or financial transactions. </p>
+    <p>
+      <img src="../API-Developer-Guide/Images/request-reply-2.png"/>
+    </p>
+    <p>The <MadCap:variable name="Manifest-Products-APIs.PubSub-GenericAll-Messaging-API"/>s publish request messages with a unique, automatically generated ReplyTo destination topic in the message header field. This ReplyTo topic serves as the return address that the reply should be sent to. Because the ReplyTo topic destination is handled by the <MadCap:variable name="Manifest-Products-APIs.PubSub-GenericAll-Messaging-API"/>s, it allows users to perform request-reply operations without worrying about registering appropriate topic subscriptions to receive replies.</p>
+    <p>To use the request-reply messaging pattern with the <MadCap:variable name="Manifest-Products-APIs.api-product-java-short"/>, follow these steps:</p>
+    <ol>
+      <li>
+        <MadCap:xref href="#Creating-A-RequestReplyMessagePublisher">Create a RequestReplyMessagePublisher</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Sending">Sending a Request</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Creating-A-RequestReplyMessageReceiver">Create a RequestReplyMessageReceiver</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Receivin3">Receiving Requests and Sending Replies</MadCap:xref>
+      </li>
+    </ol>
+    <h2><a name="Creating-A-RequestReplyMessagePublisher"/>Create a RequestReplyMessagePublisher</h2>
+    <p>To send message requests, create a <code>MessagingService</code> object (see <MadCap:xref href="Java-Messaging-Service.htm#Messaging-Service">Messaging Service</MadCap:xref> for instructions). After you create a <code>MessagingService</code> object and connect it to the event broker, use the <code>RequestReply()</code> method to build a <code>RequestReplyMessagePublisher</code> object:</p>
+    <pre xml:space="preserve">final RequestReplyMessagePublisher requestReplyMessagePublisher =
+      messagingService.requestReply()
+                      .createRequestReplyMessagePublisherBuilder()
+                      .build()
+                      .start();
+</pre>
+    <p>Next create an <code>OutboundMessage</code> instance. This is the request that your publisher sends to the receiver instance. For information on creating an <code>OutboundMessage</code> object see <MadCap:xref href="Java-DM-Publish.htm#Configuring-Messages">Configuring and Creating Outbound Messages</MadCap:xref>. </p>
+    <h2><a name="Sending"/>Sending a Request</h2>
+    <p>When you send a request, it can be either synchronous or asynchronous. A synchronous request blocks your application until a reply is received. An asynchronous request allows your application to send multiple requests before any replies are received.</p>
+    <ul>
+      <li>
+        <p>
+          <MadCap:xref href="#Sending2">Sending a Synchronous Request</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Sending3">Sending an Asynchronous Request</MadCap:xref>
+        </p>
+      </li>
+    </ul>
+    <h3><a name="Sending2"/>Sending a Synchronous Request</h3>
+    <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Java API provides synchronous request-reply messaging, which blocks each request until a reply is received. This is useful for synchronous, point to point communication where the order of events is important, for example when processing financial transactions. To send a synchronous request, use your <code>RequestReplyMessagePublisher</code> to call the <code>publishAwaitResponse()</code> method. The <code>publishAwaitResponse()</code> method takes the following parameters:</p>
+    <ul>
+      <li style="font-size: 11pt;"><code>requestMessage</code>—the <code>OutboundMessage</code> request to send</li>
+      <li style="font-size: 11pt;"><code>additionalMessageProperties</code>—(Optional) A <code>Property</code> object that contains additional message properties (see <MadCap:xref href="Java-DM-Publish.htm#Configuring-Messages">Configuring and Creating Outbound Messages</MadCap:xref>). Omit this parameter if you do not have additional message properties to set.</li>
+      <li style="font-size: 11pt;"><code>requestDestination</code>—the <code>Topic</code> destination for request messages</li>
+      <li style="font-size: 11pt;"><code>replyTimeout</code>—a <code>Long</code> value representing the maximum time to wait for a response message (in milliseconds)</li>
+    </ul>
+    <p style="font-size: 11pt;">For more information, see the <a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Java reference</a>.</p>
+    <p style="font-size: 11pt;">The following example shows how to send a request message synchronously and assign the reply to an <code>InboundMessage</code> object:</p>
+    <pre xml:space="preserve">
+final InboundMessage inboundMessage = requestReplyMessagePublisher.publishAwaitResponse(outboundMessage, Topic.of("my/sample/topic"), 1000);</pre>
+    <p>For a complete example, see <a href="https://github.com/SolaceSamples/solace-samples-java/blob/main/src/main/java/com/solace/samples/java/patterns/DirectRequestorBlocking.java" class="link-offsite">DirectRequestorBlocking.java</a> on the <MadCap:variable name="Variables.CompanyName"/> Developer Hub.</p>
+    <h3><a name="Sending3"/>Sending an Asynchronous Request</h3>
+    <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Java API provides asynchronous request-reply messaging, which allows your application to send multiple requests before a reply is received. This is useful for asynchronous communication where the order of events is not important. To send an asynchronous request, use your <code>RequestReplyMessagePublisher</code> to call the <code>publish()</code> method. The <code>publish()</code> method takes the following parameters:</p>
+    <ul>
+      <li style="font-size: 11pt;"><code>requestMessage</code>—the <code>OutboundMessage</code> request to send</li>
+      <li style="font-size: 11pt;"><code>additionalMessageProperties</code>—(Optional) A <code>Property</code> object that contains additional message properties (see <MadCap:xref href="Java-DM-Publish.htm#Configuring-Messages">Configuring and Creating Outbound Messages</MadCap:xref>). Omit this parameter if you do not have additional message properties to set.</li>
+      <li style="font-size: 11pt;"><code>replyMessageHandler</code>—an instance of <code>RequestReplyMessagePublisher.ReplyMessageHandler</code>, a callback handler to process the reply message when it arrives or when a timeout occurs.</li>
+      <li style="font-size: 11pt;"><code>userContext</code>—(Optional) An <code>Object</code> of <code>userContext</code> to be made available during response message processing (see <MadCap:xref href="Java-PM-Publish.htm#user-contexts">User Contexts</MadCap:xref>). Omit this property if you do not have context to set.</li>
+      <li style="font-size: 11pt;"><code>requestDestination</code>—the <code>Topic</code> destination for request messages</li>
+      <li style="font-size: 11pt;"><code>replyTimeout</code>—a <code>Long</code> value representing the maximum time to wait for a response message (in milliseconds)</li>
+    </ul>
+    <p style="font-size: 11pt;">For more information, see the <a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Java reference</a>.</p>
+    <p style="font-size: 11pt;">The following shows an example implementation of a <code>ReplyMessageHandler</code>, which sends a request message asynchronously and assigns the reply to an <code>InboundMessage</code> object:</p>
+    <pre xml:space="preserve">
+requestReplyMessagePublisher.publish(outboundMessage,
+        (inboundMessage, userContext, pubSubPlusClientException) -&gt; {
+            if (pubSubPlusClientException == null) { // Message received
+                System.out.println("The reply inboundMessage payload being logged is : " + inboundMessage.getPayloadAsString());
+            } else { // Error occurred 
+                if (userContext != null) {
+                    System.out.println(String.format("Error for Message %s - %s", userContext, pubSubPlusClientException));
+                }
+                if (pubSubPlusClientException instanceof PubSubPlusClientException.TimeoutException) {
+                    // requestor application did not receive a reply for the published message within specified timeout
+                    // good location for implementing resiliency or retry mechanisms
+                    System.out.printf("Publishing action timed out without any reply. Error : : %s%n", pubSubPlusClientException);
+                    System.out.println("Publish timed-out for message with payload :" + outboundMessage.getPayloadAsString());
+                } else {
+                    throw new RuntimeException(pubSubPlusClientException);
+                }
+            }
+        }
+        , Topic.of("my/sample/topic"), 1000);</pre>
+    <p>For a complete example, see <a href="https://github.com/SolaceSamples/solace-samples-java/blob/main/src/main/java/com/solace/samples/java/patterns/DirectRequestorNonBlocking.java" class="link-offsite">DirectRequestorNonBlocking.java</a> on the <MadCap:variable name="Variables.CompanyName"/> Developer Hub.</p>
+    <h2><a name="Creating-A-RequestReplyMessageReceiver"/>Create a RequestReplyMessageReceiver</h2>
+    <p>To send message replies, create a <code>MessagingService</code> object (see <MadCap:xref href="Java-Messaging-Service.htm#Messaging-Service">Messaging Service</MadCap:xref> for instructions). After you create a <code>MessagingService</code> object and connect it to the event broker, use the <code>RequestReply()</code> method to build a <code>RequestReplyMessageReceiver</code> object:</p>
+    <pre xml:space="preserve">final RequestReplyMessageReceiver requestReplyMessageReceiver =
+      messagingService.requestReply()
+                      .createRequestReplyMessageReceiverBuilder()
+                      .build(topicSubscription)
+                      .start();
+</pre>
+    <p>Next create an <code>OutboundMessage</code> instance. This is the reply that your receiver sends to the requestor instance. For information on creating an <code>OutboundMessage</code> object see <MadCap:xref href="Java-DM-Publish.htm#Configuring-Messages">Configuring and Creating Outbound Messages</MadCap:xref>. </p>
+    <h2><a name="Receivin3"/>Receiving Requests and Sending Replies</h2>
+    <p>Your <code>RequestReplyMessageReceiver</code> can receive a request synchronously or asynchronously as an <code>InboundMessage</code> object.</p>
+    <ul>
+      <li>
+        <p>
+          <MadCap:xref href="#Receivin">Receiving a Request Synchronously and Sending a Reply</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Receivin2">Receiving a Request Asynchronously and Sending a Reply</MadCap:xref>
+        </p>
+      </li>
+    </ul>
+    <h3><a name="Receivin"/>Receiving a Request Synchronously and Sending a Reply</h3>
+    <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Java API provides synchronous request-reply messaging, which blocks your application until the <code>receiveMessage()</code> method returns. This is useful for synchronous, point to point communication where the order of events is important, for example when processing financial transactions. To receive a synchronous request, use your <code>RequestReplyMessageReceiver</code> object to call the <code>receiveMessage()</code> method. The <code>receiveMessage()</code> method takes the following parameters:</p>
+    <ul>
+      <li style="font-size: 11pt;"><code>requestMessageHandler</code>—an instance of <code>RequestReplyMessageReceiver.RequestMessageHandler</code>, a callback handler to process incoming request messages and the replier objects. This callback allows the <code>receiveMessage()</code> method to receive both an <code>inboundMessage</code> (the request) <i>and</i> an instance of <code>RequestReplyMessageReceiver.Replier</code>. The replier object allows your <code>RequestReplyMessageReceiver</code> to send a reply back to the requestor.</li>
+      <li style="font-size: 11pt;"><code>timeOut</code>—(Optional) a <code>Long</code> value representing the time to wait before exiting the synchronous method (in milliseconds). Value should be greater than 0. Omit this property if you do not want to set a timeout value.</li>
+    </ul>
+    <p style="font-size: 11pt;">For more information, see the <a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Java reference</a>.</p>
+    <p style="font-size: 11pt;">The following shows an example implementation of a <code>RequestMessageHandler</code>, which receives a request message synchronously, assigns the reply to an <code>OutboundMessage</code> object and sends it with the <code>reply()</code> method:</p>
+    <pre xml:space="preserve">
+final RequestReplyMessageReceiver.RequestMessageHandler messageHandler = (inboundMessage, replier) -&gt; {
+    final String stringPayload = inboundMessage.getPayloadAsString();
+    // Process the inboundMessage request, save it, print it etc..
+    // Create the outbound message:
+    final String outboundMessageStringPayload = "This is my reply!";
+    final OutboundMessage outboundMessage = outboundMessageBuilder.build(outboundMessageStringPayload);
+    // Use the replier object to send the outbound message back to the requestor: 
+    replier.reply(outboundMessage);
+};
+							
+requestReplyMessageReceiver.receiveMessage(messageHandler, 1000);
+</pre>
+    <p>For a complete example, see <a href="https://github.com/SolaceSamples/solace-samples-java/blob/main/src/main/java/com/solace/samples/java/patterns/DirectReplierBlocking.java" class="link-offsite">DirectReplierBlocking.java</a> on the <MadCap:variable name="Variables.CompanyName"/> Developer Hub.</p>
+    <h3><a name="Receivin2"/>Receiving a Request Asynchronously and Sending a Reply</h3>
+    <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Java API provides asynchronous request-reply messaging, which allows your application to receive multiple message requests asynchronously with the <code>receiveAsync()</code> method. This is useful for point to point communication where the order of events is not important. To receive asynchronous requests, use a <code>RequestReplyMessageReceiver</code> object to call the <code>receiveAsync()</code> method. The <code>receiveAsync()</code> method takes the following parameters:</p>
+    <ul>
+      <li style="font-size: 11pt;"><code>requestMessageHandler</code>—an instance of <code>RequestReplyMessageReceiver.RequestMessageHandler</code>, a callback handler to process incoming request messages and the replier objects. This callback allows the <code>receiceAsync()</code> method to receive both an <code>inboundMessage</code> (the request) <i>and</i> an instance of <code>RequestReplyMessageReceiver.Replier</code>. The replier object allows your <code>RequestReplyMessageReceiver</code> to send a reply back to the requestor.</li>
+      <li style="font-size: 11pt;"><code>executorService</code>—(Optional) a user-provided instance of <code>ExecutorService</code> for message scheduling. The shutdown of the Executor service or any another maintenance work is the responsibility of the developer. When the order of the messages needs to be preserved, a single thread-based executor is required. Omit this property if you do not want to use an executor service.</li>
+    </ul>
+    <p style="font-size: 11pt;">For more information, see the <a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Java reference</a>.</p>
+    <p style="font-size: 11pt;">The following shows an example implementation of a <code>RequestMessageHandler</code>, which receives a request message asynchronously, assigns the reply to an <code>OutboundMessage</code> object and sends it with the <code>reply()</code> method:</p>
+    <pre xml:space="preserve">
+final RequestReplyMessageReceiver.RequestMessageHandler messageHandler = (inboundMessage, replier) -&gt; {
+    // Process the inboundMessage request:
+    final String stringPayload = inboundMessage.getPayloadAsString();
+    // Create the outbound message with headers and payload:
+    final String outboundMessageStringPayload = "Hello World!";
+    final OutboundMessage outboundMessage = outboundMessageBuilder.build(outboundMessageStringPayload.toString());
+    // Use the replier object to send the outbound message back to the requestor: 
+    replier.reply(outboundMessage);
+};
+			
+// Create a scheduler variable with the required configurations to process the message with:
+final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(2);	
+requestReplyMessageReceiver.receiveAsync(messageHandler, executorService);
+</pre>
+    <p>For a complete example, see <a href="https://github.com/SolaceSamples/solace-samples-java/blob/main/src/main/java/com/solace/samples/java/patterns/DirectReplierNonBlocking.java" class="link-offsite">DirectReplierNonBlocking.java</a> on the <MadCap:variable name="Variables.CompanyName"/> Developer Hub.</p>
+  </body>
+</html>

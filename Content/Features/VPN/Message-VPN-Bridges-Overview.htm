@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><a name="working_with_bridges"/>Message VPN Bridges</h1>
+    <p>Message VPN bridges can  link two Message VPNs so that messages published to one Message VPN that match the topic subscriptions set for the bridge are also delivered to the linked Message VPN.</p>
+    <p>A Message VPN bridge allows for the delivery of Direct messages that match an explicit set of topic subscriptions from a remote Message VPN to a local Message VPN.</p>
+    <p>Guaranteed messages can also be delivered over Message VPN bridges when additional parameters are configured for the remote Message VPN.</p>
+    <p>You can use Message VPN bridges in these scenarios:</p>
+    <ul>
+      <li>Linking two Message VPNs with different names to enable Direct or Guaranteed messages published to one Message VPN to be delivered to the other Message VPN. <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">The linked Message VPNs can be either on the same event broker or two separate event brokers.</MadCap:conditionalText></li>
+      <li>Linking two Message VPNs with the same names on two separate event brokers to enable Guaranteed messages published to one Message VPN to be delivered to the other Message VPN.</li>
+      <li>Linking two Message VPNs with the same names on two separate event brokers to enable Direct messages published to one Message VPN to be delivered to the other Message VPN. <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">This scenario operates differently than multi-node routing. There are two key differences: Message VPN bridges only transfer those Direct messages that match the bridge's topic subscriptions, and Message VPN bridges do not exchange the complete set of topic subscriptions used by the event brokers and their topology.</MadCap:conditionalText></li>
+    </ul>
+    <p class="Note" MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.cloud_product_short"/> <MadCap:variable name="Product-Names.broker_cloud_short"/>s have only a single message VPN, so Message VPN bridges in <MadCap:variable name="Product-Names.cloud_product_short"/> are always between two separate <MadCap:variable name="Product-Names.broker_cloud_short"/>s. Because <MadCap:variable name="Product-Names.cloud_product_short"/> allows you to quickly create multiple <MadCap:variable name="Product-Names.broker_cloud_short"/>s, you can use separate services to segregate topics and clients instead of using multiple message VPNs on the same <MadCap:variable name="Product-Names.broker_sw_short"/> or <MadCap:variable name="Product-Names.broker_appliance_short"/>.</p>
+    <p>A bridge can be uni-directional (messages pass over the bridge in only one direction) or bi-directional (messages pass over the bridge in both directions). The messages that pass in either direction may be different, depending on the remote topic subscriptions that are assigned to the bridge for each local Message VPN.</p>
+    <p>This section discusses the behavior, configuration, and use of Message VPN Bridges, including:</p>
+    <ul>
+      <li MadCap:conditions="SAP.SapHideFromOutput">
+        <MadCap:xref href="#How">Configuring Message VPN Bridges</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#working_with_bridges_msg_access">Managing Access to Messages</MadCap:xref>
+      </li>
+      <li MadCap:conditions="SAP.SapHideFromOutput">
+        <MadCap:xref href="#working_with_bridges_internetw">Internetworking</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#working_with_bridges_establishing">Establishing VPN Bridges</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#working_with_bridges_GD_msging">Guaranteed Messaging Over VPN Bridges</MadCap:xref>
+      </li>
+      <li><MadCap:xref href="#working_with_bridges_uni_vs_bi">Uni-directional Versus Bi-directional Message VPN Bridges</MadCap:xref><![CDATA[
+]]></li>
+    </ul>
+    <p>If you are using <a href="../DMR/DMR-Overview.htm" target="_blank" class="link-internal">Dynamic Message Routing</a> (DMR), you can use DMR instead of a static Message VPN Bridge to deliver messages to a linked Message VPN. For more information, see <MadCap:xref href="../DMR/DMR-Overview.htm#dmr-or-vpn-bridge">DMR or a Message VPN Bridge?</MadCap:xref>.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/Features/DR-Replication/msg-vpn-bridge-message-duplication-warn.flsnp" MadCap:conditions="SAP.SapHideFromOutput"/>
+    <h2 class="with-rule" MadCap:conditions="SAP.SapHideFromOutput"><a name="How"/>Configuring Message VPN Bridges</h2>
+    <p MadCap:conditions="SAP.SapHideFromOutput">You can set up Message VPN Bridges in two ways:</p>
+    <dl MadCap:conditions="SAP.SapHideFromOutput">
+      <dt>
+        <MadCap:variable name="Product-Names.pubsubmanager_long"/>
+      </dt>
+      <dd>The <MadCap:variable name="Product-Names.pubsubmanager_short"/> provides a Click-to-Connect configuration wizard for setting up Message VPN Bridges. <MadCap:variable name="Variables.CompanyName"/> recommends using this method. You need only to launch the wizard from one end of the bridge and the wizard sets the bridge up on both ends. For more information, see <MadCap:xref href="../../Cloud/Broker-Manager/vpn-bridge-ctc.htm">Creating a Message VPN Bridge</MadCap:xref>.</dd>
+      <dt>Manual Set Up</dt>
+      <dd>Alternatively, you can  manually configure Message VPN Bridges using the <MadCap:variable name="Variables.CompanyName"/> CLI. For more information, see <MadCap:xref href="Managing-Message-VPN-Bridges.htm">Message VPN Bridge Configuration</MadCap:xref>.</dd>
+    </dl>
+    <h2 class="with-rule"><a name="working_with_bridges_msg_access"/>Managing Access to Messages</h2>
+    <p>You can use Message VPN bridges to manage which messages pass from one Message VPN to another. When a Message VPN bridge links two Message VPNs, the topic subscriptions assigned to the bridge (or the bridge queue for Guaranteed messages) determine which messages are delivered from a remote Message VPN to the local Message VPN it is linked to.</p>
+    <p class="GraphicCaption">Typical Message VPN Bridge Configuration</p>
+    <p class="GraphicCaption">
+      <img src="../../Resources/Images/VPN/vpn-bridge-basic.png" style="margin-left: 6.54912px;margin-top: 4.50432px;margin-right: 5.168867px;margin-bottom: 7.264082px;" alt="Illustration depicting the concepts described in the surrounding text."/>
+    </p>
+    <p MadCap:conditions="SAP.SapHideFromOutput,Default.HideFromAllOutput">The next figure shows a deployment where there are clients across three different Message VPNs and two event brokers not participating in multiple-node routing that all have subscriptions for the same topic–“quotes/equities/NA”.</p>
+    <p class="GraphicCaption" MadCap:conditions="SAP.SapHideFromOutput,Default.HideFromAllOutput">Message VPN Bridge Example</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput,Default.HideFromAllOutput">
+      <img src="../../Resources/Images/VPN/Msg_VPN_Bridge.jpg" alt="Illustration depicting the concepts described in the surrounding text."/>
+    </p>
+    <p MadCap:conditions="Default.HideFromAllOutput">The message is sent from Message VPN <code>green</code> on event broker <code>EB-1</code> across Message VPN bridge B to Message VPN <code>red</code> to fulfill the topic subscription <code>quotes/&gt;</code>. Note that Message VPN bridge B is a bi-directional bridge, so that messages published to Message VPN <code>red</code> could also be delivered to Message VPN <code>green</code> on event broker <code>EB-2</code> if they match the <code>news/&gt;</code> subscription set for that end of the bridge.</p>
+    <h2 class="with-rule" MadCap:conditions="SAP.SapHideFromOutput"><a name="working_with_bridges_internetw"/>Internetworking</h2>
+    <p MadCap:conditions="SAP.SapHideFromOutput" class="Note">This scenario includes multi-node routing, which isn't supported by<MadCap:variable name="Product-Names.cloud_product_short"/>. You may also want to consider using <MadCap:xref href="../DMR/DMR-Overview.htm">Dynamic Message Routing</MadCap:xref> in this type of scenario.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Message VPN bridges can be used to link two networks together. In this use case, an entire remote network (rather than just a single remote client) can join to another network to form an extended intranet.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">This configuration is useful for companies with offices and private networks located in different physical locations that need to carefully control the message flow over expensive WAN links between sites. In this scenario, each location uses multiple-node routing for fully‑distributed Message VPN connectivity for Direct messages, and Message VPN bridging is used to transfer messages for specific topics over a LAN or MAN.</p>
+    <p class="GraphicCaption" MadCap:conditions="SAP.SapHideFromOutput">Bridging Message VPNs for Internetworking</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">
+      <img src="../../Resources/Images/VPN/vpn-bridge-internetwork.png" alt="Illustration depicting the concepts described in the surrounding text."/>
+    </p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">A group of event brokers can be configured as neighbors for multiple-node routing to efficiently route traffic through a network. Gateway event brokers in that group can then be linked by Message VPN bridges so that messages in the network that match select topics can be delivered to clients connected to event brokers outside of those groups of neighbors.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">In this type of Message VPN bridge application:</p>
+    <ul MadCap:conditions="SAP.SapHideFromOutput">
+      <li>publishers are typically in the core network with subscribers on the edge of the network</li>
+      <li>Message VPN bridges subscribe to a small subset of the topics in the Message VPN in the core</li>
+    </ul>
+    <p class="GraphicCaption" MadCap:conditions="SAP.SapHideFromOutput">Message VPN Bridges with Multi-Node Routing in the Core</p>
+    <p style="text-align: left;" MadCap:conditions="SAP.SapHideFromOutput">
+      <img src="../../Resources/Images/VPN/vpn-bridge-neighbour.png" alt="Illustration depicting the concepts described in the surrounding text."/>
+    </p>
+    <h2 class="with-rule"><a name="working_with_bridges_establishing"/>Establishing Message VPN Bridges</h2>
+    <p>To establish a Message VPN bridge, you create the bridge in a local Message VPN, which automatically creates an internal client for the bridge. This client can establish a connection to a remote Message VPN. On the remote event broker, the Message VPN bridge functions like a client connection and login attempts to the remote event broker are authenticated in the same manner as other client connections. Control and data messages are sent between the local and remote Message VPNs through the client connection.</p>
+    <p>After you create a Message VPN bridge, you must configure the following parameters before the bridge can be enabled and messages can begin to be transferred:</p>
+    <ul>
+      <li>remote Message VPN and event broker—This is the remote Message VPN and event broker to receive messages from. The event broker is specified by either  its name or “connect-via” address expressed as an IP address or DNS name. Multiple remote Message VPNs can also be specified in order of preference. These redundant remote Message VPNs provides some protection if the first remote Message VPN the bridge connects to becomes unavailable.</li>
+      <p class="Note" MadCap:conditions="SAP.SapHideFromOutput">If you want to establish a bridge link to a remote Message VPN that is also on the local event broker, use an IP address of 127.0.0.1 and do not specify a physical interface. This configuration will establish a loopback Message VPN bridge.</p>
+      <li>remote Message VPN authentication scheme—the authentication scheme that the bridge uses to authenticate with the remote Message VPN. An authentication scheme is required for each remote Message VPN that is configured for the bridge.<ul><li>basic authentication client username—the username used to authenticate with the remote Message VPN, if basic authentication is configured. An optional password can also be specified.</li><li>client certificate authentication certificate file—the certificate file used to authenticate with the remote Message VPN, if client certificate authentication is configured. If no certificate file is specified, the bridge will present the event broker’s server certificate for authentication.</li></ul></li>
+      <p class="Note">By default, remote Message VPN bridge connections are not available to clients—you must first configure permissions in the client profile that is assigned to the client username. You can enable permissions to create bridge connections through the clientsʼ assigned client profile. For more information, see <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:xref href="../../Security/Configuring-Client-Profiles.htm#allow-bridge-connections">Allowing Bridge Connections</MadCap:xref> for <MadCap:variable name="Product-Names.broker_appliance_short"/> and <MadCap:variable name="Product-Names.broker_sw_short"/>s and </MadCap:conditionalText><MadCap:xref href="../../Cloud/client-profiles.htm#creating-client-profiles">Creating a Client Profile</MadCap:xref><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> for <MadCap:variable name="Product-Names.cloud_product_short"/></MadCap:conditionalText>.</p>
+      <li>
+        <p>remote subscription topic—If you want to transfer Direct messages over the Message VPN bridge, configure one or more topic subscriptions for the bridge that will attract Direct messages published to the remote Message VPN. Topics are added to the top level of the bridge and apply across all hosts. The set of topics may be changed while the bridge is enabled.</p>
+      </li>
+      <li>
+        <p>remote message spool queue—If you want to transfer Guaranteed messages over the Message VPN bridge, use this parameter to specify an existing durable queue (with an exclusive access type) on the remote Message VPN to which a consumer flow will connect. Topic subscriptions must be added to the queue to attract messages published to specific topics of interest.</p>
+      </li>
+    </ul>
+    <p MadCap:conditions="SAP.SapHideFromOutput">The following parameters can also be configured (if they are not modified, the default values will be used):</p>
+    <ul MadCap:conditions="SAP.SapHideFromOutput">
+      <li>
+        <p>remote deliver-to-one priority—The deliver-to-one priority given to the subscriptions that are assigned to the bridge. By default, the highest priority is used.</p>
+      </li>
+      <li>
+        <p>remote Message VPN SSL—Sets whether to use TLS/SSL encryption for the remote Message VPN bridge link. This can be configured for each remote Message VPN that is configured for the bridge. If TLS/SSL encryption is used, the port on the event broker used by the remote Message VPN must also be a TLS/SSL port (port 55443 is the default TLS/SSL port). For information on using TLS/SSL with Message VPN bridges, refer to <MadCap:xref MadCap:unresolvedLink="import-link:managing_tls_ssl_service_2542923039_15157" href="../../Security/Managing-TLS-SSL-Service.htm">Managing TLS/SSL Service</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>remote Message VPN compressed data—Sets whether to use data compression for the remote Message VPN bridge link. This can be configured for each remote Message VPN that is configured for the bridge. If data compression is used, the port on the event broker used by the remote Message VPN must also be a compression port (port 55003 is the default compression port).</p>
+      </li>
+      <li>
+        <p>remote Message VPN connect order—Configures the order in which the bridge attempts to connect to configured redundant remote Message VPN hosts. This is configured per host (that is, for each remote Message VPN that is configured for the bridge).</p>
+      </li>
+      <li>
+        <p>SSL parameters—Sets the cipher suites to be used for TLS/SSL encryption as well as the list of trusted common names used to verify the identity of remote server certificates. For information on using TLS/SSL encryption with Message VPN bridges, refer to <MadCap:xref MadCap:unresolvedLink="import-link:managing_tls_ssl_service_2542923039_15157" href="../../Security/Managing-TLS-SSL-Service.htm">Managing TLS/SSL Service</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>remote Message VPN message spool window size—Sets the requested transport window size for the consumer Flow that is bound to the remote queue. This determines how many outstanding Guaranteed messages can be delivered from the remote queue over the Message VPN connection before an acknowledgment must be received by the remote queue. Modifying the window size can be helpful for bridges that go across high-latency links.</p>
+      </li>
+    </ul>
+    <h3 MadCap:conditions="SAP.SapHideFromOutput"><a name="working_with_bridges_fault_tolerance"/>VPN Bridging and Fault Tolerance</h3>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For details on how to establish Message VPN bridge connections to remote event brokers when those remote event brokers have been deployed in high-availability (HA) redundant event broker pairs for fault tolerance, refer to <MadCap:xref href="VPN-Bridging-to-Remote-Event-Brokers.htm">Bridging to Remote Event Brokers That Use Redundancy</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="working_with_bridges_GD_msging"/>Guaranteed Messaging Over Message VPN Bridges</h2>
+    <p>To use a Message VPN bridge to transfer Guaranteed messages from a remote Message VPN to a local Message VPN, you require:</p>
+    <ul>
+      <li>a durable queue provisioned on the remote Message VPN</li>
+      <li>a durable topic subscription added to that durable queue so that messages with a topic match can be spooled to the queue</li>
+    </ul>
+    <p>Then, when you create the bridge on the local Message VPN, you must specify the following:</p>
+    <ul>
+      <li>the remote Message VPN to connect the bridge to</li>
+      <li>the provisioned queue on the remote Message VPN</li>
+    </ul>
+    <p>When the bridge is established, a consumer flow is bound to the queue. Then messages published to the remote Message VPN with matching topics can be transported over the bridge to the consuming event broker using the bound flow.</p>
+    <p>For clients to receive these messages, topic subscriptions must be added to the local Message VPN:</p>
+    <ul>
+      <li>For the Guaranteed messages received from the bridge to remain as Guaranteed messages (that is, retain their non-persistent or persistent delivery modes), a durable queue that has been assigned a matching topic subscription is required. In this case, the received messages are persisted because they are saved to the message spool.</li>
+      <li>If the Guaranteed messages received from the bridge only match client topic subscriptions on the local Message VPN, the messages are converted to Direct messages and are not persisted.</li>
+      <li>If there are no matching subscriptions on the local Message VPN, the event broker discards the messages.</li>
+    </ul>
+    <p>For example, the Guaranteed message flow may work as follows:</p>
+    <ul>
+      <li>
+        <p>Event Broker 1 has a Message VPN bridge configured to establish a Guaranteed message flow to a durable queue on Event Broker 2</p>
+      </li>
+      <li>
+        <p>The specified queue is configured on Event Broker 2 with a list of topics that are mapped to the queue.</p>
+      </li>
+      <li>
+        <p>All messages published to any of the mapped topics are transported through the Guaranteed message flow over the Message VPN bridge to  Event Broker 1</p>
+      </li>
+      <li>
+        <p> After reaching  Event Broker 1, the messages are delivered to all queues and topic endpoints with matching subscriptions.</p>
+      </li>
+    </ul>
+    <p class="GraphicCaption">Message VPN Bridge Configuration for Guaranteed Messaging</p>
+    <p style="text-align: left;">
+      <img src="../../Resources/Images/VPN/vpn-bridge-guaranteed message.png" alt="Illustration depicting the concepts described in the surrounding text."/>
+    </p>
+    <p>If you plan to establish multiple consumer flows  to a remote Message VPN, we recommend creating separate durable message queues in the Message VPN for each of the inbound bridges that will receive Guaranteed messages.</p>
+    <h3><a name="working_with_bridges_avoid_loss"/>Avoiding Loss of Guaranteed Messages with VPN Bridges</h3>
+    <p>When properly configured, Guaranteed messages will not be lost when sent over a Message VPN bridge. The normal operational behavior is as follows:</p>
+    <ul>
+      <li>
+        <p>Guaranteed messages do not unspool from the remote Message VPN of a Message VPN bridge unless they can be spooled by all matching endpoints on the local Message VPN. When a Guaranteed message cannot be successfully spooled to all endpoints with matching subscriptions on the local Message VPN, the event broker periodically retransmits the message across the Message VPN bridge. Once the Guaranteed message is successfully spooled to all matching endpoints on the local Message VPN, then it is unspooled from the remote Message VPN.</p>
+      </li>
+      <li>
+        <p>If a Guaranteed message is rejected by the local Message VPN when it is retransmitted across the bridge, no other Guaranteed messages can traverse the bridge. This can cause the bridge queue on the remote Message VPN to fill up. If the bridge queue reaches its quota, it will reject Guaranteed messages just published to the remote Message VPN. Direct messages, however, including those that are promoted on the local Message VPN, continue to traverse the bridge while in this state.</p>
+      </li>
+      <li>
+        <p>Once the condition that prevents the Guaranteed messages to be spooled by the endpoints on the local Message VPN is cleared, Guaranteed messages begin to traverse the Message VPN bridge again. Once the bridge queue has dropped below quota, it starts accepting newly published Guaranteed messages again.</p>
+      </li>
+    </ul>
+    <p>The correct configuration for this behavior requires the reject‑msg‑to‑sender‑on‑discard option to be enabled on the durable endpoints and for a matching durable subscription to be configured on the local Message VPN. By default, the reject-msg-to-sender-on-discard option is enabled on queues but is disabled on topic endpoints.</p>
+    <p>Although the reject-msg-to-sender-on-discard option only needs to be enabled on one matching endpoint in the local Message VPN to get the desired behavior, it is recommended that it be enabled on all endpoints in the local Message VPN.<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> For more information on this feature, refer to <MadCap:xref MadCap:unresolvedLink="import-link:managing_guaranteed_messaging_3523843102_21102" href="../../Messaging/Guaranteed-Msg/VPN-Level-Msg-Spool-Config.htm">Message VPN-Level Guaranteed Messaging Configuration</MadCap:xref>.</MadCap:conditionalText></p>
+    <p>The local Message VPN must also have a matching durable subscription for the Guaranteed message. If there are no endpoints with matching subscriptions, then the message is discarded as “No Eligible Destination” on the local Message VPN and the message is unspooled from the bridge queue on the remote Message VPN. This prevents the bridge consumer flow from being blocked by messages that have no destination on the local Message VPN.</p>
+    <p class="Note">If the Guaranteed messages received from the bridge match client topic subscriptions on the local Message VPN, the messages are converted to Direct messages and are not persisted.</p>
+    <h2 class="with-rule"><a name="working_with_bridges_uni_vs_bi"/>Uni-directional Versus Bi-directional Message VPN Bridges</h2>
+    <p>Subscriptions must be statically configured on a Message VPN bridge to attract Direct messages from a remote Message VPN. The diagram below shows a uni‑directional bridge that has been configured on Event Broker 1 so that messages from that remote Message VPN with matching topics can be transferred over the bridge from Event Broker 2 using a single TCP connection.</p>
+    <p class="GraphicCaption">Uni-directional Message VPN Bridge</p>
+    <p style="text-align: left;">
+      <img src="../../Resources/Images/VPN/vpn-bridge-uni.png" alt="Illustration depicting the concepts described in the surrounding text."/>
+    </p>
+    <p>It is possible to extend the configuration shown above to create a bi-directional bridge between the two Message VPNs. A bi-directional bridge essentially creates a bridge link in the opposite direction of an existing uni-directional bridge; where the local Message VPN of the uni-directional bridge is the remote Message VPN that the new bridge links to, and the remote Message VPN that the uni-directional bridge links to is the local Message VPN of the new bridge link.</p>
+    <p>As shown in the figure below, by adding a bridge configuration on <code> Event Broker 2</code> from Message VPN <code>yellow </code>to Message VPN <code>blue </code>on <code> Event Broker 1</code>, a bi-directional bridge is established, and a single TCP connection is used to transport all messages between the two Message VPNs.</p>
+    <p>The No Local Delivery property is automatically enabled for Message VPN bridges to prevent forwarding loops. This means that messages transferred across a Message VPN bridge to a remote Message VPN cannot then be sent back to the local Message VPN they originally came from to fulfill matching topic subscriptions again.</p>
+    <p class="GraphicCaption">Bi-directional Message VPN Bridge</p>
+    <p style="text-align: left;">
+      <img src="../../Resources/Images/VPN/vpn-bridge-bi.png" alt="Illustration depicting the concepts described in the surrounding text."/>
+    </p>
+    <h3><a name="working_with_bridges_est_bi"/>Establishing Bi-directional Bridge Links</h3>
+    <p>Two uni-directional bridges cannot be established between the same two Message VPNs—a bi-directional bridge must be used. Therefore, before a local event broker attempts to establish a bridge to a remote event broker, it inspects the existing incoming bridges to see if there is a compatible bridge already established from the remote event broker that can be used. To be compatible, an existing bridge from the remote event broker must pass the following tests:</p>
+    <ul>
+      <li>the remote event broker name from the peer event broker must match the local event broker name</li>
+      <li>the event broker name of the peer must match the specified remote event broker name</li>
+      <li>the remote Message VPN of the peer must match the local Message VPN</li>
+      <li>the Message VPN of the peer must match the specified remote Message VPN</li>
+      <li>if TLS/SSL encryption is to be used, then TLS/SSL must be configured on both bridges (that is, an TLS/SSL bridge is not compatible with a non-TLS/SSL bridge)</li>
+    </ul>
+    <p>If there is a compatible incoming bridge, then no new Message VPN bridge connection is required and an existing uni‑directional Message VPN bridge is transformed into a bi-directional Message VPN bridge. The login is performed with the existing connection.</p>
+  </body>
+</html>

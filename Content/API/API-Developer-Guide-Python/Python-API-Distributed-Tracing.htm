@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><a name="top"/>Context Propagation for Distributed Tracing in the Python API</h1>
+    <MadCap:snippetBlock src="../../Resources/Snippets/otel-library-intro.flsnp"/>
+    <div class="Note">
+      <ul>
+        <li>The PubSub+ OpenTelemetry API Libraries support W3C propagators only.</li>
+        <li>For information about configuring OpenTelemetry SDK environment variables see <a href="https://opentelemetry.io/docs/concepts/sdk-configuration/" class="link-offsite">OpenTelemetry SDK Configuration</a>.</li>
+        <li>By default, traces include command line parameters visible to backend applications like Jaeger.
+				<MadCap:variable name="Variables.CompanyName"/> recommends disabling this feature for security purposes because these parameters may contain sensitive information such as your user name and password. For instructions, see <a href="https://github.com/open-telemetry/opentelemetry-java/blob/main/sdk-extensions/autoconfigure/README.md#resource-provider-spi" class="link-offsite">Disabling Automatic Resource Providers</a>	in the OpenTelemetry documentation in GitHub.	</li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="Instrumenting-Python-Distributed-Tracing"/>Instrumenting Python for Distributed Tracing</h2>
+    <p>Manual Instrumentation involves making changes to your enterprise application's source code, and allows you to inject and extract additional context, such as baggage and trace states, into and from messages. Context propagation makes it easy to debug and optimize your application.  For more information about context propagation in <MadCap:variable name="Variables.CompanyName"/> event messages, see <a href="../../Features/Distributed-Tracing/Distributed-Tracing-Context-Propagation.htm#top" class="link-internal">Distributed Tracing Context Propagation</a>. The following examples show you how to create spans using the OpenTelemetry API.</p>
+    <h4>Understanding How Context Propagation Enables Distributed Tracing in the Python <MadCap:variable name="Product-Names.pubsub_brand_only"/> API</h4>
+    <p>In your client application, you can use the OpenTelemetry API to create a span, which contains metadata about an operation in a distributed system. This span is associated with a context, which includes a unique <code>TraceID</code>. Next, when you use a <MadCap:variable name="Product-Names.pubsub_brand_only"/> message producer to publish a message, the <MadCap:variable name="Variables.CompanyName"/> OTel integration package injects the context, which contains the <code>TraceID</code>, into the message. As the message travels through the event broker and is received by a consuming application, spans are generated at each step and have the same <code>TraceID</code> present in the original message context.  When each span is closed in the publishing or consuming application, the Python OpenTelemetry API sends it to an OpenTelemetry collector, which collects, processes and exports the spans to a backend application that correlates the spans using their unique <code>TraceID</code>. A backend application uses the correlated spans to create a <i>trace</i>, which is an end-to-end snapshot detailing how the message traveled through the distributed system. If you do not use context propagation, then backend applications cannot use a unique TraceID to link the spans, making it difficult to trace the flow of messages through the distributed system.</p>
+    <h4>Dependencies</h4>
+    <p>To enable context propagation for distributed tracing, you must first add the <a href="https://test.pypi.org/project/pubsubplus-opentelemetry-integration/" class="link-offsite" target="_blank">Solace PubSub+ OpenTelemetry Python Integration</a> package as a dependency in your application. You can also add this package with the following command:</p>
+    <pre xml:space="preserve">
+pip install pubsubplus-opentelemetry-integration</pre>
+    <p>Then add the OpenTelemetry API and SDK libraries required for context propagation with the following commands:</p>
+    <pre xml:space="preserve">
+pip install opentelemetry-api
+pip install opentelemetry-sdk	</pre>
+    <p><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> For OpenTelemetry version compatibility, see <MadCap:xref href="../../Features/Distributed-Tracing/Distributed-Tracing-Receiver-Versions.htm">Distributed Tracing Version Compatibility</MadCap:xref>.</MadCap:conditionalText> Adding these libraries gives your application access to the following:</p>
+    <ul>
+      <li><code>InboundMessageCarrier</code>—OpenTelemetry message carrier and <MadCap:variable name="Variables.CompanyName"/> message wrapper for inbound messages</li>
+      <li><code>InboundMessageGetter</code>—enables the API to extract propagated fields from an <code>InboundMessageCarrier</code></li>
+      <li><code>OutboundMessageCarrier</code>—OpenTelemetry message carrier and <MadCap:variable name="Variables.CompanyName"/> message wrapper for outbound messages</li>
+      <li><code>OutboundMessageSetter</code>—enables the API to inject propagated fields into an <code>OutboundMessageCarrier</code></li>
+      <li><code>OutboundMessageGetter</code>—enables the API to extract propagated fields from an <code>OutboundMessageCarrier</code></li>
+    </ul>
+    <div class="Note">
+      <p>This guide presumes you are familiar with configuring an instance of the OpenTelemetry class. For instructions for configuring OpenTelemetry objects, see <a href="https://opentelemetry.io/docs/instrumentation/python/manual/" class="link-offsite" target="_blank">OpenTelemetry Manual Instrumentation in Python</a> in the OpenTelemetry documentation.</p>
+    </div>
+    <p>To use context propagation in the Python <MadCap:variable name="Product-Names.pubsub_brand_only"/> API, include the following packages in your application:</p>
+    <pre xml:space="preserve">from opentelemetry.trace import StatusCode, Status  # Trace statuses
+from opentelemetry import context                   # Context functionality
+from opentelemetry import propagate                 # Trace context propagation
+from opentelemetry import trace, baggage            # Trace and baggage functionality
+from opentelemetry.sdk.resources import Resource    # Define resources in tracing
+from opentelemetry.sdk.trace import TracerProvider  # Trace functionality
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter  # Span exporters for OTLP server using gRPC
+from opentelemetry.sdk.trace.export import (        # Generic span exporters
+    BatchSpanProcessor,
+    ConsoleSpanExporter,
+    SimpleSpanProcessor
+)
+from opentelemetry.semconv.trace import (               # Standard semantic conventions for tracing
+    SpanAttributes,
+    MessagingDestinationKindValues,
+    MessagingOperationValues
+)
+from solace_otel.messaging.trace.propagation import (   # <MadCap:variable name="Variables.CompanyName"/> message carriers for trace propagation
+    OutboundMessageCarrier,
+    OuboundMessageGetter, 
+    OutboundMessageSetter,
+    InboundMessageCarrier,
+    InboundMessageGetter		
+)
+</pre>
+    <h4>Generating a Send Span on Message Publish</h4>
+    <p>Your publishing application can generate a send span and export it to the OpenTelemetry Collector. To inject context into a message and generate a send span for a published message, perform these steps:</p>
+    <ol>
+      <li>Create an instance of an <code>OutboundMessageSetter</code>, which enables the API to inject propagated fields into a <MadCap:variable name="Variables.CompanyName"/> outbound message carrier. Next, create a propagator instance with the <code>get_global_textmap()</code> function. This function returns a global text map propagator which makes the <code>TraceContext</code> and <code>Baggage</code> structures available across your application.		</li>
+      <pre xml:space="preserve">
+default_setter = OutboundMessageSetter()
+propagator = propagate.get_global_textmap()</pre>
+      <li>Use the <code>get_tracer()</code> function to create a tracer instance. A tracer instance allows your application to create, start, and end spans. </li>
+      <pre xml:space="preserve">
+tracer = trace.get_tracer("my_tracer")	</pre>
+      <li>
+        <p>Create your <code>OutboundMessage</code> to publish, and use your tracer instance to create and start a span with the <code>start_as_current_span()</code> function. The span automatically ends when the code in the <code>with</code> block completes:</p>
+      </li>
+      <pre xml:space="preserve">
+outbound_message = message_builder.build('my message body', additional_message_properties=additional_properties)
+with tracer.start_as_current_span(f"{my_topic}_publish") as span:	</pre>
+      <li>Set span attributes with the <code>set_attribute()</code> function, which lets you attach additional context and meta-data to a span in the form of key-value pairs:</li>
+      <pre xml:space="preserve">
+    span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "PubSub+")
+    span.set_attribute(SpanAttributes.MESSAGING_DESTINATION_KIND, MessagingDestinationKindValues.TOPIC.value)
+    span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, my_topic)
+    span.set_attribute(SpanAttributes.MESSAGING_OPERATION, "publish")
+    span.set_attribute(SpanAttributes.MESSAGING_PROTOCOL, "SMF")
+    span.set_attribute(SpanAttributes.MESSAGING_MESSAGE_ID, outbound_message.get_message_id())</pre>
+      <li>(Optional) Attach baggage to the span with the <code>set_baggage()</code> function. The <code>attach()</code> function implicitly retrieves the current context if you do not explicitly provide context. This function uses key-value pairs:</li>
+      <pre xml:space="preserve">    BAGGAGE_KEY = "my_key"
+    BAGGAGE_VALUE = "my_value"
+    context.attach(baggage.set_baggage(BAGGAGE_KEY, BAGGAGE_VALUE))	</pre>
+      <li>Create an <code>OutboundMessageCarrier</code> instance and pass in your outbound message object. Then use the <code>inject()</code> function to inject context into your message:</li>
+      <pre xml:space="preserve">
+    carrier = OutboundMessageCarrier(outbound_message)
+    propagator.inject(carrier=carrier, setter=default_setter)			</pre>
+      <li>Publish the message:</li>
+      <pre xml:space="preserve">
+    try:
+        direct_publisher.publish(
+            destination=Topic.of("my/sample/topic"),
+            message=outbound_message)
+        span.set_status(Status(StatusCode.OK))
+    except Exception as ex:
+        span.set_status(Status(StatusCode.ERROR))
+        span.record_exception(ex)		</pre>
+    </ol>
+    <p class="Note">
+			In the code snippets shown above, the span ends when the code in the <code>with</code> block completes.If you  do <i>not</i> use a <code>with</code> code block as demonstrated in step 3, you must explicitly call <code>span.end()</code> to end the span.					</p>
+    <p MadCap:conditions="Default.HideFromAllOutput">For a complete example of distributed tracing in a message publisher, see <a href="https://github.com/SolaceSamples/solace-samples-python" class="link-offsite">publisher.py(link incoming)</a> on the <MadCap:variable name="Variables.CompanyName"/> Developers Hub.</p>
+    <MadCap:dropDown MadCap:conditions="Default.HideFromAllOutput">
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Publisher Example:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre class="Code" xml:space="preserve">
+#TO DO	</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <h4>Generating a Receive Span on Message Receive</h4>
+    <p>Your consuming application can generate a receive span and then export it to the OpenTelemetry Collector. To extract tracing context from a message and generate a receive span for a received message, perform these steps:</p>
+    <ol>
+      <li>Create an instance of an <code>InboundMessageGetter</code>, which enables the API to extract propagated fields from a <MadCap:variable name="Variables.CompanyName"/> <code>InboundMessageCarrier</code>. 	</li>
+      <pre xml:space="preserve">
+default_getter = InboundMessageGetter()
+</pre>
+      <li>Create a <code>MessageHandler</code> to receive messages. In your handler, use the <code>get_tracer()</code> function to create a tracer instance. A tracer instance allows your application to create, start, and end spans. Then,  create a propagator instance with the <code>get_global_textmap()</code> function. This function returns a global text map propagator which makes the <code>TraceContext</code> and <code>Baggage</code> structures available across your application.		</li>
+      <pre xml:space="preserve">
+class MessageHandlerImpl(MessageHandler):
+    def on_message(self, message: 'InboundMessage'):
+        tracer = trace.get_tracer("my.tracer")
+        propagator = propagate.get_global_textmap()		</pre>
+      <li>Create an <code>InboundMessageCarrier</code> instance and pass in your inbound message object. Then use the <code>extract()</code> function to extract context from the received message:</li>
+      <pre xml:space="preserve">
+carrier = InboundMessageCarrier(message)
+extracted_ctx = propagator.extract(carrier=carrier, getter=default_getter)			</pre>
+      <li>(Optional) Extract baggage from the span: </li>
+      <pre xml:space="preserve">
+baggage_entries = baggage.get_all(extracted_ctx) <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">
+# or get specific baggage:
+baggage_entry = baggage.get_value(my_baggage_key)</MadCap:conditionalText></pre>
+      <li>Use the <code>attach()</code> function to link the extracted trace context to the current context. This allows you to propagate the trace context across distributed components in your application. Assign this to a token instance, which you use later to detach the trace context from the current context when the receive message operation is complete. This keeps changes made to the current context isolated to each individual message receive operation, which means subsequent operations are not affected by the trace context of earlier operations.</li>
+      <pre xml:space="preserve">
+token = context.attach(extracted_ctx)</pre>
+      <li>Use your tracer instance to create and start a span with the <code>start_as_current_span()</code> function. Create a new span for every message. The span automatically ends when the code in the <code>with</code> block completes:</li>
+      <pre xml:space="preserve">
+try:			
+    with tracer.start_as_current_span("{topicName} process".format(topicName=message.get_destination_name())) as span:</pre>
+      <li>Set span attributes with the <code>set_attribute()</code> function, which lets you attach additional context and meta-data to a span in the form of key-value pairs:</li>
+      <pre xml:space="preserve">
+        span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "PubSub+")
+        span.set_attribute(SpanAttributes.MESSAGING_DESTINATION_KIND, MessagingDestinationKindValues.TOPIC.value)
+        span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, message.get_destination_name())
+        span.set_attribute(SpanAttributes.MESSAGING_OPERATION, MessagingOperationValues.PROCESS.value)
+        span.set_attribute(SpanAttributes.MESSAGING_MESSAGE_ID, message.get_application_message_id())
+</pre>
+      <li>Process the received message:</li>
+      <pre xml:space="preserve">
+    try:
+        # Process received messages here
+        span.set_status(Status(StatusCode.OK))
+    except Exception as ex:
+        span.set_status(Status(StatusCode.ERROR))
+        span.record_exception(ex)</pre>
+      <li>
+				Call the <code>detach()</code> function to end the current context, which marks the end of the scope for this step in the tracing process. <code>detach()</code> restores the context to its state before the call to <code>attach()</code> in step 5, which means that any modifications made between <code>attach()</code> and <code>detach()</code> are no longer part of the active context. This allows subsequent operations to proceed without being affected by changes made during this period.
+			</li>
+      <pre xml:space="preserve">
+    finally:
+        context.detach(token)
+</pre>
+    </ol>
+    <p class="Note">
+			In the code snippets shown above, the span ends when the code in the <code>with</code> block completes.If you  do <i>not</i> use a <code>with</code> code block as demonstrated in step 6, you must explicitly call <code>span.end()</code> to end the span.	<![CDATA[		]]></p>
+    <p MadCap:conditions="Default.HideFromAllOutput">For a complete example of distributed tracing in a message receiver, see <a href="https://github.com/SolaceSamples/solace-samples-python" class="link-offsite">subscriber.py(link incoming)</a> on the <MadCap:variable name="Variables.CompanyName"/> Developers Hub.</p>
+    <MadCap:dropDown MadCap:conditions="Default.HideFromAllOutput">
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Receiver Example:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre class="Code" xml:space="preserve">
+#TO DO	</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+  </body>
+</html>

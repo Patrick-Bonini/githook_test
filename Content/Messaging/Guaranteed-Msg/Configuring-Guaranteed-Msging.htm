@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Configuring Guaranteed Messaging</h1>
+    <p>To enable clients to publish Guaranteed messages to and receive Guaranteed messages from a Solace PubSub+ event brokers, the following event broker configuration steps must be performed:</p>
+    <ul>
+      <li>The system-level message spool must be configured and enabled. See <MadCap:xref href="System-Level-Msg-Spool-Config.htm">System-Level Message Spool Configuration</MadCap:xref>.</li>
+      <li>Message VPNs that the clients will use must be configured for Guaranteed Messaging. This can also include provisioning durable endpoints. See <MadCap:xref href="VPN-Level-Msg-Spool-Config.htm">Message VPN-Level Guaranteed Messaging Configuration</MadCap:xref>.</li>
+      <li>Guaranteed Messaging must be enabled for clients.
+                <ul><li>By default, on Solace PubSub+ appliances, Guaranteed Messaging is not available for clients—a client profile that allows Guaranteed message publishing and/or receiving must be configured and assigned to a client username used by the clients</li><li>By default, on Solace PubSub+ software event brokers Guaranteed Messaging is enabled for clients.</li></ul><p>For more information, see <MadCap:xref href="../../Security/Configuring-Client-Profiles.htm#Config-Guaranteed-Params">Configuring Guaranteed Messaging Parameters</MadCap:xref> in the <MadCap:xref href="../../Security/Configuring-Client-Authorization.htm">Client Authorization</MadCap:xref> section.</p></li>
+    </ul>
+    <p class="Note">For JMS clients, the Connection Factory that is used must have the <code>direct‑transport</code> property set to false so that messages will be delivered using the Guaranteed Transport mode instead of the default Direct Transport mode. See <MadCap:xref href="../../API/Solace-JMS-API/Configuring-JNDI-Objects.htm#managing_solace_jndi_objects_1924398615_183105">Configuring Connection Factories</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Transact-Config"/>Transaction Configuration</h2>
+    <p>For client applications to publish and/or receive messages in local or XA transactions, you must also perform the additional configurations:</p>
+    <ul>
+      <li>Enable transaction support in the client profile to be used. See <MadCap:xref href="../../Security/Configuring-Client-Profiles.htm#Allow-Trans-Sess">Allowing Transacted Sessions</MadCap:xref>.</li>
+      <li>If required, increase the value for the maximum number of transactions permitted property for the client profile used. See <MadCap:xref href="../../Security/Configuring-Client-Profiles.htm#Config-Max-Transacts">Configuring the Max Number of Transactions</MadCap:xref>.</li>
+      <li>If required, increase the value for the maximum number of messages per transaction permitted property for the client profile used. See <MadCap:xref href="../../Security/Configuring-Client-Profiles.htm#Config-Max-Messages-Per-Transaction">Configuring the Max Number of Messages Per Transaction</MadCap:xref>. (Changing the maximum number of messages per transaction is a Controlled Availability (CA) feature and should only be used under the supervision of Solace support.)</li>
+      <li>For XA transactions, enable the <code>xa</code> property for the Connection Factory that is used. This property allows connecting JMS clients to also use XA transactions. (By default, this property is not enabled for the default Solace Connection Factory.)</li>
+    </ul>
+    <h2 class="with-rule"><a name="Seq-Example"/>CLI Command Sequence Example</h2>
+    <p>The following CLI command sequence example shows the tasks required to start Guaranteed Messaging and configure a queue and topic endpoint on a Solace PubSub+ appliance.</p>
+    <p class="Note">This example assumes that basic event broker configuration tasks, such as starting the Message VPN and tasks described in <MadCap:xref href="../../Admin/IP-Interfaces/Managing-Appliance-IP-Interfaces.htm">Managing Appliance Interfaces</MadCap:xref>, have been completed beforehand.</p>
+    <pre class="Code" xml:space="preserve">solace(configure)# hardware message-spool
+solace(configure/hardware/message-spool)# disk-array wwn 60:06:01:60:e8:60:1c:00:02:88:44:db:5d:6d:de:11
+solace(configure/hardware/message-spool)# no shutdown primary
+solace(configure/hardware/message-spool)# end
+ 
+solace(configure)# client-profile default
+solace(configure/client-profile)# allow-guaranteed-message-receive 
+solace(configure/client-profile)# allow-guaranteed-message-send 
+solace(configure/client-profile)# exit
+ 
+solace(configure)# client-username default message-vpn default
+solace(configure/client-username)# client-profile default
+solace(configure/client-username)# no shutdown
+solace(configure/client-username)# exit
+ 
+solace(configure)# message-spool message-vpn default 
+solace(configure/message-spool)# max-spool-usage 60000
+solace(configure/message-spool)# create queue testQueue
+solace(configure/message-spool/queue)# permission all modify-topic
+solace(configure/message-spool/queue)# no shutdown
+solace(configure/message-spool/queue)# exit
+solace(configure/message-spool)# create topic-endpoint testTopicEndpoint
+solace(configure/message-spool/topic-endpoint)# permission all modify-topic
+solace(configure/message-spool/topic-endpoint)# no shutdown
+solace(configure/message-spool/topic-endpoint)# end</pre>
+  </body>
+</html>

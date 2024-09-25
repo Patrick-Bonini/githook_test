@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><a name="Consuming-Persistent-Messages-Python-API"/>Consuming Persistent Messages Using the Python API</h1>
+    <p>Subscribing applications that cannot tolerate message loss can use persistent messaging (referred to as  <i>guaranteed messages</i> in other parts of this documentation) instead of direct messaging. When persistent messaging is used, messages are stored on a queue on the event broker. Messages are not deleted from the event broker until the message has been consumed and acknowledged by the subscribing application (referred to as a message receiver). The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API can only consume persistent messages from queues and not from topic endpoints.</p>
+    <p>To consume persistent messages, you must first set up a message queue on the  event broker. For information about creating and configuring durable queues on an event broker, see <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-Queues.htm">Configuring Queues</MadCap:xref>. Alternatively, a non-durable queue can be created when a persistent message receiver (<code>PersistentMessageReceiver</code>) is created. </p>
+    <p>To consume persistent messages using the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python, use the following steps:</p>
+    <ol>
+      <li><a href="#Creating-A-PersistentMessageReceiver-Object" class="link-internal">Create a PersistentMessageReceiver</a>.</li>
+      <li><a href="#Receiving-Persistent-Synchronously" class="link-internal">Receive a Persistent Message Synchronously</a>.</li>
+      <li><a href="#Receiving-Persistent-Asynchronously" class="link-internal">Receive a Persistent Message Asynchronously</a>.</li>
+      <li><a href="#Extract-Message-Props" class="link-internal">Extract Properties from an Inbound Message</a>.</li>
+      <li><a href="#Message-Acknowledgments-Error-Handling" class="link-internal">Message Acknowledgments</a>.</li>
+      <li>
+        <a href="Python-API-Create-Queues.htm" class="link-internal">Create a Queue with the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API.</a>
+      </li>
+    </ol>
+    <p class="Note">Internal back-pressure can occur if your consumer (or subscribing) application experiences a situation where it is unable to process messages as fast as it receives them from the event broker. Messages continue to be buffered internally until a high watermark is reached at which point the API tells the event broker to stop sending messages to prevent message loss.</p>
+    <p>For examples of applications  that consume persistent messages,  see <a href="https://github.com/SolaceSamples/solace-samples-python/blob/main/patterns/guaranteed_subscriber.py" class="link-offsite">guaranteed_subscriber.py</a> on the <MadCap:variable name="Variables.CompanyName"/> GitHub page.</p>
+    <h2 class="with-rule"><a name="Creating-A-PersistentMessageReceiver-Object"/>Creating a PersistentMessageReceiver</h2>
+    <p>After you have established a connection to the event broker using a <code>MessagingService</code> instance, you use a   <code>PersistentMessageReceiver</code> to consume persistent messages from a queue on the event broker. To create a <code>PersistentMessageReceiver</code> object, do the following:</p>
+    <ol>
+      <li>
+        <p>Call the <code>create_persistent_message_receiver_builder()</code> function on a <code>MessagingService</code> object. This returns a <code>PersistentMessageReceiverBuilder</code> object.</p>
+      </li>
+      <li>
+        <p>The <code>PersistentMessageReceiverBuilder</code> object gives you access to a number of functions that let you customize a <code>PersistentMessageReceiver</code> object. These include the following:</p>
+        <ul>
+          <li><code>with_message_replay(replay_strategy: ReplayStrategy)</code>—Add a message replay message strategy to a persistent receiver.</li>
+          <li><code>with_message_selector(selector_query_expression: str)</code>—Enables support for message selection based on message header parameter and message properties values.</li>
+        </ul>
+      </li>
+      <li>
+        <p>Call the <code>build()</code> function on your <code>PersistentMessageReceiverBuilder</code> to return a <code>PersistentMessageReceiver</code> object:</p>
+        <ul>
+          <li>
+            <p><code>build(endpoint_to_consume_from: Queue)</code>—Returns a <code>PersistentMessageReceiver</code> object. Takes an explicit queue to consume from as a parameter. </p>
+          </li>
+        </ul>
+      </li>
+      <li>
+        <p>To enable your <code>PersistentMessageReceiver</code> to start receiving messages, call the <code>start()</code> function on it.</p>
+      </li>
+    </ol>
+    <p>To enable your <code>PersistentMessageReceiver</code> to start receiving messages, call <code>start()</code> on it.</p>
+    <div class="Note">
+      <p>Ensure that the queue properties you specify with the Python API correspond to the those configured on the event broker. For more information, see: </p>
+      <ul>
+        <li>
+          <a href="https://solace.com/blog/solace-endpoints-durable-vs-non-durable/" class="link-offsite">Durable vs Non-Durable</a>
+        </li>
+        <li>
+          <a href="https://solace.com/blog/solace-message-queue-access-types/" class="link-offsite">Message Queue Access Types</a>
+        </li>
+      </ul>
+    </div>
+    <p style="font-size: 11pt;"> For more information about the functions used in the Python API, see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a>.</p>
+    <p>The following is an example how to use a <code>PersistentMessageReceiver</code> to bind to a queue:</p>
+    <pre xml:space="preserve">
+# Define Topic subscriptions 
+topics_sub = [TopicSubscription.of("solace/sample/1")]
+
+# Queue name. This assumes that a persistent queue already exists on the broker with the right topic subscription 
+durable_exclusive_queue = Queue.durable_exclusive_queue("sample-queue")			
+
+# Create a PersistentMessageReceiver Builder which allows you to create a PersistentMessageReceiver  and start it
+persistent_receiver= messaging_service.create_persistent_message_receiver_builder() \
+               .build(durable_exclusive_queue)
+
+# Start starts the configured PersistentMessageReceiver synchronously. Before this function is called, the receiver is considered off-duty
+persistent_receiver.start()	
+						
+# Add any additional subscriptions to your receiver			
+persistent_receiver.add_subscription(topics_sub)	</pre>
+    <p class="Note">You can use the Python API to create durable and non-durable queues on the event broker. For more information see <MadCap:xref href="Python-API-Create-Queues.htm">Creating Queues with the Python API</MadCap:xref>. </p>
+    <h3>Asynchronous Receivers </h3>
+    <p>It is also possible to start a persistent message receiver using a callback listener to allow for asynchronous notifications after the start operation is complete.</p>
+    <p>In the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API, you can use the <code>start_async()</code> function to start a <code>PersistentMessageReceiver</code> asynchronously.  This allows the receiver object to start in a separate background thread, which means your code can continue to execute and you do not have wait for the function to return. </p>
+    <pre xml:space="preserve">
+import concurrent.futures
+# ...
+receivers = [persistent_message_receiver_builder.build() for _ in range(10)]
+futures_to_receiver = { receiver.start_async() : receiver for receiver in receivers}
+
+for future in concurrent.futures.as_completed(futures_to_receiver):
+    receiver = futures_to_receiver[future]
+    try:
+        # start async has no return but will raise an on start failure
+        future.result()
+        print(f'Receiver{id(receiver)} started successfully')
+    except Exception as err:
+        print(f'Receiver{id(receiver)} generated an error: {err}') </pre>
+    <p class="Note"> Your receiver application is not operational until you call <code>start()</code> or <code>start_async()</code> on it.</p>
+    <h2 class="with-rule"><a name="Receiving-Persistent-Synchronously"/>Consuming a Persistent Message Synchronously</h2>
+    <p>You can consume persistent messages synchronously. To do this, you create a  <code>PersistentMessageReceiver</code> and bind it to a queue. After successfully binding to the queue, your receiver application can begin to consume persistent messages. </p>
+    <p>When you use the <code>receive_message(timeout: int)</code> function, it blocks the routine until:</p>
+    <ul>
+      <li>
+               your receiver receives the next message           
+            </li>
+      <li>a timeout occurs, based on the provided <code>timeout</code> parameter
+            </li>
+      <li>or there is a service interruption, such as a receiver termination, <code>MessagingService</code> disconnect, or unrecoverable service interruption.</li>
+    </ul>
+    <p>When an application processes an <code>InboundMessage</code>, it can then send an acknowledgment to the event broker with <code>PersistentMessageReceiver.ack()</code>. The event broker will then remove the <code>InboundMessage</code> from the queue. Until a message is acknowledged it remains on the broker queue and may be redelivered when the application reconnects to the queue.</p>
+    <p>For more information about the preceding functions, see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a></a>.</p>
+    <p>The following example shows you how to consume persistent messages synchronously:</p>
+    <pre xml:space="preserve">
+persistent_receiver= messaging_service.create_persistent_message_receiver_builder() \
+                .build(durable_exclusive_queue)
+persistent_receiver.start()		
+
+# Blocking request to receive the next message. Usually used in a loop, the example below receives 1000 messages.			
+for _ in range(1000):			
+    received_message: 'InboundMessage' = persistent_receiver.receive_message(1000) # Blocks for 1000 milliseconds to wait for a message to arrive.
+    persistent_receiver.ack(received_message)	 					</pre>
+    <p class="Note">If you do not call the <code>receive_message()</code> function, messages can accumulate on the API's internal buffer and you risk running into a back-pressure scenario. If this occurs, the Python API automatically informs the event broker to stop sending messages. </p>
+    <h2 class="with-rule"><a name="Receiving-Persistent-Asynchronously"/>Consuming a Persistent Message Asynchronously</h2>
+    <p>You can consume persistent messages in an asynchronous manner. To do so, you create a <code>PersistentMessageReceiver</code> and start the connection to the event broker as normal, but you use a  <code>MessageHandler</code> to act as a callback function to notify your application when a message has been received. </p>
+    <p>The <code>receive_async(message_handler: MessageHandler)</code> function does not block your receiving application, which allows it to continue executing other code concurrently. This is useful when your receiver needs to process many messages at once or handle a stream of continuous messages.</p>
+    <p class="Note"><code>receive_async()</code> is not an asynchronous co-routine or generator,
+			and is not <code>asyncio</code> compatible.
+<code>	receive_async()</code> returns immediately, and works with native threads under the hood. This function invokes the callback on a new python thread for every message.</p>
+    <p>When an application processes an <code>InboundMessage</code>, it can then send an acknowledgment to the event broker with <code>PersistentMessageReceiver.ack()</code>. The event broker will then remove the <code>InboundMessage</code> from the queue. Until a message is acknowledged it remains on the broker queue and may be redelivered when the application reconnects to the queue.</p>
+    <p>For more information about the preceding functions, see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a></a>.</p>
+    <p>The following example shows you how to consume and acknowledge persistent messages asynchronously:</p>
+    <pre xml:space="preserve">
+class MessageHandlerExample(MessageHandler):
+    def __init__(self, persistent_receiver: PersistentMessageReceiver):
+        self.receiver: PersistentMessageReceiver = persistent_receiver		
+			
+    def on_message(self, message: InboundMessage):
+        # Check if the payload is a String or Byte, decode if its the later
+        payload = message.get_payload_as_string() if message.get_payload_as_string() is not None else message.get_payload_as_bytes()
+        if isinstance(payload, bytearray):
+            print(f"Received a message of type: {type(payload)}. Decoding to string")
+            payload = payload.decode()
+        self.receiver.ack(message)
+						
+# Register an asynchronous message receiver on the PersistentMessageReceiver instance.			
+persistent_receiver.receive_async(MessageHandlerExample(persistent_receiver))		</pre>
+    <p class="Note" MadCap:conditions="Default.HideFromAllOutput"> If you have a number of message receivers consuming a high volume of messages, we recommend changing the "Maximum Delivered Unacknowledged Messages per Flow" setting to be equal to the number of message consumers. This means that the event broker only sends your application the number of messages that it can process at any given time, with each receiver getting another message from the broker for each one that it acknowledges. This setting will prevent an uneven distribution of messages between receivers and help your applications run faster. You can set "Maximum Delivered Unacknowledged Messages per Flow" using the CLI (<MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-Queues.htm#managing_guaranteed_messaging_1810020758_455709">Configuring Max Permitted Number of Delivered Unacked Messages</MadCap:xref>) or the advanced queue settings on the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Cloud event broker. </p>
+    <h3>
+			Pausing and Resuming Message Consumption
+		from Internal Buffers </h3>
+    <p>When your application consumes messages asynchronously using the <code>receive_async()</code> function, you may call the <code>pause()</code> and <code>resume()</code>functions to control the flow of messages to your application's callback.</p>
+    <p class="Note">When you call the <code>pause()</code> function, any timeout values used in the synchronous <code>receive_message(timeout: int)</code> function are still valid. This means timeouts will likely occur if you call the <code>pause()</code> function. </p>
+    <p>You can use the <code>pause()</code> and <code>resume()</code> functions to control the flow of messages between the API's internal buffer  and your application. This internal buffer is where messages are received from the event broker. This flow control is useful if your application must momentarily stop processing messages to handle other operations. The <code>pause()</code> and <code>resume()</code> functions do not control the flow of messages between the event broker and the internal buffer of the API. When you call the <code>pause()</code>function, messages continue to be sent from the event broker. The <code>pause()</code> and <code>resume()</code> functions control the message delivery only to the application. Messages received from the event broker continue to accumulate in the internal buffer.</p>
+    <p>Since the event broker continues to send messages, a back-pressure scenario may occur–that is, messages  continue to accumulate until an internal high watermark is reached. At this  point, the <code>PersistentMessageReceiver</code> notifies the event broker to stop sending messages until the number of accumulated messages falls below the internal low watermark. This internal API mechanism handles back-pressure scenarios for you and ensures that no messages are lost between the event broker and your application.</p>
+    <p>The following  functions are used to pause and resume processing of messages from the API's internal buffer:</p>
+    <ul>
+      <ul>
+        <li>
+          <code>pause()</code>
+        </li>
+      </ul>
+      <ul>
+        <li>
+          <code>resume()</code>
+        </li>
+      </ul>
+    </ul>
+    <p>For more information about the preceding functions, see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a></a>.</p>
+    <p>The following  example shows how to pause and resume processing of messages from the internal queue in the API using the scheduler:</p>
+    <pre xml:space="preserve">
+persistent_receiver.pause() # Pauses the receiver's message delivery to asynchronous message handlers.
+# Perform any action here, for example wait 60 seconds: time.sleep(60)
+persistent_receiver.resume() # Resumes the receiver's message delivery to asynchronous message handlers.</pre>
+    <h2 class="with-rule"><a name="Extract-Message-Props"/>Extracting Properties from an Inbound Message</h2>
+    <p>After you establish a connection to the event broker, your receiver application can subscribe to topics. Whenever your application receives a message from the broker with a matching topic, an <code>InboundMessage</code> instance is returned to the application. You can extract a number of properties from an <code>InboundMessage</code>, such as the sender ID. The following examples show how to extract properties from a message.</p>
+    <ul>
+      <li>
+        <p>Use a <code>MessageHandler</code> callback when you receive a message asynchronously:</p>
+        <pre xml:space="preserve">
+class MessageHandlerExample(MessageHandler):
+    def __init__(self, persistent_receiver: PersistentMessageReceiver):
+        self.receiver: PersistentMessageReceiver = persistent_receiver		
+			
+    def on_message(self, message: InboundMessage):
+        topic = message.get_destination_name()
+        payload_as_bytes = message.get_payload_as_bytes()
+        payload_as_string = message.get_payload_as_string()
+        sender_id = message.get_sender_id()
+        custom_property = message.get_property("custom_prop_name")
+        self.receiver.ack(message)
+						
+# Register an asynchronous message receiver on the PersistentMessageReceiver instance.			
+persistent_receiver.receive_async(MessageHandlerExample(persistent_receiver))		</pre>
+      </li>
+      <li>
+        <p>Use the <code>receive_message()</code> function when you receive a message synchronously:</p>
+        <pre xml:space="preserve">
+# Blocking request to receive the next message. Usually used in a loop, the example below receives 1000 messages.			
+for _ in range(1000):			
+    received_message: 'InboundMessage' = persistent_receiver.receive_message(1000) # Blocks for 1000 milliseconds to wait for a message to arrive.
+    payload_as_bytes = received_message.get_payload_as_bytes()
+    payload_as_string = received_message.get_payload_as_string()
+    sender_id = received_message.get_sender_id()
+    custom_property = received_message.get_property("custom_prop_name")
+    persistent_receiver.ack(received_message)						</pre>
+      </li>
+    </ul>
+    <p>For a complete list of functions that you can use to extract properties from an <code>InboundMessage</code>, see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a></a>.</p>
+    <h2 class="with-rule"><a name="Message-Acknowledgments-Error-Handling"/>Message Acknowledgments</h2>
+    <p>ACKs are asynchronous.  Any routine can  acknowledge messages at any time as long as  the receiver has not been terminated. It is important to remember that after a <code>PersistentMessageReceiver</code> has acknowledged a message from the event broker, it  deletes that message from the queue on the event broker. For this reason it's important to perform any processing and storage of the message <b>before</b> you acknowledge it. </p>
+    <p>The following example  shows how to acknowledge a persistent message:</p>
+    <ul>
+      <li>
+        <p>Use a <code>MessageHandler</code> callback when you receive a message asynchronously:</p>
+        <pre xml:space="preserve">
+class MessageHandlerExample(MessageHandler):
+    def __init__(self, persistent_receiver: PersistentMessageReceiver):
+        self.receiver: PersistentMessageReceiver = persistent_receiver		
+			
+    def on_message(self, message: InboundMessage):
+        # Process the message.
+        <b>self.receiver.ack(message)</b>
+						
+# Register an asynchronous message receiver on the PersistentMessageReceiver instance.			
+persistent_receiver.receive_async(MessageHandlerExample(persistent_receiver))		</pre>
+      </li>
+      <li>
+        <p>Use the <code>receive_message()</code> function when you receive a message synchronously:</p>
+        <pre xml:space="preserve">
+# Blocking request to receive the next message. Usually used in a loop, the example below receives 1000 messages.			
+for _ in range(1000):			
+    received_message: 'InboundMessage' = persistent_receiver.receive_message(1000) # Blocks for 1000 milliseconds to wait for a message to arrive.
+    # Process the message.
+    <b>persistent_receiver.ack(received_message)</b>						</pre>
+      </li>
+    </ul>
+  </body>
+</html>

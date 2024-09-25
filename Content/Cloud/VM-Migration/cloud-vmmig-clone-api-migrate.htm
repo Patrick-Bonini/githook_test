@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="SAP.SapHideFromOutput">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Migrating VM-Based <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s Using the Clone API (Beta)</h1>
+    <p>To migrate an <MadCap:variable name="Product-Names.broker_cloud_short"/>, you can use the <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.cloud_product_long"/></MadCap:conditionalText> REST APIs<MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"> in <MadCap:variable name="Product-Names.cloud_product_firstuse"/></MadCap:conditionalText> to create a clone of the <MadCap:variable name="Product-Names.broker_cloud_short"/>. After you create the cloned service and verify its configuration, you can use <a href="../configure-hostnames.htm" class="link-internal">custom hostnames</a> to migrate and cutover your service.</p>
+    <p> During  migration, any messages in the queue on the VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/> are not preserved. If this is not acceptable for your migration, see <MadCap:xref href="cloud-vmmig-lp.htm#use-replication-to-migrate">Use Replication for Migration</MadCap:xref>. </p>
+    <h2>Considerations for Migrating Using the <MadCap:variable name="Product-Names.cloud_product_short"/> REST API</h2>
+    <p>To migrate, you use a combination of <MadCap:variable name="Product-Names.cloud_product_short"/><![CDATA[  ]]><code>v2</code> REST APIs and operations in the <MadCap:variable name="Product-Names.console_ui_long"/>.</p>
+    <p class="Tip">You don't need to create an application to call the REST API commands. You can use the v2 REST API reference pages to run the commands. For more information about how to use the reference, see <a href="https://api.solace.dev/cloud/reference/authentication#using-the-api-token-in-this-reference" target="_blank" class="link-offsite">Using the API Token inThis Reference</a> in the <a href="https://api.solace.dev/cloud/reference/using-the-v2-rest-apis-for-pubsub-cloud" target="_blank" class="link-offsite" MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.cloud_product_short"/> API Reference</a>.</p>
+    <ul>
+      <li>You require a user account in <MadCap:variable name="Product-Names.cloud_product_short"/> with the <MadCap:variable name="Product-Names.cm_editor"/> or Administrator role, and access to <MadCap:variable name="Product-Names.pubsubmanager_long"/>. For more information, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../cloud-user-management.htm#Roles">Roles and Permissions</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/cloud-user-management.htm#Roles" class="link-internal">Roles and Permissions</a></MadCap:conditionalText>.</li>
+      <li MadCap:conditions="SAP.SapHideFromOutput"> Your account must also have enough available services to create new <MadCap:variable name="Product-Names.broker_cloud_short"/>s. The number of services that you can create in your account are based on your <i>service limits</i>. <MadCap:variable name="Variables.CompanyName"/> has provided additional temporary licenses to enable migration of VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/>s. If you require more services or have reached your service limits, see <MadCap:xref href="../ght_capacity_increase.htm">Increasing Your Capacity or Number of [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref>. </li>
+      <li>Your client applications must connect to the VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/> using a custom hostname as an alternate hostname (not the initial, generated name hostname created for the <MadCap:variable name="Product-Names.broker_cloud_short"/>). This is a requirement to perform the cutover.  We recommend that you use one custom hostname, but you can choose to have multiple custom hostnames configured. If you have multiple custom hostnames, the migration time increases because the time required to  move each custom hostnames takes several minutes. For more information about custom hostnames, see  <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../configure-domain-name.htm#add-customhostname">Adding a Hostname with Custom Domain Name</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/configure-hostnames.htm#add-hostname-ui" target="_blank" class="link-offsite">Adding a custom hostname</a></MadCap:conditionalText><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/configure-hostnames.htm#add-hostname-ui" target="_blank" class="link-offsite">.</a></li>
+      <li>When the <MadCap:variable name="Product-Names.broker_cloud_short"/> that you clone has deletion protection is enabled (<code>locked</code> is <code>true</code>), the new event broker service also has deletion protection enabled. If service creation fails during the clone process, deletion protection is disabled ('<code>locked</code>' is <code>false</code>) and allows you to delete it.</li>
+      <li>If you use the REST API to clone your VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/>, the following broker and service configuration are not cloned:<ul><li>Bridge configuration </li><li>Event mesh configuration (Dynamic Message Routing (DMR)  configuration) </li><li>Distributed tracing configuration</li><li>Single sign-on (SSO) configuration (OAuth profiles) </li><li><MadCap:variable name="Product-Names.broker_cloud_short_title"/> SSO (for management access)</li><li>Server certificates</li><li>Any client certificates other than those used for REST delivery points (RDPs)</li><li>No service connection endpoints are cloned. You can choose to specify the service connection to create when you clone the service. If you choose not to specify the parameters for the service connection endpoint, a private or public service connection endpoint is created based whether the service is created in a <MadCap:variable name="Product-Names.public_region"/>, <MadCap:variable name="Product-Names.dedicated_region"/>, or <MadCap:variable name="Product-Names.customer-controlled_region"/>. For more information, see <MadCap:xref href="../create-service.htm#Configure-Custom-Ports">Configuring Client and Management Ports</MadCap:xref>.</li></ul></li>
+    </ul>
+    <p class="Note">By default, certificate authorities are not cloned, but you can configure the API to clone the certificate authorities to the Target service.</p>
+    <h2><MadCap:variable name="Product-Names.broker_cloud_short_title"/> Migration Steps</h2>
+    <p>These recommended migration steps:</p>
+    <ul>
+      <li> minimize  the time downtime for client applications connected to the <MadCap:variable name="Product-Names.broker_cloud_short"/></li>
+      <li>ensure that if there is an unexpected issue during migration, that you can migrate back to your VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/></li>
+    </ul>
+    <p>You can use these high-level steps when using the REST API to clone an <MadCap:variable name="Product-Names.broker_cloud_short"/> to perform your migration:</p>
+    <p class="Note">The steps below refer to the VM-based  <MadCap:variable name="Product-Names.broker_cloud_short"/> that you migrate from  as the <i>Source</i> service. The new  Kubernetes-based <MadCap:variable name="Product-Names.broker_cloud_short"/> where you migrate to is referred to as the <i>Target</i> service.</p>
+    <ol>
+      <li>Use the <MadCap:variable name="Product-Names.cloud_product_short"/> REST API to clone your VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/> (Source service). For more information, see <MadCap:xref href="#rest-api-clone">Using the [%=Product-Names.cloud_product_short%] REST API to Clone a VM-Based [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>. </li>
+      <li>Validate that the copy of <MadCap:variable name="Product-Names.broker_cloud_short"/> (Target service)  matches your VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/> (Source service). Here are few recommended things to check prior to migration:<ul><li>Validate that client services can authenticate using the same configured authentication (client username and client profiles) and the configured ACLs</li><li>Validate that your <MadCap:variable name="Product-Names.broker_cloud_short_title"/> SSO configuration is available if you have it configured.</li><li>Validate the required client certificates have been installed on the <MadCap:variable name="Product-Names.broker_cloud_short"/>s (the default is not to copy the certificates to the Target service).</li><li>Validate that client applications can access the <MadCap:variable name="Product-Names.broker_cloud_short"/> and can receive and publish messages.</li><li>Validate that the public or private endpoints are configured and that your ports are configured correctly.</li></ul></li>
+      <li>
+        <p>Move the custom hostnames from the Source service to the Target service to migrate (cutover). For more information, see <MadCap:xref href="../configure-hostnames.htm#move-hostname-ui">Moving a Custom Hostname</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>Validate that the client applications operate as expected. We recommend that you<a href="../ght_service_deletion_protection.htm" class="link-internal"> lock the new Target service</a> to avoid accidental deletion.</p>
+        <ul>
+          <li>After you complete your validation (for example confirm that client applications can send and receive messages), proceed to the next step. </li>
+          <li>If the migration was not successful, move the custom hostname back to the Source service, re-check your configuration on the Target service, and run step 3 again. <a href="../../get-support.htm" target="_blank" class="link-internal">Contact <MadCap:variable name="Variables.CompanyName"/></a> if required.</li>
+        </ul>
+      </li>
+      <li>
+        <p>After you have finished validating the functionality and stability of the Target service, <a href="#delete-old-vm-service" class="link-internal">delete the Source service</a>.</p>
+      </li>
+    </ol>
+    <h2 class="with-rule"><a name="rest-api-clone"/>Using the <MadCap:variable name="Product-Names.cloud_product_short"/> REST API to Clone a VM-Based <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h2>
+    <MadCap:snippetBlock src="../../Resources/Snippets/Cloud/CloneService/check_DC_has_service.flsnp"/>
+    <MadCap:snippetBlock src="../../Resources/Snippets/Cloud/REST-API/comfortable_with_rest_api.flsnp"/>
+    <ol>
+      <li>
+        <p>Create an API token in the <MadCap:variable name="Product-Names.console_ui_long"/>. For more information, see <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><a href="https://api.solace.dev/cloud/reference/authentication#creating-an-api-token" class="link-offsite">Creating API Tokens</a></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><MadCap:xref href="../ght_api_tokens.htm">Managing API Tokens</MadCap:xref></MadCap:conditionalText>. On the <b>API Token Management</b> page, you must have at least these  permissions enabled to complete this procedure:</p>
+        <ul>
+          <li>  <b>My Services</b><ul><li>Get My Services with Viewer Credentials</li><li>Get My Services with Management Credentials</li><li>Create Services</li></ul></li>
+          <li>
+            <b>Organization Services</b>
+            <ul>
+              <li>Get Services with Viewer Credentials</li>
+              <li>Get Services with Management Credentials</li>
+            </ul>
+          </li>
+          <li>
+            <b>Cloud Services</b>
+            <ul>
+              <li>Get Datacenters</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li>
+        <p>Determine the unique identifier of the VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/> (Source service) you want to clone. You can get the unique identifier using one of the following methods:</p>
+        <ul>
+          <li>In <MadCap:variable name="Product-Names.cluster_mgr"/>, select the service and get the unique identifier for the <MadCap:variable name="Product-Names.broker_cloud_short"/> from the last segment in the URL. For example, <code>9c5vurtex4b</code> is the identifier from the URL <code><MadCap:variable name="Manifest-Products-Links.CloudConsoleOnly"/>services/9c5vurtex4b</code>.</li>
+        </ul>
+        <ul>
+          <li>
+            <p>Use the <a href="https://api.solace.dev/cloud/reference/getservices" target="_blank" class="link-offsite">Get list of services</a> REST endpoint to  find the unique identifier (<code>id</code>) of the VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/>. </p>
+            <p class="Tip"><a name="tiptogetports"/>We recommend that you run the <a href="https://api.solace.dev/cloud/reference/getservices" target="_blank" class="link-offsite">Get list of services</a> endpoint with the <code>expand</code> parameter set to <code>serviceConnectionEndpoints</code> to get the list of ports configured on the source service. You can use these values to configure the service connection endpoint when you clone your <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+            <p>For example, on the <a href="https://api.solace.dev/cloud/reference/getservices" target="_blank" class="link-offsite">Get list of services</a> page, paste the API token in the <b>Bearer</b> field from Step 1 and then click <b>Try It!</b> to run the command.  If you wanted to find your VM-based service named <b>My-First-Service</b>, you can find that string in the <code>name</code> object and its  corresponding <code>id</code> object is the unique identifier for the service, which is <code>k0zvt9d6g6c</code> as shown:</p>
+            <p>
+              <div class="thumbnail-container">
+                <img class="solacethumbnail" src="../../Resources/Images/Cloud/restapi/clone-updates-getservice.png" alt=""/>
+              </div>
+            </p>
+            <p MadCap:conditions="Default.HideFromAllOutput">For example, if you use the following GET request:</p>
+            <pre xml:space="preserve" MadCap:conditions="Default.HideFromAllOutput">GET https://api.solace.cloud/api/v2/missionControl/eventBrokerServices</pre>
+            <p MadCap:conditions="Default.HideFromAllOutput">Then, if you wanted to find your VM-based service named <b>My-First-Service</b>, you can find that string in the <code>name</code> object and its  corresponding <code>id</code> object is the unique identifier for the service, which is <code>k0zvt9d6g6c</code> as shown in the following response:</p>
+            <pre xml:space="preserve" MadCap:conditions="Default.HideFromAllOutput">    ...
+  "serviceClassId": "ENTERPRISE_250_HIGHAVAILABILITY",
+  "adminState": "start",
+  "creationState": "completed",
+  "locked": false
+},
+},
+{
+  <b>"id": "k0zvt9d6g6c"</b>,
+  "type": "service",
+  "name": "My-First-Service",
+  "createdTime": "2023-05-18T13:52:28Z",
+  "ownedBy": "9hbxppv9y75",
+  "infrastructureId": "3cqif9pryob",
+  "datacenterId": "eks-ca-central-1a",
+  "serviceClassId": "ENTERPRISE_250_HIGHAVAILABILITY",
+  "adminState": "start",
+  "creationState": "completed",
+  "locked": false
+},
+{
+  "id": "lxehf4f9k6g",  
+  "type": "service",  
+  "name": "Acme-service",
+...
+</pre>
+          </li>
+        </ul>
+      </li>
+      <li>
+        <p>Use the <a href="https://api.solace.dev/cloud/reference/getdatacenters" class="link-offsite">Get a list datacenters</a> API to determine the unique identifier of the Kubernetes-based datacenter where you intend to migrate your VM-based service.</p>
+        <p class="Note">Verify that datacenter that you choose supports the service class that you require.  For example, if you require the <MadCap:variable name="Product-Names.class_5k"/> service (this is the ENTERPRISE_5K_STANDALONE from <code>serviceClassId</code>), then confirm that the datacenter that you select has it listed in the <code>supportedServiceClasses</code> array.</p>
+        <p MadCap:conditions="Default.HideFromAllOutput">For example, if you use the following GET request:</p>
+        <pre xml:space="preserve" MadCap:conditions="Default.HideFromAllOutput">GET https://api.solace.cloud/api/v2/missionControl/datacenters</pre>
+        <p MadCap:conditions="Default.HideFromAllOutput">Then, if you wanted to create the  service in the datacenter named <b>EKS - US EAST (N. Virgina)</b>, you can find that string in the <code>name</code> object and the corresponding  <code>id</code> object contains the unique identifier for the datacenter, which is <code>eks-us-east-1a</code> as shown in the following response:</p>
+        <p MadCap:conditions="Default.HideFromAllOutput">
+          <pre>...
+...
+  "spoolScaleUpTestMessage": "" 
+},
+{
+  <b>"id": "eks-us-east-1a"</b>,
+  "type": "datacenter",
+  "name": "EKS - US East (N. Virginia)",
+  "datacenterType": "SolacePublic",
+  "provider": "eks",
+  "operState": "up",
+  "location": {
+  "longitude": "-78",
+  "latitude": "38",
+  "continent": "North America"
+  },
+  "available": true,
+  "supportedServiceClasses": [
+    "ENTERPRISE_5K_STANDALONE",
+    "ENTERPRISE_5K_HIGHAVAILABILITY",
+    "ENTERPRISE_1K_STANDALONE",
+    "ENTERPRISE_250_STANDALONE",
+    "ENTERPRISE_50K_STANDALONE",
+    "DEVELOPER",
+    "ENTERPRISE_1K_HIGHAVAILABILITY",
+    "ENTERPRISE_10K_STANDALONE",
+    "ENTERPRISE_50K_HIGHAVAILABILITY",
+    "ENTERPRISE_250_HIGHAVAILABILITY",
+    "ENTERPRISE_100K_STANDALONE",
+    "ENTERPRISE_10K_HIGHAVAILABILITY",
+    "ENTERPRISE_100K_HIGHAVAILABILITY"
+  ],
+  "cloudAgentVersion": "v104.20230518",
+  "k8sServiceType": "LoadBalancer",
+  "numSupportedPrivateEndpoints": 1,
+  "numSupportedPublicEndpoints": 1,
+  "spoolScaleUpCapabilityInfo": {
+  "spoolScaleUpCapabilityState": "UNKNOWN",
+  "spoolScaleUpTestTimestamp": "1977-01-01T12:00:00Z",
+  "spoolScaleUpTestMessage": ""
+  }
+},
+{
+  "id": "eks-us-east-2a",
+  "type": "datacenter",
+...
+... </pre>
+        </p>
+        <p>You can only clone services to Kubernetes-based datacenters (or regions). You  can  filter the list of  Kubernetes-based datacenters that are available in your account using one of the following values in the  <code>provider</code> fields:
+                </p>
+        <ul>
+          <li><code>k8s</code> to filter for your  <MadCap:variable name="Product-Names.customer-controlled_region"/>s </li>
+          <li><code>gcp</code>, <code>eks</code>, or <code>aks</code> to filter for public Kubernetes-based regions
+					<p class="Caution">Don't use a VM-based datacenter such as <code>azure</code>or <code>aws</code> as filters. Use only one of the specified Kubernetes-based regions as filters. For more information, see the documentation for <a href="https://api.solace.dev/cloud/reference/getdatacenters" target="_blank" class="link-offsite">Get a list of datacenters</a>.</p></li>
+        </ul>
+        <p>For example, you can use the <a href="https://api.solace.dev/cloud/reference/getdatacenters" class="link-offsite">Get a list of datacenters</a> page to find datacenters using Amazon Elastic Kubernetes Service (EKS) using these steps:</p>
+        <ul>
+          <li>Paste the API token in the <b>Bearer</b> field from Step 1.</li>
+          <li> Enter <code>eks</code> as a filter in the <b>Provider</b> field.</li>
+          <li>Click <b>Try It!</b> to run the endpoint.</li>
+        </ul>
+        <p>
+          <div class="thumbnail-container">
+            <img class="solacethumbnail" src="../../Resources/Images/Cloud/restapi/clone-updates-datacenter.png" alt=""/>
+          </div>
+        </p>
+        <p>From the response, find the datacenter your want   based on the <code>name</code> object (in this case <b>EKS - US EAST (N. Virgina)</b>). The unique identifier you require is the corresponding  <code>id</code> object.</p>
+      </li>
+      <li>
+        <p>Use the <a href="https://api.solace.dev/cloud/reference/cloneservice" class="link-offsite">Create a clone of an existing [%=Product-Names.broker_cloud_short%]</a> API to create a Kubernetes-based <MadCap:variable name="Product-Names.broker_cloud_short"/> (Target service). Specify as parameters the  unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> to clone from Step 2 and the identifier of the datacenter from Step 3.				
+				</p>
+        <p MadCap:conditions="Default.HideFromAllOutput">For example, use the POST request using  the unique identifier of <code>k0zvt9d6g6c</code> for the <MadCap:variable name="Product-Names.broker_cloud_short"/> as a Path (or URL) parameter and the datacenter's identifier of <code>eks-us-east-1a</code> in the body parameters as follows:
+					<pre>POST  https://api.solace.cloud/api/v2/missionControl/eventBrokerServices/<b>k0zvt9d6g6c</b>/clone</pre></p>
+        <p MadCap:conditions="Default.HideFromAllOutput">With the body parameter, you can specify the datacenterId (required):<pre MadCap:conditions="Default.HideFromAllOutput">{
+"datacenterId": "<b>eks-us-east-1a</b>"
+}</pre></p>
+        <p>Optionally, you can specify advanced parameters when you create a clone. You can use the following fields:</p>
+        <ul>
+          <li><code>name</code>—When a string is not specified, the default is to use the name of the Source service and append "<code>- Clone</code>" to it.</li>
+          <li><code>serviceConnectionEndpoints</code>—Configuration for the service connection endpoint. You can <a href="#tiptogetports" class="link-internal">get the list of ports from the Source service from the step 2</a> and use the same values to configure the ports. When this parameter is not specified, a default endpoint is created based on the ownership model of the region where the Target service is created.  For more information, see <MadCap:xref href="../create-service.htm#port-configuration-considerations">Port Configuration Considerations</MadCap:xref>.</li>
+          <li><code>serviceCloneAttributes</code>—The configuration to copy from the Source service, which can include service configuration, broker configuration, and certificate authorities. The default is to clone only the service configuration and the broker configuration from the Source service.<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> For more information about the types of configuration you can clone, see <a href="https://api.solace.dev/cloud/reference/cloneservice" class="link-offsite">REST API docs.</a></MadCap:conditionalText> </li>
+        </ul>
+        <p>For example, on the <a href="https://api.solace.dev/cloud/reference/cloneservice" class="link-offsite">Create a clone of an existing <MadCap:variable name="Product-Names.broker_cloud_short" style="font-weight: bold;"/></a> page, paste the API token in the <b>Bearer</b> field from Step 1,  click <b>Try It!</b> to run the command after you enter the following values in the following fields:</p>
+        <ul>
+          <li><code>id</code>—A  <b>PATH PARAM</b> where you enter the identifier of the service to clone from Step 2.</li>
+          <li><code>datacenterId</code>—A <b>BODY PARAM</b> where you enter the identifier of the datacenter from Step 3.</li>
+          <li><code>name</code>—A <b>BODY PARAM</b> where you enter the name for the cloned service. For example, if you  <code>My-Migrated-Service</code>, that is the name.</li>
+        </ul>
+        <p>
+          <div class="thumbnail-container">
+            <img class="solacethumbnail" src="../../Resources/Images/Cloud/restapi/clone-updates-createclone.png" alt=""/>
+          </div>
+        </p>
+        <p MadCap:conditions="Default.HideFromAllOutput">For example, if you wanted to copy all the configuration including the certificates, you would specify the following in the body of the POST request:</p>
+        <pre xml:space="preserve" MadCap:conditions="Default.HideFromAllOutput">{
+"datacenterId": "eks-us-east-1a",
+"name": "My-First-Service-For-Migration",				
+"serviceConnectionEndpoints": [
+{
+  "name": "Public Endpoint",
+  "description": "Public endpoint configured from API clone call",
+  "accessType": "public",
+  "ports": {
+    "serviceSmfPlainTextListenPort": 0,
+    "serviceSmfCompressedListenPort": 0,
+    "serviceSmfTlsListenPort": 55443,
+    "serviceWebPlainTextListenPort": 0,
+    "serviceWebTlsListenPort": 443,
+    "serviceAmqpPlainTextListenPort": 0,
+    "serviceAmqpTlsListenPort": 5671,
+    "serviceMqttPlainTextListenPort": 0,
+    "serviceMqttWebSocketListenPort": 0,
+    "serviceMqttTlsListenPort": 8883,
+    "serviceMqttTlsWebSocketListenPort": 8443,
+    "serviceRestIncomingPlainTextListenPort": 0,
+    "serviceRestIncomingTlsListenPort": 9443,
+    "serviceManagementTlsListenPort": 943,
+    "managementSshTlsListenPort": 0
+  }
+  "serviceCloneAttributes": {
+    "components": [
+       "SERVICE_CONFIGURATION",
+       "BROKER_CONFIGURATION",
+       "CERTIFICATES"
+     ]
+   }
+}
+				]</pre>
+      </li>
+    </ol>
+    <p>After the POST command returns an response code of <code>202</code>, the service creation process takes a few minutes. If an error is returned, take appropriate action and re-run the previous steps as required. </p>
+    <p class="Caution">You cannot  clone services to VM-based datacenters (or regions).</p>
+    <p>After service creation completes for the Target service, you can navigate to it   using  <MadCap:variable name="Product-Names.cluster_mgr"/> in the <MadCap:variable name="Product-Names.console_ui_long"/>. If required, manually configure the Target service to match your Source service, which includes:</p>
+    <ul>
+      <li>Bridge configuration </li>
+      <li>Event mesh configuration (Dynamic Message Routing (DMR)  configuration) </li>
+      <li> Distributed tracing configuration</li>
+      <li> Single sign-on (SSO) configuration (OAuth profiles) </li>
+      <li><MadCap:variable name="Product-Names.broker_cloud_short_title"/> SSO (for management access)</li>
+      <li>Install server certificates or any other  client certificates other than those used for REST delivery points (RDPs)</li>
+      <li>Configure the service endpoints if required</li>
+      <li MadCap:conditions="Default.HideFromAllOutput">Configure the Server Domain Certificate Authorities or Client Certificate Authoritties if required</li>
+    </ul>
+    <h2 class="with-rule"><a name="delete-old-vm-service"/>Deleting the VM-Based <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h2>
+    <MadCap:snippetBlock src="../../Resources/Snippets/Cloud/VMMigration/delete-cleanup-service-after-migration-steps.flsnp"/>
+  </body>
+</html>

@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><a name="Browsing"/>Browsing Queues with the Java API</h1>
+    <p> Queue browsing allows your client applications to look at guaranteed messages, from oldest to newest, without removing them from a queue. You may optionally remove browsed messages from a queue or leave them as needed. For more information see <MadCap:xref href="../API-Developer-Guide/Browsing-Guaranteed-Mess.htm">Browsing Guaranteed Messages</MadCap:xref>. The following steps explain how to setup a queue browser using the Java API. </p>
+    <ol>
+      <li>
+        <p>Use a <code>MessagingService</code> object to create a <code>MessageQueueBrowser</code> object and then call the<code> start()</code> method to connect your queue browser to the event broker:</p>
+        <pre xml:space="preserve">
+final MessageQueueBrowser queueBrowser = messagingService
+.createMessageQueueBrowserBuilder().build(queueToBrowse).start();</pre>
+      </li>
+      <li>
+        <p>Browse messages that are spooled on the queue by calling the <code>receiveMessage()</code> method with your queue browser object:</p>
+        <pre xml:space="preserve">
+final InboundMessage message = queueBrowser.receiveMessage(timeout); // timeout is the time in milliseconds that the receive() method blocks before exiting.</pre>
+      </li>
+      <li>
+        <p>You can use your queue browser object to remove messages from the event broker queue using the <code>remove()</code> method:</p>
+        <pre xml:space="preserve">
+queueBrowser.remove(message);
+</pre>
+      </li>
+      <li>
+        <p>You can use the <code>withMessageSelector()</code> method to only browse messages on the queue that match user-specified message properties:</p>
+        <pre xml:space="preserve">
+final String filterSelectorExpression = "myMessageProperty01 = 'someValue' AND myMessageProperty02 = 'someValue'";
+final MessageQueueBrowser queueBrowser = messagingService
+	.createMessageQueueBrowserBuilder().withMessageSelector(filterSelectorExpression)
+	.build(queueToBrowse).start();
+ 
+final InboundMessage message = browser.receiveMessage(timeout);  // Only messages with matching message properties from a selector expression will be received.			</pre>
+      </li>
+    </ol>
+    <p>The following sample code shows how to browse a queue:</p>
+    <pre class="Code" xml:space="preserve">
+package com.solace.sampler;
+ 
+import com.solace.messaging.MessagingService;
+import com.solace.messaging.receiver.InboundMessage;
+import com.solace.messaging.receiver.MessageQueueBrowser;
+import com.solace.messaging.resources.Queue;
+ 
+public class HowToBrowseAQueue {
+ 
+	public static void startMessageQueueBrowser(MessagingService service, Queue queueToBrowse) {
+		final MessageQueueBrowser receiver = service
+			.createMessageQueueBrowserBuilder().build(queueToBrowse).start();
+	}
+ 
+	public static void browseQueue(MessagingService service,
+		Queue queueToBrowse, long timeout) {
+	final MessageQueueBrowser browser = service
+		.createMessageQueueBrowserBuilder().build(queueToBrowse).start();
+ 
+	final InboundMessage message = browser.receiveMessage(timeout);
+ 
+	}
+ 
+	public static void browseAndRemoveFromQueue(MessagingService service,
+		Queue queueToBrowse, long timeout) {
+	final MessageQueueBrowser browser = service
+		.createMessageQueueBrowserBuilder().build(queueToBrowse).start();
+ 
+	final InboundMessage message = browser.receiveMessage(timeout);
+	// message can be requested for removal from a queue
+	browser.remove(message);
+ 
+	}
+
+	public static void browseQueueUsingMessageSelector(MessagingService service,
+		Queue queueToBrowse, long timeout) {
+	final String filterSelectorExpression = "myMessageProperty01 = 'someValue' AND myMessageProperty02 = 'someValue'";
+	final MessageQueueBrowser browser = service
+		.createMessageQueueBrowserBuilder().withMessageSelector(filterSelectorExpression)
+		.build(queueToBrowse).start();
+ 
+	// ONLY messages with matching message properties from a selector expression will be received
+	final InboundMessage message = browser.receiveMessage(timeout);
+ 
+
+	}
+
+}			</pre>
+  </body>
+</html>

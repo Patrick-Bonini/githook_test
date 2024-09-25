@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>            Receiving Messages</h1>
+    <p>This section describes how clients can use the JMS API to receive messages.</p>
+    <p style="font-weight: bold;">Related Event Broker Provisioning and Configuration Information</p>
+    <p>For JMS clients to consume messages from the Message VPN they are connected to, they must be assigned appropriately configured client profiles and/or Access Control List (ACL) profiles:</p>
+    <ul>
+      <li>To receive messages with a Guaranteed Transport delivery mode, clients must be assigned client profiles that have the <code>allow‑guaranteed‑message‑receive</code> parameter enabled. In addition, if clients are going to use non-durable message consumers, the assigned client profiles must also have the <code>allow‑guaranteed‑message‑create</code> parameter enabled because these clients automatically create temporary queues/topic-endpoints.</li>
+      <li>To allow clients to subscribe to topics (or to only a specific set of topics) clients must be assigned ACLs with the appropriate access controls.</li>
+    </ul>
+    <p>For more information on configuring client profiles and ACLs on event brokers, refer to <MadCap:xref MadCap:unresolvedLink="import-link:managing_cli_user_authentication_and_authorization_1105770511_49686" href="../../Admin/Configuring-Mgmt-and-Shell-Users.htm">Managing CLI User Authentication and Authorization.</MadCap:xref></p>
+    <p>
+      <b>Related Sample</b>
+    </p>
+    <p>For an example of how to receive messages, refer to the <code>SolJMSConsumer</code> sample.</p>
+    <h2><a name="pre-receive-hook"/>Using Pre-Receive Hooks When Receiving Messages</h2>
+    <p> You can use the <i>consumer interceptor</i> (or pre-receive hook)  in the JMS API to implement core concerns for an application, such as decryption or logging. This  pre-receive hook is used to intercept the JMS message when it's received and allows you to implement your core concern. To use it, you must implement the <span style="font-family: monospace;">MessageReceiverInterceptor</span> interface and activate the interface using  <span style="font-family: monospace;">SupportedProperty.SOLACE_JMS_MESSAGE_CONSUMER_INTERCEPTOR_CLASS_NAME</span>, which specifies the fully-qualified name of the message consumer interceptor that implements the <span style="font-family: monospace;">MessageReceiverInterceptor</span> interface. When you call any of the <span style="font-family: monospace;">receive</span> methods (including the async receivers), the message in your implementation runs immediately when the message is received and before the message is passed to you. For more information, see the following in the <MadCap:variable name="Variables.CompanyName"/> JMS API Reference:</p>
+    <ul>
+      <li>
+        <p>
+          <span style="font-family: monospace;">MessageReceiverInterceptor</span>
+        </p>
+      </li>
+      <li>
+        <p>
+          <span style="font-family: monospace;">MessageReceiverInterceptor.ReceiverInterceptingContext</span>
+        </p>
+      </li>
+      <li>
+        <p>
+          <span style="font-family: monospace;">SupportedProperty.SOLACE_JMS_MESSAGE_CONSUMER_INTERCEPTOR_CLASS_NAME</span>
+        </p>
+      </li>
+    </ul>
+    <p>Here's an example implementation in the <span style="font-family: monospace;">MyMessageConsumerInterceptor.java</span> file that performs an operation on a received message:</p>
+    <pre xml:space="preserve">package com.myexample.MyMessageConsumerInterceptor;
+import com.solacesystems.jms.interceptors.MessageReceiverInterceptor;
+import javax.jms.JMSException;
+import javax.jms.Message;
+/**
+ * An Example consumer interceptor that can be used for transparent message decryption 
+ */ 
+ public class MyMessageConsumerInterceptor implements MessageReceiverInterceptor {
+   @Override
+   public void onPreReceive(ReceiverInterceptingContext interceptingContext) throws JMSException {
+     Message msg = interceptingContext.getMessage();
+     if (msg instanceof TextMessage) 
+     {
+       String text = ((TextMessage)msg).getText();
+       // Example of implementating your core concern. Here we illustrate simply adding some
+       // text to the message.
+       // To change the content of the message upon receiving, call msg.clearBody() first.
+	msg.clearBody();
+       ((TextMessage)msg).setText(text + ": intercepted by consumer and you can implement your core concern, such as logging, decryption, etc.");	
+     }
+   }
+ }</pre>
+    <p>Here's an example of how to enable the consumer interceptor:</p>
+    <pre xml:space="preserve">import com.solacesystems.jms.SolConnectionFactory;
+import com.solacesystems.jms.SolJmsUtility;
+import com.solacesystems.jms.SupportedProperty;
+import java.util.Hashtable;
+import javax.jms.Connection;
+import javax.jms.ConnectionFactory;
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.MessageConsumer;
+import javax.jms.Queue;
+import javax.jms.Session;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
+ 
+public class ConfigureReceiverInterceptor {
+  private static final String SOLJMS_INITIAL_CONTEXT_FACTORY =	"com.solacesystems.jndi.SolJNDIInitialContextFactory";
+  private static final String CONSUMER_INTERCEPTOR_CLASS_NAME = MyMessageConsumerInterceptor.class.getName();
+  /**
+   * Configure interceptor with initial context and JNDI
+   *
+   * @throws NamingException can be thrown when JNDI lookup fails
+   * @throws JMSException  can be thrown for an internal API reasons
+   */
+  public void exampleConfigureInterceptorWithInitialContextAndJNDI() throws NamingException, JMSException {
+    // The default JNDI name of the connection factory.
+    // SolConnectionFactory needs to be configured over JNDI for the default connection factory
+    final Hashtable&lt;String, Object&gt; env = new Hashtable&lt;String, Object&gt;();
+    env.put(InitialContext.INITIAL_CONTEXT_FACTORY, SOLJMS_INITIAL_CONTEXT_FACTORY);
+    //...
+    //... add another configuration properties
+    //...
+    //... more another configuration
+    // username and password are not defined in this example and provided as sample variables
+    env.put(Context.SECURITY_PRINCIPAL, username);
+    env.put(Context.SECURITY_CREDENTIALS, password);
+    //Enable the use of SMFs without specifying a trust store 
+    //for illustration purposes; This is not recommended for use in production
+    env.put(SupportedProperty.SOLACE_JMS_SSL_VALIDATE_CERTIFICATE, false);
+    // Enables interceptor over initial context
+    env.put(SupportedProperty.SOLACE_JMS_MESSAGE_CONSUMER_INTERCEPTOR_CLASS_NAME, CONSUMER_INTERCEPTOR_CLASS_NAME);
+    final InitialContext initialContext = new InitialContext(env);
+    final ConnectionFactory cf = (ConnectionFactory) initialContext.lookup("cf/default");
+    final Connection connection = cf.createConnection();
+    final Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+    final Queue queue = session.createTemporaryQueue();
+    consumeInterceptedMessages(session, queue);
+   }
+ 
+  // The consumer interceptor can modify the message transparently by the time it's fetched
+  private void consumeInterceptedMessages(Session session, Queue queue) throws JMSException {
+    final MessageConsumer consumer = session.createConsumer(queue);
+    // Wait for messages.
+    while (true) {
+      // Receive a message after it runs the consumer interceptor, the interceptor ran when
+      // the message was received and any implementation was applied to the message.
+      // You can message after it has been intercepted. For example, if the intercept decrypted the message,
+      // the message you receive is the decrypted message. 
+      final Message nextMessage = consumer.receive();
+    
+     // ...
+    }
+   }
+ }
+</pre>
+  </body>
+</html>

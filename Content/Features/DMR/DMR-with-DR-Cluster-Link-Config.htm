@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Configuring Cluster Links with Replication</h1>
+    <p>When you create cluster links to the members of a replication group, the data channels are shared between those two links. This creates a situation where the link settings can conflict with each other. This is explained in detail below.</p>
+    <h4>Shared Data Channels</h4>
+    <p>As described in <MadCap:xref href="DMR-Mgmt-Cluster-Link-Config.htm">Configuring Cluster Links</MadCap:xref>, a DMR cluster link is composed of:</p>
+    <ul>
+      <li>one control channel</li>
+      <li>one client profile</li>
+      <li>one data channel per Message VPN. A data channel is made up of a bridge and a queue.</li>
+    </ul>
+    <p>If a cluster link goes to a node that is part of a replication group, then that link's data channels are shared with the link to the other node of the replication group. Because of this, the pair of links share a single bridge per Message VPN, and single link queue per Message VPN.</p>
+    <p>Consider the example shown in the following diagram:</p>
+    <p>
+      <img src="../../Resources/Images/DMR/DMR-DR-Shared-Data-Channels.png" style="max-width: 75%;" alt=""/>
+    </p>
+    <ul>
+      <li>Each region (depicted by a gray oval) is a separate DMR cluster.</li>
+      <li>In each region there are two nodes, each of which consists of one High-Availability (HA) pair.</li>
+      <li>Each node in the network is connected to every other node by a DMR link:<ul><li>Nodes between clusters (regions, in this example) are connected by <i>external</i> DMR links</li><li>Nodes within the same cluster (for example, Seattle and San Jose) are connected by <i>internal</i> DMR links.</li></ul></li>
+      <li>The cluster links from San Jose to Toronto (red) and Montreal (blue) share the same set of data channels (green; one per message VPN), but each link has its own control channel and client profile. This is illustrated in the green detail view.</li>
+    </ul>
+    <h2><a name="config-shared-channels"/>Configuring Links with Shared Data Channels</h2>
+    <p>Because a shared data channel is not directly configured, but rather is constructed based on the settings in its parent link, a shared data channel must be set up based on the combined configurations of the two parent links. In many cases the two configurations can be combined in a compatible manner. However, this not true for all settings.</p>
+    <p>For release 10.8.1 and later, if there is a conflict between the two parent links of a shared data channel, a parent link is operationally <code>UP</code> if the other parent link is administratively disabled. The shared data channel adopts the settings of the enabled link and is operationally <code>UP</code>.  Since the shared data channel remains up, you can perform maintenance on the disabled link as required to match its settings and service continues without interruption. However, if both parent links are administratively enabled and there is a conflict between the two parent links of a shared data channel, both parent links and the shared channel are operationally <code>DOWN</code>.</p>
+    <p>For releases 10.8.0 and earlier, if there is a conflict between the two parent links of a shared data channel, both parent links and the shared data channel are operationally <code>DOWN</code>, regardless of the administrative status of the link.</p>
+    <p>When the parent links are operationally <code>DOWN</code> due to a conflicting attribute, you can use the <code>show cluster &lt;cluster-name-pattern&gt; link *</code> command where you can see the conflicting attribute in the <code>Reason</code> field.</p>
+    <p> The following table details the settings where conflicts can occur:</p>
+    <table style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="text-align: center;">Link Setting</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1" style="text-align: center;">Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>authenticationScheme</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The bridge as a whole must have a single authentication scheme. That is, both links must use the same authentication scheme.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>initiator</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The initiator must be consistent between both links, so that initiation happens the same way regardless of which DR mate is active.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>span</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The topology relationship (<code>internal</code>or<code>external</code>) for both links between a node and a remote DR-pair must be the same.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>
+              <code>queueDeadMsgQueue</code>
+            </p>
+            <p>
+              <code>queueEventSpoolUsageThreshold</code>
+            </p>
+            <p>
+              <code>queueMaxDeliveredUnackedMsgsPerFlow</code>
+            </p>
+            <p>
+              <code>queueMaxMsgSpoolUsage</code>
+            </p>
+            <p>
+              <code>queueMaxRedeliveryCount</code>
+            </p>
+            <p>
+              <code>queueMaxTtl</code>
+            </p>
+            <p>
+              <code>queueRejectMsgToSenderOnDiscardBehavior</code>
+            </p>
+            <p>
+              <code>queueRespectTtlEnabled</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">These values are associated with the single shared queue, and therefore must be the same for both links.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>
+              <code>egressFlowWindowSize</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">This value is associated with the single shared queue; this setting must be the same for both links.</td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

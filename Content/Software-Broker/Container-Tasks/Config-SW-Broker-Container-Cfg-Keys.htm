@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditionTagExpression="include[Default.DockerChanges]">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+    <title/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Software"/>Initializing a Software Event Broker Container</h1>
+    <p>When you initialize a container, you pass the configuration information for the container to the runtime engine. There are different mechanisms for doing this, depending on your runtime environment. For example, for Podman, you can pass command line parameters to the <code>podman create</code> command to set the container name, port assignments, and so on.</p>
+    <p>One of the configuration items you can set for the container is its environment variables (for the <code>docker create</code> and <code>podman create</code> commands, you use the <code>-env</code> parameter). You can  pass <a href="../Configuration-Keys-Reference.htm" class="link-internal">configuration keys</a> to the software event broker by setting corresponding environment variables. Configuration keys are only evaluated upon initial startup of a software event broker container or after a reload to the default configuration.</p>
+    <h2 class="with-rule"><a name="Env-Var"/>Passing Configuration Keys as Environment Variables</h2>
+    <p>You can specify broker-specific configuration by passing configuration keys as environment variables.  Configuration keys only take effect when the container is booted for the first time, and the database is absent.</p>
+    <p>To pass a configuration key as an environment variable, set the variable name to the configuration key hierarchy concatenated with the underscore character. For example, to set the value of the <code>username/&lt;name&gt;/globalaccesslevel</code>  configuration key, use the following environment variable:</p>
+    <pre class="Code">username_&lt;name&gt;_globalaccesslevel</pre>
+    <p>To set the <code>username/&lt;name&gt;/globalaccesslevel</code> and <code>username/&lt;name&gt;/password</code> configuration keys to assign the password <code>admin</code> to the <code>admin</code> user, add the following lines to the <code>docker create</code> or <code>podman create</code>command:</p>
+    <pre class="Code">--env 'username_admin_globalaccesslevel=admin'
+--env 'username_admin_password=admin'</pre>
+    <p class="Note">For configuration keys where portions of the key are passed to a container, those portions cannot contain an underscore. For example, configuration keys that contain <code>&lt;name&gt;</code> as a key (for instance, as in <code>redundancy/group/node/&lt;name&gt;/connectvia</code>) cannot contain underscore characters in <code>&lt;name&gt;</code>.</p>
+    <h4><a name="Config-Key-Table"/>Configuration Keys for the Software Event Broker</h4>
+    <p>To learn more about the configuration keys that you can use with the software event broker, see <MadCap:xref href="../Configuration-Keys-Reference.htm">List of Configuration Keys</MadCap:xref>.</p>
+    <h4><a name="Name"/>Acceptable Values for the &lt;name&gt; Key</h4>
+    <p>For configuration keys that specify a <code>&lt;name&gt;</code> value, such as the  <code>username</code>, <code>messagevpn</code>, and <code>redundancy</code> configuration keys, the name  must consist only of lowercase letters and numbers.</p>
+    <h4><a name="Port"/>Assigning Port Numbers</h4>
+    <p>Before you assign port numbers for configuration keys, consult the <MadCap:xref href="../SW-Broker-Configuration-Defaults.htm">Default Configuration for Software Event Brokers</MadCap:xref> regarding the default port assignment for the various software event broker services to help prevent port assignment conflicts.</p>
+    <h2 class="with-rule"><a name="Other"/>Other Environment Variables</h2>
+    <p>In addition to configuration keys, there are other environment variables that can be set. These environment variables are processed by the container's operating system. Unlike configuration keys, these environment variables take effect whenever the container is rebooted. In the following example, UMASK and TZ (timezone) environment variables are  set using the <code>--env</code> parameter (for <code>docker create</code> or <code>podman create</code>). This configuration will take effect every time the container is restarted.</p>
+    <pre class="Code">--env 'TZ=Canada/Eastern'
+--env 'umask=0022'</pre>
+    <p style="padding-top:10px;">The table below lists the available environment variables.</p>
+    <p class="TblCaption">Environment Variables</p>
+    <table style="width: 100%;margin-left: 0;margin-right: auto;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 230px;"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Environment Variable</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Description</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="font-family: 'Courier New', CourierPS, 'Lucida Console';">TZ=&lt;timezone&gt;</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Timezone configuration for the software event broker.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>&lt;timezone&gt;</p>
+            <p>For more information, see <MadCap:xref href="../Timezone.htm">Timezone Configuration</MadCap:xref>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1" style="font-family: 'Courier New', CourierPS, 'Lucida Console';">UMASK</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Umask for all files and directories created by the application. </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>&lt;umask&gt;</p>
+            <p>The default <code>umask</code> will be 077.</p>
+            <p>The <code>umask</code> only affects the permissions on new files that are created; existing files in volumes continue to have the same permissions as before.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Threading</h1>
+    <p>The  Solace JMS API uses a processing context to organize communications between a client application and an event broker. This context encapsulates threads that drive network I/O and message delivery notification for the connections between a client application and an event broker. Message delivery and reception also require application-provided threads.</p>
+    <p>By default, a processing context is used for each JMS connection that is created. However, to use a single context for all JMS connections made by the JMS client, you can set the <code>InitialContext</code> environment property <code>SOLACE_JMS_USE_DEFAULT_CONTEXT</code> property to <code>true</code>. Each context requires additional threads.</p>
+    <h2 class="with-rule"><a name="Receiving"/>Threading When Receiving Messages</h2>
+    <p>When receiving messages, the processing context uses a context thread to read messages off the socket and parse them. For an asynchronous <code>MessageConsumer</code>, a second context thread is typically used to perform consumer notification and message dispatch. (However, when using ultra low-latency applications, the same single context thread can also be used for an asynchronous <code>MessageConsumer</code>.) For a synchronous MessageConsumer, the same single context thread can enqueue messages for delivery or consumption.</p>
+    <h3><a name="Receiving-Async"/>Receiving Message Asynchronously</h3>
+    <p>A client application can receive messages in an asynchronous manner through a MessageListener. That is, when messages are available, they are automatically sent (“pushed”) to a message listener interface provided by the client application.</p>
+    <p>When receiving messages asynchronously, the processing context uses a thread for consumer notification and dispatching the enqueued messages to consumers; all listeners (<code>MessageListener</code> and <code>ExceptionListener</code>), also run from a processing thread.</p>
+    <p>By default, the context uses one thread to read messages off the network, parse them, and then enqueue them on the consumer notification dispatcher queue. It uses another thread for consumer notification and dispatching the queued messages to consuming client applications.</p>
+    <p>The maximum number of messages that can be queued by the context per Session before they are delivered to consumers is as follows:</p>
+    <ul>
+      <li>Direct messages (that is, Non-Persistent messages sent using Direct Transport)—5,000</li>
+      <li>Guaranteed messages (that is, Non-Persistent and Persistent messages sent using Guaranteed Transport)—The maximum number of Guaranteed messages permitted by each consumer’s sliding Guaranteed Message window size. A Guaranteed Message window size limits the number of messages that a consumer can receive before an acknowledgment must be returned to the event broker that it received the messages in the window.
+			<p>The Guaranteed Message window size is set through the <code>receive‑ad‑window-size</code> message delivery property of the Connection Factory. The value set for this property is applied to each consumer that uses the Connection Factory.</p></li>
+    </ul>
+    <p>The consumer notification dispatcher queue that is used to asynchronously notify consumers of messages, through a <code>MessageListener</code> and of exceptions, through an <code>ExceptionListener</code>, can be resized, if necessary. This queue should be large enough to buffer the maximum number of notifications that are generated for all consumers (of both Guaranteed and Direct messages) in all of the Sessions within a JMS connection. If the <code>MessageListener</code> or <code>ExceptionListener</code> do not always return control quickly and the consumer notification dispatcher queue fills up, the API thread attempting to enqueue notifications to this queue can be temporarily blocked, which can cause messages to queue on the event broker.</p>
+    <p>The consumer notification dispatcher queue size can be modified through the <code>SOLACE_JMS_CONSUMER_DISPATCHER_QUEUE_SIZE</code>  property. However, this is not typically required.</p>
+    <p>The figure below  shows the context threads that are used to receive messages asynchronously.</p>
+    <p class="GraphicCaption">Receiving Messages Asynchronously</p>
+    <p class="GraphicCaption">
+      <img src="../../Resources/Images/Solace-JMS-API/jms_receive_threading_async.png" MadCap:mediastyle="@media print { max-width: 400px; }" style="max-width: 400px;" alt="Receiving Async"/>
+    </p>
+    <h3><a name="Receiving-Sync"/>Receiving Messages Synchronously</h3>
+    <p>When receiving messages in a synchronous manner, the client application uses explicit receive calls to retrieve messages from the message queues for each consumer. When receiving messages synchronously, the client application provides the threads that “pull” the enqueued messages from the API.</p>
+    <p>To receive messages, the client application must use <code>Connection.start()</code> to enable receiving messages from the event broker and then use synchronous <code>MessageConsumer.receive(...)</code> calls to receive the next available message. The receive methods can manage the potential blocks by waiting indefinitely until there are messages, not waiting when there are no messages (that is, immediately timing out when there are no messages), or timing out after a set period of time when there are no messages.</p>
+    <p>The figure below shows the context thread and application threads that are used when messages are received synchronously through the API.</p>
+    <p class="GraphicCaption">Receiving Messages Synchronously</p>
+    <p class="GraphicCaption">
+      <img src="../../Resources/Images/Solace-JMS-API/jms_receive_threading_sync.png" alt="Receiving Sync" MadCap:mediastyle="@media print { max-width: 400px; }" style="max-width: 400px;"/>
+    </p>
+  </body>
+</html>

@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" xml:lang="en-ca">
+  <head>
+    <title/>
+  </head>
+  <body>
+    <h1>REST Consumers</h1>
+    <p>For REST consumers, the Solace PubSub+ event broker will establish an HTTP connection and send messages using an HTTP POST request as shown in the following figure. </p>
+    <p>
+      <img src="../../Resources/Images/REST-Messaging-Concepts/REST Consumers.png" style="visibility: visible;mso-wrap-style: square;width: 624px;height: 208px;" alt=""/>
+    </p>
+    <p>The REST application acknowledges receipt of the message with a 200 OK HTTP response back to the event broker. The format of the REST POST request that is received and the options on response are outlined in the <MadCap:xref href="../RESTMessagingPrtl/Solace-REST-Overview.htm">Solace REST Messaging Protocol</MadCap:xref>,  <MadCap:xref href="../RESTMessagingPrtl/Solace-REST-Message-Encoding.htm">Solace REST Message Encoding</MadCap:xref> and <MadCap:xref href="../RESTMessagingPrtl/Solace-REST-Status-Codes.htm">Solace REST Status Codes</MadCap:xref>.</p>
+    <p>To receive messages from the event broker, there is some configuration required to provide the event broker with details on how to deliver the messages. This configuration is outlined in the following section. This section also provides an outline of request/reply handling for REST consumers and some integration patterns for scaling applications.</p>
+    <h2 class="with-rule"><a name="_Toc433874658"/>Solace PubSub+ Event Broker Configuration Objects</h2>
+    <p>The following figure outlines the configuration objects that play a role in delivering HTTP messages to a REST consumer. The REST Delivery Point encapsulates delivery of messages to a set of one or more REST consumer clients. Messages are received at the REST Delivery Point from persistent message queues based on configured queue bindings. Configured REST consumer objects encapsulate all of the connectivity information for a given REST consumer application. The REST Delivery Point is then responsible for selecting an appropriate REST consumer and delivering the message.</p>
+    <p>
+      <img src="../../Resources/Images/REST-Messaging-Concepts/REST Consumers_1.png" style="visibility: visible;mso-wrap-style: square;width: 451px;height: 274px;" alt=""/>
+    </p>
+    <h3><a name="_Toc433874659"/>REST Delivery Point</h3>
+    <p>For REST applications to receive messages, the event broker must establish HTTP connections to the REST consumer applications and delivery messages. The information to establish this connection and to manage message delivery needs to be configured on the event broker. A REST Delivery Point is a configuration object that links the message queues that attract messages and REST consumer applications that take delivery of those messages.</p>
+    <p>Therefore, a REST Delivery Point objects performs the following roles:</p>
+    <ul style="list-style-type: disc;margin-left: 18pt;">
+      <li style="list-style-type: disc;">A REST Delivery Point is configured with bindings to persistent message queues which attract messages to be delivered to REST consumers.</li>
+      <li style="list-style-type: disc;">The REST Delivery Point schedules newly-arriving messages for delivery over HTTP/REST connections to REST consumers. Traffic management performed by the REST Delivery Point is discussed in the following sections. </li>
+      <li style="list-style-type: disc;">The REST consumer object handles the connectivity to the REST consumer application. The application’s IP/DNS name and TCP port number, along with other connectivity details, are set in the REST consumer object.</li>
+    </ul>
+    <h3><a name="_Toc433874660"/>Queue Binding</h3>
+    <p>A queue binding object exists within the scope of a REST Delivery Point. REST Delivery Points can have one or more queue bindings. At least one queue binding is needed for traffic to flow. Queue bindings allow the REST Delivery Point to bind to a physical persistent message queue on the event broker and then receive messages.</p>
+    <p>A POST request target is also configured within a queue binding. The POST request target is used for all messages originating from the physical queue. It is possible to indicate the source of the message to the REST consumer application using a POST request target.</p>
+    <h3><a name="_Toc433874661"/>REST Consumer</h3>
+    <p>REST consumer objects establish HTTP connectivity to REST consumer applications who wish to receive messages from a Solace PubSub+ event broker. Each consumer application is identified by an IP/DNS Name and TCP port number. An event broker will typically have multiple TCP/HTTP connections open to each REST consumer to allow delivery of many messages in parallel. There can be many REST consumers configured in a REST Delivery Point to allow for a higher rate of message delivery as well as to support fault tolerance.</p>
+    <p>One key architecture pattern to understand is that all REST consumers within a REST Delivery Point are considered to be equal destinations for messages. So an incoming message may go out any REST consumer connection within a REST Delivery Point.</p>
+    <p>By default, a Solace PubSub+ event broker automatically chooses the IP interface through which outgoing connections from a REST consumer are made. However, if your environment requires a fixed IP interface, it is possible to configure a specific interface for the REST consumer so that the source IP address specified in all outgoing packets will be the same for all connections associated with the REST consumer. A fixed IP interface may be required, for example, if a firewall is used between a client application and the event broker. In this case, the firewall must be configured to permit the event broker’s source IP address through, so an automatically-selected IP interface can be problematic. </p>
+    <h2 class="with-rule"><a name="_Toc433874662"/>Message Delivery Walk Through</h2>
+    <p>The following figure shows how messages are delivered to REST consumer applications.</p>
+    <p>
+      <img src="../../Resources/Images/REST-Messaging-Concepts/REST Consumers_2.png" style="visibility: visible;mso-wrap-style: square;width: 623px;height: 202px;" alt=""/>
+    </p>
+    <ol style="list-style-type: decimal;margin-left: 18pt;" start="1">
+      <li>Messages arrive at persistent message queues. These can be messages from any Solace PubSub+ event broker client.</li>
+      <li>REST Delivery Point queue bindings connect the REST Delivery Point to persistent queues. As each message is received from the persistent message queue through the queue binding, the message is augmented with the POST request target.</li>
+      <li>The REST Delivery Point then converts the message from the Solace message format used for routing to a properly formatted REST message, as outlined in <MadCap:xref href="../RESTMessagingPrtl/Solace-REST-Overview.htm">Solace REST Messaging Protocol</MadCap:xref>.</li>
+      <li>The REST Delivery Point selects an appropriate outgoing REST consumer and HTTP connection to send the message.</li>
+      <li>The REST Delivery Point sends the message to a connected REST consumer application.</li>
+    </ol>
+    <h2 class="with-rule"><a name="_Toc433874663"/>Request / Reply</h2>
+    <p>The Solace PubSub+ event broker also supports a request/reply message exchange pattern with REST consumer applications. The following figure and steps outline how this works.</p>
+    <p>
+      <img src="../../Resources/Images/REST-Messaging-Concepts/REST Consumers_3.png" style="visibility: visible;mso-wrap-style: square;width: 624px;height: 165px;" alt=""/>
+    </p>
+    <ol style="list-style-type: decimal;margin-left: 18pt;" start="1">
+      <li>The message is received at a REST Delivery Point through a persistent queue.</li>
+      <li>When the REST Delivery Point is creating the REST message to send, it looks for a reply-to destination in the received Solace message. If a reply-to destination is present, the REST Delivery Point enable request/reply processing. The outgoing REST consumer connection is selected in the same way as before.</li>
+      <li>The REST consumer application sends the response back to the Solace PubSub+ event broker in the body of an HTTP 200 OK POST response.</li>
+      <li>When the REST Delivery Point receives the response, it converts the response found in the 200 OK HTTP response into a Solace message for internal routing. The destination of the message will be the reply-to destination from the original message.</li>
+      <li>The message is routed normally in the Solace PubSub+ event broker and returned to the application that made the request.</li>
+    </ol>
+    <h2 class="with-rule"><a name="_Toc433874664"/>REST Consumer Connection Selection</h2>
+    <p>A REST Delivery Point within the Solace PubSub+ event broker attempts to distribute traffic across outgoing REST consumer connections using the following two criteria:</p>
+    <ol style="list-style-type: decimal;margin-left: 18pt;" start="1">
+      <li>A REST consumer is selected in a round robin fashion from the group of REST consumers which have at least one available HTTP connection.</li>
+      <li>The outgoing HTTP connection used will again be selected in a round robin fashion from the group of available HTTP connections within that REST consumer.</li>
+    </ol>
+    <p>This REST consumer HTTP connections selection process is used to provide better overall performance without concentrating traffic on any particular REST consumer. A REST consumer connection is considered available when it is connected and has no pending HTTP messages. It is therefore available to send a new HTTP POST message.</p>
+    <p>For example, if five messages need to be simultaneously delivered through a REST Delivery Point, and there are five REST consumers, it is better to send each message to a separate REST consumer than to send all five messages to the same REST consumer even if that consumer has five available HTTP connections.</p>
+    <h2 class="with-rule"><a name="_Toc433874665"/>Message Sequencing and Redelivery</h2>
+    <p>When a REST consumer application responds to a message with an HTTP error response (for example, something other than 200 OK), the REST Delivery Point negatively acknowledges this message back to the persistent message queue. Depending on the settings of the persistent message queue, the message may be redelivered again to the REST Delivery Point for processing. Redelivered messages follow the same message processing as new messages. </p>
+    <p>The number of times a message will be redelivered is controlled by the “max-redelivery” property of the persistent message queue. By default this parameter is set for infinite retry which avoids message loss. However, this persistent queue property can be tuned depending on application-specific needs. </p>
+    <p>If all message redelivery attempts are exhausted, the message will follow normal dead message queue (DMQ) handling. For applications to make use of the DMQs, an appropriate value must be set for the max redelivery count property of persistent queues.</p>
+    <h3><a name="_Toc433874666"/>Message Sequencing</h3>
+    <p>Typically, there is no guarantee of message ordering for REST consumers. Messages on different HTTP connections can reach the consuming REST application in any order. Additionally, redelivery of messages can result in out-of-order delivery of the redelivered message.</p>
+    <p>In general, message ordering is not a requirement for REST consuming applications. For applications where this is a strict requirement, a REST Delivery Point with a single REST consumer and a single outgoing REST HTTP connection will maintain message order at the expense of message throughput.</p>
+    <h3><a name="_Toc433874667"/>Connection Handling on Errors</h3>
+    <p>Most often when a REST consuming application fails to process a message, immediate redelivery of this message to the same application will result in a similar failure in processing. Therefore, REST Delivery Points implement a hold-down timer for connections that receive an HTTP response other than 200 OK. In these scenarios, the connection with which the POST request was sent is not reused for the “retry delay” period (the default value is three seconds).</p>
+    <p>While a REST consumer connection is in the hold down state, it will not be scheduled to receive any outgoing POST requests. This has two beneficial effects:</p>
+    <ul style="list-style-type: disc;margin-left: 18pt;">
+      <li style="list-style-type: disc;">First, it greatly reduces the error processing load of everything in the network. </li>
+      <li style="list-style-type: disc;">Second, if there are other REST consumer connections available that are successfully receiving POST responses, the REST Delivery Point will direct the majority of the outgoing messages towards those connections.</li>
+    </ul>
+    <h2 class="with-rule"><a name="_Toc433874668"/>Performance Considerations</h2>
+    <p>The Solace PubSub+ event broker must wait for a response before sending the next message because of the blocking nature of the HTTP delivery to the REST consumer. Therefore the performance of a single HTTP connection will always be bound by the round-trip time of one message. This time will depend on the quality of the network between the event broker and the REST consumer and how quickly the REST consumer can process messages.</p>
+    <p>As shown below, there are two main options to consider for increasing the overall system performance.</p>
+    <p>
+      <img src="../../Resources/Images/REST-Messaging-Concepts/REST Consumers_4.png" style="visibility: visible;mso-wrap-style: square;width: 625px;height: 278px;" alt=""/>
+    </p>
+    <ol style="list-style-type: decimal;margin-left: 18pt;" start="1">
+      <li>Increase the number of connections per REST consumer.</li>
+    </ol>
+    <ol style="list-style-type: decimal;margin-left: 18pt;" start="2">
+      <li>Increase the number of REST consumers used.</li>
+    </ol>
+    <h3><a name="_Toc433874669"/>Scaling Connections per REST Consumer</h3>
+    <p>When the REST consumer application has ample processing overhead and the performance is simply limited by the network round trip time, you can add additional outgoing HTTP connections as shown in the following figure. This can eliminate the network as the limiting factor in performance.</p>
+    <p>
+      <img src="../../Resources/Images/REST-Messaging-Concepts/REST Consumers_5.png" style="visibility: visible;mso-wrap-style: square;width: 624px;height: 163px;" alt=""/>
+    </p>
+    <h3><a name="_Toc433874670"/>Scaling REST Consumers</h3>
+    <p>The next most common limiting factor in performance is the REST consumer application itself. Often these applications can be horizontally scaled to allow for more parallel processing of incoming messages. The Solace PubSub+ event broker supports this by allowing REST Delivery Points to contain many REST consumers. As shown in the following figure, message delivery is then shared across REST consumers.</p>
+    <p>
+      <img src="../../Resources/Images/REST-Messaging-Concepts/REST Consumers_6.png" style="visibility: visible;mso-wrap-style: square;width: 624px;height: 189px;" alt=""/>
+    </p>
+    <h2 class="with-rule"><a name="_Toc433874671"/>Dynamic Routing of Message Content by REST Consumers</h2>
+    <p>Often REST consumer applications are configured to listen for incoming traffic on a low number of input ports. Incoming HTTP traffic is routed to the correct internal service based on the HTTP POST request target or URI associated with the message. As shown in the following figure, this is the most common use case for multiple queue bindings within a REST Delivery Point.</p>
+    <p>
+      <img src="../../Resources/Images/REST-Messaging-Concepts/REST Consumers_7.png" style="visibility: visible;mso-wrap-style: square;width: 624px;height: 220px;" alt=""/>
+    </p>
+    <p>Messages for <code>Service A</code> can be routed to a single persistent queue. The queue binding within the REST Delivery Point can associate the correct POST request target so that the REST consumer application can route the message internally to <code>Service A</code>. A similar setup can be used for <code>Services B</code> and <code>C</code>. </p>
+    <p>This is a common integration pattern and, as shown later, is often used in DataPower integration.</p>
+  </body>
+</html>

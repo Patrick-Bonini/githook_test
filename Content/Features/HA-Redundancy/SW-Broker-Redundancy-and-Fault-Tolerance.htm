@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>High Availability for Software Event Brokers</h1>
+    <p>You can deploy PubSub+ <MadCap:variable name="Product-Names.broker_sw_short"/>s in high-availability (HA) redundancy groups for fault tolerance. An HA redundancy group is made up of three event broker instances: two  acting as active-standby messaging nodes and a third acting as a monitoring node. An  HA redundancy group provides 1:1 event broker sparing to increase overall service availability. If one of the event brokers fails or is taken out of service, the other event broker automatically takes over and provides service to the clients that were previously served by the now-out-of-service event broker.</p>
+    <h2 class="with-rule"><a name="VMR"/>Software Event Broker HA Redundancy Model</h2>
+    <p>PubSub+ <MadCap:variable name="Product-Names.broker_sw_short"/>s support an active/standby redundancy model. <MadCap:snippetText src="../../Resources/Snippets/about-ha-model-description.flsnp"/></p>
+    <p>The <MadCap:variable name="Product-Names.broker_sw_short"/> HA redundancy model supports both Direct and Guaranteed Messaging clients.</p>
+    <p class="GraphicCaption">Active/Standby Redundancy Model</p>
+    <p>
+      <img src="../../Resources/Images/HA-Redundancy/VMR-Redundancy.png" alt="Active-Standby HA Model"/>
+    </p>
+    <p>In the active/standby model:</p>
+    <ul>
+      <li style="font-size: 11pt;margin-top: 5pt;margin-bottom: 5pt;">All clients connect to the active event broker in the redundancy group (typically the primary event broker).</li>
+      <li style="font-size: 11pt;margin-top: 5pt;margin-bottom: 5pt;">The other event broker (typically the backup event broker) acts only as a standby. While one primary event broker is active, clients cannot connect to the standby event broker, and no messaging traffic can flow through the standby.</li>
+      <li style="font-size: 11pt; margin-top: 5pt; margin-bottom: 5pt;">The active event broker uses the IP network to automatically propagate all Guaranteed messages and Guaranteed Messaging state to the standby event broker.</li>
+      <li style="font-size: 11pt;margin-top: 5pt;margin-bottom: 5pt;">If the primary event broker fails for any reason, the backup event broker will become active and provide messaging services to the clients.</li>
+      <li>When the primary event broker comes back online, the backup event broker continues to provide service to the clients, while it automatically resynchronizes its Guaranteed messages and the Guaranteed Messaging state with the primary event broker. Once resynchronized, the backup event broker can either continue to provide service to the clients (the default behavior for the software event broker), or it can transfer activity back to the primary event broker (if you have configured the software event brokers to auto-revert to the primary).</li>
+    </ul>
+    <h3><a name="Synchron"/>Synchronizing Software Event Broker Configurations</h3>
+    <p>The primary and backup event brokers in a software event broker HA redundancy group must have the same system and Message VPN level configurations, and this configuration must remain in sync while the event brokers are running. The Config-Sync facility is used to automatically synchronize their configurations.</p>
+    <p>The mate link service is also used for the synchronization of Guaranteed Messages and message state between the primary and backup event broker. The mate link service uses the Management VRF for the messaging traffic to/from the clients, and the Guaranteed Messaging data synchronization between the active and standby event brokers is all done over the same interface.</p>
+    <h2 class="with-rule"><a name="Failover"/>Failover Mechanism</h2>
+    <p>The PubSub+ software event broker supports host list failover mechanism through which client connections are transferred from one message routing node to another upon the node failure. This mechanism uses lists of IP addresses, or corresponding DNS names, of both the primary and backup event broker. The primary and backup event brokers have different IP addresses at all time, but only one of them is active and accepts connections. Connecting clients know these IP addresses, and the clients (not event brokers of the HA group) handle reconnecting from one IP address to the other.</p>
+    <p>The client API is responsible for connecting to whichever event broker is active in the HA redundancy group. This kind of configuration would be common in cloud environments.</p>
+    <p class="Note">Your client APIs and VPN bridge connections must be configured with  the host lists for the primary and backup event brokers in the HA redundancy group. Once configured, if the primary event broker becomes unavailable for any reason, the backup event broker will take over activity, and the client APIs and Message VPN bridges will reconnect to the newly active event broker without impacting the client applications.</p>
+    <h3><a name="Clients-Host-Lists"/>Client Host Lists</h3>
+    <p>This failover mechanism relies on client applications using configured host lists to connect and reconnect to valid hosts for the HA redundancy group. For Solace Messaging APIsʼ use of host lists, refer to <MadCap:xref href="../../API/API-Developer-Guide/Session-Props-Required.htm#Creating_ent_sessions_sess_props_host">Host</MadCap:xref>.</p>
+    <p>When using host lists, the active software event broker will accept client connections on the Management VRF static IP address, and the standby  event broker will reject such connection requests. Primary and backup event broker IP interfaces are ignored, and client connections to these interfaces are rejected too.</p>
+    <p class="GraphicCaption">Client Using the Host List to Connect</p>
+    <p>
+      <img src="../../Resources/Images/HA-Redundancy/HA-Redundancy-Clients-Using-Host-List.png" alt="Client Using the Host List to Connect"/>
+    </p>
+    <p>Notice that the client application’s host list is configured with two IP addresses:</p>
+    <ul>
+      <li style="font-size: 11pt;margin-top: 5pt;margin-bottom: 5pt;"> the primary event broker’s static IP address for the Management VRF (or corresponding DNS name)</li>
+      <li style="font-size: 11pt;margin-top: 5pt;margin-bottom: 5pt;">the backup event broker’s static IP address for the Management VRF (or corresponding DNS name)</li>
+    </ul>
+    <h3><a name="redundancy_and_fault_tolerance_344917737_309262"/>VPN Bridging &amp; Fault Tolerance</h3>
+    <p>For details on how to establish Message VPN bridge connections to remote event brokers when those remote event brokers have been deployed in high-availability (HA) redundant event broker pairs for fault tolerance, refer to <MadCap:xref href="../VPN/VPN-Bridging-to-Remote-Event-Brokers.htm">Bridging to Remote Event Brokers That Use Redundancy</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="VMR2"/>Software Event Broker IP Addressing</h2>
+    <p>PubSub+ <MadCap:variable name="Product-Names.broker_sw_short"/>s rely on a Message Backbone service for all messaging traffic to and from clients, and on a Management service for management traffic. Both Message Backbone and Management services share the Management Virtual Routing and Forwarding (VRF) object that is used to connect to the IP network.</p>
+    <p>By default, <MadCap:variable name="Product-Names.broker_sw_short"/>s have a single network interface that is mapped to the Management VRF. This is different from PubSub+ <MadCap:variable name="Product-Names.broker_appliance_short"/>s that have two separate network interfaces.</p>
+    <p>By default the software event broker network interface is configured as a DHCP client. However, to use software event broker redundancy, each event broker instance in the HA redundancy group, including the monitoring node, must have a unique static IP address associated with the Management VRF, and this IP address must be in the same subnet and statically configured (that is, DHCP is not supported). Using static IP addresses in the HA redundancy group is a prerequisite for the software event broker redundancy functionality.</p>
+    <h2 class="with-rule"><a name="Failure"/>Failure Detection</h2>
+    <p>All three nodes in the HA redundancy group—primary, backup, and monitoring—continuously communicate with each other using a protocol that runs over the static IP interfaces in the Management VRF, and, by default, uses ports 8300, 8301, and 8302.</p>
+    <p>If the active event broker in the group becomes unreachable for any reason, and neither the monitoring node nor the backup event broker can see the active event broker, but they can still see each other, then the backup event broker will take activity, and provide messaging services to the clients.</p>
+    <p>Similarly, if the active event broker loses connectivity with both the standby event broker and monitoring node, the active event broker will give up activity, to eliminate the possibility it might be operating in a split-brain fashion. This implies that for an event broker to take (or keep) activity and provide service, it must be able to communicate with at least one other node in the group—either the mate event broker and/or the monitoring node.</p>
+    <p>For redundancy to function properly, all three nodes in the group need to be configured with the Management VRF static IP addresses of the other nodes in the group and the assigned role of each of the nodes (message-routing-node, or monitoring-node).</p>
+    <p>All three nodes in the HA redundancy group also need to be configured with the same HA redundancy group password as a security mechanism to ensure that only the nodes in the group can communicate with each other, and that other hosts on the network cannot impersonate the event brokers or attempt to join the HA redundancy group.</p>
+    <p>The following figure shows a correct failure detection configuration.</p>
+    <p class="GraphicCaption">Configuring for Failure Detection</p>
+    <p>
+      <img src="../../Resources/Images/HA-Redundancy/HA-Redundancy-Fail-Detect-Config.png" alt="VMR Redundacy Failure Detection Configuration"/>
+    </p>
+    <p>Notice  above how all three nodes in the HA redundancy group are configured with static IP addresses.</p>
+    <h2 class="with-rule"><a name="Fail-Ove"/>Failover Sequence</h2>
+    <p>If the active event broker goes offline, a failure is detected within a HA redundancy group. </p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/about-failover-sequence.flsnp"/>
+    <p>The diagrams below show a failover sequence in detail.</p>
+    <h3><a name="Normal"/>Normal Operation</h3>
+    <p>The diagram below shows a typical HA redundancy group under normal operation, when both the primary and backup event brokers are online and capable of providing service to the clients. This group is configured with the host lists for client connections (192.168.1.1 and 192.168.1.2).</p>
+    <p class="GraphicCaption">Typical Operation with host list</p>
+    <p>
+      <img src="../../Resources/Images/HA-Redundancy/HA-Redundancy-Normal-Op.png" alt="HA Normal Failover Operation"/>
+    </p>
+    <h3><a name="Taking"/>Taking Over Activity</h3>
+    <p>If the active event broker fails or is taken offline, the backup event broker and monitoring node will detect the failure, and the backup event broker will take over activity. When the backup event broker takes activity, it will start accepting connections on the Management VRF static IP address. The connecting clients will traverse their host lists and connect to the backup event broker using the backup event broker’s static IP address (on the Management VRF).</p>
+    <p>The diagram below shows the failover mechanism. Notice how the client uses the backup event broker IP address 192.168.1.2 after the backup event broker took over messaging activity.</p>
+    <p style="font-size: 11pt;margin-top: 5pt;margin-bottom: 5pt;">
+      <img src="../../Resources/Images/HA-Redundancy/HA-Redundancy-Host-List-Failover.png" alt="VMR HA Host List Failover"/>
+    </p>
+    <h3><a name="Resynchr"/>Resynchronization</h3>
+    <p>Once the failed event broker comes back on-line, it will use the mate link VRF to resynchronize its message-spool contents to match the active event broker. This process may take  a few seconds if the differences in the message-spool contents are minimal between the two event brokers, but it may also take several hours if the failed event broker was offline for a long time, and large quantities of data have been spooled on the active event broker.</p>
+    <p>Resynchronization is not a service-affecting operation, and the backup event broker continues to service connected clients while the resynchronization is taking place. However, the primary event broker is not able to provide service to clients during the resynchronization process. (Note that when disk resynchronization occurs, the redundancy status will be displayed as down.)</p>
+    <p>The following diagram shows the resynchronization process.</p>
+    <p style="font-size: 11pt;margin-top: 5pt;margin-bottom: 5pt;">
+      <img src="../../Resources/Images/HA-Redundancy/HA-Resync.png" alt="VMR HA Resynchronization"/>
+    </p>
+    <h3><a name="Taking2"/>Taking on the Standby Role</h3>
+    <p>Once resynchronization has completed, the primary event broker takes on the Standby role, and is available to provide service to clients should the backup event broker go offline for any reason.</p>
+    <p>The following diagram shows this state of the HA redundancy group.</p>
+    <p style="font-size: 11pt;margin-top: 5pt;margin-bottom: 5pt;">
+      <img src="../../Resources/Images/HA-Redundancy/HA-Redundancy-Standby.png" alt="VMR HA Taking on Standby"/>
+    </p>
+    <p>If auto-revert is enabled on the event brokers of this group, then activity will automatically switch back to the primary event broker. The diagram below shows this scenario. You’ll notice that this diagram is the same as that showing the normal operating state.</p>
+    <p style="font-size: 11pt;margin-top: 5pt;margin-bottom: 5pt;">
+      <img src="../../Resources/Images/HA-Redundancy/HA-Redundancy-Switchback.png" alt="VMR HA Switching Back After Failover"/>
+    </p>
+    <h2 class="with-rule"><a name="Next"/>Next Steps</h2>
+    <ul>
+      <li><MadCap:xref href="Configuring-HA-Groups.htm">HA Group Configuration</MadCap:xref> shows you how to set up and use redundancy.</li>
+    </ul>
+  </body>
+</html>

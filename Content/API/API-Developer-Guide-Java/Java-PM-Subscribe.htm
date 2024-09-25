@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><a name="Consuming-Persistent-Messages-Java-API"/>Consuming Persistent Messages Using the Java API </h1>
+    <p>Receiver applications that cannot tolerate message loss can use persistent messaging (referred to as  <i>guaranteed messages</i> in other parts of this documentation) instead of direct messaging. When persistent messaging is used, messages are stored on a queue on the event broker. Messages are not deleted from the event broker until the message has been consumed and acknowledged by the subscribing application (referred to as a message receiver). The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Java API can only consume persistent messages from queues and not from topic endpoints.</p>
+    <p>To consume persistent messages, you must first set up a message queue on the  event broker. For information about creating and configuring durable queues on an event broker, see <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-Queues.htm">Configuring Queues</MadCap:xref>. Alternatively, a non-durable queue can be created when a persistent message receiver (<code>PersistentMessageReceiver</code>) is created. </p>
+    <p>To use a persistent message receiver to consume persistent messages, use the following steps:</p>
+    <ol>
+      <li><a href="#Creating-A-PersistentMessageReceiver-Object" class="link-internal">Create a PersistentMessageReceiver object</a>.</li>
+      <li><a href="#Receiving-Persistent-Synchronously" class="link-internal">Receive a Persistent Message Synchronously</a>.</li>
+      <li><a href="#Receiving-Persistent-Asynchronously" class="link-internal">Receive a Persistent Message Asynchronously</a>.</li>
+      <li><a href="#Extract-Message-Props" class="link-internal">Extract Properties from an Inbound Message</a>.</li>
+      <li><a href="#Message-Acknowledgments-Error-Handling" class="link-internal">Message Acknowledgments</a>.</li>
+      <li>
+        <a href="#Negative-Acknowledgments-NACKs" class="link-internal">Negative Acknowledgments (NACKs)</a>
+      </li>
+      <li><a href="Java-API-Create-Queues.htm" class="link-internal">Create a Queue with the Java API</a>.</li>
+      <li><a href="Java-API-Browse-Queues.htm" class="link-internal">Browse a Queue with the Java API</a>.</li>
+    </ol>
+    <p class="Note">Back-pressure can occur if your consumer  application experiences a situation where it is unable to process messages as fast as it receives them from the event broker. Messages continue to be buffered internally until a high watermark is reached, at which point the API tells the event broker to stop sending messages to prevent message loss.</p>
+    <p>To see a sample application that subscribes to persistent messages from a queue, see the <MadCap:variable name="Variables.CompanyName"/> Developer Hub.</p>
+    <h2 class="with-rule"><a name="Creating-A-PersistentMessageReceiver-Object"/>Creating a PersistentMessageReceiver Object </h2>
+    <p>After you have established a connection to the event broker using a <code>MessagingService</code> object, you use a   <code>PersistentMessageReceiver</code> object to consume persistent messages from a queue on the event broker. To enable your <code>PersistentMessageReceiver</code> to start receiving messages, call <code>start()</code> on it.</p>
+    <div class="Note">
+      <p>Ensure that the queue properties you specify with the Java API correspond to the those configured on the event broker. For more information, see: </p>
+      <ul>
+        <li>
+          <a href="https://solace.com/blog/solace-endpoints-durable-vs-non-durable/" class="link-offsite">Durable vs Non-Durable</a>
+        </li>
+        <li>
+          <a href="https://solace.com/blog/solace-message-queue-access-types/" class="link-offsite">Message Queue Access Types</a>
+        </li>
+      </ul>
+    </div>
+    <p>The following are objects and methods you use to configure how persistent messages are consumed from an event broker:
+
+</p>
+    <ul>
+      <li style="font-size: 11pt;">
+        <code>PersistentMessageReceiverBuilder</code>
+      </li>
+      <ul>
+        <li>
+          <code>createPersistentMessageReceiverBuilder()</code>
+        </li>
+      </ul>
+      <ul>
+        <li>
+          <code>withMissingResourcesCreationStrategy(MissingResourcesCreationConfiguration.MissingResourcesCreationStrategy strategy)</code>
+        </li>
+      </ul>
+      <ul>
+        <li>
+          <code>build(Queue endpointToConsumeFrom)</code>
+        </li>
+      </ul>
+      <li style="font-size: 11pt;">
+        <code>PersistentMessageReceiver</code>
+      </li>
+      <ul>
+        <li>
+          <code>start()</code>
+        </li>
+      </ul>
+      <li>
+        <code>Queue</code>
+      </li>
+      <ul>
+        <li>
+          <code>durableExclusiveQueue(String queueName)</code>
+        </li>
+      </ul>
+      <ul>
+        <li>
+          <code>durableNonExclusiveQueue(String queueName)</code>
+        </li>
+      </ul>
+      <ul>
+        <li>
+          <code>nonDurableExclusiveQueue()</code>
+        </li>
+      </ul>
+      <ul>
+        <li>
+          <code>nonDurableExclusiveQueue(String queueName)</code>
+        </li>
+      </ul>
+    </ul>
+    <p>For more information about the preceding methods and interfaces, see the <a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Java reference</a>.</p>
+    <p>The following is an example how to use a <code>PersistentMessageReceiver</code> object to bind to a queue:</p>
+    <pre xml:space="preserve">
+/* Creates an instance of PersistentMessageReceiverBuilder, which is used to create PersistentMessageReceiver objects. */        
+final PersistentMessageReceiver receiver = service.createPersistentMessageReceiverBuilder()
+    .build(Queue.durableExclusiveQueue(QUEUE_NAME))      // Creates a PersistentMessageReceiver object.
+    .start();                                     // Causes the service to resume regular duties. Before this method is called, the service is considered off-duty.</pre>
+    <p class="Note">You can use the Java API to create durable and non-durable queues on the event broker. For more information see <MadCap:xref href="Java-API-Create-Queues.htm#Creating">Creating Queues</MadCap:xref>. </p>
+    <h3>Asynchronous Receivers </h3>
+    <p>It is also possible to start a persistent message receiver using a callback listener to allow for asynchronous notifications after the start operation is complete.</p>
+    <p>The following example shows you how to invoke <code>CompletionListener</code>, which is a callback method for listening for the results of a future computation. This handler also notifies the application when the start operation is complete. </p>
+    <pre xml:space="preserve">final CompletionListener&lt;PersistentMessageReceiver&gt; receiverStartupListener = (receiver, throwable) -&gt; {
+    if (throwable == null) {
+    // Started successfully, can receive messages.
+    } else {
+    // Deal with an exception during start.
+    }
+};
+receiverToBeStarted.startAsync(receiverStartupListener);    </pre>
+    <p class="Note"> Your receiver application is not operational until you call <code>start()</code> or <code>startAsync()</code> on it</p>
+    <h2 class="with-rule"><a name="Receiving-Persistent-Synchronously"/>Consuming a Persistent Message Synchronously</h2>
+    <p>You can consume persistent messages synchronously. To do this, you create a  <code>PersistentMessageReceiver</code> object and bind it to a queue. After successfully binding to the queue, your object can begin to consume persistent messages using the <code>receiveMessage()</code> method. This method blocks the thread until the next message has been received. </p>
+    <p>When an application processes an <code>InboundMessage</code>, it can then send an acknowledgment to the event broker with <code>PersistentMessageReceiver.ack()</code>. The event broker will then remove the <code>InboundMessage</code> from the queue. Until a message is acknowledged it remains on the broker queue and may be redelivered when the application reconnects to the queue.</p>
+    <p>For more information about the preceding methods, see the <a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Java reference</a>.</a></p>
+    <p>The following example shows you how to consume persistent messages synchronously:</p>
+    <pre xml:space="preserve">/* Creates an instance of PersistentMessageReceiverBuilder, which is used to create PersistentMessageReceiver objects. */
+final PersistentMessageReceiver receiver = service.createPersistentMessageReceiverBuilder()
+    .build(queueToConsumeFrom)     // Creates a PersistentMessageReceiver object.
+    .start();                      // Causes the service to resume regular duties. Before this method is called, the service is considered off-duty.
+
+final InboundMessage message = receiver.receiveMessage();    // Blocking request to receive the next message.
+                                                 // Can ack any time later as long as terminate() has not been called on receiver.
+receiver.ack(message);                           // Acknowledges the inbound message.</pre>
+    <p class="Warning">If you do not call the <code>receiveMessage()</code> method, messages can accumulate on the API's internal buffer and you risk running into a back-pressure scenarios. If this occurs, the Java API automatically informs the event broker to stop sending messages. </p>
+    <h2 class="with-rule"><a name="Receiving-Persistent-Asynchronously"/>Consuming a Persistent Message Asynchronously</h2>
+    <p>You can consume persistent messages in an asynchronous manner. To do so, you create a <code>PersistentMessageReceiver</code> object and start the connection to the event broker as normal, but you use a  <code>MessageHandler</code> object to act as a callback method to notify your application when a message has been received. </p>
+    <p>The following example shows you how to consume persistent messages asynchronously:</p>
+    <pre xml:space="preserve">
+/* Creates an instance of PersistentMessageReceiverBuilder, which is used to create PersistentMessageReceiver objects. */
+final PersistentMessageReceiver receiver = service.createPersistentMessageReceiverBuilder()
+    .build(queueToConsumeFrom)     // Creates an instance of PersistentMessageReceiver.
+    .start();               // Causes the service to resume regular duties. Before this method is called, the service is considered off-duty.
+
+final MessageHandler messageHandler = (message) -&gt; {           // Interface for the listener of message handlers for inbound messages.
+if (message != null &amp;&amp; message.getPayloadAsBytes() != null) {  // Do something with my message, for example check if it is not null or invalid.
+    receiver.ack(message);                                     // Acknowledges the inbound message.
+    }
+};
+receiver.receiveAsync(messageHandler);                   // Request to register an asynchronous message handler.</pre>
+    <h3>
+            Pausing and Resuming Message Consumption
+from Internal Buffers </h3>
+    <p>When your application consumes messages asynchronously using the <code>receiveAsync()</code> method, you can call the <code>pause()</code> and <code>resume()</code> methods to control the flow of messages to your application's callback</p>
+    <p class="Note">The <code>pause()</code> and <code>resume()</code> methods have no effect if you use <code>receiveMessage()</code>. </p>
+    <p>You can use the <code>pause()</code> and <code>resume()</code> methods to control the flow of messages between the API's internal buffer  and your application. This internal buffer is where messages are received from the event broker. This flow control is useful if your application must momentarily stop processing messages to handle other operations. The <code>pause()</code> and <code>resume()</code> methods do not control the flow of messages between the event broker and the internal buffer of the API. When you call the <code>pause()</code>method, messages continue to be sent from the event broker. The <code>pause()</code> and <code>resume()</code> methods control the message delivery only to the application. Messages received from the event broker continue to accumulate in the internal buffer.</p>
+    <p>Since the event broker continues to send messages, a back-pressure scenario may occur–that is, messages  continue to accumulate until an internal high watermark is reached. At this  point, the <code>PersistentMessageReceiver</code> object notifies the event broker to stop sending messages until the number of accumulated messages falls below the internal high watermark. This internal API mechanism handles back-pressure scenarios for you and ensures that no messages are lost between the event broker and your application.</p>
+    <p>The following object and methods are used to pause and resume processing of messages from the API's internal buffer:</p>
+    <ul>
+      <li>
+        <code>ReceiverFlowControl</code>
+      </li>
+      <ul>
+        <li>
+          <code>pause()</code>
+        </li>
+      </ul>
+      <ul>
+        <li>
+          <code>resume()</code>
+        </li>
+      </ul>
+    </ul>
+    <p>For more information about the preceding methods, see the <a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Java reference</a>.</a> </p>
+    <p>The following  example shows how to pause and resume processing of messages from the internal queue in the API using the scheduler:</p>
+    <pre xml:space="preserve">
+ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
+scheduler.schedule(() -&gt; receiver.pause(), 10L, TimeUnit.SECONDS);      // Pause message delivery in 10 seconds.
+scheduler.schedule(() -&gt; receiver.resume(), 20L, TimeUnit.SECONDS);    // Resume message delivery in 20 seconds.</pre>
+    <h2 class="with-rule"><a name="Extract-Message-Props"/>Extracting Properties from an Inbound Message</h2>
+    <p>After you establish a connection to the event broker, you can subscribe to messages using the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Java API. As part of the API, it implicitly creates the inbound messages on matching delivery.
+
+
+After your application receives an <code>InboundMessage</code> object, you can extract a number of properties from that message, such as the message payload (as bytes or a string), sender ID and class of service. The following example shows how to extract properties from a message:</p>
+    <pre xml:space="preserve">
+/* Using a messageHandler */
+final MessageHandler messageHandler = (inboundMessage) -&gt; {           
+    byte[] bytes = inboundMessage.getPayloadAsBytes();      // Gets the raw payload of the message as a byte array.		
+    String senderID = indboundMessage.getSenderId();        // Returns the Sender's ID.
+    int serviceClass = inboundMessage.getClassOfService();  // Retrieves the Class of Service level of a given message.
+    receiver.ack(inboundMessage);       
+};
+receiver.receiveAsync(messageHandler);                  
+			
+/* using the receiveMessage() method*/
+final InboundMessage inboundMessage= receiver.receiveMessage();    
+String msgPayload = inboundMessage.getPayloadAsString();  // Gets the payload as a UTF-8 decoded as a String.		
+String senderID = indboundMessage.getSenderId();          // Returns the Sender's ID.
+int serviceClass = inboundMessage.getClassOfService();    // Retrieves the Class of Service level of a given message.	
+receiver.ack(inboundMessage);		     		</pre>
+    <p>For a complete list of methods that you can use to extract properties from an <code>InboundMessage</code>, see the <a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Java reference</a>.</a></p>
+    <h2 class="with-rule"><a name="Message-Acknowledgments-Error-Handling"/>Message Acknowledgments</h2>
+    <p>One of the two following application acknowledgment modes can be used for acknowledging a message:</p>
+    <ul>
+      <li>
+        <p>Auto-acknowledgment</p>
+      </li>
+      <li>
+        <p>Client acknowledgment (default)</p>
+      </li>
+    </ul>
+    <h3>Auto-Acknowledgment Mode</h3>
+    <p>When the auto-acknowledgment mode is used, the API automatically generates application-level acknowledgments. To configure your <code>PersistentMessageReceiver</code> to use auto-acknowledgments, you use the <code>withMessageAutoAcknowledgement()</code> method:</p>
+    <pre xml:space="preserve">
+final PersistentMessageReceiver receiver = messagingService
+        .createPersistentMessageReceiverBuilder()
+        .<b>withMessageAutoAcknowledgement()</b>
+        .build(Queue.durableExclusiveQueue(QUEUE_NAME));  </pre>
+    <p>For the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Java API, acknowledgments are sent at different times depending on whether the message is received asynchronously or synchronously:</p>
+    <ul>
+      <li>
+        <p>when received asynchronously, the acknowledgment is sent after the message callback completes with no exceptions.</p>
+      </li>
+      <li>
+        <p>when received synchronously, the acknowledgment is sent after the message is removed from the API's internal queue during the <code>receiveMessage()</code> method. It's important to realize that the acknowledgment has been sent before control is returned to the application (that is after the <code>receiveMessage()</code> method completes).</p>
+      </li>
+    </ul>
+    <h3>Client-Acknowledgment Mode</h3>
+    <p>Client acknowledgment mode is the default behavior of the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Java API and means the client must explicitly send an acknowledgment for the message ID of each message received. Acknowledgments are asynchronous.  Any thread can  acknowledge messages at any time as long as  the receiver has not been terminated. It is important to remember that after a <code>PersistentMessageReceiver</code> object has acknowledged a message from the event broker, it  deletes that message from the queue on the event broker. For this reason it's important to perform any processing and storage of the message <b>before</b> you acknowledge it. </p>
+    <p>The following example  shows how to acknowledge a persistent message synchronously and asynchronously:</p>
+    <pre xml:space="preserve">
+/* Blocking request to receive a message.  */
+final InboundMessage message = receiver.receiveMessage();
+// auto-acked by now.
+
+/* Request to register an async message handler. */            
+receiver.receiveAsync(message -&gt; {  // Asynchronous receiver message callback.
+// Processing/storing of message happens here.
+}); 
+// auto-ack happens when the message processing callback method finishes without an error.           </pre>
+    <h2 class="with-rule"><a name="Negative-Acknowledgments-NACKs"/>Negative Acknowledgments for Specific Messages</h2>
+    <p>You can use negative acknowledgments (Nacks) if you have configured your applications for client acknowledgments. When you use Nacks, you can send a settlement outcome to let the event broker know the result from processing a guaranteed message that was received. Based on the settlement outcome, the event broker knows how to handle the message on its queue. You can use the following are the settlement outcomes:</p>
+    <ul>
+      <li> ACCEPTED—This Ack notifies the event broker that your client application successfully processed the guaranteed message. When the event broker receives this outcome it removes the message from its queue.<ul><li>When you call the <code>settle()</code> method with an outcome of ACCEPTED, it is the same as using <code>persistentReceiver.ack(message)</code>.</li></ul></li>
+      <li>FAILED—This Nack notifies the event broker that your client application did not process the message. When the event broker receives this Nack it attempts to redeliver the message while adhering to delivery count limits. </li>
+      <li>REJECTED—This Nack notifies the event broker that your client application could process the message but it was not accepted (for example, failed validation). When the event broker receives this Nack it removes the message from its queue and then moves the message to the Dead Message Queue (DMQ) if it is configured.</li>
+    </ul>
+    <p>Before you can use Nacks, you must use the <code>withRequiredMessageClientOutcomeOperationSupport()</code> method to add the <code>Outcome.FAILED</code>, <code>Outcome.REJECTED</code>, or both outcomes as Nack types when you create your <code>PersistentMessageReceiver</code> to prepare it to work with negative acknowledgments. You do not need to add the <code>Outcome.ACCEPTED</code> outcome because it is always available.  If you try to use an outcome that has not been added, you get an error of <code>Required Settlement Outcome Not Supported</code>. The following code shows how to configure a <code>PersistentMessageReceiver</code> to use NACKs:</p>
+    <pre xml:space="preserve">
+import com.solace.messaging.config.MessageAcknowledgementConfiguration.Outcome;
+// ...
+final PersistentMessageReceiver persistentReceiver = messagingService
+        .createPersistentMessageReceiverBuilder()
+        <b>.withRequiredMessageClientOutcomeOperationSupport(
+                new Outcome[]{Outcome.ACCEPTED, Outcome.FAILED, Outcome.REJECTED})</b>
+        .build(Queue.durableExclusiveQueue(QUEUE_NAME)); </pre>
+    <div class="Note">
+      <ul>
+        <li>Nacks  can be lost during transit (for example due to unexpected networking issues). Consider this fact as part of the logic for handling messages when you develop your application.</li>
+        <li>Nacks are supported on event brokers 10.2.1 and later. If an event broker does not support  Nacks, an <code>InvalidOperationException</code> occurs during the Flow bind request when an outcome is specified.</li>
+      </ul>
+    </div>
+    <p>The following example  shows how to settle an accepted message, which is the same as using <code>persistentReceiver.ack(message)</code> :</p>
+    <pre xml:space="preserve">
+persistentReceiver.receiveAsync(message -&gt; {  // Asynchronous receiver message callback.
+// Processing/storing of message happens here.
+persistentReceiver.settle(message, Outcome.ACCEPTED); 
+});            </pre>
+    <p>The following example  shows how to settle a rejected message, for example your application cannot currently process the message:</p>
+    <pre xml:space="preserve">
+persistentReceiver.receiveAsync(message -&gt; {  // Asynchronous receiver message callback.
+// Message processed but not accepted, send a NACK to the broker
+persistentReceiver.settle(message, Outcome.REJECTED); 
+});            </pre>
+    <p>The following example show how to settle a failed message when there is a problem with the message content:</p>
+    <pre xml:space="preserve">
+persistentReceiver.receiveAsync(message -&gt; {  // Asynchronous receiver message callback.
+// Failed to process message, send a NACK to the broker 
+persistentReceiver.settle(message, Outcome.FAILED); 
+});            </pre>
+  </body>
+</html>

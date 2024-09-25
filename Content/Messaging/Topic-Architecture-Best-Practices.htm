@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Cloud;Appliance;Software"/>Topic Architecture Best Practices</h1>
+    <p>Event-driven architecture, <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><a href="https://solace.com/use-cases/microservices/" target="_blank" class="link-offsite">event-driven microservices</a></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">event-driven microservices</MadCap:conditionalText>, and event-driven integration are valuable application design patterns. The key advantage of these systems is that applications can collaborate by asynchronously reacting to events instead of relying on synchronous polling or orchestration for signaling. The publish-subscribe message exchange pattern is a common way to deliver events. A well-architected topic hierarchy:</p>
+    <ul>
+      <li> effectively routes events across an event-driven system and ensures consumer applications have the flexibility to selectively consume only the events they want</li>
+      <li>allows applications to efficiently attract and consume events and get the most out of <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">Solace </MadCap:conditionalText>smart topics <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">(What the heck are smart topics - bug open to address and we should link)</MadCap:conditionalText></li>
+    </ul>
+    <p>A rich, well-defined topic architecture is key to maximizing the value of event-driven architecture. It offers many benefits for routing, filtering, and governance. In addition, the topic architecture can be designed and captured in <a href="../Cloud/Event-Portal/event-portal-overview.htm" class="link-internal"><MadCap:variable name="Product-Names.eventportal_product_long"/></a>, allowing for event discovery and runtime management.</p>
+    <p>For more information and background about topics, see:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="../Get-Started/what-are-topics.htm">Understanding Topics</MadCap:xref>
+      </li>
+      <li><MadCap:xref href="../Get-Started/event-mesh-basics.htm">Understanding Event-Driven Architecture</MadCap:xref>, for general information about events and messaging</li>
+      <li>
+        <MadCap:xref href="topic-use-cases.htm">Topic Architecture Case Studies</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="Wildcard-Charaters-Topic-Subs.htm#top">Wildcard Characters in SMF Topic Subscriptions</MadCap:xref>
+      </li>
+      <li MadCap:conditions="SAP.SapHideFromOutput"><a href="https://www.youtube.com/watch?v=PP1nNlgERQI" target="_blank" class="link-offsite">All about Solace topics!</a> (Video)</li>
+      <li MadCap:conditions="SAP.SapHideFromOutput"><a href="https://solace.com/blog/when-topics-arent-just-publish-subscribe" target="_blank" class="link-offsite">When Topics Aren't Just Publish/Subscribe: Explaining Topics and Subscriptions in Solace</a> (<MadCap:variable name="Variables.CompanyName"/> Blog)</li>
+      <li MadCap:conditions="SAP.SapHideFromOutput"><a href="https://solace.com/blog/controlling-info-flow-with-topics" target="_blank" class="link-offsite">Controlling Information Flow with Topics</a> (<MadCap:variable name="Variables.CompanyName"/> Blog)</li>
+      <li MadCap:conditions="SAP.SapHideFromOutput"><a href="https://solace.com/blog/tag/event-driven-architecture/" target="_blank" class="link-offsite">Solace Blog</a>, for discussions relating to event-driven architecture</li>
+    </ul>
+    <h2 class="with-rule"><a name="topic-bp-definitions"/>Topic Architecture Definitions</h2>
+    <p>You should be familiar with the following  event-driven architecture terminology.</p>
+    <h3>Event</h3>
+    <p>An <i>event</i> can be broadly described as something that happened within your organization, particularly a change in state of some kind of object. Events can have a variety of forms, but all have the common component of an action that has occurred on an object. For example:</p>
+    <ul>
+      <li>
+        <p>In a system of microservices, an event is a change or result emitted by one microservice and consumed by another whenever a state update occurs. For example, a customer places an order or opens an account. In these systems, each microservice acts independently and sends change notifications asynchronously. Microservices are loosely coupled, so the publishers do not need to know who needs to receive notifications, but instead use smart topics to explicitly describe which object has changed and how.</p>
+      </li>
+      <li>
+        <p>In an IoT system, an event represents a state change of a real-world object. For example, an event could be a notification that the temperature of a sensor has crossed a threshold. Again, these change notifications or events need to be distributed to all interested systems.</p>
+      </li>
+      <li>
+        <p>In a data system, an event represents a create, update, or delete operation. As a result of a create operation, a backend may update the database and emit a completion event. The difference in event-driven architecture is that, unlike a database, the event mesh is an open and distributed system where the events can be distributed to all the interested applications. This removes the need for applications to poll for changes in the database.</p>
+      </li>
+    </ul>
+    <h3>Event Topic</h3>
+    <p>To achieve enterprise-wide distribution of reusable events in event-driven architectures, the events need to be routable to interested applications. This is achieved via a smart event topic. The smart event topic is additional information (or metadata) in the messaging layer header, which is set by the application that produced the event. Topics allow event brokers to make intelligent routing decisions without deserializing, decoding, and interpreting the entire event. <a href="https://solace.com/what-is-an-event-broker/" target="_blank" class="link-offsite" MadCap:conditions="SAP.SapHideFromOutput">Event brokers</a><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><a href="../Get-Started/what-are-event-brokers.htm" target="_blank" class="link-internal" MadCap:conditions="SAP.SapOnlyOutput"><MadCap:variable name="Product-Names.broker_cloud_short_intitalcap"/>s</a></MadCap:conditionalText> don't need to understand the entire event to take action; they just need to know how to act on the event's topic information. This is similar to the way IP routers direct internet traffic without inspecting the payload or even the upper-level headers. However, unlike a URL or IP address, the event topic does not describe a destination, but instead describes the content of the message payload. To get value out of the event topics, they must follow a well-defined topic taxonomy which clearly defines the various hierarchical topic levels set by the producing application.</p>
+    <h3>Event Subscription</h3>
+    <p>While the event topic is metadata attached to the published event to allow for movement through an <a href="https://solace.com/blog/event-mesh/" target="_blank" class="link-offsite" MadCap:conditions="SAP.SapHideFromOutput">event mesh</a><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><a href="../Cloud/Event-Mesh/about_event_meshes.htm" class="link-internal">event mesh</a></MadCap:conditionalText>, the <i>subscription</i> is the mechanism for client applications to register interest in events. Upon matching event topics to consumer subscriptions, the system can weave dynamic forwarding paths across the mesh to deliver the correct events to each consumer. Unlike event topics, a single event topic subscription can be configured to attract numerous event topics via wildcards, which allow for fine-grained filtering of events flowing through the event mesh.</p>
+    <h2>Topic Taxonomy Example</h2>
+    <p>At its core, an event is an <b>action that has occurred</b> or state that has changed on an <b>object</b>. The topic for an event should describe the event. A basic topic hierarchy, or more formally the topic taxonomy, must describe the object (noun) and the action taken or state changed (verb). Some additional properties may also be included in the topic to enrich the hierarchy. In simplistic terms, a good topic hierarchy takes the form <code><span class="topicnoun">Noun</span>/<span class="topicverb">Verb</span>/<span class="topicproperty">Properties</span></code>.</p>
+    <p>Consider the topic architecture for Example Airline (EA), who are designing a new application to track flights. The domain would be <code><span class="topicdomain">ops</span>/<span class="topicdomain">flights</span>/</code> for flight operations. The <code>ObjectType</code><MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">(this term is explained halfway down the page)</MadCap:conditionalText> in this case is a <code><span class="topicnoun">flight</span></code>, thus flight would be the noun. Various different actions may occur on these flights, for instance, a flight might start <code><span class="topicverb">boarding</span></code> or be <code><span class="topicverb">delayed</span></code>. To differentiate between different flights, <code><span class="topicproperty">flightNumber</span></code> can be included in the topic. Subscribers may also want to receive information for flights at specific airports, so <code><span class="topicproperty">origin</span></code> and <code><span class="topicproperty">destination</span></code> would be good candidates to include in the topic. Putting it all together, we get <code><span class="topicnoun">flight</span>/<span class="topicverb">[status]</span>/<span class="topicproperty">[flightNumber]</span>/<span class="topicproperty">[origin]</span>/<span class="topicproperty">[destination]</span></code> as a basic topic architecture.</p>
+    <p>Within the applications at Example Airline (EA), when a state change occurs, the following events are published:</p>
+    <ul>
+      <li>Flight EA 1234 is boarding: <code><span class="topicnoun">flight</span>/<span class="topicverb">boarding</span>/<span class="topicproperty">ea1234</span>/<span class="topicproperty">jfk</span>/<span class="topicproperty">ord</span></code></li>
+      <li>Flight EA 9999 is delayed: <code><span class="topicnoun">flight</span>/<span class="topicverb">delayed</span>/<span class="topicproperty">ea9999</span>/<span class="topicproperty">yow</span>/<span class="topicproperty">sin</span></code></li>
+      <li>Flight EA 1010 took off: <code><span class="topicnoun">flight</span>/<span class="topicverb">wheelsUp</span>/<span class="topicproperty">ea1010</span>/<span class="topicproperty">ewr</span>/<span class="topicproperty">ord</span></code></li>
+    </ul>
+    <p>This topic architecture allows subscribers to receive events for:</p>
+    <ul>
+      <li>All flights leaving JFK <code><span class="topicnoun">flight</span>/<span class="topicverb">wheelsUp</span>/*/<span class="topicproperty">jfk</span>/&gt;</code></li>
+      <li>All delayed flights for the airline <code><span class="topicnoun">flight</span>/<span class="topicverb">delayed</span>/&gt;</code></li>
+      <li>All events for flight EA 1010 <code><span class="topicnoun">flight</span>/*/<span class="topicproperty">ea1010</span>/&gt;</code></li>
+    </ul>
+    <p>As time goes on, you may require more properties, event payloads may evolve, and new applications may come online. To ensure that the system is future-proof, each distinct event should be versioned. In addition, each event topic should be prefixed with its data owner or domain. The domain indicates which department owns the defined event. In this case operations (ops), as well as the application domain to which the event belongs, which in this case is flights.  This practice allows for future growth of the enterprise, either by adding a baggage application within the ops department, or onboarding an entirely new booking department’s applications.</p>
+    <p>As such, it gives us a final topic taxonomy of <code><span class="topicdomain">ops</span>/<span class="topicdomain">flights</span>/<span class="topicnoun">flight</span>/<span class="topicverb">[status]</span>/<span class="topicproperty">[version]</span>/<span class="topicproperty">[flightNumber]</span>/<span class="topicproperty">[origin]</span>/<span class="topicproperty">[destination]</span></code>, where the <code><span class="topicproperty">v1</span></code> publisher may publish <code><span class="topicdomain">ops</span>/<span class="topicdomain">flights</span>/<span class="topicnoun">flight</span>/<span class="topicverb">boarding</span>/<span class="topicproperty">v1</span>/<span class="topicproperty">ea1234</span>/<span class="topicproperty">jfk</span>/<span class="topicproperty">ord</span></code> for the boarding example above. The following events may then be added to an event catalog for discovery:</p>
+    <ul>
+      <li>
+        <code><span class="topicdomain">ops</span>/<span class="topicdomain">flights</span>/<span class="topicnoun">flight</span>/<span class="topicverb">boarding</span>/<span class="topicproperty">v1</span>/<span class="topicproperty">{flightNumber}</span>/<span class="topicproperty">{origin}</span>/<span class="topicproperty">{destination}</span></code>
+      </li>
+      <li>
+        <code><span class="topicdomain">ops</span>/<span class="topicdomain">flights</span>/<span class="topicnoun">flight</span>/<span class="topicverb">delayed</span>/<span class="topicproperty">v1</span>/<span class="topicproperty">{flightNumber}</span>/<span class="topicproperty">{origin}</span>/<span class="topicproperty">{destination}</span></code>
+      </li>
+      <li>
+        <code><span class="topicdomain">ops</span>/<span class="topicdomain">flights</span>/<span class="topicnoun">flight</span>/<span class="topicverb">wheelsUp</span>/<span class="topicproperty">v1</span>/<span class="topicproperty">{flightNumber}</span>/<span class="topicproperty">{origin}</span>/<span class="topicproperty">{destination}</span></code>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="topic-bp-benefits"/>Benefits of a Rich Topic Architecture</h2>
+    <p MadCap:conditions="SAP.SapOnlyOutput">It's  best practice to define the overall topic hierarchy for your event-driven architecture (EDA). A good topic architecture classifies the topics of events published and consumed within an event mesh.</p>
+    <p>These key benefits result from a well-designed topic architecture:</p>
+    <ul>
+      <li>
+        <p>Routing, filtering, and governance can occur at multiple levels, as data flows across the event mesh. For example, a decision can be made on which events are allowed to cross geographical boundaries, but once a topic is in the geography, secondary decisions can be made on which consumers can receive the events.</p>
+      </li>
+      <li>
+        <p>Gathering information across events is easier. For example, wildcards enable receiving all event types pertaining to an orderID, or all new orders regardless of originator or location.</p>
+      </li>
+      <li>
+        <p>When events are documented well, for instance, with <MadCap:variable name="Product-Names.eventportal_product_long"/>, a well-defined topic hierarchy makes onboarding new team members and new applications much easier.</p>
+      </li>
+      <li>
+        <p>Relationships between events and business domains are easy to understand. For example, the topic hierarchy could contain levels from business unit, to application domain, to action; you might see a hierarchy like finance/payroll/pay-adjustment.</p>
+      </li>
+      <li>
+        <p>Explicit need for orchestration is removed. With the proper use of event-driven architecture, complex tasks can be choreographed and consistently completed in a highly scalable and more robust way. For example, a new order for an online store may trigger an inventory data change, a payment or billing change, and a shipping change. Any failure in inventory or billing causes a shipping cancellation. This set of events allows the billing, inventory, and shipping applications to scale independently and execute in an asynchronous manner.</p>
+      </li>
+      <li>
+        <p>Barriers to data movement are removed by using an event mesh and a well-defined topic hierarchy because data can selectively flow between application domains, while data can still be governed and access-controlled. An enterprise-wide topic architecture allows events to flow across application domains. For example, a marketing application may want to receive operations events, and with a well-defined topic architecture and a few tweaks to access control, this can happen without operations having to make any changes.</p>
+      </li>
+      <li MadCap:conditions="Default.HideFromAllOutput">
+        <p>Event versioning reduces the risk of regression, allows the development of canary application instances, enables <i>blue/green</i> deployment scenarios, and future-proofs the system against business requirement changes as new event versions can be added as requirements change, and without any risk to existing applications if non-backward compatible changes are required (super long sentence, broke it up below:).</p>
+      </li>
+      <li>
+        <p>Event versioning offers several benefits: it reduces the risk of regression, enables the development of canary application instances, facilitates blue/green deployment scenarios, and future-proofs the system against business requirement changes. New event versions can be added as requirements change, without risking existing applications even if non-backward compatible changes are necessary.</p>
+      </li>
+      <li>
+        <p>Adding properties to the topic hierarchy allows for fine-grained filtering. This filtering ensures that consumers  only receive the events that they need. It also ensures  the system is more efficient by reducing the workload on applications and keeping egress data costs down.</p>
+      </li>
+      <li>
+        <p>Multiple topic levels allow you to create access control rules that are level-specific and can contain topic wildcards. This flexibility makes it simple to specify data entitlements at each level of the hierarchy. For example, including a sensor ID in the topic hierarchy allows access control lists to use <a href="../Security/Granting-Clients-Access.htm" class="link-internal" MadCap:conditions="SAP.SapHideFromOutput" target="_blank">substitution expressions</a><a href="Substitution-Expressions-Overview.htm" class="link-internal" MadCap:conditions="SAP.SapOnlyOutput">substitution expressions</a> to ensure that one sensor cannot publish data pretending to be from another sensor.</p>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="topic-bp-design"/>Best Practices for Designing a Topic Hierarchy</h2>
+    <p>A well-designed topic hierarchy should follow the topic structure that we outline. We recommend that you follow this structure for all event topics across your organization. To see how these best practices can be put into use, see <MadCap:xref href="topic-use-cases.htm">Topic Architecture Case Studies</MadCap:xref>.</p>
+    <h3><a name="event-topic-structure"/>Event Topic Structure</h3>
+    <p>The first step to defining a topic hierarchy is to identify the business objects participating in the event-driven microservice or event-driven integration. Next, the key actions or state changes that can occur to these objects should be identified. The combined object and action is generally referred to as the topic root, along with other information such as the business domain, and the version of the event. Then, for each of these topic roots, the optional properties specific to the object or action that occurred should be identified. This additional information is generally referred to as the properties of the event. You can decide whether to add a field to a topic, consider whether it would be useful for routing, apply filtering, and enforce access control.</p>
+    <p>Consider the following examples:</p>
+    <ul>
+      <li>If we're creating a topic hierarchy for an event system that updates the city bus positions, we could have a topic hierarchy of <code><span class="topicdomain">mobile</span>/<span class="topicnoun">bus</span>/<span class="topicverb">locUpdate</span>/<span class="topicproperty">v1</span>/<span class="topicproperty">&lt;routeNumber&gt;</span>/<span class="topicproperty">&lt;busNumber&gt;</span>/<span class="topicproperty">&lt;location&gt;</span></code> . In this example, the <code><span class="topicproperty">routeNumber</span></code>, <code><span class="topicproperty">busNumber</span></code>, and <code><span class="topicproperty">location</span></code> are all properties of the <code><span class="topicverb">locUpdate</span></code> action. There are many more bus numbers than there are route numbers so <code><span class="topicproperty">busNumber</span></code> follows after <code><span class="topicproperty">routeNumber</span></code>. Similarly, there are more locations for a bus than the number of buses, so <code><span class="topicproperty">location</span></code> goes after <code><span class="topicproperty">busNumber</span></code>.</li>
+    </ul>
+    <ul>
+      <li>If we're building a topic hierarchy for an event system that updates purchase orders per city, we could have a hierarchy of <code><span class="topicdomain">store</span>/<span class="topicnoun">order</span>/<span class="topicverb">created</span>/<span class="topicproperty">v1</span>/<span class="topicproperty">&lt;locality&gt;</span>/<span class="topicproperty">&lt;objectID&gt;</span></code>. In this case, the <code><span class="topicproperty">objectID</span></code> could be either the purchase order or the SKU of the purchase, and the location could be picked from an enumeration of possible cities. In a successful business, usually there are more sales than sales locations, so in this case, the <code><span class="topicproperty">objectID</span></code> is the property with more variability.</li>
+    </ul>
+    <h3><a name="parts-of-event-structure"/>Parts of the Event Topic</h3>
+    <p>A well-defined event topic has two main parts:</p>
+    <ul>
+      <li>The <b>event topic root</b> contains enough information to describe the type of event that has occurred. Each event topic root is a static field that describes the type of event. The list of event topic roots forms a catalog of events that can be produced and consumed. This catalog can be captured in <MadCap:variable name="Product-Names.eventportal_product_long"/> by adding all of your events to <a href="../Cloud/Event-Portal/event-portal-designer.htm" class="link-internal" target="_blank">Designer</a>. Each event topic root describes the event in as much detail as necessary to map it to a single data schema.</li>
+      <li>The <b>event topic properties</b> are optional fields that further describe a particular event. This part of the topic has fields that are dynamically filled when the producer publishes the event. These fields are used to describe the specific, or unique attributes of this event instance that could be used for routing and filtering. Examples of this are the object ID, and location from the preceding city bus example, or the flight number, origin, and destination from the preceding airline example. It is not uncommon for these fields to also be encoded in the event payload, but only the fields that are helpful for routing, filtering, or governance should be included in the topic.</li>
+    </ul>
+    <p class="Note">While the topic hierarchy should be rich, it's important that it also be concise. A topic is limited to a maximum of 250 characters, and 128 topic levels. The topic root containing the domain, noun, and verb and one or more important properties should use literal values rather than variables and should be concise. We recommend that you include properties in the topic root literals only if they are valuable for  routing, filtering, or governance.</p>
+    <h3><a name="event-topic-root"/>Event Topic Root</h3>
+    <p>The event topic root of an event should have the following form:</p>
+    <p>
+      <code><span class="topicdomain">Domain</span>/<span class="topicnoun">ObjectType</span>/<span class="topicverb">Verb</span>/<span class="topicproperty">Version</span>/</code>
+    </p>
+    <p>The fields in the event topic root are described in the following table:</p>
+    <table style="width: 100%;margin-left: 0;margin-right: auto;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 175px;"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Field</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>
+              <span class="topicdomain">Domain</span>
+            </code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Identifies the organizational element responsible for the system. This should describe the system’s responsibility (e.g., <code><span class="topicdomain">operations</span></code> or <code><span class="topicdomain">booking</span></code>), as well as clearly identify the event’s owner (e.g., <code><span class="topicdomain">op</span></code> or <code><span class="topicdomain">hr</span></code>). Using multiple domain levels ensures that event names do not collide as the enterprise grows, and ensures that a clear data owner can be identified for each event.  </p>
+            <p>Encoding domain information into the topic hierarchy enables multiple domains to seamlessly share the same mesh, which in turn allows for collaboration between domains. It also enables the governance needed for multiple business units to share the same event mesh and provides clear ownership of the event, which is essential for effective reuse of events and ensures accessibility, evolution, and data quality of the events.</p>
+            <p>The Domain should clearly identify the organizational owner of the event, and should take the form <code><span class="topicdomain">dataSystem/applicationDomain</span></code>(e.g., <code><span class="topicdomain">finance/payroll</span></code> or <code><span class="topicdomain">marketing/rewards</span></code>). The <code><span class="topicdomain">dataSystem</span></code> should be as wide as possible to enable event reuse, and the <code><span class="topicdomain">applicationDomain</span></code> should differentiate different potential applications within the same department. The organization name may be included in the form <code><span class="topicdomain">organizationName/dataSystem/applicationDomain</span></code> to enable multi-vendor systems, and future-proof the Domain against acquisitions or mergers.</p>
+            <p>Examples: <code><span class="topicdomain">operations/flights, acme/rideshare/billing</span></code></p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>
+              <span class="topicnoun">ObjectType</span>
+            </code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Identifies the type of the object (referred to as the noun) being acted on. This object may be very general, for instance, an order, or it can be more specific if significantly different handling has to happen for different products (e.g., securities trades versus mutual funds). </p>
+            <p>Examples: <code><span class="topicnoun">customer</span></code>, <code><span class="topicnoun">order</span></code>, <code><span class="topicnoun">inventory</span></code>, <code><span class="topicnoun">payment</span></code></p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>
+              <span class="topicverb">Verb</span>
+            </code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Describes the action that has been taken or the state that has changed on the object and can be typical CRUD operations or another verb describing the action taken. The verb for the field is typically in past tense.</p>
+            <p>Examples: <code><span class="topicverb">created</span></code>, <code><span class="topicverb">deleted</span></code>, <code><span class="topicverb">exceeded</span></code>, <code><span class="topicverb">pickedUp</span></code>, <code><span class="topicverb">paid</span></code></p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <code>
+              <span class="topicproperty">Version</span>
+            </code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>Identifies the version of the event. This field can be used for routing purposes, and is necessary for distinguishing major changes to the topic hierarchy or major changes to the schema of the payload. Including the version in the topic hierarchy enables blue/green or canary deployments, for instance, the regular production consumers might subscribe to version 1, while canary consumers subscribe to version 2. This version should simply take the form <code><span class="topicproperty">v1</span></code>, <code><span class="topicproperty">v2</span></code>, etc.</p>
+            <p>Examples: <code><span class="topicproperty">v1</span></code>, <code><span class="topicproperty">v2</span></code></p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="event-topic-properties"/>Event Topic Properties</h3>
+    <p>Beyond the event topic root, properties can be added to the event topic hierarchy to make the topic more granular. Properties are specific to each use case, and not applicable to all use cases. A property should be included only if it is useful for subscriber filtering, event routing, or access control. Some common properities might be location information, product, customer IDs, or specifiers for the type of data. You can include properties are are also present in the event payload, though we recommend that you include only the properties that are important for routing, filtering, or governance should be included in the topic.</p>
+    <p>Event topic properties should be ordered in terms of cardinality: from <b>least specific</b> to <b>most specific</b>. Consider potential event topic properties on a sale order event that encode both the city in which the sale occurred and the order ID of the placed order. There are likely more orders placed than cities in which the enterprise operates, therefore it would make sense that the city comes before the order ID in the topic hierarchy.</p>
+    <p>For each property in your topic hierarchy, it is also important to consider the structure of the data. Particularly, the value space of the property should be clearly documented, whether that be a freeform string, an enumeration, an ID format, an integer or a floating point number. For instance, if including an airport field in your event topic properties, the format for the airport code should be documented as well as information on where to find the most up-to-date list of airports used by your application.</p>
+    <table style="width: 100%;margin-left: 0;margin-right: auto;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 184px;"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Field
+
+</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">
+Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>
+              <span class="topicproperty">ObjectID</span>
+            </code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>A unique identifier for the object instance that was acted on. There may be more than one <code><span class="topicproperty">ObjectID</span></code>, for instance, if an order is placed by a customer, the <code><span class="topicproperty">orderId</span></code> and <code><span class="topicproperty">customerId</span></code> may both be included. Only the IDs that are helpful for routing, filtering, or governance should be included. </p>
+            <p>Examples: <code><span class="topicproperty">orderID</span></code>, <code><span class="topicproperty">sensorID</span></code>, <code><span class="topicproperty">customerID</span></code>, <code><span class="topicproperty">routeNumber</span></code>, <code><span class="topicproperty">productSKU</span></code></p>
+            <p>Some uses of <code><span class="topicproperty">ObjectID</span></code> might include subscribing to receive all notifications for a particular route number, or using access control to only allow IoT sensors to publish updates for their own <code><span class="topicproperty">sensorID</span></code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>
+              <span class="topicproperty">Locality</span>
+            </code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The geographical or structural location at which the event occurred. The local may be a single level like a country, region, or transit stop number, or may require multiple levels such as latitude/longitude, region/location, origin/destination, etc. </p>
+            <p>Depending on how specific the locality is, it may be included near the beginning of the properties section (e.g.,  country codes such as <span class="topicproperty">US</span> or <span class="topicproperty">UK</span>), or it may appear near the end of the properties section (e.g., coordinates such as  latitude and longitude).</p>
+            <p>Some uses of locality might be for geofencing (received data via latitude and longitude), or ensuring data sovereignty laws are respected based on the region information.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>
+              <span class="topicproperty">Category</span>
+            </code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Often, data falls into certain categories. These categories might not be different enough to be differentiated in the <code><span class="topicnoun">ObjectType</span></code> field described in the Topic Root, but may still be valuable information in the topic. For instance, a ride share app may have various vehicle types, or there may be specific follow-on actions for certain products and not others.</p>
+            <p>Some uses of <code><span class="topicproperty">Category</span></code> may be only receiving updates for a certain subset of data rather than the whole set, such as providing reports for  a certain aspect of a product.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1"><code><span class="topicproperty">HandlingInstruction</span></code>(advanced)</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>In advanced use cases, additional handling information may need to be included in the event topic, such as information about the payload or importance of the event so that routing and filtering decisions may be made. </p>
+            <p>For example, if your system emits events onto the event mesh through a connector that converts data sources into event streams that have different encoding types,  such as <code>json</code> or <code>protobuf</code>, it may be important to include this information in the event topic  to differentiate between the two. A handling Instruction may be useful if you have separate instances of the application that process the events based on the encoding.</p>
+            <p>This field may be promoted to the event topic root (e.g., before the version field) if different handlings may need to be versioned separately. For instance, if the <code>json</code> encoding may change independent of the <code>protobuf</code> encoding,  the <code>json</code> encoding can be version bumped without impacting <code>protobuf</code> consumers.</p>
+            <p>If the only users of <code><span class="topicproperty">HandlingInstructions</span></code> are instructing consumers on how to handle the event, consider using <a href="../API/API-Developer-Guide/Creating-Custom-Header-Fields.htm" class="link-internal">message properties</a> instead. <code><span class="topicproperty">HandlingInstructions</span></code> should only be included if the field is helpful for routing, filtering, or governance, or in cases where using message properties is not possible. For instance, when using off the shelf connectors that do not support message properties.</p>
+            <p> </p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="complete-event-topic"/>Complete Event Topic</h3>
+    <p>Putting together an event topic root and event topic properties creates an event topic that describes the event with a series of fields from least specific to most specific. This leads to a topic template of:</p>
+    <p>
+      <code><span class="topicdomain">Domain</span>/<span class="topicnoun">ObjectType</span>/<span class="topicverb">Verb</span>/<span class="topicproperty">Version</span>/<span class="topicproperty">Properties...</span></code>
+    </p>
+    <p>Keep in mind that these are best practices that need to be tailored to each individual use case, and that any level can be skipped or expanded to multiple levels if there is a benefit to routing, filtering, or access control. After a decision has been made on which fields are included or omitted from the topic architecture, it must be applied consistently across the object-type domain. The levels of the topic must be used systematically and have unchanging meanings, otherwise routing and filtering will provide inconsistent results. In addition, do not skimp on the root of the topic structure, particularly the domain; being too specific too early in the hierarchy often leads to topics that can seem out of context to read and can make the merging of systems very difficult.</p>
+    <h3>Documenting an Event</h3>
+    <p>Each event should be well-documented, and each individual topic level should be clearly defined in terms of the format of the data. Documenting events in this way is often referred to as cataloging. Cataloging events has the benefit of clearly stating which properties are available on an event, and how each individual property functions. It is also important for event discovery which allows existing events to be reused by new applications. All of this can be done in <MadCap:xref href="../Cloud/Event-Portal/event-portal-lp.htm" target="_blank">[%=Product-Names.eventportal_product_long%]</MadCap:xref></p>
+    <p>For each event topic level, the value space should be clearly defined (e.g., integer, floating-point number, enumeration, or string format). For example, a property may contain airport codes, and the list of possible codes should be enumerated or linked to a source of truth. Furthermore, the events within an organization should follow a consistent pattern, such as camelCase for all naming within the event topic architecture. Using camelCase is recommended because snake_case requires additional characters for the same semantics. These decisions should be documented so that all events in the system follow a consistent format.</p>
+    <h3>Subscription Exceptions</h3>
+    <p><MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers support negative subscriptions, prefixed with an exclamation mark <code>!</code>, which exclude the specified topic from a larger subscription set. Consider the case where a specific flight number’s data needs debugging. It may be helpful to have one instance of an application handle that particular flight number, EX1234, and have another instance of the application handle all other flight numbers. The application instance handling the specific flight  can subscribe to <code>flight/ex1234</code>, and the instance handling all other flights can subscribe to <code>flight/*</code> and exclude flight EX1234 with the subscription <code>!flight/ex1234</code>.</p>
+    <p>If you are designing a solution where special handling is always required, it's a best practice to have a separate topic level to encode the property. This ensures that the subscribers don't need to closely coordinate in order to prevent losing data. We also recommend enabling <code>reject-msg-to-sender-on-no-subscription-match</code> on client profiles that use negative subscriptions to ensure that excluded messages are not lost.</p>
+    <p>Subscription exceptions are supported only for Guaranteed messaging.<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> For more information, see <MadCap:xref href="Guaranteed-Msg/System-Level-Subscription-Exception-Config.htm">System-Level Subscription Exception Configuration</MadCap:xref>.</MadCap:conditionalText></p>
+    <h3>Null Values</h3>
+    <p>There may be occasions where a topic level may be null. If this occurs within your taxonomy, first consider if the field is still useful for routing, access control, or governance, and if it's not, simply remove the level from the taxonomy. If it is still valuable, consider if a reasonable default can be used. If not, a null value should be defined, both so your application can subscribe to any topics containing this value, and so you can apply access control and governance configurations to the topic<MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">(**Note to Gil: this was what we discussed on Wednesday**)</MadCap:conditionalText>.</p>
+    <p>Choosing a null value may be as simple as choosing a reasonable default, often referred to as a <i>sentinel</i> value. Some examples of sentinel values are:</p>
+    <ul>
+      <li>defaulting to 0 for a numerical field</li>
+      <li>defining a default value for enumerations</li>
+      <li>defaulting to customer ID to 0000 when no customer is logged in</li>
+    </ul>
+    <p> Free-form strings are the most complex and need to be considered on a case-by-case basis. <code>_null_</code> is a good starting point if <code>_</code> cannot occur naturally within the value space of the field. It is important to be aware of user input in this case, and ensure that the input cannot overlap with the null value (e.g., <code>_</code> must be an invalid character in the user input). <a href="SMF-Topics.htm" class="link-internal">Special characters in SMF</a>, such as <code>#</code>, <code>_</code>, <code>*</code>, and <code>&gt;</code>, should be avoided in the chosen null value.</p>
+    <p>Regardless of the value chosen, whether sentinel or a special null, it must be documented, along with the event as a possible value for the field.</p>
+    <h2><a name="antipatterns"/>Topic Architecture Anti-Patterns</h2>
+    <p>There are a number of patterns that should be avoided when designing a topic architecture. A few common anti-patterns are outlined.</p>
+    <h3>Don't Use Message Properties for Filtering</h3>
+    <p>Many legacy messaging systems rely on features, such as <MadCap:conditionalText MadCap:conditions="SAP.SAPTempHide"><a href="../API/Solace-JMS-API/Selectors.htm" class="link-internal">JMS selectors</a></MadCap:conditionalText> <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">JMS selectors</MadCap:conditionalText>, to filter data going to consumers based on user-defined message properties. <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.pubsub_brand_only"/></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><MadCap:variable name="Product-Names.cloud_product_short_initialcase"/></MadCap:conditionalText> has legacy support for selectors, however filtering based on selectors is an anti-pattern. Selectors cause a number of architectural problems, such as mixing the responsibilities of filtering with event content resulting in complicating the event schema. Furthermore, access control, routing, and governance decisions cannot be made based on message properties. In general, selectors should be avoided, and the routing, filtering or governance information should be encoded into the topic hierarchy. Message properties should be used only to communicate metadata about an event to consumers of that event.</p>
+    <h3>Don't Include Tracing Information in the Topic Hierarchy for Tracing Use Cases</h3>
+    <p>Tracing information from an event,  such as TraceID, SpanID, or any other tracing data,  should not be included in the topic hierarchy. Instead, <MadCap:variable name="Variables.CompanyName"/> native support for <a href="../Features/Distributed-Tracing/Distributed-Tracing-Overview.htm" class="link-internal">Distributed Tracing</a> should be used along with a tracing backend to enable tracing use cases. Including the TraceID in the topic hierarchy uses up valuable space in the topic string, and provides less visibility than <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Variables.CompanyName"/></MadCap:conditionalText> Distributed Tracing. The TraceID is also not useful for routing, filtering, or governance because it is an arbitrary value that changes for each message.</p>
+    <h3>Don't Include Deployment Environment Names in the Topic Hierarchy</h3>
+    <p>Environment designators, such as <code>dev</code>, <code>qa</code>, or <code>prod</code> should not be used in your topic hierarchy. If you include  environment information in your topic hierarchy, it causes several problems:</p>
+    <ul>
+      <li>Forces your application code to change as you promote it from your development environment into pre-production or production. At minimum, you would need an environment variable or some other way for publishers to put the right environment into the topic, meaning that your configuration would not be static.</li>
+      <li>Requires that you to change your configuration in many areas such as access-control lists (ACLs), topic subscriptions, message replay configuration, replication configuration, distributed tracing, and so on. Consequently, your infrastructure as code and CI/CD pipelines may deviate from best practices and require modifications based on the target environment.</li>
+      <li>Prevents you from using <MadCap:variable name="Product-Names.eventportal_product_long"/> to track the promotion of events across development environments. It's important to recognize that <MadCap:variable name="Product-Names.eventportal_product_short"/> conforms to industry-accepted infrastructure as code methodologies, such as where you promote a single artifact across development environments.</li>
+    </ul>
+    <h3>Don't Include Spaces or Other Special Characters in Topics</h3>
+    <p> Avoid using non-alphanumeric characters in the topic taxonomy, such as spaces and special characters. Including spaces makes the topic more difficult to read, and also makes the topics less reusable, as well uses up characters unnecessarily. Furthermore, <code>*</code>, <code>&gt;</code> and <code>!</code> should be avoided on any published topics as they are treated as literals when you publish the topic, but are treated as special characters in topic subscriptions. For this reason, it is very difficult to subscribe to events when topics contain these characters.</p>
+    <p>For similar reasons, avoid snake_case when possible because using separator characters is less efficient than other naming conventions. For this reason, you should use PascalCase or camelCase instead.</p>
+  </body>
+</html>

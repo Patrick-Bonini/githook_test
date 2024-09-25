@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Building a Custom Plug-In Shared Library</h1>
+    <p>To build a custom Ingress Message Plug-In shared library, it is recommended that you use the makefile found in the <code>ex</code> directory where you extracted the PubSub+ Cache package. This makefile allows you to remove the default Plug-In library (<code>libSolCachPlugin.so</code>) and make a Plug-In library based on the <code>modifyCachePlugin.cpp</code> or <code>opcodePluginSample.cpp</code> samples.</p>
+    <p>To activate a new Plug-In library, the PubSub+ Cache Instance must first be stopped. The library <code>libSolCachePlugin.so</code> can then be replaced and the PubSub+ Cache Instance be restarted.</p>
+    <h2 class="with-rule"><a name="Design_Considerations"/>Design Considerations</h2>
+    <p>The following sections provide important functional information regarding the Ingress Message Plug-In. This information must be taken into consideration when designing a custom Plug-In.</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#design_considerations_2383754413_217108">Ingress Events</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#design_considerations_2383754413_222641">Shared Library Description</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#design_considerations_2383754413_217783">Plug-In Function</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#design_considerations_2383754413_228996">Synchronization</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#design_considerations_2383754413_228466">Memory Management Guidelines</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="design_considerations_2383754413_217108"/>Ingress Events</h3>
+    <p>The PubSub+ Cache Instance uses the <code>solCache_event_t</code> enumeration to indicate to the Plug-In function why it is being called. There are two possibilities:</p>
+    <ul>
+      <li>
+        <code>SOLCACHE_INGRESS_EVENT_INIT</code>
+        <p>This event initializes/registers the Plug-In.</p>
+      </li>
+      <li>
+        <code>SOLCACHE_INGRESS_EVENT_DATA_MSG</code>
+        <p>This event indicates that an ingress live data message is received. This event occurs for every received message. </p>
+      </li>
+    </ul>
+    <p>The <code>solCache_pluginFuncs</code>discussed below must handle these events appropriately.</p>
+    <h4>SOLCACHE_INGRESS_EVENT_INIT</h4>
+    <p>The <code>SOLCACHE_INGRESS_EVENT_INIT</code> event is generated once, at startup, before any other PubSub+ Cache operations. When a <code>SOLCACHE_INGRESS_EVENT_INIT</code> is received, it may initialize the Plug-In, it also provides a mechanism for the Plug-In to detect PubSub+ Cache Instance capabilities and report the Plug-In capabilities to the PubSub+ Cache Instance.</p>
+    <p class="Note">If the Plug-In does not successfully initialize (that is, it returns a <code>SOLCACHE_INGRESS_EVENT_OP_FAIL</code> opcode to the PubSub+ Cache Instance), the PubSub+ Cache Instance enters a Stop state. In this case, admin “start” or “clear-event” commands cannot be used to clear this state. To run the PubSub+ Cache Instance, you must either modify your Plug-In so that it does not return a <code>SOLCACHE_INGRESS_EVENT_OP_FAIL</code> opcode or disable the Plug-In and run the PubSub+ Cache Instance without it.</p>
+    <p>After the Plug-In is initialized, it can begin to receive <code>SOLCACHE_INGRESS_EVENT_DATA_MSG</code> events, and it may callback into the PubSub+ Cache Instance using the callback functions provided by the PubSub+ Cache Instance.</p>
+    <p>The <code>SOLCACHE_INGRESS_EVENT_INIT</code> event uses a passed‑in <code>solCache_initEventInfo_t</code> structure. This structure includes two sets of function pointers:</p>
+    <ul>
+      <li><code>solCache_pluginFuncs</code>—Pointers to callback functions that the PubSub+ Cache Instance calls for generated events. These are:<ul><li><code>SOLCACHE_INGRESS_EVENT_DATA_MSG (0)</code>—<code>default void solCache_plugin(solCache_pluginEventInfo_t *eventInfo_p)</code>. An event callback for received data messages. </li><li><code>SOLCACHE_INGRESS_EVENT_INIT (1)</code>—<code>default void solCache_plugin(solCache_pluginEventInfo_t *eventInfo_p)</code>. This event signals to the Plug-In the available event and utility functions. It only occurs once, and, consequently, the event callback may not be changed. The Plug-In must implement the function <code>solCache_plugin()</code>, and that function is always called with this event by any PubSub+ Cache Instance that supports <code>SOLCACHE_INGRESS_EVENT_INIT</code>.</li></ul></li>
+      <li><code>solCache_utilityFuncs</code>—The PubSub+ Cache Instance provides a <code>solCache_msg_getNextCachedMsg()</code> utility function, which allows the Plug-In to query the PubSub+ Cache Instance to retrieve already-cached messages. For more information, refer to <MadCap:xref href="#design_considerations_2383754413_221474">Get Next Utility</MadCap:xref>.
+			<p class="Note">A PubSub+ Cache callback function must be called through the pointers provided in the <code>SOLCACHE_INGRESS_EVENT_INIT</code>. It is not resolvable by the run-time or compile-time linker, and it cannot be called directly by Plug-In applications.</p></li>
+    </ul>
+    <h4>SOLCACHE_INGRESS_EVENT_DATA_MSG</h4>
+    <p>When the Plug-In receives a <code>SOLCACHE_INGRESS_EVENT_DATA_MSG</code>, it can perform a number of processing actions. However, before developing a customized Plug‑In to handle ingress live data messages, you should read <MadCap:xref href="#design_considerations_2383754413_228466">Memory Management Guidelines</MadCap:xref>, then develop your Plug-In accordingly.</p>
+    <ul>
+      <li>When the Plug-In receives a <code>SOLCACHE_INGRESS_EVENT_DATA_MSG</code>, it may:</li>
+      <li>Examine or copy the received message.</li>
+      <li>Modify the contents of the received message. If the contents are modified, the PubSub+ Cache Instance caches the modified message on return from the Plug-In (if the returned operation code specifies to cache the message and it can be cached). 
+        <p class="Note"> If the Plug-In changes the received message’s topic, it is cached under the new topic. If the Plug-In changes the received message’s topic and returns <code>SOLCACHE_INGRESS_OP_FLUSH_AND_CACHE</code> or <code>SOLCACHE_INGRESS_OP_FLUSH_AND_DISCARD</code>, then all entries in the cache for the new topic are flushed.</p></li>
+      <li>Replace the <code>msg_p</code> value in the <code>eventInfo</code> with a wholly newly allocated <code>solClient_opaqueMsg_pt</code>. The new message is then cached instead of the received message, and it must contain sufficient information to be encoded as valid message (that is, it should at least contain a topic and a binary attachment). This message is cached under the topic found in the new message. When the Plug-In chooses this option, the new <code>msg_p</code> and the original <code>msg_p</code> are owned by the PubSub+ Cache Instance. Neither reference should be released by <code>solClient_msg_free()</code>, and neither reference may be used after the Plug-In returns.</li>
+    </ul>
+    <h3><a name="design_considerations_2383754413_222641"/>Shared Library Description</h3>
+    <p>The shared library must implement the <code>solCache_getPluginDescription()</code> function so that the PubSub+ Cache Instance can retrieve a description string for the Plug-In library.</p>
+    <p>The function should return a pointer to a null-terminated string that provides the PubSub+ Cache Instance with name and version of the Plug-In (for example, <code>Customer X Plugin vX.X</code>). The PubSub+ Cache Instance assumes that the pointer that is returned is valid.</p>
+    <p>This function is called many times during the lifetime of the process. Therefore, the Plug-In must ensure that the returned pointer is either a pointer to static memory, or, if it is a pointer to heap memory, that it is allocated at most once. The pointer must never reference stack memory.</p>
+    <p class="Note">You can use the <b>show cache-instance &lt;instance-name&gt; remote status</b> User EXEC command on the Designated Router to view the Plug-In description of a PubSub+ Cache Instance. Refer to <MadCap:xref href="Monitoring-PubSub-Cache-Conf.htm#Cache-Instance">Show Cache Instance</MadCap:xref>.</p>
+    <h3><a name="design_considerations_2383754413_217783"/>Plug-In Function</h3>
+    <p>Whenever a PubSub+ Cache Instance using an active Ingress Message Plug-In receives a live data message, it passes a <code>solCache_pluginEventInfo_t</code> data structure to the shared library just before it would typically write that received message to the cache. This invokes the Plug-In function <code>(solCache_plugin(solCache_pluginEventInfo_t *</code>, unless changed during the init).</p>
+    <p class="Note">The Plug-In function is only invoked when live data messages are received; it is not invoked for resynchronization operations between PubSub+ Cache Instances.</p>
+    <p>The Plug-In function examines the referenced message contents and then returns an operation code in the <code>solCache_pluginEventInfo_t</code> data structure to the PubSub+ Cache Instance that instructs it as to what action to take.</p>
+    <p>The Plug-In function is invoked from the context of a receive message handler of the Solace C API; therefore, the Plug-In function can use any C API message parsing/processing functions. For information on the C API functions that are available, refer to the<MadCap:xref href="../../API-Developer-Online-Ref-Documentation/c/index.html"> C API Developer Reference.</MadCap:xref></p>
+    <p class="Note">The Plug-In is invoked for every received message before it is stored in a PubSub+ Cache Instance. Therefore, the time a message spends in the Plug-In directly affects the maximum rate which PubSub+ Cache can receive and cache messages. For example, to achieve even a modest message caching rate of 50,000 msg/second the Plug-In must run for less than 20 microseconds (us) per received message.</p>
+    <p style="font-weight: bold;">solCache_pluginEventInfo_t</p>
+    <p>The <code>solCache_pluginEventInfo_t</code> structure is used to pass the ingress message pointer and event type to the Plug-In function, and it is used to return back to the PubSub+ Cache Instance the message pointer and the operation that the PubSub+ Cache Instance is to perform. Therefore, the ingress message Plug-In function technically does not return any value to the PubSub+ Cache Instance–it encodes its decision in the <code>solCache_pluginEventInfo_t</code> data structure that was passed to it by reference.</p>
+    <p>The following table lists the <code>solCache_pluginEventInfo_t</code> structure members.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">solCache_pluginEventInfo_t Members</p>
+      </caption>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Item</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">event</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">The event code that indicates to the Plug-In function why it is being called. The possible events include:</p>
+            <p class="Tbl_Bullet">
+              <code>SOLCACHE_INGRESS_EVENT_DATA_MSG</code>
+            </p>
+            <p class="Tbl_Bullet">
+              <code>SOLCACHE_INGRESS_EVENT_INIT</code>
+            </p>
+            <p class="Tbl_Body">For more information, refer to <MadCap:xref href="#design_considerations_2383754413_217108">Ingress Events</MadCap:xref>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">msg_p</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">A pointer to the message received by the PubSub+ Cache Instance.</p>
+            <p class="Tbl_Body">The Plug-In function may modify the contents of the message or change the <code>msg_p</code> to reference an entirely new <code>ssolClient_opaque_msg_pt</code>. Although the message can be modified, the PubSub+ Cache Instance ‘owns’ the <code>msg_p</code>; therefore, the Plug-In must not release the original message by calling <code>solClient_msg_free()</code>.</p>
+            <p class="Tbl_Body">Refer to <MadCap:xref href="#design_considerations_2383754413_228466">Memory Management Guidelines</MadCap:xref> for a detailed discussion of the considerations when modifying message contents.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">opcode</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">The operation code that the Plug-In function returns to the PubSub+ Cache Instance that indicates how to handle the received message. </p>
+            <p class="Tbl_Body">The available opcodes are:</p>
+            <p class="Tbl_Bullet"><code>SOLCACHE_INGRESS_OP_FLUSH_AND_CACHE</code>—Flush the cache contents for the topic, and cache the message.</p>
+            <p class="Tbl_Bullet"><code>SOLCACHE_INGRESS_OP_FLUSH_AND_DISCARD</code>—Flush the cache contents for the topic, and discard the message.</p>
+            <p class="Tbl_Bullet"><code>SOLCACHE_INGRESS_OP_CACHE</code>—Cache the message. (Note that when PubSub+ Cache is configured to only keep the latest message, this is functionally equivalent to <code>SOLCACHE_INGRESS_OP_FLUSH_AND_CACHE</code>.)</p>
+            <p class="Tbl_Bullet"><code>SOLCACHE_INGRESS_OP_DISCARD</code>—Discard the message.</p>
+            <p class="Tbl_Bullet"><code>SOLCACHE_INGRESS_OP_FAIL</code>—Discard the message and act as if the PubSub+ Cache Instance detected message loss. That is, the PubSub+ Cache Instance enters a “stop-on-lost-message” or “suspect” state depending on the configuration of the PubSub+ Cache Instance.</p>
+            <p class="Note">The PubSub+ Cache Instance logs an error and discards the message if the Plug-In function returns an invalid opcode.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h4><a name="design_considerations_2383754413_221474"/>Get Next Utility</h4>
+    <p>The Plug-In can use the<code> solCache_msg_getNextCachedMsg(topic_p)</code> utility function to retrieve a <code>solClient_opaqueMsg_pt</code> to the most recent cached message for a particular topic from the PubSub+ Cache Instance. This allows the Plug-In to update an ingress live data message with information from that cached message, or even allow a copy of the cached message to be modified and then that modified message can be returned to the PubSub+ Cache Instance instead of the ingress live data message received by the Plug‑in.</p>
+    <p>The following figure shows an example of how this utility function could retrieve a cached message, and then use the Plug-In functionality to modify that message with select information copied from an ingress live data message. The Plug-In would then return the update cached message back to the PubSub+ Cache Instance.</p>
+    <p class="GraphicCaption">Incremental Updates to Cached Messages</p>
+    <p class="GraphicCaption">
+      <img src="Images/ingress_plug_stock_update.png" alt=""/>
+    </p>
+    <p>When the Plug-In calls<code> solCache_msg_getNextCachedMsg(topic_p)</code>, it must pass in a <code>topic_p</code>, which is a pointer to a topic string to look up.</p>
+    <p class="Note">Wild card topics are not permitted. If a topic contains a wildcard, the lookup will fail, and no message will be returned.</p>
+    <p><code>solCache_msg_getNextCachedMsg()</code> returns a <code>solClient_opaqueMsg_pt</code> that references a cached message for the specified topic. The Plug-In ‘owns’ the returned message pointer and must call <code>solClient_msg_free()</code> to release it when it is no longer required. When there are no messages cached on the topic, this function returns NULL.</p>
+    <p>Although a referenced cached message cannot be directly modified, it is referenced through copy-on-write accessors, which provide a copy that the Plug‑in can modify through get and set message functions (refer to <MadCap:xref href="#design_considerations_2383754413_224685">Recommended Message Accessor Functions</MadCap:xref>). Using these message accessor functions, the Plug-In may update an ingress live data message with information from the referenced cached message.</p>
+    <p>The Plug-In can also modify the referenced cached message and return it, instead of the current ingress live data message, in the <code>solCache_pluginEventInfo_t</code> . This allows the cached message to be modified indirectly.</p>
+    <p>If the Plug-In replaces the live data message referenced by <code>msg_p</code>, then the message pointer retrieved by <code>solCache_msg_getNextCachedMsg()</code> must not be released because it is still considered ‘in-use’. In no situation should the Plug-In ever release the message pointer for the ingress live data message it is handling, even if the Plug-In overwrites that message pointer with that of the retrieved cached message.</p>
+    <h3><a name="design_considerations_2383754413_228996"/>Synchronization</h3>
+    <p>When a PubSub+ Cache Instance synchronizes with another PubSub+ Cache instance, or fetches data from a home Cache Cluster (when Global Caching is used), it can receive both live data and data from the other PubSub+ Cache Instance at the same time. This means that while synchronizing, a PubSub+ Cache instance can receive a given message (or the aggregate results of a series of messages) more than once. In such cases, PubSub+ Cache always processes the synchronization messages first, followed by the live data messages for the topic. Synchronization messages are never passed through the Plug-In, they are always inserted directly into the PubSub+ Cache instance.</p>
+    <p>When developing a Plug-In that modifies an already-cached message, it is important that the operations to be performed by the Plug-In are limited to those that can be applied to a cached message multiple times without adversely affecting the final message content in the PubSub+ Cache instance. This typically means only performing the following operations on a cached message:</p>
+    <ul>
+      <li>add a field to the message if it does not already exist, or replace a field in the message with the new data</li>
+      <li>remove a field from the message</li>
+      <li>discard the message</li>
+      <li>delete the cache contents for the message topic</li>
+    </ul>
+    <p>If a Plug-In needs to perform more complex incremental operations (for example, “add 10 to field y”, “multiply field z by 2”), then the Plug-In might need to insert additional sequencing data into the cached messages (if such sequencing data has not been included in the published messages). The Plug-In must always examine this data before applying an update to determine if an update message is a duplicate that has already been applied to the cached data. This enables the Plug-In to discard an inbound message rather than performing a duplicate operation on the cache contents.</p>
+    <h3><a name="design_considerations_2383754413_228466"/>Memory Management Guidelines</h3>
+    <p>When processing a received <code>SOLCACHE_INGRESS_EVENT_DATA_MSG</code>, the message structure referenced by <code>msg_p</code> remains owned by the PubSub+ Cache Instance. That is, while reading contents of the message, the Plug-In directly accesses PubSub+ Cache Instance memory. The application must not use this reference after returning from the plug‑in, and the application must not call<code> solClient_msg_free()</code> to release the reference.</p>
+    <p>If the <code>msg_p</code> passed to the Plug-In in the <code>solCache_pluginEventInfo_t</code> is used to modify message contents, those changes take effect when <code>solCache_plugin()</code> returns. However, any changes to a message retrieved with <code>solCache_msg_getNextCachedMsg()</code> does not affect the already cached message.</p>
+    <p>The Plug-In owns any allocated <code>solClient_opaqueMsg_pt</code>. If the Plug-In allocates a message with either <code>solClient_msg_alloc()</code> or <code>solCache_msg_getNextCachedMsg()</code>, the Plug-In must dispose of the memory in one of the following ways:</p>
+    <ul>
+      <li>call <code>solClient_msg_free()</code></li>
+      <li>set the message pointer in <code>solCache_pluginEventInfo_t</code> before returning from <code>solCache_plugin()</code>. In this case, the Plug-In must not call <code>solClient_msg_free()</code> to release the original <code>solClient_opaqueMsg_pt</code> that was passed in <code>solCache_pluginEventInfo_t</code>.</li>
+    </ul>
+    <div class="Caution">
+      <p>Failure to manage the allocated <code>solClient_opaqueMsg_pt</code> according to these rules will result in memory leaks.</p>
+    </div>
+    <h4><a name="design_considerations_2383754413_224685"/>Recommended Message Accessor Functions</h4>
+    <p>When working with received messages, your customized Plug-In should only use copy-out and copy-in message accessor functions instead of directly referencing cache memory.</p>
+    <p>By using message accessor functions, any modifications made to the message contents do not affect the message because they are local to the Plug‑In. (They only affect cached memory if the <code>solClient_opaqueMsg_pt</code> is returned to the cache in <code>solCache_pluginEventInfo_t</code>.)</p>
+    <p>The copy-out message accessor functions are:</p>
+    <ul>
+      <li>
+        <code>solClient_msg_getBinaryAttachment()</code>
+      </li>
+      <li>
+        <code>solClient_msg_getCorrelationTag()</code>
+      </li>
+      <li>
+        <code>solClient_msg_getUserData()</code>
+      </li>
+      <li>
+        <code>solClient_msg_getXml()</code>
+      </li>
+      <li>
+        <code>solClient_msg_getSmf()</code>
+      </li>
+    </ul>
+    <p>The corresponding copy-in message accessor functions are:</p>
+    <ul>
+      <li>
+        <code>solClient_msg_setBinaryAttachment()</code>
+      </li>
+      <li>
+        <code>solClinet_msg_setBinaryAttachmentContainer()</code>
+      </li>
+      <li>
+        <code>solClient_msg_setUserData()</code>
+      </li>
+      <li>
+        <code>solClient_msg_setXml()</code>
+      </li>
+      <li>
+        <code>solClient_msg_setCorrelationTag()</code>
+      </li>
+      <li>
+        <code>solClient_msg_setDestination()</code>
+      </li>
+    </ul>
+  </body>
+</html>

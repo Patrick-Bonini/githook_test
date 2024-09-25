@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Multi-Site Connectivity Configuration</h1>
+    <p>The following sections provide an example of how you can use Dynamic Message Routing (DMR) to connect applications running at three different sites as follows:</p>
+    <ul>
+      <li>a cloud provider environment, for example Amazon Web Services</li>
+      <li>another cloud provider environment that's different from the first, for example Google Cloud Platform</li>
+      <li>an on-premises data center</li>
+    </ul>
+    <p class="Note">Before you can enable DMR multi-site connectivity, you must ensure that the requirements discussed in the <MadCap:xref href="DMR-Mgmt-Prerequisites.htm">Prerequisites</MadCap:xref> section are met.</p>
+    <h2 class="with-rule"><a name="UsingThisExample"/>Using This Example</h2>
+    <p>In this example for this configuration, each site consists of an individual cluster that contains a single node, that is a single event broker or a single High Availability (HA) redundant group. External links configured between each node (and therefore, each site). The external links support dynamic subscription learning, and both Direct and Guaranteed message delivery modes.</p>
+    <p>The example below shows clusters created with placeholder names of <code>Cluster-A</code>, <code>Cluster-B</code>, and <code>Cluster-C</code>. The nodes have placeholder names that correspond with the cluster using the notation  <code>Broker-&lt;<i>letter_of_cluster</i>&gt;</code>, which represents the router name for that broker. For example, the node is referred to as <code>Broker-A</code>  for the cluster named <code>Cluster-A</code>.</p>
+    <p>Keep in mind that in the sample commands below, the IP addresses, Message VPN names, passwords, and the names <code>Cluster-A</code>, <code>Cluster-B</code>, <code>Cluster-C</code>, <code>Broker-A</code>, <code>Broker-B</code>, and <code>Broker-C</code> are placeholders  that you should replace with your own values.</p>
+    <h2 class="with-rule"><a name="StepA"/>Step 1: Create a Secured Cluster for Each Site</h2>
+    <p>Before you can connect  nodes at different sites, you must create a cluster at each site to contain each corresponding node. Each cluster is secured with a a common shared password (we use <code>myshared_secret123</code> as a placeholder).</p>
+    <p>
+      <img src="../../Resources/Images/DMR/DMR-Tasks/multi-site-cluster.PNG" style="max-height: 450px;height: 450px;" alt=""/>
+    </p>
+    <p>To create a secured cluster for each site: </p>
+    <ol>
+      <li>
+        <p>Log in to the <code>Broker-A</code>, enter <MadCap:variable name="Product-Names.solace_cli"/> on the node, and  create a cluster named <code>Cluster-A</code>:</p>
+        <pre class="Code" xml:space="preserve">Broker-A &gt; enable
+Broker-A# config
+Broker-A(configure)# routing
+Broker-A(configure/routing)# dynamic-message-routing
+Broker-A(...igure/routing/dynamic-message-routing)# create cluster <code>Cluster-A</code>
+Broker-A(...uting/dynamic-message-routing/cluster)# authentication
+Broker-A(...essage-routing/cluster/authentication)# basic
+Broker-A(...-routing/cluster/authentication/basic)# password <code>myshared_secret123</code>
+Broker-A(...-routing/cluster/authentication/basic)# no shutdown
+Broker-A(...-routing/cluster/authentication/basic)# exit
+Broker-A(...essage-routing/cluster/authentication)# exit
+Broker-A(...uting/dynamic-message-routing/cluster)# no shutdown
+</pre>
+      </li>
+      <li>
+        <p>Log in to <code>Broker-B</code>, enter the <MadCap:variable name="Product-Names.solace_cli"/> on the node, and  create a cluster named <code>Cluster-B</code>.</p>
+        <pre class="Code" xml:space="preserve">Broker-B &gt; enable
+Broker-B# config
+Broker-B(configure)# routing 
+Broker-B(configure/routing)# dynamic-message-routing
+Broker-B(...igure/routing/dynamic-message-routing)# create cluster <code>Cluster-B</code>
+Broker-B(...uting/dynamic-message-routing/cluster)# authentication
+Broker-B(...essage-routing/cluster/authentication)# basic
+Broker-B(...-routing/cluster/authentication/basic)# password <code>myshared_secret123</code>
+Broker-B(...-routing/cluster/authentication/basic)# no shutdown
+Broker-B(...-routing/cluster/authentication/basic)# exit
+Broker-B(...essage-routing/cluster/authentication)# exit
+Broker-B(...uting/dynamic-message-routing/cluster)# no shutdown
+</pre>
+      </li>
+      <li>
+        <p>Log in to the <code>Broker-C</code> enter the <MadCap:variable name="Product-Names.solace_cli"/> on the node, and  create a cluster named <code>Cluster-C</code>.</p>
+        <pre class="Code" xml:space="preserve">Broker-C&gt; enable
+Broker-C# config
+Broker-C(configure)# routing 
+Broker-C(configure/routing)# dynamic-message-routing
+Broker-C(...igure/routing/dynamic-message-routing)# create cluster <code>Cluster-C</code>
+Broker-C(...uting/dynamic-message-routing/cluster)# authentication
+Broker-C(...essage-routing/cluster/authentication)# basic
+Broker-C(...-routing/cluster/authentication/basic)# password <code>myshared_secret123</code>
+Broker-C(...-routing/cluster/authentication/basic)# no shutdown
+Broker-C(...-routing/cluster/authentication/basic)# exit
+Broker-C(...essage-routing/cluster/authentication)# exit
+Broker-C(...uting/dynamic-message-routing/cluster)# no shutdown</pre>
+      </li>
+    </ol>
+    <h2 class="with-rule"><a name="StepB"/>Step 2: Create Cluster Links for Each Site</h2>
+    <p>After you create a cluster for each site, you can create a bi-directional link between nodes to establish control channels. Once a control channel is established, the subscription sets needed by nodes at each site can be exchanged with the other. In addition, the subscription sets are dynamically kept up-to-date as local client and queue subscriptions change. In this section, we log in to the node in each cluster and create cluster links (external links) between each site. This configuration creates a control channel across the three sites.</p>
+    <div class="Note">
+      <p>This multi-site connectivity configuration example shows a full mesh (that is, each cluster is connected by external links to all other clusters). This allows subscription propagation and data flows to occur between all clusters. For more information about subscription propagation and data flows, see <MadCap:xref href="DMR-Subscription-Mgmt.htm">DMR Subscription Propagation and Data Forwarding</MadCap:xref>.</p>
+      <p>Using a full mesh of external links is not required for multi-site connectivity configurations. If you do not want subscription propagation or data  flows to occur between certain clusters, do not create an external link between those clusters.  For example, if you don't want  subscription propagation or data flows to occur between <code>Cluster-A</code> (AWS Cloud) and <code>Cluster-B</code> (Google Cloud Platform) in your multi-site connectivity configuration, do not create an external link between those two clusters. For more information about network rules for your topology, see <MadCap:xref href="DMR-Mgmt-Prerequisites.htm#network-rules">Network Construction Rules.</MadCap:xref></p>
+    </div>
+    <p class="Note">
+      <MadCap:snippetText src="../../Resources/Snippets/DMR-link-initiator-no-lexical.flsnp"/>
+    </p>
+    <p>
+      <img src="../../Resources/Images/DMR/DMR-Tasks/multi-site-control.PNG" style="height: 450px;" alt=""/>
+    </p>
+    <p>To create cluster links for each site: </p>
+    <p class="Note">
+The names <code>Broker-A</code>, <code>Broker-B</code>, and <code>Broker-C</code> are the placeholder router names of the event brokers we are linking (where each may be a standalone broker or the primary broker in an HA group) and <code>Cluster-A</code>, <code>Cluster-B</code>, and <code>Cluster-C</code> are placeholder names for each cluster.
+        </p>
+    <ol>
+      <li>
+        <p>Log in to the <code>Broker-A</code> in  create cluster links from <code>Broker-A</code> to <code>Broker-B</code> and <code>Broker-C</code>. In this example, note that <code>Broker-B</code> and <code>Broker-C</code> are the remote router names of the broker in the other clusters.</p>
+        <pre class="Code" xml:space="preserve">Broker-A&gt; enable
+Broker-A# config 
+Broker-A(configure)# routing dynamic-message-routing
+Broker-A(...igure/routing/dynamic-message-routing)# cluster <code>Cluster-A</code>
+Broker-A(...uting/dynamic-message-routing/cluster)# create link <code>Broker-B</code>
+Broker-A(.../dynamic-message-routing/cluster/link)# span external
+Broker-A(.../dynamic-message-routing/cluster/link)# initiator local
+Broker-A(.../dynamic-message-routing/cluster/link)# connect-via <code>192.0.2.2</code>
+Broker-A(.../dynamic-message-routing/cluster/link)# transport ssl
+Broker-A(.../dynamic-message-routing/cluster/link)# no shutdown
+Broker-A(.../dynamic-message-routing/cluster/link)# exit
+Broker-A(...uting/dynamic-message-routing/cluster)# create link <code>Broker-C</code>
+Broker-A(.../dynamic-message-routing/cluster/link)# span external
+Broker-A(.../dynamic-message-routing/cluster/link)# initiator remote
+Broker-A(.../dynamic-message-routing/cluster/link)# transport ssl
+Broker-A(.../dynamic-message-routing/cluster/link)# no shutdown</pre>
+      </li>
+      <li>
+        <p>Log in to <code>Broker-B</code> in cluster <code>Cluster-B</code> and create cluster links from <code>Broker-B</code> to <code>Broker-A</code> and <code>Broker-C</code>. In this example, note that <code>Broker-A</code> and <code>Broker-C</code> are the remote router names of the broker in the other clusters.</p>
+        <pre class="Code" xml:space="preserve">Broker-B&gt; enable
+Broker-B# config 
+Broker-B(configure)# routing dynamic-message-routing
+Broker-B(...igure/routing/dynamic-message-routing)# cluster <code>Cluster-B</code>
+Broker-B(...uting/dynamic-message-routing/cluster)# create link <code>Broker-A</code>
+Broker-B(.../dynamic-message-routing/cluster/link)# span external
+Broker-B(.../dynamic-message-routing/cluster/link)# initiator remote
+Broker-B(.../dynamic-message-routing/cluster/link)# transport ssl
+Broker-B(.../dynamic-message-routing/cluster/link)# no shutdown
+Broker-B(.../dynamic-message-routing/cluster/link)# exit
+Broker-B(...uting/dynamic-message-routing/cluster)# create link <code>Broker-C</code>
+Broker-B(.../dynamic-message-routing/cluster/link)# span external
+Broker-B(.../dynamic-message-routing/cluster/link)# initiator remote
+Broker-B(.../dynamic-message-routing/cluster/link)# transport ssl
+Broker-B(.../dynamic-message-routing/cluster/link)# no shutdown
+</pre>
+      </li>
+      <li>
+        <p>Log into the <code>Broker-C</code> in Cluster <code>Cluster-C</code> and create cluster links from <code>Broker-C</code> to <code>Broker-A</code> and <code>Broker-B</code>. In this example, note that <code>Broker-A</code> and <code>Broker-B</code> are the remote router names of the broker in the other clusters.</p>
+        <pre class="Code" xml:space="preserve">Broker-C&gt; enable
+Broker-C# config 
+Broker-C(configure)# routing dynamic-message-routing
+Broker-C(...igure/routing/dynamic-message-routing)# cluster <code>Cluster-C</code>
+Broker-C(...uting/dynamic-message-routing/cluster)# create link <code>Broker-A</code>
+Broker-C(.../dynamic-message-routing/cluster/link)# span external
+Broker-C(.../dynamic-message-routing/cluster/link)# initiator local
+Broker-C(.../dynamic-message-routing/cluster/link)# connect-via <code>192.0.2.1</code>
+Broker-C(.../dynamic-message-routing/cluster/link)# transport ssl
+Broker-C(.../dynamic-message-routing/cluster/link)# no shutdown
+Broker-C(.../dynamic-message-routing/cluster/link)# exit
+Broker-C(...uting/dynamic-message-routing/cluster)# create link <code>Broker-B</code>
+Broker-C(.../dynamic-message-routing/cluster/link)# span external
+Broker-C(.../dynamic-message-routing/cluster/link)# initiator local
+Broker-C(.../dynamic-message-routing/cluster/link)# connect-via <code>192.0.2.2</code>
+Broker-C(.../dynamic-message-routing/cluster/link)# transport ssl
+Broker-C(.../dynamic-message-routing/cluster/link)# no shutdown
+</pre>
+      </li>
+    </ol>
+    <h2 class="with-rule"><a name="StepC"/>Step 3: Verify All Control Channels Are Operational</h2>
+    <p>Now that you've configured  cluster links to support control channels between the sites, you can check the configuration by verifying that each link is operational.</p>
+    <p>To check the configuration, enter the <code>show cluster &lt;cluster-name-pattern&gt; link *</code> command on each participating node, and verify that both the <code>Admin</code> and <code>Operational</code> states are <code>Up</code> for all links. In this case, we log in to <code>Broker-C</code>.</p>
+    <pre class="Code" xml:space="preserve">Broker-C&gt; show cluster <code>Cluster-C</code> link *
+
+Cluster Name      : Cluster-C
+Node Name         : Broker-C
+
+Link                               Admin Oper  Fail Reason / Uptime
+---------------------------------- ----- ----- ----------------------------
+#ACTIVE                            Up    Up    0d 0h 3m 35s
+Broker-A                           Up    Up    0d 0h 2m 40s
+Broker-B                           Up    Up    0d 0h 2m 28s
+        </pre>
+    <h3>Troubleshooting Failures</h3>
+    <p>If any links have an <code>Operational</code> state of <code>Down</code>, use the following show commands to gather more information:</p>
+    <ul>
+      <li>
+        <code>show cluster &lt;cluster-name-pattern&gt; detail</code>
+      </li>
+      <li>
+        <code>show cluster &lt;cluster-name-pattern&gt; link &lt;link-name-pattern&gt; detail</code>
+      </li>
+      <li>
+        <code>show cluster &lt;cluster-name-pattern&gt; link &lt;link-name-pattern&gt; channel detail</code>
+      </li>
+    </ul>
+    <p class="Note">To obtain complete information, you may need to issue these commands on both ends of the link.</p>
+    <h2 class="with-rule"><a name="StepD"/>Step 4: Enable DMR for Each Participating Message VPN</h2>
+    <p>After you've configured the necessary cluster links, you can enable DMR for each Message VPN you want to participate in the clustering topology and link the Message VPNs together with DMR bridges. This configuration establishes data channels between  nodes. Once a data channel is established, application messages are exchanged across nodes, as dictated by the subscription sets maintained over control channels. </p>
+    <p class="Note">This step assumes that you have the <code>red</code>, <code>blue</code>, and <code>green</code> Message VPNs created already via the <code>create message-vpn &lt;vpn-name&gt;</code> command. The names <code>red</code>, <code>blue</code>, <code>green</code> are placeholder strings for the Message VPNs in the sample commands—you should replace these with the names of your own Message VPNs. See <MadCap:xref href="../VPN/Configuring-VPNs.htm">Configuring Message VPNs</MadCap:xref> for more information.</p>
+    <p>In this example, DMR is enabled for the <code>red</code> and <code>blue</code> Message VPNs on
+<code>Broker-A</code>, the <code>red</code>, <code>blue</code>, and <code>green</code> Message VPNs on <code>Broker-B</code>,
+and the <code>red</code> and <code>green</code> Message VPNs on <code>Broker-C</code>. The necessary DMR bridges to link 
+        each Message VPN are also configured. This creates a set of data channels across the three sites.</p>
+    <p>
+      <img src="../../Resources/Images/DMR/DMR-Tasks/multi-site-data.PNG" style="max-height: 450px;height: 450px;" alt=""/>
+    </p>
+    <p>To enable DMR for each participating Message VPN: </p>
+    <ol>
+      <li>
+        <p>Log in to the <code>Broker-A</code> in cluster <code>Cluster-A</code>, enter the <MadCap:variable name="Product-Names.solace_cli"/>, enable DMR on each participating Message VPN, and then create the necessary DMR bridges.</p>
+        <pre class="Code" xml:space="preserve">Broker-A&gt; enable
+Broker-A# config 
+Broker-A(configure)# message-vpn <code>red</code>
+Broker-A(configure/message-vpn)# dynamic-message-routing
+Broker-A(...e/message-vpn/dynamic-message-routing)# no shutdown
+Broker-A(...e/message-vpn/dynamic-message-routing)# create dmr-bridge <code>Broker-B</code>
+Broker-A(...pn/dynamic-message-routing/dmr-bridge)# remote message-vpn <code>red</code>
+Broker-A(...pn/dynamic-message-routing/dmr-bridge)# exit
+Broker-A(...e/message-vpn/dynamic-message-routing)# create dmr-bridge <code>Broker-C</code>
+Broker-A(...pn/dynamic-message-routing/dmr-bridge)# remote message-vpn <code>red</code>
+Broker-A(...pn/dynamic-message-routing/dmr-bridge)# exit
+Broker-A(...e/message-vpn/dynamic-message-routing)# exit
+Broker-A(configure)# message-vpn <code>blue</code>
+Broker-A(...e/message-vpn/dynamic-message-routing)# dynamic-message-routing
+Broker-A(...e/message-vpn/dynamic-message-routing)# no shutdown
+Broker-A(...e/message-vpn/dynamic-message-routing)# create dmr-bridge <code>Broker-B</code>
+Broker-A(...pn/dynamic-message-routing/dmr-bridge)# remote message-vpn <code>blue</code></pre>
+      </li>
+      <li>
+        <p>Log into the <code>Broker-B</code> in cluster <code>Cluster-B</code>, enable DMR on each participating Message VPN, and create the necessary DMR bridges.</p>
+        <pre class="Code" xml:space="preserve">Broker-B&gt; enable
+Broker-B# config 
+Broker-B(configure)# message-vpn <code>red</code>
+Broker-B(configure/message-vpn)# dynamic-message-routing
+Broker-B(...e/message-vpn/dynamic-message-routing)# no shutdown
+Broker-B(...e/message-vpn/dynamic-message-routing)# create dmr-bridge <code>Broker-A</code>
+Broker-B(...pn/dynamic-message-routing/dmr-bridge)# remote message-vpn <code>red</code>
+Broker-B(...pn/dynamic-message-routing/dmr-bridge)# exit
+Broker-B(...e/message-vpn/dynamic-message-routing)# create dmr-bridge <code>Broker-C</code>
+Broker-B(...pn/dynamic-message-routing/dmr-bridge)# remote message-vpn <code>red</code>
+Broker-B(...pn/dynamic-message-routing/dmr-bridge)# exit
+Broker-B(...e/message-vpn/dynamic-message-routing)# exit
+Broker-B(configure)# message-vpn <code>blue</code>
+Broker-B(configure/message-vpn)# dynamic-message-routing
+Broker-B(...e/message-vpn/dynamic-message-routing)# no shutdown
+Broker-B(...e/message-vpn/dynamic-message-routing)# create dmr-bridge <code>Broker-A</code>
+Broker-B(...pn/dynamic-message-routing/dmr-bridge)# remote message-vpn <code>blue</code>
+Broker-B(...pn/dynamic-message-routing/dmr-bridge)# exit
+Broker-B(...e/message-vpn/dynamic-message-routing)# exit
+Broker-B(configure)# message-vpn <code>green</code>
+Broker-B(configure/message-vpn)# dynamic-message-routing
+Broker-B(...e/message-vpn/dynamic-message-routing)# no shutdown
+Broker-B(...e/message-vpn/dynamic-message-routing)# create dmr-bridge <code>Broker-C</code>
+Broker-B(...pn/dynamic-message-routing/dmr-bridge)# remote message-vpn <code>green</code></pre>
+      </li>
+      <li>
+        <p>Log into the <code>Broker-C</code> in cluster <code>Cluster-C</code>, enable DMR on each participating Message VPN, and create the necessary DMR bridges.</p>
+        <pre class="Code" xml:space="preserve">
+Broker-C&gt; enable
+Broker-C# config
+Broker-C(configure)# message-vpn <code>red</code>
+Broker-C(configure/message-vpn)# dynamic-message-routing
+Broker-C(...e/message-vpn/dynamic-message-routing)# no shutdown
+Broker-C(...e/message-vpn/dynamic-message-routing)# create dmr-bridge <code>Broker-A</code>
+Broker-C(...pn/dynamic-message-routing/dmr-bridge)# remote message-vpn <code>red</code>
+Broker-C(...pn/dynamic-message-routing/dmr-bridge)# exit
+Broker-C(...e/message-vpn/dynamic-message-routing)# create dmr-bridge <code>Broker-B</code>
+Broker-C(...pn/dynamic-message-routing/dmr-bridge)# remote message-vpn <code>red</code>
+Broker-C(...pn/dynamic-message-routing/dmr-bridge)# exit
+Broker-C(...e/message-vpn/dynamic-message-routing)# exit
+Broker-C(configure)# message-vpn <code>green</code>
+Broker-C(configure/message-vpn)# dynamic-message-routing
+Broker-C(...e/message-vpn/dynamic-message-routing)# no shutdown
+Broker-C(...e/message-vpn/dynamic-message-routing)# create dmr-bridge <code>Broker-B</code>
+Broker-C(...pn/dynamic-message-routing/dmr-bridge)# remote message-vpn <code>green</code></pre>
+      </li>
+    </ol>
+    <h2 class="with-rule"><a name="StepE"/>Step 5: Verify Data Channels Are Operational</h2>
+    <p>At this point, you've configured all the necessary components to enable DMR on your network of PubSub+ event brokers. To verify that the DMR configuration is successful and working as intended, publish messages to a topic on one of the nodes, and acknowledge that you can consume the messages from a queue with a matching topic subscription on a node at another site. Before you start this step, you must create a queue on <code>Broker-B</code> with a matching subscription of <code>a/b</code>. For information about adding a topic, see <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-Queues.htm#Adding">Adding Topic Subscriptions to Queues.</MadCap:xref></p>
+    <p>
+      <img src="../../Resources/Images/DMR/DMR-Tasks/multi-site-traffic.PNG" style="max-height: 450px;height: 450px;" alt=""/>
+    </p>
+    <p>To verify that data channels are operational using <MadCap:xref href="../../API/SDKPerf/SDKPerf.htm">SDKPerf</MadCap:xref>:</p>
+    <ol>
+      <li>
+        <p>Publish messages to a node at one of the sites.</p>
+        <pre class="Code" xml:space="preserve">
+<b>sdkperf_c -cip=192.0.2.1:55443 -ptl=a/b -mn=50 -mr=50 -md -cu=user1@red</b>
+...
+Waiting for publishing to complete.  Ctrl-c to exit.
+
+Allow clients to finish receiving. Waiting: 2 secs
+-----------------------------------------------------
+Aggregate Msgs Sent Stats (Total # clients: 1)
+<b>Total Messages transmitted                 = 50</b>
+Computed publish rate (msg/sec)            = 49.99
+
+-----------------------------------------------------
+Aggregate Msgs Recv Stats (Total # clients: 1)
+Total Messages received across all clients = 0
+Computed receive rate (msg/sec aggregate)  = 0.00
+Messages received with discard indication  = 0
+</pre>
+      </li>
+      <li>
+        <p>Subscribe to a queue with a matching topic subscription on a node at another site, and verify that the published traffic is received by the subscriber.</p>
+        <pre class="Code" xml:space="preserve">
+<b>sdkperf_c -cip=192.0.2.2:55443 -sql=Q1</b>
+...
+Receiving messages.  Ctrl-c to exit.
+
+-----------------------------------------------------
+Aggregate Msgs Sent Stats (Total # clients: 1)
+Total Messages transmitted                 = 0
+Computed publish rate (msg/sec)            = 0.00
+
+-----------------------------------------------------
+Aggregate Msgs Recv Stats (Total # clients: 1)
+<b>Total Messages received across all clients = 50</b>
+Computed receive rate (msg/sec aggregate)  = 14626.11
+Messages received with discard indication  = 0</pre>
+      </li>
+    </ol>
+  </body>
+</html>

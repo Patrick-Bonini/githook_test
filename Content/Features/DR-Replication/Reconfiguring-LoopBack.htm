@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="Default.HideFromAllOutput">
+  <head/>
+  <body>
+    <h1>Reconfiguring Loopback Bridges Before Enabling Config-Sync</h1>
+    <p>Before enabling Config-Sync, if you are using a loopback Message VPN bridge on a Replicated event broker to link two Message VPNs on that same event broker, you must configure the bridge to use an IP address of 127.0.0.1 for the remote Message VPN rather than a static event broker address. If existing loopback bridges are not reconfigured, they could fail to reconnect after an activity failover.</p>
+    <p>To reconfigure loopback bridges before enabling Config-Sync, perform the following steps on all event brokers in each replication site (either standalone event brokers or both event brokers in a redundant pair).</p>
+    <ol>
+      <li>Find and record the static address of your event broker:
+         <pre class="code" xml:space="preserve">solace1&gt; show ip vrf msg-backbone
+   VRF: msg-backbone
+   Number of interfaces: 3
+ 
+   Status Flags:   R=Redundancy,  A=Admin,  P=Physical
+   Status Values:  U=Up,  D=Down
+ 
+   Status
+   Interface       V Router  IP Address          R  A  P   #Conn  #Frag
+   --------------  --------  ------------------  --------  -----  -----
+   1/1/lag1:1      primary   192.168.160.139/19  U  U  U   2      0
+   1/1/lag1:2      backup    192.168.160.145/19  D  U  U   0      0
+   1/1/lag1:3      static    192.168.160.39/19   U  U  U   0      0</pre></li>
+      <li>Determine whether any of the Message VPN bridges on the event broker are using the event broker’s static address:<p class="Note">Any Message VPN bridge that has a name that begins with the # character is system-created and cannot be edited.</p><pre xml:space="preserve" class="Code">solace1&gt; show bridge * detail
+ 
+Bridge Name:             test2
+Message VPN
+  Local:                 default
+  Remote:                vpn1 at v:a39
+                           via 192.168.160.39:55555 (1/1/lag1:1)
+Redundancy:              primary
+Admin State:             Enabled
+Conn Establisher:        Local
+Inbound Oper State:      Ready-InSync
+Outbound Oper State:     NotApplicable
+Queue Oper State:        NotApplicable
+Connection Uptime:       0d 0h 0m 34s
+Authentication
+  Scheme:                Basic
+  Basic
+  Client Username:       nonrepl
+  Password Configured:   No
+  Client Certificate
+  Certificate File:
+Transport Property
+  Compressed:            No
+  SSL:                   No
+Retry Count:             0 of 0
+Retry Delay:             3 seconds ( 0 remaining )
+Max TTL:                 8
+Dto Priority:            P1
+Client Name:             #bridge/local/test2/a39/9874/4
+One Shot Events
+  TTL Exceeded:          not raised
+Subscriptions
+  Local:                 0
+  Remote:                0
+ 
+Remote Message VPN: vpn1 via 192.168.164.149:55555 (1/6/lag1)
+  Admin State:                      Enabled
+  Connect Order:                    4
+  Connect Port Mode:                non-compress, non-ssl
+  Connection State:                 Up
+  Message Spool
+    Queue:                          bridgeQueue
+    Queue Bind State:               Up
+    Queue Bind Uptime:              0d 0h 0m 18s
+    Window Size:                    255
+Unidirectional
+  Client Profile:                 #client-profile</pre><p>If any Remote Message VPN address or hostname matches the static address found in step 1, then that Remote Message VPN must be re‑configured. If there are no matches, no changes are required on that Remote Message VPN and you do not have to proceed with any further steps.</p></li>
+      <li>If required, reconfigure each affected Remote Message VPN for each affected bridge, perform the following substeps:<ol style="list-style-type: lower-alpha;"><li>Configure a new Remote Message VPN with a connect-via address of 127.0.0.1 and ensure that all other Remote VPN attributes match the Remote VPN that is being replaced.<pre xml:space="preserve" class="Code">solace1&gt; enable
+solace1# configure 
+solace1(configure)# bridge test2 message-vpn default
+solace1(configure/bridge)# create remote message-vpn vpn1 connect-via 127.0.0.1
+solace1(configure/bridge/remote/message-vpn)# client-username default
+solace1(configure/bridge/remote/message-vpn)# no shutdown </pre></li><li>Verify that the old and new Remote Message VPNs match:
+            </li><pre xml:space="preserve" class="Code">solace1(configure/bridge/remote/message-vpn)# show bridge test2 message-vpn default detail 
+
+Bridge Name:           test2
+Message VPN
+Local:                 default
+  Remote:              vpn1 at v:solace1
+                         via 192.168.160.39:55555 (1/1/lag1:1)
+Redundancy:            primary
+Admin State:           Enabled
+Conn Establisher:      Local
+Inbound Oper State:    Ready-InSync
+Outbound Oper State:   NotApplicable
+Queue Oper State:      NotApplicable
+Connection Uptime:     0d 0h 24m 28s
+Compressed:            No
+Retry Count:           0 of 0
+Retry Delay:           3 seconds ( 0 remaining )
+Max TTL:               8
+Dto Priority:          P1
+Client Name:           #bridge/local/test2/solace1/9874/4
+One Shot Events
+  TTL Exceeded:        not raised
+Subscriptions
+  Local:               0
+  Remote:              0
+
+<b>Remote Message VPN: vpn1 via 192.168.160.39:55555 () 
+  Admin State:                      Enabled
+  Connect Order:                    4
+  Compressed:                       No
+  Client Username:                  default
+  Password Configured:              No</b>
+  Connection State:                 Connected
+  Last Conn Failure Reason:         OK
+  Message Spool
+    Queue:                          
+    Queue Bind State:               Not In Use
+    Last Queue Bind Failure Reason: 
+    Queue Bind Uptime:              0d 0h 0m 0s
+    Window Size:                    255
+    Unidirectional Client Profile:  #client-profile
+
+<b>Remote Message VPN: vpn1 via 127.0.0.1:55555 () 
+  Admin State:                      Enabled
+  Connect Order:                    4
+  Compressed:                       No
+  Client Username:                  default
+  Password Configured:              No</b>
+  Connection State:                 Not In Use
+  Last Conn Failure Reason:         
+  Message Spool
+    Queue:                          
+    Queue Bind State:               Not In Use
+    Last Queue Bind Failure Reason: 
+    Queue Bind Uptime:              0d 0h 0m 0s
+    Window Size:                    255
+    Window Size:                    255
+    Unidirectional Client Profile:  #client-profile
+solace1(configure/bridge/remote/message-vpn)#</pre><li>Shutdown the old Remote Message VPN:</li><pre class="Code">solace1(configure/bridge/remote/message-vpn)# exit
+solace1(configure/bridge/remote)# message-vpn vpn1 connect-via 192.168.160.39
+solace1(configure/bridge/remote/message-vpn)# shutdown </pre><li>Verify that the new Remote Message VPN is connected and has taken activity. If it has not taken activity, verify that its configuration matches that of the old Remote Message VPN. If correct, and the new Remote Message VPN does not connect, re-enable the old Remote Message VPN and <a href="../../get-support.htm" class="link-internal">contact Solace</a>.</li><pre class="Code" xml:space="preserve">solace1(configure/bridge/remote/message-vpn)# show bridge test2 message-vpn default detail 
+
+Bridge Name:           test2
+Message VPN
+  Local:               default
+  Remote:              vpn1 at v:solace1
+                         via 127.0.0.1:55555
+Redundancy:            primary
+Admin State:           Enabled
+Conn Establisher:      Local
+Inbound Oper State:    Ready-InSync
+Outbound Oper State:   NotApplicable
+Queue Oper State:      NotApplicable
+Connection Uptime:     0d 0h 0m 45s
+Compressed:            No
+Retry Count:           0 of 0
+Retry Delay:           3 seconds ( 0 remaining )
+Max TTL:               8
+Dto Priority:          P1
+Client Name:           #bridge/local/test2/solace1/9874/4
+One Shot Events
+  TTL Exceeded:        not raised
+Subscriptions
+  Local:               0
+  Remote:              0
+
+Remote Message VPN: vpn1 via 192.168.160.39:55555 () 
+  Admin State:                      Disabled
+  Connect Order:                    4
+  Compressed:                       No
+  Client Username:                  default
+  Password Configured:              No
+  Connection State:                 Not In Use
+  Last Conn Failure Reason:         
+  Message Spool
+    Queue:                          
+    Queue Bind State:               Not In Use
+    Last Queue Bind Failure Reason: 
+    Queue Bind Uptime:              0d 0h 0m 0s
+    Window Size:                    255
+    Unidirectional Client Profile:  #client-profile
+
+Remote Message VPN: vpn1 via 127.0.0.1:55555 () 
+  Admin State:                      Enabled
+  Connect Order:                    4
+  Compressed:                       No
+  Client Username:                  default
+  Password Configured:              No
+  Connection State:                 Connected
+  Last Conn Failure Reason:         OK
+  Message Spool
+    Queue:                          
+    Queue Bind State:               Not In Use
+    Last Queue Bind Failure Reason: 
+    Queue Bind Uptime:              0d 0h 0m 0s
+    Window Size:                    255
+    Unidirectional Client Profile:  #client-profile
+
+solace1(configure/bridge/remote/message-vpn)#</pre><li>Delete the old Remote Message VPN:</li><pre class="Code">solace1(configure/bridge/remote/message-vpn)# exit
+solace1(configure/bridge/remote)# no message-vpn vpn1 connect-via 192.168.160.39
+solace1(configure/bridge/remote)# end</pre><li>Verify that the Message VPN bridge is working:</li><pre class="Code">solace1# show bridge test2 message-vpn default detail
+
+Bridge Name:           test2
+Message VPN
+  Local:               default
+  Remote:               vpn1 at v:solace1
+                          via 127.0.0.1:55555
+Redundancy:            primary
+Admin State:           Enabled
+Conn Establisher:      Local
+Inbound Oper State:    Ready-InSync 
+Outbound Oper State:   NotApplicable
+Queue Oper State:      NotApplicable
+Connection Uptime:     0d 0h 4m 31s
+Compressed:            No
+Retry Count:           0 of 0
+Retry Delay:           3 seconds ( 0 remaining )
+Max TTL:               8
+Dto Priority:          P1
+Client Name:           #bridge/local/test2/solace1/9874/4
+One Shot Events
+  TTL Exceeded:        not raised
+Subscriptions
+  Local:               0
+  Remote:              0
+
+Remote Message VPN: vpn1 via 127.0.0.1:55555 () 
+  Admin State:                      Enabled
+  Connect Order:                    4
+  Compressed:                       No
+  Client Username:                  default
+  Password Configured:              No
+  Connection State:                 Connected
+  Last Conn Failure Reason:         OK
+  Message Spool
+    Queue:                          
+    Queue Bind State:               Not In Use
+    Last Queue Bind Failure Reason: 
+    Queue Bind Uptime:              0d 0h 0m 0s
+    Window Size:                    255
+    Unidirectional Client Profile:  #client-profile
+solace1#</pre></ol></li>
+      <li>Repeat step 3 for all Remote Message VPNs identified in all Message VPN bridges.</li>
+      <li>Repeat steps 1-4 for all of the remaining event brokers in both replication sites (either standalone event brokers or both event brokers in a redundant pair).</li>
+    </ol>
+  </body>
+</html>

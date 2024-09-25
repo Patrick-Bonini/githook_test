@@ -1,0 +1,479 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Migrating Machine Image Deployments</h1>
+    <p>This section guides you through the process of migrating an instance of PubSub+ created from a machine image package to a virtual machine (VM) host created in a similar way to that described in <MadCap:xref href="../SW-Broker-Set-Up/Containers/Deploying-Container-in-Production.htm">Deploying PubSub+ Software Event Brokers in a Production Environment</MadCap:xref>.  It describes the process of moving configuration and message delivery state to the new hosts while providing service (in most cases).  The process is like the machine image instance replacement upgrade commonly performed with the <a href="../SW-Broker-Upgrade/AWS-Upgrade-Current-Release.htm#Upgrade2">AWS Machine Image</a>.</p>
+    <p>Things to consider before starting the procedure:</p>
+    <ul>
+      <li>
+        <p>Redundancy must be configured using some stable form of network identity. Updating the redundancy configuration will require a service outage. The best option is to bring the new nodes into the HA group using DNS updates.</p>
+      </li>
+      <li>
+        <p>The original broker instance created from a machine image and the new VM instance that will replace it must be on-line at the same time to transfer the configuration and message state. If the storage containing the broker state can be transferred to the new VM instance by re-attaching storage from the old system to new, this is the simplest method.</p>
+      </li>
+    </ul>
+    <p>At a high level, the following steps are required to migrate from an instance created from a machine image package to a new VM host (assuming the VM host has been configured with storage):</p>
+    <ol>
+      <li>
+        <p>Upgrade the machine image systems to the target version (because upgrading and migrating in a single operation is risky, you should complete the upgrade first).</p>
+      </li>
+      <li>
+        <p>On the monitor node:</p>
+        <ol style="list-style-type: lower-alpha;">
+          <li>
+            <p>Stop the broker running on the monitor node.</p>
+          </li>
+          <li>
+            <p>Copy the storage elements to the new VM (or re-attach storage from old to new).</p>
+          </li>
+          <li>
+            <p>Shut down the machine image node.</p>
+          </li>
+          <li>
+            <p>Create the new container in the new VM (with the same version as on the original node after upgrade).</p>
+          </li>
+          <li>
+            <p>Update the DNS so that the other nodes in the HA group will be able to reach the new VM.</p>
+          </li>
+          <li>
+            <p>Verify that redundancy is back up.</p>
+          </li>
+        </ol>
+      </li>
+      <li>
+        <p>On the standby node:</p>
+        <ol style="list-style-type: lower-alpha;">
+          <li>
+            <p>Stop the broker running on the standby node.</p>
+          </li>
+          <li>
+            <p>Copy the storage elements to the new VM (or re-attach storage from old to new).</p>
+          </li>
+          <li>
+            <p>Shut down the machine image node.</p>
+          </li>
+          <li>
+            <p>Create the new container in the new VM (with the same version as on the original node after upgrade).</p>
+          </li>
+          <li>
+            <p>Update the DNS so that the other nodes in the HA group will be able to reach the new VM.</p>
+          </li>
+          <li>
+            <p>Verify that redundancy is back up.</p>
+          </li>
+        </ol>
+      </li>
+      <li>
+        <p>On the active node:</p>
+        <ol style="list-style-type: lower-alpha;">
+          <li>
+            <p>Release activity.</p>
+          </li>
+          <li>
+            <p>Perform step 3 on the previously active node.</p>
+          </li>
+        </ol>
+      </li>
+    </ol>
+    <h2 class="with-rule">Prerequisites</h2>
+    <p>Before starting the migration, it is assumed that you are familiar with the contents of <MadCap:xref href="../SW-Broker-Set-Up/Containers/Deploying-Container-in-Production.htm">Deploying PubSub+ Software Event Brokers in a Production Environment</MadCap:xref>. You should have VM instances running their preferred operating system with a container runtime installed (Docker or Podman). You should also have generated a target command-line or systemd unit file to create the new container instance on the VMs. The target command-line does not need to include the redundancy configuration or other configuration keys since the configuration will be migrated from the current broker instances. For a container instance that already has a configuration, for example a configuration that is migrated from a previously running instance, you can use the systemd unit file from <MadCap:xref href="../SW-Broker-Set-Up/Containers/Deploying-Container-in-Production.htm#Sample">Sample Systemd Unit File</MadCap:xref> (with the customizations required for the specific environment). The environment file is not required because the broker instance already has a configuration.</p>
+    <h3>Network and Redundancy</h3>
+    <p>In order to perform the migration in-service, the redundancy configuration cannot change (making changes to the redundancy configuration requires a service outage). Before starting the migration, it is important to confirm that the network identity of the three nodes that make up the HA group is configured in a way that can be transferred to the new hosts during the migration. The easiest way to do this is by a DNS update. </p>
+    <p>Run the following commands on all three nodes of the HA group to confirm the network identities can be transferred to the new hosts:</p>
+    <pre xml:space="preserve">solace-primary# show redundancy group
+Node Router-Name  Node Type      Address          Status
+----------------- -------------- ---------------- ---------
+solace-primary*   Message-Router private.solace-1 Online
+                                   .test.net
+solace-backup     Message-Router private.solace-2 Online
+                                   .test.net
+solace-monitor    Monitor        private.solace-3 Online
+                                   .test.net
+
+* - indicates the current node</pre>
+    <p>If the identities of the nodes in the HA group are configured using DNS names, then you must update these DNS records  to bring the new hosts into the HA group. If IP addresses are used, the process is more complicated because both hosts (new and old) must be running at the same time to transfer the configuration (unless the configuration can be transferred without the need to copy). After you transfer the configuration, you need to turn off the existing node  and transfer the IP address to the new host. Before starting the migration consider how the new hosts will join the cluster.</p>
+    <h3>Transferring Configuration and Message State</h3>
+    <p>The next thing to consider before starting the migration is how to transfer the configuration and message state from the old node to the new host. There are several ways to do this depending on how the old node was created. With the storage-group (or individual storage elements) on a dedicated device (such as a vSAN volume) you can use hypervisor methods  to attach the volume to the new host. If the storage from the old node cannot be attached to the new host, then you will need to copy the data  using rsync.</p>
+    <p>In order to copy the data, you need to first determine the source and target locations. The target location should have been identified while configuring the new host (as described in <MadCap:xref href="../SW-Broker-Set-Up/Containers/Deploying-Container-in-Production.htm">Deploying PubSub+ Software Event Brokers in a Production Environment</MadCap:xref>). The source of the configuration and message state will depend on how the old node was created. If it was created using a single storage-group, then you can transfer everything  in a single command. If it was configured by creating individual storage-elements, then you need to copy the elements  one at a time. If there are no special performance requirements for any of the storage elements then you can combine them into a single storage-group as a part of the transfer (see <MadCap:xref href="../Convert-to-Single-Storage-Element.htm">Converting from Multiple Mount Points to a Single Mount Point</MadCap:xref>). </p>
+    <p>You can find the  locations of the storage  by logging into the old nodes host (<code>ssh -p 22 sysadmin@host</code>) and executing the following command:</p>
+    <pre>sudo solacectl storage ls</pre>
+    <p>Once you understand the locations of the storage-elements and their new locations  for all three nodes, you can begin the migration process.</p>
+    <h2 class="with-rule">Procedure</h2>
+    <ol>
+      <li>
+        <p>Log into the <MadCap:variable name="Product-Names.solace_cli"/> of each node as an admin user.</p>
+      </li>
+      <li>
+        <p>Ensure the redundancy <code>Configuration Status</code> is <code>Enabled</code>, and the <code>Redundancy Status</code> is <code>Up</code> on each node. On <code>solace-primary</code> the <code>Message Spool Status</code> should be <code>AD-Active</code>, and on <code>solace-backup</code> the <code>Message Spool Status</code> should be <code>AD-Standby</code>:</p>
+        <pre xml:space="preserve">solace-primary# show redundancy
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Message Routing Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : Primary
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+Interface        Static Address           Status
+---------------- ------------------------ ------
+intf0            2600:1f18:8b2:d275:5ab6: Up
+                   c5ff:7a54:567c
+
+                               Primary Virtual Router Backup Virtual Router
+                               ---------------------- ----------------------
+Activity Status                Local Active           Shutdown
+Redundancy Interface Status    Up
+VRRP Status
+  intf0                        Initialize
+VRRP Priority                  250
+Message Spool Status           AD-Active
+Priority Reported By Mate      Standby</pre>
+        <pre xml:space="preserve">solace-backup# show redundancy
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Message Routing Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : Backup
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+Interface        Static Address           Status
+---------------- ------------------------ ------
+intf0            2600:1f18:8b2:d275:4b64: Up
+                   b9bf:2e3f:b0c8
+
+                               Primary Virtual Router Backup Virtual Router
+                               ---------------------- ----------------------
+Activity Status                Shutdown               Mate Active
+Redundancy Interface Status                           Up
+VRRP Status
+  intf0                                               Initialize
+VRRP Priority                                         100
+Message Spool Status                                  AD-Standby
+Priority Reported By Mate                             Active</pre>
+        <pre xml:space="preserve">solace-monitor# show redundancy
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Monitoring Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : None
+Mate Router Name         :
+ADB Link To Mate         : Down
+ADB Hello To Mate        : Down
+Interface        Static Address           Status
+---------------- ------------------------ ------
+intf0            2600:1f18:8b2:d275:20f6: Up
+                   ce76:d651:df78
+
+                                Primary Virtual Router Backup Virtual Router
+                                ---------------------- ----------------------
+Activity Status                 Shutdown               Shutdown
+Redundancy Interface Status
+VRRP Status
+  intf0
+VRRP Priority
+Message Spool Status
+Priority Reported By Mate</pre>
+      </li>
+      <li>
+        <p>Log out and log into  the machine image host of <code>solace-monitor</code> as <code>sysadmin</code>.</p>
+      </li>
+      <li>
+        <p>Switch to root user:</p>
+        <pre xml:space="preserve">[sysadmin@solace-monitor ~]$ sudo su –</pre>
+      </li>
+      <li>
+        <p>Stop the solace service:</p>
+        <pre xml:space="preserve">[root@solace-monitor ~]$ solacectl service stop</pre>
+      </li>
+      <li>
+        <p>Verify that the new VM host is properly configured.</p>
+        <p>This includes installing the container runtime:</p>
+        <p>For example, on a Red Hat Enterprise Linux 8 host:</p>
+        <pre>$sudo yum update
+$sudo yum module enable -y container-tools:rhel8
+$sudo yum module install -y container-tools:rhel8</pre>
+        <p>Configure swap if needed (based on the memory requirements from the System Resource Calculator (described in <MadCap:xref href="../SW-Broker-Set-Up/Containers/Deploying-Container-in-Production.htm">Deploying PubSub+ Software Event Brokers in a Production Environment</MadCap:xref>).</p>
+        <p>Decide where broker’s data will be stored and prepare to transfer it from the host (mounting external devices, creating filesystems, creating directories etc.)</p>
+      </li>
+    </ol>
+    <ol MadCap:continue="true">
+      <li>
+        <p>Copy the configuration and state over from the monitor to the new VM.</p>
+        <p>On the machine image host, verify the location of the storage elements.</p>
+        <pre xml:space="preserve">[root@solace-monitor ~]# solacectl storage ls
+Block Devices:
+Name                                             Size      Note
+xvda                                             8.0G
+└─xvda1                                          8.0G
+
+Storage Volumes:
+Name                                             Size      Used      Available      Path
+/dev/xvda1                                       8.0G      5.2G      2.8G           /
+└─storage-group                                  8.0G      281M      2.8G           /var/lib/docker/volumes/storage-group/_data</pre>
+        <p>In this case, a single storage-group is configured that contains the data for all of the storage elements. This will be copied over to the new system. From the new system:</p>
+        <pre xml:space="preserve">[sysadmin@solace-monitor-new opt]$ sudo rsync -av sysadmin@solace-monitor:/var/lib/docker/volumes/storage-group/_data/* /opt/solace/storage-group</pre>
+        <p>This command transfers the configuration and message state from the old instance to the new VM (<code>/opt/solace/storage-group</code> or preferred location on the new host).</p>
+      </li>
+      <li>
+        <p>Update the DNS record to point to the new host.</p>
+      </li>
+      <li>
+        <p>Create the new container instance.</p>
+        <p>In this example, the container will be created using systemd (the target system is running Red Hat Enterprise Linux 8 with the latest container-tools module installed). You can use the sample unit file contained in <MadCap:xref href="../SW-Broker-Set-Up/Containers/Deploying-Container-in-Production.htm">Deploying PubSub+ Software Event Brokers in a Production Environment</MadCap:xref>  to create the solace systemd service.</p>
+        <p>The <code>.env</code> file is where a new instance gets its initial configuration. This is not needed in this case since the broker instance is getting its configuration from the machine image instance. The <code>solace.conf</code> file can be modified as required.</p>
+        <p>To install and start the new solace systemd service:</p>
+        <pre xml:space="preserve">[sysadmin@solace-monitor-new systemd]$ sudo systemctl daemon-reload
+[sysadmin@solace-monitor-new systemd]$ sudo systemctl start solace</pre>
+        <p>If for some reason the new service does not start properly:</p>
+        <pre xml:space="preserve">[sysadmin@solace-monitor-new systemd]$ sudo systemctl status solace</pre>
+      </li>
+    </ol>
+    <ol MadCap:continue="true">
+      <li>
+        <p>Log in to the <MadCap:variable name="Product-Names.solace_cli"/> on all three nodes and verify that redundancy is <code>Enabled</code> and <code>Up</code> (and that all three nodes are in contact with one and other). If the HA group has been restored to a redundant state, then it is safe to proceed similarly with the standby and then the active node.</p>
+      </li>
+      <li>
+        <p>Shutdown the old monitor node.</p>
+      </li>
+      <li>
+        <p>Log into the machine image host of <code>solace-backup</code> as <code>sysadmin</code>.</p>
+      </li>
+      <li>
+        <p>Switch to root user:</p>
+        <pre xml:space="preserve">[sysadmin@solace-backup ~]$ sudo su –</pre>
+      </li>
+      <li>
+        <p>Optional: If you are using MQTT retained messages in your deployment, verify that your retain cache instances are synchronized. For more information, see <MadCap:xref href="../../Services/Managing-MQTT-Retained-Messages.htm#Verify_Caches_Sync">Verifying Retain Cache Redundancy</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>Stop the solace service:</p>
+        <pre xml:space="preserve">[root@solace-backup ~]$ solacectl service stop</pre>
+      </li>
+      <li>
+        <p>Configure the new host as in step 6.</p>
+      </li>
+      <li>
+        <p>Copy the configuration and state over from the old backup node to the new VM.</p>
+        <p>On the machine image host, verify the location of the storage elements.</p>
+        <pre xml:space="preserve">[root@solace-backup ~]# solacectl storage ls
+Block Devices:
+Name                                              Size      Note
+xvda                                              350.0G
+└─xvda1                                           350.0G
+
+Storage Volumes:
+Name                                              Size      Used      Available      Path
+/dev/xvda1                                        350G      6.6G      344G           /
+└─storage-group                                   350G      1.3G      344G           /var/lib/docker/volumes/storage-group/_data</pre>
+        <p>Use rsync to transfer the storage elements from the machine image host to the new VM host.</p>
+        <pre xml:space="preserve">[sysadmin@solace-backup-new ~]$ sudo rsync -av sysadmin@solace-backup:/var/lib/docker/volumes/storage-group/_data/* /opt/solace/storage-group</pre>
+        <p>This command transfers the configuration and message state from the old instance to the new VM (<code>/opt/solace/storage-group</code> or preferred location in the new host).</p>
+      </li>
+      <li>
+        <p>Update the DNS record to point to the new host.</p>
+      </li>
+      <li>
+        <p>Create the new container instance.</p>
+        <p>Create a new container using a system unit file similar to the one used in step 9.</p>
+        <pre xml:space="preserve">[sysadmin@solace-backup-new /]$ sudo systemctl daemon-reload
+[sysadmin@solace-backup-new /]$ sudo systemctl start solace</pre>
+      </li>
+      <li>
+        <p>Log in to the <MadCap:variable name="Product-Names.solace_cli"/> of all three broker instances and verify that redundancy is <code>Enabled</code> and <code>Up</code>.</p>
+      </li>
+      <li>
+        <p>Shut down the old backup node.</p>
+      </li>
+      <li>
+        <p>In step 20, the redundancy status was verified on all three nodes.</p>
+        <p>Fail over to the new backup node by logging into the <MadCap:variable name="Product-Names.solace_cli"/> of the active node as admin user and releasing activity:</p>
+        <pre>solace-primary&gt; enable
+solace-primary&gt; configure
+solace-primary&gt; redundancy release-activity</pre>
+        <pre xml:space="preserve">solace-primary(configure/redundancy)# show redundancy
+Configuration Status     : Enabled-Released
+Redundancy Status        : Down
+Operating Mode           : Message Routing Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : Primary
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+Interface        Static Address           Status
+---------------- ------------------------ ------
+intf0            2600:1f18:8b2:d275:5ab6: Up
+                   c5ff:7a54:567c
+
+                               Primary Virtual Router Backup Virtual Router
+                               ---------------------- ----------------------
+Activity Status                Mate Active            Shutdown
+Redundancy Interface Status    Up
+VRRP Status
+intf0                          Initialize
+VRRP Priority                  0
+Message Spool Status           AD-Standby
+Priority Reported By Mate      Active</pre>
+        <p>The previously active node now shows the mate as active.</p>
+      </li>
+      <li>
+        <p>Log in to the new backup node  and verify that it has taken activity.</p>
+        <pre xml:space="preserve">solace-backup-new# show redundancy
+Configuration Status     : Enabled
+Redundancy Status        : Down
+Operating Mode           : Message Routing Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : Backup
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+Interface        Static Address           Status
+---------------- ------------------------ ------
+intf0            2600:1f18:8b2:d275:3ff9: Up
+                   76ac:d885:f037
+
+                               Primary Virtual Router Backup Virtual Router
+                               ---------------------- ----------------------
+Activity Status                Shutdown               Local Active
+Redundancy Interface Status                           Up
+VRRP Status
+  intf0                                               Initialize
+VRRP Priority                                         240
+Message Spool Status                                  AD-Active
+Priority Reported By Mate                             Release</pre>
+        <p>The new backup node is now <code>AD-Active</code>.</p>
+      </li>
+      <li>
+        <p>Log out and log back into the old primary node (now <code>AD-Standby</code>) as <code>sysadmin</code>.</p>
+      </li>
+      <li>
+        <p>Switch to root user:</p>
+        <pre xml:space="preserve">[sysadmin@solace-primary ~]$ sudo su –</pre>
+      </li>
+      <li>
+        <p>Optional: If you're using MQTT retained messages in your deployment, verify that your retain cache instances are synchronized. For more information, see <MadCap:xref href="../../Services/Managing-MQTT-Retained-Messages.htm#Verify_Caches_Sync">Verifying Retain Cache Redundancy</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>Stop the solace service:</p>
+        <pre xml:space="preserve">[root@solace-primary ~]$ solacectl service stop</pre>
+      </li>
+      <li>
+        <p>Configure the new host as in step 6.</p>
+      </li>
+      <li>
+        <p>Copy the configuration and state over from the primary to the new VM.</p>
+        <p>On the machine image host, verify the location of the storage elements.</p>
+        <pre xml:space="preserve">[root@solace-primary ~]# solacectl storage ls
+Block Devices:
+Name                                              Size      Note
+xvda                                              350.0G
+└─xvda1                                           350.0G
+
+Storage Volumes:
+Name                                              Size      Used      Available 
+Path
+					
+/dev/xvda1                                        350G      6.6G      344G
+/
+
+└─storage-group                                   350G      1.3G      344G 
+/var/lib/docker/volumes/storage-group/_data</pre>
+        <p>Use rsync to transfer the storage elements from the machine image host to the new VM host.</p>
+        <pre xml:space="preserve">[sysadmin@solace-primary-new ~]$ sudo rsync -av sysadmin@solace-primary:/var/lib/docker/volumes/storage-group/_data/* /opt/solace/storage-group</pre>
+        <p>This command transfers the configuration and message state from the old instance to the new VM (<code>/opt/solace/storage-group</code> or preferred location in the new host).</p>
+      </li>
+      <li>
+        <p>Update the DNS record to point to the new host.</p>
+      </li>
+      <li>
+        <p>Create the new container instance.</p>
+        <p>Create a new container using a system unit file similar to the one used in step 9.</p>
+        <pre xml:space="preserve">[sysadmin@solace-primary-new /]$ sudo systemctl daemon-reload
+[sysadmin@solace-primary-new /]$ sudo systemctl start solace</pre>
+      </li>
+      <li>
+        <p>Shut down the old primary node.</p>
+      </li>
+      <li>
+        <p>Re-enable redundancy.</p>
+        <pre xml:space="preserve">solace-primary-new&gt; enable
+solace-primary-new&gt; configure redundancy
+solace-primary-new&gt; no release-activity</pre>
+        <pre xml:space="preserve">solace-backup-new&gt; enable
+solace-backup-new&gt; admin
+solace-backup-new&gt; redundancy revert-activity</pre>
+      </li>
+      <li>
+        <p>Verify that redundancy is  <code>Up</code>.</p>
+        <pre xml:space="preserve">solace-primary-new(configure/redundancy)# show redundancy
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Message Routing Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : Primary
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+Interface        Static Address           Status
+---------------- ------------------------ ------
+intf0            2600:1f18:8b2:d275:aa94: Up
+                   8510:2ec5:883e
+
+                               Primary Virtual Router Backup Virtual Router
+                               ---------------------- ----------------------
+Activity Status                Local Active           Shutdown
+Redundancy Interface Status    Up
+VRRP Status
+  intf0                        Initialize
+VRRP Priority                  250
+Message Spool Status           AD-Active
+Priority Reported By Mate      Standby</pre>
+        <p>Verify that Config-Sync is <code>Up</code>.</p>
+        <pre xml:space="preserve">solace-primary-new(configure/redundancy)# show config-sync
+Admin Status                  : Enabled
+Oper Status                   : Up
+SSL Enabled                   : Yes
+Authentication
+Client Certificate
+Maximum Chain Depth           : 3
+Validate Certificate Dates    : Enabled
+Server Certificate Configured : No
+Client-Profile
+  TCP
+    MSS                       : 1460
+    Initial Window            : 2
+    Maximum Window            : 256 KB
+    Keepalive
+      Count                   : 5
+      Idle                    : 3 seconds
+      Interval                : 1 seconds
+Client
+  Name                        : #config-sync/solace-primary
+  Connection State            : Connected
+  Last Fail Reason            :
+Synchronize
+  Username                    : Yes</pre>
+      </li>
+    </ol>
+    <p>You have completed this procedure. The system has been migrated. </p>
+  </body>
+</html>

@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Configuring a DMR Cluster</h1>
+    <p>A cluster is a provisioned object on an event broker that contains global DMR configuration parameters.  There can be only one cluster for each node. Parameters configured at the cluster level apply to all links in the cluster, unless you override each setting by providing equivalent cluster link-level configuration.</p>
+    <p>To create a cluster, enter the following commands:</p>
+    <pre class="Code" xml:space="preserve">solace(configure)# routing
+solace(configure/routing)# dynamic-message-routing
+solace(...igure/routing/dynamic-message-routing)# create cluster &lt;cluster-name&gt;</pre>
+    <p>To configure an existing cluster, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">
+solace(...igure/routing/dynamic-message-routing)# cluster &lt;cluster-name&gt;</pre>
+    <p xml:space="preserve">To enable the cluster, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">solace(...uting/dynamic-message-routing/cluster)# no shutdown</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;cluster-name&gt;</code> is the name of the cluster you want this node to belong to. </p>
+    <p> The configuration tasks that you can perform for an existing cluster include:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Cluster-Auth">Cluster-Level Authentication Configuration</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Enabling-TLS">Enabling TLS/SSL Encryption</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Cluster-Auth"/>Configuring Authentication on a Cluster</h2>
+    <p>When you configure cluster-level authentication, each setting applies for all links in the cluster. If you want to provide per-link authentication, refer to <MadCap:xref href="DMR-Mgmt-Cluster-Link-Config.htm#Link-Auth-Config">Configuring Link-Level Authentication</MadCap:xref>.</p>
+    <h3><a name="Basic-Auth"/>Configuring Basic Authentication</h3>
+    <p>Basic authentication is the default client authentication scheme used by <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.pubsub_brand_only"/></MadCap:conditionalText> event brokers. This authentication scheme allows cluster links to connect to a remote node  and authenticate with that node using a  password.</p>
+    <p class="Note">Basic authentication is compatible with both plain-text and encrypted connections. For more information about configuring encrypted connections, see <MadCap:xref href="#Enabling-TLS">Enabling TLS/SSL Encryption</MadCap:xref>.</p>
+    <p>To configure basic authentication for all links in the cluster, enter the following commands:</p>
+    <pre class="Code" xml:space="preserve">
+solace(...igure/routing/dynamic-message-routing)# cluster &lt;cluster-name&gt;
+solace(...uting/dynamic-message-routing/cluster)# authentication
+solace(...essage-routing/cluster/authentication)# basic
+</pre>
+    <h4><a name="Auth-Type"/>Configuring the Authentication Type</h4>
+    <p>To configure the type of basic authentication to use for cluster link connections, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">solace(...-routing/cluster/authentication/basic)# auth-type {internal | none}</pre>
+    <p><u>Where</u>:</p>
+    <p><code>internal</code> specifies to authenticate cluster link connections against a locally-configured  password.</p>
+    <p><code>none</code> specifies that no authentication is required (in other words, an anonymous login is allowed).</p>
+    <h4><a name="Cluster-Password"/>Configuring a Password for Basic Internal Authentication</h4>
+    <p>To configure a password for basic internal authentication of cluster link connections, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">solace(...-routing/cluster/authentication/basic)# password &lt;password&gt;</pre>
+    <p style="text-decoration: underline;">Where:</p>
+    <p><code>&lt;password&gt;</code> is the password you want to use to authenticate incoming cluster links (both control and data channels). This password is also used for all outgoing links if each link does not have a per-link password.</p>
+    <h3><a name="Client-Cert-Auth"/>Configuring Authentication Using Client Certificates</h3>
+    <p>Client-certificate authentication requires  a cluster link to prove its identity to a remote node through an X509v3 client certificate from a recognized Certification Authority (CA).</p>
+    <p>To use client-certificate authentication, you must configure the client certificate that cluster links present to the remote node when initiating the connection. Each node can be configured with a per-cluster client certificate, which is used as the offered credentials for outgoing links. Only one client certificate can be configured per cluster; it can't be overridden on a per-link basis. In addition, you must configure at least one client certificate matching rule condition when using client certificate authentication for cluster links (see <MadCap:xref href="#Configur">Configuring Client Certificate Matching Rules</MadCap:xref>).</p>
+    <p class="Note">Client-certificate authentication is compatible with encrypted connections only. For more information about configuring encrypted connections, see <MadCap:xref href="#Enabling-TLS">Enabling TLS/SSL Encryption</MadCap:xref>.</p>
+    <p>To configure client-certificate authentication for all links in the cluster, enter the following commands:</p>
+    <pre class="Code" xml:space="preserve">solace(...igure/routing/dynamic-message-routing)# cluster &lt;cluster-name&gt;
+solace(...uting/dynamic-message-routing/cluster)# authentication
+solace(...essage-routing/cluster/authentication)# client-certificate 
+</pre>
+    <h4><a name="Client-Cert-File"/>Configuring the Client Certificate File to Present to Remote Nodes</h4>
+    <p>To configure the certificate file to use, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">solace(...ter/authentication/client-certificate)# certificate-file &lt;file&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;file&gt;</code> specifies the certificate file used to authenticate all cluster links (both control and data channels). This certificate is presented to the remote node for authentication when the link is established. The certificate file must be in the <code>certs</code> directory in the jail directory (refer to <MadCap:xref href="../../Admin/Managing-Event-Broker-Files.htm#Manage_Router_Files_Copy">Copying Files</MadCap:xref>). Once installed, you may remove the file in the <code>certs</code> directory.</p>
+    <h4><a name="Configur"/>Configuring Client Certificate Matching Rules</h4>
+    <p>When you configure client certificate matching, you create a set of matching rules per cluster. For a client certificate to be accepted as a valid credential, the certificate must match at least one rule. Each rule contains  a set of one or more conditions, all of which must be satisfied for a certificate to match the rule. Each condition compares a certificate field with an  attribute associated with the cluster link  or a fixed glob expression.</p>
+    <p>You can also create attribute filters to  ensure that the matching rule applies only  to cluster links with certain attribute values. For example, you could mark certain cluster links with a <code>span</code> attribute  and then create a rule that contains both an attribute filter which checks that the value of the <code>span</code> attribute is set to <code>internal</code>, and a simple condition that allows those links to authenticate with remote nodes.</p>
+    <p class="Note">You must configure at least one client certificate matching rule condition when using client certificate authentication for cluster links.</p>
+    <p>To configure a client certificate matching rule, enter the following commands:</p>
+    <pre xml:space="preserve">solace(...ter/authentication/client-certificate)# matching rules
+solace(...ion/client-certificate/matching-rules)# create rule &lt;name&gt;</pre>
+    <p>To configure a client certificate matching rule condition, enter the following comands:</p>
+    <pre xml:space="preserve">
+solace(...lient-certificate/matching-rules/rule)# create condition {certificate-thumbprint | common-name | common-name-last | subject-alternate-name-msupn | uid | uid-last | org-unit | org-unit-last | issuer | subject | serial-number | dns-name | ip-address} {{matches-attribute &lt;attribute&gt;} | {matches-expression &lt;expression&gt;}}</pre>
+    <p>To configure a client certificate matching rule attribute filter, enter the following commands:</p>
+    <pre xml:space="preserve">
+solace(...lient-certificate/matching-rules/rule)# create attribute-filter &lt;name&gt;
+solace(.../matching-rules/rule/attribute-filter)# name &lt;value&gt;
+solace(.../matching-rules/rule/attribute-filter)# value &lt;value&gt; </pre>
+    <p>To enable a certificate matching rule, enter the following CONFIG commands:</p>
+    <pre xml:space="preserve">solace(...lient-certificate/matching-rules/rule)# no shutdown</pre>
+    <p>By default, client certificate matching is disabled and any otherwise valid certificate is accepted. To enable client certificate matching, enter the following CONFIG commands:</p>
+    <pre>solace(...ion/client-certificate/matching-rules)# no shutdown</pre>
+    <MadCap:snippetBlock src="../../Resources/Snippets/certificate_matching_cli_desc.flsnp"/>
+    <p class="Note">Certificate matching rules have no effect unless the links or cluster is restarted.</p>
+    <p>
+      <u>Examples</u>
+    </p>
+    <p>
+      <b>Internal Links</b>
+    </p>
+    <p>Internal links are likely to have a uniform set of rules, or most likely a single rule that extracts the node name from a client certificate and compares it to a link attribute carrying the node name. A typical rule for internal links might look like this:</p>
+    <pre xml:space="preserve">
+solace(...ion/client-certificate/matching-rules)# create rule internal
+solace(...lient-certificate/matching-rules/rule)# create condition common-name matches-attribute nodeName
+solace(...lient-certificate/matching-rules/rule)# no shutdown</pre>
+    <p>This requires that you also create the <code>nodeName</code> attribute on the cluster link, for more  information, see <MadCap:xref href="DMR-Mgmt-Cluster-Link-Config.htm#Setting">Setting Cluster Link Attributes</MadCap:xref>. </p>
+    <p>
+      <b>External Links</b>
+    </p>
+    <p>External links are likely to connect to a cluster managed by a different organization with different certificate styles, so more configuration is likely to be required, for example:</p>
+    <pre xml:space="preserve">
+solace(...ion/client-certificate/matching-rules)# create rule external
+solace(...lient-certificate/matching-rules/rule)# create condition issuer matches-attribute issuer
+solace(...lient-certificate/matching-rules/rule)# create condition subject matches-attribute subject
+solace(...lient-certificate/matching-rules/rule)# no shutdown</pre>
+    <p>This requires that you also create the <code>issuer</code> and <code>subject</code> attributes on the cluster link, for more  information, see <MadCap:xref href="DMR-Mgmt-Cluster-Link-Config.htm#Setting">Setting Cluster Link Attributes</MadCap:xref>. </p>
+    <p>
+      <b>Differentiating the Rules for Internal and External Links</b>
+    </p>
+    <p>To apply different rules for internal and external links, you can create attribute filters that ensure the rule only applies to links with certain attribute values. This allows you to create a unique rule for each external link, that only applies when the <code>nodeName</code> attribute has a certain value.</p>
+    <pre xml:space="preserve">
+solace(...ion/client-certificate/matching-rules)# create rule internal
+solace(...lient-certificate/matching-rules/rule)# create attribute-filter spanInternal
+solace(.../matching-rules/rule/attribute-filter)# attribute span
+solace(...rules/rule/attribute-filter/attribute)# value internal
+solace(...rules/rule/attribute-filter/attribute)# exit
+solace(.../matching-rules/rule/attribute-filter)# exit
+solace(...lient-certificate/matching-rules/rule)# create condition common-name matches-attribute nodeName
+solace(...lient-certificate/matching-rules/rule)# no shutdown
+solace(...lient-certificate/matching-rules/rule)# exit
+solace(...ion/client-certificate/matching-rules)# create rule external1
+solace(...lient-certificate/matching-rules/rule)# create attribute-filter nodeName
+solace(.../matching-rules/rule/attribute-filter)# attribute nodeName
+solace(...rules/rule/attribute-filter/attribute)# value external-node-1
+solace(...rules/rule/attribute-filter/attribute)# exit
+solace(.../matching-rules/rule/attribute-filter)# exit
+solace(...lient-certificate/matching-rules/rule)# create condition issuer matches-expression "CN=CA1, O=org1, ..."
+solace(...lient-certificate/matching-rules/rule)# create condition subject matches-expression "CN=external-node-1, O=org1, ..."
+solace(...lient-certificate/matching-rules/rule)# no shutdown</pre>
+    <p>This requires that you also create the <code>span</code> and <code>nodeName</code> attributes on the internal cluster links, and the <code>nodeName</code> attribute on external cluster links. For more  information, see <MadCap:xref href="DMR-Mgmt-Cluster-Link-Config.htm#Setting">Setting Cluster Link Attributes</MadCap:xref>. </p>
+    <h2 class="with-rule"><a name="Enabling-TLS"/>Enabling TLS/SSL Encryption</h2>
+    <p>The following is required before you can enable TLS/SSL encryption for  links in the cluster: </p>
+    <ul>
+      <li>
+        <p>TLS/SSL service must be configured and enabled  on both nodes on each cluster link. This requires the TLS/SSL server-certificate to be configured on the node which receives the encrypted connection. See <MadCap:xref href="../../Security/Managing-Server-Certs.htm">Managing Server Certificates</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>With client-certificate authentication configured, the client-certificate file that identifies the node  initiating the encrypted connection must be loaded onto the node. See <MadCap:xref href="#Client-Cert-File">Configuring Client Certificate Files to Present to Remote Nodes</MadCap:xref>.</p>
+      </li>
+    </ul>
+    <p>To configure TLS/SSL encryption, enter the following commands:</p>
+    <pre class="Code" xml:space="preserve">solace(...uting/dynamic-message-routing/cluster)# ssl
+solace(...g/dynamic-message-routing/cluster/ssl)# server-certificate-validation
+</pre>
+    <p> The TLS/SSL configuration tasks that you can perform include:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Server-Name-Validation">Enable Server Name Validation</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Max-Chain-Depth">Configure Max Certificate Chain Depth</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Cert-Date-Validation">Enable Certificate  Date Validation</MadCap:xref>
+      </li>
+    </ul>
+    <div class="Caution">
+      <p>When you make a change to the server certificate validation settings for a DMR cluster, the PubSub+ broker automatically disconnects and then reconnects all TLS-enabled links in the cluster to enable the change. </p>
+    </div>
+    <h3><a name="Server-Name-Validation"/>Enabling the Validation of the Server Name</h3>
+    <p>You can enable or disable the TLS authentication mechanism to verify the name used to connect to the remote broker. If enabled, the Server Name Indication (SNI) extension is sent on outgoing TLS connections and the server name used for that connection is verified against the server names in the Subject Alternative Name (SAN) extension in the certificate returned from the remote broker.</p>
+    <p>This parameter is  enabled by default.</p>
+    <p>To enable the validation of server names:</p>
+    <pre class="Code" xml:space="preserve">solace(...g/dynamic-message-routing/cluster/ssl)# server-certificate-validation
+solace(...ter/ssl/server-certificate-validation)# validate-server-name</pre>
+    <p>To disable server name validation:</p>
+    <pre class="Code" xml:space="preserve">
+solace(...ter/ssl/server-certificate-validation)# no validate-server-name</pre>
+    <h3><a name="Max-Chain-Depth"/>Configuring the Maximum Certificate Chain Depth</h3>
+    <p>You can configure the maximum allowed depth of a server-certificate chain. The depth of a chain is defined as the number of signing CA certificates that are present in the chain back to a trusted self-signed root CA certificate.</p>
+    <p>To configure the maximum allowed depth of a certificate chain, enter the following commands:</p>
+    <pre class="Code" xml:space="preserve">solace(...g/dynamic-message-routing/cluster/ssl)# server-certificate-validation
+solace(...ter/ssl/server-certificate-validation)# max-certificate-chain-depth &lt;max-depth&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;max-depth&gt;</code> specifies the maximum allowed depth of a certificate chain.</p>
+    <h3><a name="Cert-Date-Validation"/>Enabling the Validation of the Certificate  Date</h3>
+    <p>You can enable or disable  the validation of the <code>Not Before</code> and <code>Not After</code> validity dates in the server-certificate. When disabled, the certificate is accepted even if the certificate is not valid based on these dates.</p>
+    <p>To enable certificate date validation:</p>
+    <pre class="Code" xml:space="preserve">solace(...g/dynamic-message-routing/cluster/ssl)# server-certificate-validation
+solace(...ter/ssl/server-certificate-validation)# validate-certificate-date</pre>
+    <p>To disable certificate date validation:</p>
+    <pre class="Code" xml:space="preserve">
+solace(...ter/ssl/server-certificate-validation)# no validate-certificate-date</pre>
+  </body>
+</html>

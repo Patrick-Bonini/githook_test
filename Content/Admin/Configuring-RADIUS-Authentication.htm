@@ -1,0 +1,394 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Configuring RADIUS Authentication</h1>
+    <p>To successfully enable RADIUS authentication for CLI users and/or clients, the following must be configured:</p>
+    <ul>
+      <li>on external host machines, up to three RADIUS servers (refer to <MadCap:xref href="#Config-RADIUS-Servers">Configuring RADIUS Servers</MadCap:xref>)</li>
+      <li>on the Solace PubSub+ event broker:<ul><li>RADIUS domains (refer to <MadCap:xref href="#Assig-RADIUS-Domains">Assigning RADIUS Domains</MadCap:xref>)</li><li>RADIUS profiles (refer to <MadCap:xref href="#Config-RADIUS-Prof">Configuring RADIUS Profiles</MadCap:xref>)</li></ul></li>
+    </ul>
+    <h2 class="with-rule"><a name="Config-RADIUS-Servers"/>Configuring RADIUS Servers</h2>
+    <p>To successfully enable RADIUS authentication for CLI users and/or clients, a RADIUS administrator must install and configure up to three RADIUS servers on external host machines that user authentication and access information can be stored on. For information on choosing a host machine and installing the server software, refer to your third-party RADIUS server documentation.</p>
+    <div class="Note">
+      <p>When there are a large number of clients in the Solace messaging network, a RADIUS administrator must configure the RADIUS server to handle the peak rate of client authentication. If this is not done, the RADIUS server can drop the authentication requests, the client connection rate can become drastically reduced as it falls back on slow authentication retries, and the event broker can temporarily consume more connection resources. To troubleshoot this scenario, look at the output of a <code>show radius-profile &lt;profile&gt; stats</code> User EXEC command to ensure that there are no timeouts. Timeouts indicate that the RADIUS server is not configured to handle the peak rate of client authentication.</p>
+    </div>
+    <h2 class="with-rule"><a name="Assig-RADIUS-Domains"/>Assigning RADIUS Domains</h2>
+    <p>To assign a RADIUS domain string for CLI users and/or clients, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/user-class)# radius-domain &lt;radius-domain&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;radius-domain&gt;</code> is the authentication domain string appended to user names in outgoing RADIUS Access-Requests. For example, <code>testuser@&lt;radius-domain string&gt;</code>.</p>
+    <h2 class="with-rule"><a name="Config-RADIUS-Prof"/>Configuring RADIUS Profiles</h2>
+    <p>A RADIUS profile contains authentication request retransmit and timeout values and RADIUS authentication configurations for each of RADIUS server that the RADIUS profile uses. Each RADIUS profile can use up to three RADIUS servers, and up to ten RADIUS profiles can be configured.</p>
+    <ul>
+      <li>To create a new RADIUS profile, enter the following command:
+                <p class="Code">solace(configure/authentication)# create radius-profile &lt;profile-name&gt;</p></li>
+      <li>To edit the properties of an existing RADIUS profile, enter the following CONFIG commands:
+                <p class="Code">solace(configure/authentication)# radius-profile &lt;profile-name&gt; </p></li>
+    </ul>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;profile-name&gt;</code> is the name of the RADIUS profile. </p>
+    <div>
+      <p>The no version of this command, <code>no radius-profile &lt;profile-name&gt;</code>, deletes the given RADIUS profile from the event broker (the RADIUS profile named <code>default</code>, however, cannot be deleted). Before deleting a RADIUS profile:</p>
+      <ul>
+        <li>it must be disabled through the <code>shutdown</code> RADIUS Profile Authentication CONFIG command</li>
+        <li>no other configured objects can refer to it</li>
+      </ul>
+    </div>
+    <p>For RADIUS profiles, you can perform any of the following configuration tasks:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Config-Max-Retrans">Configuring Maximum Retransmit Attempts</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Enabling-Profiles">Enabling RADIUS Profiles</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Registering-R-Servers">Registering RADIUS Servers</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Setting-Retry-Timeouts">Setting Retry Timeouts</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="Config-Max-Retrans"/>Configuring Maximum Retransmit Attempts</h3>
+    <p>Authentication requests are sent to the primary RADIUS host according to set interval, and a request can be retried up to ten times. If no response is received from the primary host and the maximum attempt value is reached, then requests are sent to the secondary host (if provisioned). If no response is received from the secondary host and the maximum attempt value is reached, then requests are sent to the tertiary host (if provisioned). If no response is received from the tertiary host and the maximum attempt value is reached, the process repeats. A Solace PubSub+ messager broker only cycles through hosts that are provisioned.</p>
+    <p class="Note">If a request is rejected by any server, it is not retried on other servers.</p>
+    <p>To set the number of times to retry a request to a RADIUS server, enter the following command: </p>
+    <p class="Code">solace(configure/authentication/radius-profile)# retransmit &lt;attempts&gt; </p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;attempts&gt;</code> is an integer from 1 to 10 that indicates the number of times to retry a request.</p>
+    <h3><a name="Enabling-Profiles"/>Enabling RADIUS Profiles</h3>
+    <div class="Caution">
+      <p class="Tbl_Body">When you shut down a RADIUS profile, all users and/or clients attempting to authenticate using the RADIUS profile will fail until it is enabled again .</p>
+    </div>
+    <ul>
+      <li>To enable the current RADIUS profile on the event broker, enter the following command:
+            <p class="Code">solace(configure/authentication/radius-profile)# no shutdown</p></li>
+      <li>To disable the current RADIUS profile on the event broker, enter the following  command:
+			<p class="Code">solace(configure/authentication/radius-profile)# shutdown</p></li>
+    </ul>
+    <p class="Note">RADIUS profiles are disabled by default (that is, not enabled) on Solace PubSub+ event brokers.</p>
+    <h3><a name="Registering-R-Servers"/>Registering RADIUS Servers</h3>
+    <p>To register the connection information for each RADIUS server that the RADIUS profile uses (up to three RADIUS servers can be used), enter the following command for each RADIUS host:</p>
+    <p class="Code">solace(configure/authentication/radius-profile)# radius-server &lt;ip-port&gt; index &lt;server index&gt; key &lt;shared-secret-key&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;ip-port&gt;</code> is the IP address or fully qualified domain name (FQDN) and port of the RADIUS host. If you set this value using the FQDN of the RADIUS host, be aware that the system must perform a DNS lookup for each connection. In deployments with a large number of client connections, authentication time may increase.</p>
+    <p><code>&lt;server index&gt;</code> is the priority index of the host to be provisioned. Valid values are 1, 2, or 3, where 1 is the primary, 2 is the secondary, and 3 is the tertiary. The default is next available.</p>
+    <p><code>&lt;shared-secret-key&gt;</code> is the shared secret key words to exchange between the RADIUS host and Solace PubSub+ event brokers. If the secret key contains spaces, it must be placed inside quotation marks (for example, “shared secret with spaces”). This is a required parameter for new entries.</p>
+    <p>The no version of this command, <code>no radius-server &lt;ip-port&gt;</code>, deprovisions the RADIUS host and deletes the shared secret key.</p>
+    <h3><a name="Setting-Retry-Timeouts"/>Setting Retry Timeouts</h3>
+    <p>To set the time to wait before retrying a request to a RADIUS server, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/radius-profile)# timeout &lt;duration&gt; </p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;duration&gt;</code> is an integer from 1 to 10 that specifies the amount of time in seconds to wait to retry a request. </p>
+    <h2 class="with-rule"><a name="Show-RADIUS-Info"/>Showing RADIUS Profile Information</h2>
+    <p>To query configuration details on a currently provisioned RADIUS profile, enter the following  command:</p>
+    <p class="Code">solace&gt; show radius-profile &lt;profile-name&gt; [detail | stats]</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;profile-name&gt;</code> is the name of the specified RADIUS profile.</p>
+    <p><code>detail</code> specifies to show detailed information on the RADIUS profile.</p>
+    <p><code>stats</code> specifies to show statistics on the RADIUS profile. </p>
+    <p class="Note">To clear statistics associated with a currently provisioned RADIUS profile, enter the following command:</p>
+    <p class="Code">solace&gt; enable<br/>solace# clear radius-profile &lt;profile-name&gt; stats</p>
+    <h2 class="with-rule"><a name="RADIUS-Server-Ex"/>RADIUS Server Configuration Example</h2>
+    <p>The following sample session shows how to set the primary RADIUS host to 192.168.1.4:1812 with a shared secret of <code>sharedSecret1</code>, and the secondary host to 192.168.1.5:1812 with a shared secret of <code>sharedSecret2</code>:</p>
+    <p class="Code">solace(configure)# authentication<br/>solace(configure/authentication)# radius-profile solace1<br/>solace(configure/authentication/radius-profile)# radius-server 192.168.1.4 index 1 key sharedSecret1<br/>solace(configure/authentication/radius-profile)# radius-server 192.168.1.5 index 2 key sharedSecret2</p>
+    <p>The following sample session shows how to display the provisioned RADIUS profile <code>solace 1</code>.</p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Sample</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre xml:space="preserve">solace&gt; show radius-profile solace1
+ 
+Radius Profile Name: solace1
+Shutdown: Yes
+Retransmit: 3 attempts/server
+Timeout: 5 secs/attempt
+
+Index | Radius Servers
+------+----------------------------
+1 | 192.168.1.4:1812
+2 | 192.168.1.5:1812
+3 | N/A
+ 
+solace&gt; show radius-profile solace1 stats
+
+Radius Profile Name: solace1
+ 
+Host                  |  Requests |  Requests |  Timeouts |   Server |    Errors
+		       |  Accepted |  Rejected |           |  Unavail |
+----------------------+-----------+-----------+-----------+----------+----------
+192.168.1.4:1812      |         0 |         0 |         0 |        0 |         0
+192.168.1.5:1812      |         0 |         0 |         0 |        0 |         0
+N/A                   |         0 |         0 |         0 |        0 |         0
+ 
+solace&gt; show radius-profile solace1 detail
+Radius Profile Name: solace1
+Shutdown: Yes
+Retransmit: 3 attempts/server
+Timeout: 5 secs/attempt
+Radius Server:
+Host: 192.168.1.4:1812           Index 1
+					
+-------- Last reply message --------
+ 
+------------------------------------
+Radius Server:
+Host: 192.168.1.5:1812           Index 2
+-------- Last reply message --------
+
+------------------------------------
+Radius Server:
+Host: N/A                        Index 3
+-------- Last reply message --------
+ 
+------------------------------------</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <h2 class="with-rule"><a name="RADIUS-Attributes"/>RADIUS Attributes Used by Event Brokers</h2>
+    <p>Solace PubSub+ event brokers use the following RADIUS attributes in a RADIUS profile to define specific authentication and authorization elements for users and/or clients. The profile is stored on the RADIUS server. RADIUS messages contain these attributes to communicate information between Solace PubSub+ messsage brokers and the RADIUS server, such as the supported access levels.</p>
+    <p class="Note">The RADIUS vendor identifier for Solace is 17337.</p>
+    <h3><a name="Access-Request"/>Access-Request Attributes</h3>
+    <p>The following table lists the RADIUS Access-Request attributes sent from the Solace PubSub+ event broker to the RADIUS server to determine whether a specific user and/or client is allowed event broker access.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;width: 95%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">RADIUS Access-Request Attributes</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Attribute</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Type Code</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">User-Name</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">1</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">CLI user or client username, followed by “@&lt;domain name&gt;”, where the domain name is provisionable. The username is not modified if the provisioned domain name is NULL.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">User-Password</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">2</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">CLI user or client password</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">NAS-IP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">4</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">Management interface IP address of the Solace PubSub+ event broker.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="Access-Accept"/>Access-Accept Attributes</h3>
+    <p>The following three tables list the RADIUS Access-Accept attributes sent from the RADIUS server to the Solace PubSub+ event broker. The RADIUS Access-Accept message is a reply to an Access-Request message. When the Access‑Accept message is received by the event broker, its contents are examined to determine the action to take.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;width: 95%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">RADIUS Access-Accept Attributes</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col width="56px" class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Attribute</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Type Code</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Vendor Specific Attribute (VSA) Type</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Service-Type</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">6</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">n/a</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">If value is not <code>Login</code>, message completes parsing as Access-Accept, then is treated as Access-Reject and the connection is terminated. This is the most generic of the Service-Type values—it states that the user or client should be connected to a server. The other RADIUS-defined values for this field do not adequately define the provided service. Instead, vendor-specific attributes are used to determine the type of service to grant.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td rowspan="4" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Vendor-Specific</p>
+          </td>
+          <td rowspan="4" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">26</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">1</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body"><code>User-Type</code>: The value may be <code>cli_user</code> or <code>client_user</code>. </p>
+            <p class="Tbl_Body">For CLI user connections, a VSA value of <code>cli_user User-Type</code> is expected. Any other type results in the termination of the CLI and the SSH session.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">5</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body"><code>CliGlobalAccessLevel</code>: This is only valid when the <code>User-Type</code> is <code>cli_user</code>. The value may be <code>none</code>, <code>read-only</code>, <code>read-write</code>, or <code>admin</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">6</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body"><code>CliDefaultMessageVpnAccessLevel</code>: This is only valid when the User-Type is <code>cli_user</code>. The value may be <code>none</code>, <code>read-only</code>, or <code>read-write</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">7</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body"><code>CliMessageVpnAccessLevelException</code>: This is only valid when the User-Type is <code>cli_user</code>. The format is <code>&lt;access-level&gt;@&lt;vpn-name&gt;</code>, where access-level may be <code>none</code>, <code>read-only</code>, or <code>read-write</code>. This overrides the default access level specified by <code>CliDefaultMessageVpnAccessLevel</code>.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <table class="TableStyle-Table_Num" style="caption-side: top;width: 95%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">User-Type VSA Values</p>
+      </caption>
+      <col width="auto" class="TableStyle-Table_Num-Column-Column1"/>
+      <col width="auto" class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Name</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Value</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">cli_user</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">0x00000002</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">A CLI user; it is restricted to the event broker’s SSH port.</p>
+            <p class="Tbl_Body">A <code>CliGlobalAccessLevel</code> value may be sent to grant the CLI user a particular access level. This value is a string that must be one of the values listed in the table below <MadCap:xref href="#CliGlobalAccess_table">CliGlobalAccess VSA Values</MadCap:xref>. If a <code>CliGlobalAccessLevel</code> is not sent, then the CLI user is assigned the privileges specified by the default global access level, as configured on the event broker.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">client_user</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">0x00000003</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">A client; it is restricted to posting SMF requests.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <table class="TableStyle-Table_Num" style="caption-side: top;width: 95%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption"><a name="CliGlobalAccess_table"/>CliGlobalAccess VSA Values</p>
+      </caption>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Name</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">none</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">The CLI user has no global access.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">read-only</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">The CLI user is only allowed to perform show commands.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">read-write</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">The CLI user is allowed to perform all commands except for those related to the creation and modification of CLI user accounts.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">admin</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">The CLI user is allowed to perform all CLI commands.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="Access-Reject"/>Access-Reject Attributes</h3>
+    <p>The following table lists the RADIUS Access-Reject attributes sent from the RADIUS server to the Solace PubSub+ event broker when an unauthorized CLI user is identified.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;width: 95%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">RADIUS Access-Reject Attributes</p>
+      </caption>
+      <col width="auto" class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Attribute</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Type Code </th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">Reply-Message</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">18</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">Upon receipt of an Access-Reject message, the Solace PubSub+ event broker closes the SSH session.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>DNS Configuration</h1>
+    <p>DNS servers can be provisioned on a Solace PubSub+ appliance using the instructions provided in <MadCap:xref href="#Config_DNS_Add_Servers">Adding DNS Servers</MadCap:xref>. This feature is not supported on software event brokers. </p>
+    <p>On either appliances or software event brokers, the operational command shown in <MadCap:xref href="#Config_DNS_Config_Polled">Configuring Polled Domain Name</MadCap:xref> can be used to set the domain name that will be polled to determine whether the provisioned DNS servers can be reached, and the command discussed in <MadCap:xref href="#Config_DNS_Display">Displaying Provisioned DNS Servers</MadCap:xref> can be used to list those servers.</p>
+    <h2 class="with-rule"><a name="Config_DNS_Add_Servers"/>Adding DNS Servers</h2>
+    <p>On an appliance, DNS servers on external host machines can be provisioned so that hostnames can be used for network object IP addresses. (Refer to your third-party DNS server documentation for information on choosing a host machine and installing the server software.)</p>
+    <p>To add a DNS server to a appliance, enter the following CONFIG commands once you have ensured that the DNS server's IP address is reachable from the Solace management interface and that the DNS server is in the Solace Management VRF:</p>
+    <pre class="Code">solace(configure)# dns
+solace(configure/dns)# name-server &lt;ip-addr&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;ip-addr&gt;</code> is the IP address for the DNS server, specified in the dotted decimal notation form nnn.nnn.nnn.nnn.</p>
+    <p>The no version of this command, <code>no name-server</code>, removes an existing DNS server from the DNS server list and deletes all of its associated configuration values.</p>
+    <div class="Note">
+      <ul>
+        <li>DNS servers can also be added to an appliance during its initial setup. Refer to <MadCap:xref href="../Appliance/Appliance-Set-Up/Initializing-Appliances.htm">Initializing Appliances</MadCap:xref>.</li>
+        <li>You must repeat the <code>name-server</code> DNS CONFIG command for each DNS server that you want to add (up to three can be added). Each addition is placed at the bottom of the DNS list.</li>
+        <li> If multiple DNS name servers are provisioned, the hostname query mechanism tries the first DNS server in the list, and if the query times out, it then tries the next DNS server, until the end of the list is reached. However, if at the start the first DNS server replies with a NOT FOUND message, then the query cycle is canceled.</li>
+        <li>When Config Sync is used, the configured DNS servers are synchronized between redundant appliances; however, DNS servers are not synchronized between Replication sites.</li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="Config_DNS_Config_Polled"/>Configuring Polled Domain Name</h2>
+    <p>To configure the domain name that will be looked up every 30 seconds to determine whether the provisioned DNS servers can be reached, enter the following CONFIG commands:</p>
+    <pre class="Code">solace(configure)# dns
+solace(configure/dns)# polled-domain-name &lt;domain-name&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;domain-name&gt;</code> is the domain name that is looked up to determine the status of the name servers. The default configured domain name is “www.solace.com”.</p>
+    <p>The no version of this command, <code>no polled-domain-name</code>, resets the polled domain name to the default of “www.solace.com”.</p>
+    <h2 class="with-rule"><a name="Config_DNS_Search_Domain"/>Configuring the Search Domain List</h2>
+    <p>The DNS configuration on each appliance includes a list of domains to add to a hostname that the system is trying to resolve.  If a DNS lookup fails, the system retries the lookup  with the domains contained in the search list, in order, until one is successful.</p>
+    <p>For example, suppose that the system is trying to resolve the host name <code>ldap.example.echonet</code> and the search list includes the domains <code>xmp.solace.intra</code>, <code>solace.intra</code>, and <code>eu.solace.intra</code>. If the DNS server that the appliance is using cannot resolve <code>ldap.example.echonet</code>, it will try to resolve <code>ldap.example.echonet.xmp.solace.intra</code>, <code>ldap.example.echonet.solace.intra</code>, and <code>ldap.example.echonet.eu.solace.intra</code> in order until one is successful.</p>
+    <p>To configure the search domain list, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure)# dns<br/>solace(configure/dns)# search-domain-list &lt;domain-list&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;domain-list&gt;</code> is the list of domains to search. You can provide a space separated list with up to six domains with a total length of 255 characters. No domains are included in the list by default.  </p>
+    <p>The no version of this command, <code>no search-domain-list</code>, resets the  domain list to the default.</p>
+    <h2 class="with-rule"><a name="Config_DNS_Display"/>Displaying Provisioned DNS Servers</h2>
+    <p>To view the DNS servers currently provisioned, enter the following User EXEC command:</p>
+    <pre class="Code">solace&gt; show dns</pre>
+    <p><u>Example</u>:</p>
+    <pre class="Code">solace&gt; show dns
+Polled Domain Name  : www.solace.com
+Last Refreshed Time : Mon Nov  6 18:04:23 2017
+
+Name Server                               Status               Source
+----------------------------------------- -------------------- -------
+192.168.40.81                             up                   system
+192.168.40.80                             down                 system
+8.8.8.8                                   up                   system</pre>
+    <p class="Note">When multiple DNS name servers are provisioned, queries are made following the listed order of servers shown by the <code>show dns</code> User EXEC command.</p>
+    <h2 class="with-rule"><a name="DNS_name_lookup"/>DNS Name Lookup</h2>
+    <p>In all contexts where name resolution applies (for example, <code>connect-via</code> addresses for VPN bridges) the event broker attempts to resolve domain names using the configured DNS server(s) either on the appliance or on the host OS of the software event broker.</p>
+    <p>In both cases, the broker will attempt to establish a connection to the highest prioritized IPv4 and highest prioritized IPv6 address (if supported); the higher priority address connection is attempted first.</p>
+  </body>
+</html>

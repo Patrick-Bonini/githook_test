@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>ACL Configuration</h1>
+    <p>Access Control Lists (ACLs) are used to manage whether clients may connect to Message VPNs, which topics clients are allowed to publish to, and which topics and share names clients are allowed to subscribe to in that Message VPN. Each of these access controls require a defined default action (allow or disallow connection, allow or disallow publishing to topics,  allow or disallow subscribing to topics, and allow or disallow subscribing to share names), and you can configure explicit exceptions to those default actions.</p>
+    <p>To set up and use ACLs, you perform the following steps:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Create-ACL-Profile">Creating ACL Profiles</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Config-Client-Connect-Auth">Configuring Client Connect Authorization</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Config-Topics-May-Pub-To">Configuring Topic Publish Permissions</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Config-Topics-May-Sub-To">Configuring Topic Subscribe Permissions</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Configur">Configuring Share Name Subscribe Permissions</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Assign-ACLs-to-Usernames">Assigning ACLs to Client Usernames</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Create-ACL-Profile"/>Creating ACL Profiles</h2>
+    <p>The first thing you need to do is create an ACL Profile.</p>
+    <p>To create a new ACL profile for a Message VPN, enter the following CONFIG command:       <pre class="Code" xml:space="preserve">solace(configure)# create acl-profile &lt;name&gt; message-vpn &lt;vpn-name&gt; [allow-client-connect] [allow-publish-topic] [allow-subscribe-topic] [disallow-subscribe-share-name]</pre></p>
+    <p>To edit the configuration parameters for an existing ACL profile on a Message VPN, enter the following CONFIG command:
+<pre class="Code">solace(configure)# acl-profile &lt;name&gt; message-vpn &lt;vpn-name&gt;</pre></p>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li><code>&lt;name&gt;</code> is the name of the ACL profile. The name can contain up to 32 alphanumeric characters (case-sensitive). The "_" character is also permitted. Names must be unique across all ACL profiles for a Message VPN, although the same name can be used in different Message VPNs.</li>
+      <li><code>&lt;vpn-name&gt;</code> is the name of the Message VPN that the ACL belongs to.</li>
+      <li><code>allow-client-connect</code> sets the default action to allow client connection attempts.</li>
+      <li><code>allow-publish-topic</code> sets the default action to allow the publishing of messages to topics.</li>
+      <li><code>allow-subscribe-topic</code> sets the default  action to allow clients to subscribe to topics.</li>
+      <li><code>disallow-subscribe-share-name</code> sets the default  action to disallow clients from subscribing to share names.</li>
+    </ul>
+    <p>The <code>no</code> version of this command, <code>no acl-profile &lt;name&gt;</code>, deletes the ACL profile from the Message VPN.</p>
+    <h2 class="with-rule"><a name="Config-Client-Connect-Auth"/>Configuring Client Connect Authorization</h2>
+    <p>You can use ACLs to control which clients may connect to a Message VPN.</p>
+    <p>To set the default action for client connection attempts, enter the following CONFIG commands:
+<pre class="Code">solace(configure/acl-profile)# client-connect<br/>solace(configure/acl-profile/client-connect)# default-action {allow | disallow}</pre><p><u>Where:</u></p><ul><li><code>allow</code> sets the default action to allow client connection attempts.</li><li><code>disallow</code> sets the default action to disallow client connection attempts. This is the default value.</li></ul></p>
+    <p>To set the exceptions to the default action for client connection attempts, enter the following CONFIG commands:
+<pre class="Code">solace(configure/acl-profile)# client-connect<br/>solace(configure/acl-profile/client-connect)# exception &lt;cidr-addr&gt;</pre><p><u>Where:</u></p><p><code>&lt;cidr-addr&gt;</code> is the IP address and network mask combination of the excepted client in Classless Inter-Domain Routing (CIDR) form: nnn.nnn.nnn.nnn/dd (where nnn is 0-255, dd is 1-32).</p><p>Changing the default client connect action, or removing clients from the exceptions list, does not immediately affect clients that already have an established connection to the Solace PubSub+ event broker. They remain connected.</p><p>An example of how to use these commands is shown in <MadCap:xref href="#Control-Which-Clients-Connect">Controlling Which Clients Can Connect</MadCap:xref>.</p></p>
+    <h2 class="with-rule"><a name="Config-Topics-May-Pub-To"/>Configuring Topic Publish Permissions</h2>
+    <p>You can use ACLs to control the topics to which clients are allowed to publish.</p>
+    <p>To set whether the default action is to allow clients to publish to topics or not, enter the following CONFIG command:
+<pre class="Code">solace(configure/acl-profile)# publish-topic
+solace(configure/acl-profile/publish-topic)# default-action {allow | disallow}</pre><p><u>Where</u>:</p><ul><li><code>allow</code> sets the default action to allow the publishing of messages to topics.</li><li><code>disallow</code> sets the default action to disallow the publishing of messages to topics. This is the default value.</li></ul></p>
+    <p>If you change the default action for an ACL profile, any existing topics listed as exceptions are maintained as exceptions, but their behavior becomes the opposite of what it was.</p>
+    <p>To set exceptions to the default action for publishing topic access attempts, enter the following CONFIG command:
+<pre class="Code">solace(configure/acl-profile)# publish-topic<br/>solace(configure/acl-profile/publish-topic)# exceptions [smf | mqtt] list &lt;exception-list&gt;</pre><p><u>Where</u>:</p><ul><li><code>smf</code> indicates that the topic to be excepted uses Solace Messaging Format (SMF) topic syntax. By default, if neither <code>smf</code> or <code>mqtt</code> is explicitly entered, the topic will be an SMF topic exception. For information on topic syntax and considerations that should made for Solace PubSub+ to handle SMF and MQTT topics similarly, see <MadCap:xref MadCap:unresolvedLink="import-link:a_topic_support_and_syntax_819845554_56063" href="../Messaging/Topic-Support-and-Syntax.htm">Topic Support and Syntax</MadCap:xref>.</li><li><code>mqtt</code> indicates that the topic to be excepted uses Message Queuing Telemetry Transport (MQTT) topic syntax.</li><li><code>&lt;exception-list&gt;</code> is a list of space-separated topics (in the form a/b/c) to be excepted from the default action. Each topic may be up to 250 characters. The listed topics should be constructed with the appropriate topic syntax (either SMF or MQTT topic syntax ); however, regardless of syntax, all exceptions apply to all clients,  independent of their wireline protocol, to which the ACL is assigned. Leading "!" characters (in the form !a/b/c), which are used to indicate subscription exceptions in queues, do not receive special handling and are treated as literal characters in ACL topic exception lists. For more information about subscription exceptions, see <MadCap:xref href="../Messaging/Guaranteed-Msg/System-Level-Subscription-Exception-Config.htm">System-Level Subscription Exception Configuration</MadCap:xref>.</li></ul><p>The <code>no</code> version of this command, <code>no exceptions</code>, removes any given topic publish exceptions.</p><p>Published topics of the form <code>#P2P/v:*/&gt;</code>, which are used for clientsʼ Direct Request/Reply messaging, are exempt from publish-topic ACL checks.</p><p>An example of how to use these commands is shown in <MadCap:xref href="#Control-Which-Topics-Pub-Sub-To">Controlling Which Topics a Client May Publish and Subscribe To</MadCap:xref>.</p><h3><a name="Sub-Variables"/>Substitution Variables</h3><p>For Solace PubSub+ software event brokers version 8.2.0+ and Solace PubSub+ appliance versions 8.3.0+, the following substitution variables can be used in a topic level of an ACL topic exception: </p><ul><li><code>$client-id</code>—For this variable, the event broker will substitute the MQTT client-ID that the client provided when it established its session. <code>$client-id</code> only applies to MQTT sessions.</li><li><code>$client-username</code>—For this variable, the event broker will substitute the client username provided by the client or retrieved from the TLS client-certificate during client login.</li><li><code>$client-username-hash</code>—For this variable, the event broker will substitute the unique 8-byte long "client-username-hash" that the event broker generates for a client based on the client username the client provided or was retrieved from the TLS client-certificate during client login. This identifying client-username-hash is used in the #P2P topic (<code>#P2P/v:routerName/client-username-hash/clientname/&gt;</code>) that the event broker creates for the client so that it can use Direct Request/Reply messaging.</li></ul><p>For more information on how substitution values can be used in topic exceptions, see <MadCap:xref href="Granting-Clients-Access.htm#Using">Using Substitution Variables in Topic Exceptions</MadCap:xref>.</p></p>
+    <h3><a name="Pub-Queue"/>Publishing to Queues</h3>
+    <p>To control publishing to queues, a topic pattern that represents specific queues may be listed. The topic pattern for a queue is <code>#P2P/QUE/&lt;queueName&gt;</code> and an example of how to use this to prevent publication to a queue is shown in <MadCap:xref href="#Control-Which-Queues-Pub-To">Controlling Which Queues Clients May Publish To</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Config-Topics-May-Sub-To"/>Configuring Topic Subscribe Permissions</h2>
+    <p>You can use ACLs to control the topics to which clients are allowed to subscribe.</p>
+    <p>To set whether the default action is to allow clients to subscribe to topics or not, enter the following CONFIG commands:
+<pre class="Code">solace(configure/acl-profile)# subscribe-topic
+solace(configure/acl-profile/subscribe-topic)# default-action {allow | disallow}</pre><p><u>Where</u>:</p><ul><li><code>allow</code> sets the default subscribe action to allow clients to subscribe to topics.<div class="Caution"><p>Using ACL profiles with a default subscribe action set to <code>allow</code> is not recommended when the goal is to restrict access to specific topics. This approach can result in unexpected behavior, particularly concerning wildcard handling (see <MadCap:xref href="Granting-Clients-Access.htm#Wildcard">Wildcard Handling</MadCap:xref>). ACL profiles with a default subscribe action of <code>allow</code> are best suited for scenarios where there are no restrictions on the topics a client can subscribe to.</p></div></li><li><code>disallow</code> sets the default subscribe action to disallow clients from subscribing to topics. This is the default value.</li></ul><p>If you change the default action for an ACL profile, existing user-configured exceptions are maintained as exceptions, but their behavior becomes the opposite of what it was.</p><p class="Tip">If you want to ensure that snooping of #P2P topics that are used for Direct Request/Reply messaging cannot occur, you should set the subscribe-topic default-action to <code>disallow</code>. When set to <code>disallow</code>, clients will still be able to subscribe to their own #P2P topics because the event broker automatically adds an exception topic of the form <code>#P2P/v:routerName/$client-username-hash/&gt;</code>. If the subscribe-topic default-action is later changed to <code>allow</code>, this exception topic will be automatically removed. (Note that this auto-added topic is not visible through the Solace CLI.)</p></p>
+    <p>To set any exceptions to the default action for topic subscriptions, enter the following CONFIG commands:
+<pre class="Code">solace(configure/acl-profile)# subscribe-topic
+solace(configure/acl-profile/subscribe-topic)# exceptions [smf | mqtt] list &lt;exception-list&gt;</pre><p><u>Where</u>:</p><ul><li><code>smf</code> indicates that the topic to be excepted is an SMF topic. If neither <code>smf</code> or <code>mqtt</code> is not explicitly entered, by default the topic will be an SMF topic exception. For information on topic syntax and considerations that should made for Solace PubSub+ to handle SMF and MQTT topics similarly, see <MadCap:xref MadCap:unresolvedLink="import-link:a_topic_support_and_syntax_819845554_56063" href="../Messaging/Topic-Support-and-Syntax.htm">Topic Support and Syntax</MadCap:xref>.</li><li><code>mqtt</code> indicates that the topic to be excepted is an MQTT topic.</li><li><code>&lt;exception-list&gt;</code> is a list of space-separated topics (in the form <code>a/b/c</code>) to be excepted from the default action. Each topic may be up to 250 characters. The listed topics should be constructed with the appropriate topic syntax (either SMF or MQTT topic syntax); however, regardless of their syntax, all exceptions apply to all clients, independent of their wireline protocol, to which the ACL is assigned. Leading "!" characters (in the form <code>!a/b/c</code>), which are used to indicate subscription exceptions in queues, do not receive special handling and are treated as literal characters in ACL topic exception lists. For more information about subscription exceptions, see <MadCap:xref href="../Messaging/Guaranteed-Msg/System-Level-Subscription-Exception-Config.htm">System-Level Subscription Exception Configuration</MadCap:xref>.</li></ul><p>The <code>no</code> version of this command, <code>no exceptions</code>, removes any given topic subscribe exceptions.</p><p>Subscriptions of the form <code>#P2P/v:*/&gt;</code> are subject to subscribe-topic ACL checks.</p><p>An example of how to use these commands is shown in <MadCap:xref href="#Control-Which-Topics-Pub-Sub-To">Controlling Which Topics a Client May Publish and Subscribe To</MadCap:xref>.</p><h3><a name="Sub-Sub-Variables"/>Substitution Variables</h3><p>For Solace PubSub+ software event brokers version 8.2.0+ and Solace PubSub+ appliance versions 8.3.0+, the following substitution variables can be used in a topic level of an ACL topic exception: </p><ul><li><code>$client-id</code>—For this variable, the event broker will substitute the MQTT client-ID that the client provided when it established its session. <code>$client-id</code> only applies to MQTT sessions.</li><li><code>$client-username</code>—For this variable, the event broker will substitute the client username provided by the client or retrieved from the TLS client-certificate during client login.</li><li><code>$client-username-hash</code>—For this variable, the event broker will substitute the unique 8-byte long "client-username-hash" that the event broker generates for a client based on the client username the client provided or was retrieved from the TLS client-certificate during client login. This identifying client-username-hash is used in the #P2P topic (<code>#P2P/v:routerName/client-username-hash/clientname/&gt;</code>) that the event broker creates for the client so that it can use Direct Request/Reply messaging.</li></ul><p>For more information on how substitution values can be used in topic exceptions, see <MadCap:xref href="Granting-Clients-Access.htm#Using">Using Substitution Variables in Topic Exceptions</MadCap:xref>.</p></p>
+    <h2 class="with-rule"><a name="Configur"/>Configuring Share Name Subscribe Permissions</h2>
+    <p>You can use ACLs to control the share names to which clients are allowed to subscribe. Share names in this case are the identifiers associated with shared subscriptions. For more information, refer to <MadCap:xref href="../Messaging/Direct-Msg/Direct-Messages.htm#Syntax">Syntax of Shared Subscriptions</MadCap:xref>.</p>
+    <p>To set whether the default action is to allow clients to subscribe to share names or not, enter the following CONFIG commands:
+<pre class="Code">solace(configure/acl-profile)# subscribe-share-name
+solace(configure/acl-profile/subscribe-share-name)# default-action {allow | disallow}</pre><p><u>Where</u>:</p><ul><li><code>allow</code> sets the default subscribe action to allow clients to subscribe to share names. This is the default value.</li><li><code>disallow</code> sets the default subscribe action to disallow clients from subscribing to share names. </li></ul><p>If you change the default action for an ACL profile, existing user-configured exceptions are maintained as exceptions, but their behavior becomes the opposite of what it was.</p><p>To set any exceptions to the default action for share name subscriptions, enter the following CONFIG commands:</p><pre class="Code">solace(configure/acl-profile)# subscribe-share-name
+solace(configure/acl-profile/subscribe-share-name)# exceptions [smf | mqtt] list &lt;exception-list&gt;</pre><p><u>Where</u>:</p><ul><li><code>smf</code> indicates that the share name to be excepted is an SMF share name. If neither <code>smf</code> or <code>mqtt</code> is not explicitly entered, by default the share name will be an SMF share name exception.</li><li><code>mqtt</code> indicates that the share name to be excepted is an MQTT share name.</li><li><code>&lt;exception-list&gt;</code> is a list of space-separated share names  to be excepted from the default action. Each share name may be up to 250 characters. The listed share names should be constructed with the appropriate  syntax (either SMF or MQTT  syntax).</li></ul></p>
+    <h2 class="with-rule"><a name="Assign-ACLs-to-Usernames"/>Assigning ACLs to Client Usernames</h2>
+    <p>To assign an ACL profile to a client username account, enter the following CONFIG commands:</p>
+    <pre class="Code">solace(configure)# client-username &lt;username&gt; message-vpn &lt;vpn-name&gt;
+solace(configure/client-username)# acl-profile &lt;name&gt;</pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li><code>&lt;username&gt;</code> is the username of the client username account</li>
+      <li><code>&lt;vpn-name&gt;</code> is the name of the Message VPN the client username belongs to</li>
+      <li><code>&lt;name&gt;</code> is the name of the ACL profile</li>
+    </ul>
+    <p>The <code>no</code> version of this command, <code>no acl-profile</code>, resets the assigned profile for the client username account back to the profile named <code>default</code>.</p>
+    <p class="Note">A client username must be shutdown before an ACL profile can be assigned to it.
+        </p>
+    <h2 class="with-rule"><a name="ACL-Config-Exs"/>ACL Configuration Examples</h2>
+    <p>This section shows the basic procedural steps that are required configure ACLs on an event broker. The exact steps required will vary depending on your network conditions and preferred configuration.</p>
+    <h3><a name="Control-Which-Clients-Connect"/>Controlling Which Clients Can Connect</h3>
+    <p>The following example configures a client-connect ACL profile that disallows clients on IP subnet 10.10.0.0/16 from connecting to the event broker, and allows clients from other IP subnets to connect.</p>
+    <ol>
+      <li>Create an ACL profile:</li>
+      <pre class="Code">solace(configure)# create acl-profile analyst_group_d message-vpn blue<br/>solace(configure/acl-profile)#</pre>
+      <li>Set the default action for client connection access attempts:                
+			<pre class="Code">solace(configure/acl-profile)# client-connect<br/>solace(configure/acl-profile/client-connect)# default-action allow</pre></li>
+      <li>Set exceptions to the default action for client connection access attempts:
+                <pre class="Code">solace(configure/acl-profile/client-connect)# default-action exception 10.10.0.0/16</pre></li>
+      <li>Assign the ACL profile to a given client username:
+            <pre class="Code">solace(configure)# client-username joe message-vpn blue<br/>solace(configure/client-username)# acl-profile analyst_group_d</pre></li>
+    </ol>
+    <h3><a name="Control-Which-Topics-Pub-Sub-To"/>Controlling Which Topics a Client May Publish and Subscribe To</h3>
+    <p>The following example configures a topic-access ACL profile so that:</p>
+    <ul>
+      <li>Clients cannot publish to the <code>animals/domestic/cats</code> topic (all other topics are allowed)</li>
+      <li>Clients cannot use a subscription to the <code>animals/domestic/dogs</code> topic (all other topics are allowed)</li>
+    </ul>
+    <p>It then assigns the configured ACL profile to a particular client username.</p>
+    <ol>
+      <li>Set the default action for publishing topic attempts:</li>
+      <pre class="Code">solace(configure)# acl-profile analyst_group_d message-vpn blue<br/>solace(configure/acl-profile)# publish-topic<br/>solace(configure/acl-profile/publish-topic)# default-action allow</pre>
+      <li>Set exceptions to the default action for publishing topic attempts:</li>
+      <pre class="Code">solace(configure/acl-profile/publish-topic)# exception animals/domestic/cats</pre>
+      <li>Set the default action for topic subscription attempts:</li>
+      <pre class="Code">solace(configure/acl-profile)# subscribe-topic<br/>solace(configure/acl-profile/subscribe-topic)# default-action allow</pre>
+      <li>Set exceptions to the default action for topic subscription attempts:</li>
+      <pre class="Code">solace(configure/acl-profile/subscribe-topic)# exception animals/domestic/dogs</pre>
+      <li>Verify that the ACL profile is correct:</li>
+      <pre class="Code">solace&gt; show acl-profile analyst_group_d message-vpn blue
+
+                                                       Allowed/#Exceptions
+ACL Profile              Message VPN             Conn    Pub     Sub     Share
+------------------------ ----------------------- ------- ------- ------- -------
+analyst_group_d          blue                    y/1     y/1     y/1     y/0</pre>
+      <li>Assign the ACL profile to a client username:</li>
+      <pre class="Code">solace(configure)# client-username fred message-vpn blue<br/>solace(configure/client-username)# acl-profile analyst_group_d</pre>
+    </ol>
+    <h3><a name="Control-Which-Queues-Pub-To"/>Controlling Which Queues Clients May Publish To</h3>
+    <p>The following example configures an ACL profile so that clients cannot publish to the queue <code>myQueue</code> (all other topics are allowed). The ACL profile is then assigned to a particular client username.</p>
+    <ol>
+      <li>Set the default action for publishing topic attempts:<pre class="Code">solace&gt; enable<br/>solace# configure<br/>solace(configure)# acl-profile queuePublishAcl message-vpn blue<br/>solace(configure/acl-profile)# publish-topic<br/>solace(configure/acl-profile/publish-topic)# default-action allow</pre></li>
+      <li>Set exceptions to the default action for publishing topic attempts:<pre class="Code">solace(configure/acl-profile/publish-topic)# exception #P2P/QUE/myQueue</pre></li>
+      <li>Verify that the ACL profile is correct:
+<pre class="Code">solace(configure/acl-profile/publish-topic)# show acl-profile queuePublishAcl message-vpn blue
+
+                                                       Allowed/#Exceptions
+ACL Profile              Message VPN             Conn    Pub     Sub     Share
+------------------------ ----------------------- ------- ------- ------- -------
+queuePublishAcl          blue                    y/0     y/1     y/0     y/0</pre></li>
+      <li>Assign the ACL profile to a client username:
+<pre class="Code">solace(configure)# client-username fred message-vpn blue
+solace(configure/client-username)# acl-profile queuePublishAcl</pre></li>
+    </ol>
+    <h2 class="with-rule"><a name="View-ACL-Profiles"/>Viewing ACL Profiles</h2>
+    <p>To view the current ACL profile configurations, enter the following show command:</p>
+    <pre class="Code">solace&gt; show acl-profile &lt;name&gt; [message-vpn &lt;vpn-name&gt;] [{detail [[client-connect] [publish-topic] [subscribe-topic] [subscribe-share-name]]} | {users}]</pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li><code>&lt;name&gt;</code> is the name of the ACL profile. Entering the wildcard character * for the name displays all ACL profiles.</li>
+      <li><code>&lt;vpn-name&gt;</code> is the name of the Message VPN to which the ACL profile belongs to.</li>
+      <li><code>detail</code> specifies to show detailed ACL profile information.</li>
+      <li><code>client-connect</code> specifies to show ACL profile information relating only to client connection ACLs.</li>
+      <li><code>publish-topic</code> specifies to show ACL profile information relating only to topic publishing ACLs.</li>
+      <li><code>subscribe-topic</code> specifies to show ACL profile information relating only to topic subscription ACLs.</li>
+      <li><code>subscribe-share-name</code> specifies to show ACL profile information relating only to share subscription ACLs. </li>
+    </ul>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre class="Code">solace&gt; show acl-profile *
+
+                                                       Allowed/#Exceptions
+ACL Profile              Message VPN             Conn    Pub     Sub     Share
+------------------------ ----------------------- ------- ------- ------- -------
+#acl-profile             default                 y/0     y/0     y/0     y/0
+default                  default                 y/0     y/0     y/0     y/0</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <h2 class="with-rule"><a name="Viewing-ACL-Logs"/>Viewing ACL Logs</h2>
+    <p>To view the ACL log for the last 1,000 most recent service denials for client connections, topic publishing topics, or topic subscriptions, enter the following show command:</p>
+    <pre class="Code">solace&gt; show log acl [client-connect | publish-topic | subscribe-topic] [client-username &lt;username&gt;] [message-vpn &lt;vpn-name&gt;] [wide]</pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li><code>client-connect</code> specifies to show service denial logs relating only to client connection ACLs</li>
+      <li><code>publish-topic</code> specifies to show service denial logs relating only to topic publishing ACLs</li>
+      <li><code>subscribe-topic</code> specifies to show service denial logs relating only to topic subscription ACLs</li>
+      <li><code>&lt;username&gt;</code> is the username of an existing client username account.</li>
+      <li><code>&lt;vpn-name&gt;</code> is the name of an existing Message VPN to which the client username belongs to </li>
+      <li><code>wide </code>specifies to show ACL log information in a wide screen computer display format (300+ character width)</li>
+    </ul>
+    <p class="Note">Entering no command parameters displays service denial log information for all ACLs.</p>
+    <h3><a name="Clearing-ACL-Logs"/>Clearing ACL Logs</h3>
+    <p>To clear the ACL log either globally, or individually for client connections, topic publishing, or topic subscriptions, enter the following Privileged EXEC command:</p>
+    <pre class="Code">solace# clear log acl [client-connect | publish-topic | subscribe-topic]</pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li><code>client-connect</code> specifies to clear service denial logs relating only to client connection ACLs</li>
+      <li><code>publish-topic</code> specifies to clear service denial logs relating only to topic publishing ACLs</li>
+      <li><code>subscribe-topic</code> specifies to clear service denial logs relating only to topic subscription ACLs</li>
+    </ul>
+    <p class="Note">Entering no command parameters clears service denial log information for all ACLs.</p>
+    <h2 class="with-rule"><a name="ACL-Topic-Match"/>ACL Topic Matching Modes</h2>
+    <p>Solace PubSub+ uses a special, internal <code>#P2P/</code> prefix for some topic subscriptions. For example, a Solace messaging API automatically generates a unique topic subscription for each client, which enables messages to be sent directly to that client (for example, in request/reply scenarios). This client topic subscription is <code>#P2P/v:&lt;router-name&gt;/&lt;client-name&gt;/</code> or <code>#P2P/v:&lt;router-name&gt;/clientUsernameHash/&lt;client-name&gt;/</code>. Solace PubSub+ also uses the <code>#P2P/</code> prefix for non-durable topic endpoints and queues.</p>
+    <p>To ensure that these special topic subscriptions are always available, a Solace event broker exempts these special subscriptions when doing ACL enforcement. How this is done depends on the selected ACL topic matching mode. The following modes are available:</p>
+    <ul>
+      <li><u>Enforce for Queues</u>: Publish or subscribe ACL rules that allow clients to publish or subscribe to any topics starting with #<code>P2P/v:*/</code> are exempt from ACL checking and are not permitted to be used as publish or subscribe exceptions. This is the default ACL topic matching rule introduced with software version 7.1. This mode is always used for Solace PubSub+ software event brokers.</li>
+      <li><u>Legacy</u>: Publish or subscribe ACL rules that allow client to publish or subscribe to any topics starting with <code>#P2P</code> are exempt from ACL checking and cannot be used as publish or subscribe exceptions. This ACL topic matching rule was used prior to software version 7.1.</li>
+    </ul>
+    <p>Solace recommends that you use the Enforce for Queues ACL topic matching mode because it provides greater control over which topics clients may not publish or subscribe to. For example, temporary queues and topic endpoints are also automatically assigned topics that use a <code>#P2P/</code> prefix. However with the legacy ACL topic matching mode, ACL publish or subscribe rules could not be created to prevent clients from publishing or subscribing to those special topics.</p>
+    <p class="Note">Solace PubSub+ software event brokers can only use the Enforce for Queues ACL topic matching mode.</p>
+    <p>If you switch your event broker from Enforce for Queues ACL topic matching mode to the Legacy mode, some <code>#P2P</code> topics that previously bypassed ACL enforcement may be blocked. For these topics, you can add the appropriate topic exceptions to the ACL profile used by any affected clients (refer to <MadCap:xref href="#Switch-To-Enforce">Switching to Enforce for Queues Topic Matching Mode</MadCap:xref>). However, if necessary, you can switch the base ACL topic matching mode to the less-restrictive Legacy ACL topic matching mode (refer to <MadCap:xref href="#Set-ACL-Topic-Match">Setting an ACL Topic Matching Mode</MadCap:xref>).</p>
+    <h3><a name="Switch-To-Enforce"/>Switching to Enforce for Queues Topic Matching Mode</h3>
+    <p>When an appliance is switched from the Legacy topic matching mode to the more restrictive Enforce for Queues ACL topic matching mode, it is possible that some topics that previously bypassed ACL enforcement will be blocked if the clients are using publisher or subscriber ACLs. The type of clients that may be affected, and the ACL configuration changes that are required to restore normal operations, are listed below:</p>
+    <ul>
+      <li>
+        <u>Client applications publishing to durable queues by name</u>
+        <p>Client applications that are publishing to durable queues by name that use a client username with restrictive publisher ACLs may be blocked. If this occurs, configure the publisher ACLs for the client usernames they use to allow the following topic:<ul><li>for a particular queue: <code>#P2P/QUE/&lt;queue_name&gt;</code>, OR</li><li>for all queues: <code>#P2P/QUE/&gt;</code></li></ul></p>
+      </li>
+      <li>
+        <u>Clients using temporary queues or topics</u>
+        <p>Clients may be blocked from using temporary queues or topics if they use publisher or subscriber ACLs. In this case, configure both publisher and subscriber ACLs to allow the following topics:<ul><li style="font-family: Courier;font-weight: normal;font-style: normal;letter-spacing: 0em;text-decoration: none;"><code>#P2P/QTMP/&gt;</code></li><li style="font-family: Courier;font-weight: normal;font-style: normal;letter-spacing: 0em;text-decoration: none;"><code>#P2P/TTMP/&gt;</code></li></ul></p>
+      </li>
+      <li>
+        <u>Client applications performing cache requests</u>
+        <p>Client applications that making cache requests that use a client username with restrictive publisher ACLs may no longer be able to send cache requests to PubSub+ Cache. If this occurs, configure the publisher ACLs for the client usernames they use to allow the following topic:<ul><li style="font-family: Courier;font-weight: normal;font-style: normal;letter-spacing: 0em;text-decoration: none;"><code>#P2P/CACHEINST/&gt;</code></li></ul></p>
+      </li>
+      <li>
+        <u>PubSub+ Cache Instances operational state</u>
+        <p>A PubSub+ Cache Instance uses <code>#P2P</code> topics to communicate with the event broker. However, if the PubSub+ Cache Instance uses a client username with restrictive subscriber or publisher ACLs, the PubSub+ Cache Instance may not be able to communicate with the event broker, and will remain in the Not Available operational state. In this case, ACLs should be configured to allow the following topics:<ul><li>publisher ACLs: <code>#P2P/*/#client/CACHEMGR</code></li><li>subscriber ACLs: <code>#P2P/CACHEINST/&gt;</code></li></ul></p>
+      </li>
+      <li>
+        <u>Clients sending SEMP requests over the message bus using a legacy format</u>
+        <p>If client applications are sending SEMP requests over the message bus using the legacy format for show and clear commands, and the client has a restrictive publisher ACL, these requests may no longer be allowed. You should either reconfigure the client application to use the new format or configure their publisher ACLs to allow publishing to the following topic:<ul><li style="font-family: Courier;font-weight: normal;font-style: normal;letter-spacing: 0em;text-decoration: none;"><code>#P2P/*/#client/&gt;</code></li></ul></p>
+        <p>For more information on legacy show and clear SEMP formats, refer to <MadCap:xref MadCap:unresolvedLink="import-link:using_semp_to_manage_and_monitor_routers_4217350357_38232" href="../Admin/SEMP/Using-Legacy-SEMP.htm">
+           Using SEMP to Manage and Monitor Routers</MadCap:xref>.</p>
+      </li>
+      <li>
+        <u>Direct Messaging clients listening in on queues by name</u>
+        <p>Clients with restrictive subscriber ACLs that want to "snoop" named queues may be blocked from subscribing. In this case, configure the subscriber ACLs to allow the following topic:<ul><li>for a particular queue: <code>#P2P/QUE/&lt;queue_name&gt;</code>, OR</li><li>for all queues: <code>#P2P/QUE/&gt;</code></li></ul></p>
+      </li>
+    </ul>
+    <h3><a name="Set-ACL-Topic-Match"/>Setting an ACL Topic Matching Mode</h3>
+    <p>To configure an ACL topic matching mode for an appliance, enter the following CONFIG commands:</p>
+    <pre class="Code">solace(configure)# hardware topic-routing
+solace(configure/hardware/topic-routing)# acl-topic-matching-mode {legacy | enforce-for-queues}</pre>
+    <p><u>Where</u>:</p>
+    <p><code>legacy</code> specifies to ignore publish or subscribe ACL rules for topics starting with <code>#P2P/</code>. This ACL topic matching rule was used prior to software version 7.1.</p>
+    <p><code>enforce-for-queues</code> specifies to ignore publish or subscribe ACL rules for topics starting with #<code>P2P/v:*/</code>. This is the default ACL topic matching rule introduced with software version 7.1.</p>
+    <p>The <code>no</code> version of this command, <code>no acl-topic-matching-mode</code>, resets the base ACL topic matching rule to the default value of enforce-for-queues.</p>
+    <p class="Note">This command is only available for Solace PubSub+ appliances. Solace PubSub+ software event brokers only use the Enforce for Queues ACL topic matching mode.
+        </p>
+  </body>
+</html>

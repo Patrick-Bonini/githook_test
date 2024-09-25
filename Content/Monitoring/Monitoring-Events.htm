@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><MadCap:concept term="Software;Appliance"/>Monitoring Events</h1>
+    <p>Solace PubSub+ event brokers generate events to notify monitoring applications of state changes. These events include:</p>
+    <ul>
+      <li>Client Events - such as connects, disconnects, binds, flow events, etc.</li>
+      <li>VPN Events - such PubSub+ Cache state changes, endpoint creation, quotas exceeded, etc.</li>
+      <li>System Events - such as Multi-Node Routing events, power module up/down, fan speed changes, etc.</li>
+    </ul>
+    <p>Solace PubSub+ event brokers also allow for auditing administrative commands via Solace CLI or SEMP.</p>
+    <p>The following guidelines should be used for handling events:</p>
+    <ul>
+      <li>Critical events should be escalated by <a href="../get-support.htm" class="link-internal">contacting Solace</a>.</li>
+      <li>Applications can subscribe to a well-known topic to receive event logs published by an event broker.  Typically, standard applications wouldn't subscribe to these, but management applications might. For example, a watchdog for a group of applications.  Refer to <MadCap:xref href="#Event">Event Publishing Over the Message Bus</MadCap:xref> for more details.</li>
+      <li>Applications can also request information using SEMP over HTTP or the message bus for a snapshot of monitoring details and statistics. Refer to <MadCap:xref href="#Request">Request / Reply Monitoring Using SEMP</MadCap:xref> for more information.</li>
+      <li>To ensure that log timestamps are synchronized amongst multiple event brokers, including those in HA pairs, all event brokers should be configured to use NTP to sync clocks and ensure consistent log timestamps.</li>
+    </ul>
+    <h2 class="with-rule"><a name="Event"/>Event Publishing Over the Message Bus</h2>
+    <p>Event brokers can be configured to publish events that provide management and status information to well-known topics onto the message bus. The events can be of the following type:</p>
+    <ul>
+      <li>System-level events - such as, fan failure, redundancy down</li>
+      <li>Message VPN-level events - such as, spool usage exceeded, ingress/egress message rates exceeded</li>
+      <li>	Client events - such as, egress discard, client bind/unbind</li>
+      <li>Subscription events - such as, subscription add/remove</li>
+    </ul>
+    <p>To be able to receive events published over the message bus, publication of system-level and/or Message VPN-level events over the message bus must be enabled.</p>
+    <p class="Note">Enabling publication of subscription-level events to the message bus in a Message VPN may affect event broker subscription performance.  This should be turned on only if there are clients that require these messages to be published.</p>
+    <h3><a name="Publishi"/>Publishing System Level Events</h3>
+    <p>By default, publication of system-level events over the  message bus is not enabled. To enable an event broker to publish system level events, a currently enabled Message VPN must be configured as the Management Message VPN. Only one Message VPN can be configured as the Management Message VPN on an event broker. Once a Management Message VPN is configured, system events are then always published to the Message VPN designated as the Management Message VPN. If no Management Message VPN is configured, then system events are not published for the event broker.</p>
+    <p>Clients connected to a Management Message VPN receive system level events, and are able to access statistics from all VPNs. By default, management privileges are not assigned to any VPN, and they need to be  explicitly configured.</p>
+    <p>For more information on how to configure a VPN as a Management Message VPN,  and enable publishing of system level events, refer to <MadCap:xref href="../Features/VPN/Configuring-VPNs.htm#Designate-Mgmt-VPNs">Designating Management Message VPNs</MadCap:xref>.<MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">refer to the section “Publishing System Events” in the chapter “Subscribing to Message Bus Events” in [SolMsgBusMgt]</MadCap:conditionalText></p>
+    <h3><a name="pub-vpn-level"/>Publishing Message VPN Level Events</h3>
+    <p>By default, publication of Message VPN client and subscription events over the message bus is not enabled, and must be separately enabled for each Message VPN. Once enabled, management applications using Solace  APIs can subscribe to the well-known topics to receive event messages from the Message VPN.</p>
+    <p>Another option for event monitoring is to integrate your application with a 3rd party monitoring system - open-source or proprietary - that can leverage one or more of the supported integration options.</p>
+    <p>For information on how to configure publication of Message VPN level events, refer to <MadCap:xref href="../Features/VPN/Configuring-VPNs.htm#Config-Event-Gen">Configuring Message VPN Event Generation</MadCap:xref> and <MadCap:xref href="Configuring-Client-Event-Output-and-Thresholds.htm">Configuring Event Outputs and Thresholds</MadCap:xref>.<MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput"> refer to the section “Publishing Message-VPN level Events” in the chapter “Subscribing to Message Bus Events” in [SolMsgBusMgt]</MadCap:conditionalText></p>
+    <ul>
+      <li>For examples of event monitoring over the message bus, refer to sample applications EventMonitor.java or EventMonitor.c, available in the Solace Java and C SDKs. The examples demonstrate how to configure a client to receive event broker event information using Solace APIs.</li>
+      <li>Refer to <MadCap:xref href="Subscribing-to-MBus-Events.htm">Subscribing to Message Bus Events</MadCap:xref> <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">“Subscribing to Message Bus Events” in the [SolMsgBusMgt] guide</MadCap:conditionalText> for more details on how to configure and subscribe to events over the message bus.</li>
+    </ul>
+    <p>These are examples of Message VPN level events that a monitoring application may subscribe to:</p>
+    <ul>
+      <li>
+        <code>VPN_AD_BIND_COUNT_HIGH</code>
+      </li>
+      <li>
+        <code>VPN_AD_MSG_SPOOL_HIGH</code>
+      </li>
+      <li>
+        <code>VPN_AD_MSG_SPOOL_QUOTA_EXCEED</code>
+      </li>
+      <li>
+        <code>VPN_VPN_CONNECTIONS_HIGH</code>
+      </li>
+      <li>
+        <code>VPN_VPN_EG_MSG_RATE_HIGH</code>
+      </li>
+      <li>
+        <code>VPN_VPN_ING_MSG_RATE_HIGH</code>
+      </li>
+      <li>
+        <code>VPN_VPN_SUBSCRIPTIONS_HIGH</code>
+      </li>
+    </ul>
+    <p>For a detailed listing of the possible events, and descriptions of each, refer to the <MadCap:xref href="PubSub-Event-Reference.htm">Solace PubSub+ Event Reference</MadCap:xref>.<MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput"> refer to the [SolSyslogEvents] file included with the SolOS-TR software release as an .html file.</MadCap:conditionalText></p>
+    <h2 class="with-rule"><a name="Request"/>Request / Reply Monitoring Using SEMP</h2>
+    <p>SEMP is a request/reply protocol that uses an XML schema to identify all managed objects available in an event broker. Any object available through the Solace CLI or SolAdmin is also available through SEMP.</p>
+    <p>Applications can use the SEMP interface to manage and monitor an event broker. SEMP requests can be made either through the HTTP port on the administrative interface, or through the messaging port on the messaging interface.  The requesting client can send XML-encoded requests to the event broker, and receive corresponding XML-encoded replies. These requests and replies parallel the commands and replies offered through the CLI.  <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">The XML Schema definitions (XSDs) for the requests and responses can be found under the <b>Solace software distribution directory (typically at [SolOS version]/Topic_Routing/Appliance/Current/&lt;release version&gt;/*.xsd)</b></MadCap:conditionalText></p>
+    <ul>
+      <li>The event broker supports a maximum SEMP polling rate of 10 requests per second across all SEMP connections to the event broker. Monitoring applications should be configured so as to not exceed this threshold.</li>
+      <li>If monitoring applications are using SEMP to monitor PubSub+ Cache instances, then it is highly recommended that SEMP requests be kept to a minimum to avoid affecting the performance of PubSub+ Cache while processing live data traffic. The interval at which SEMP requests are sent periodically to monitor PubSub+ Cache should not be less than 30 seconds. This interval should be adjusted based on the peak performance of PubSub+ Cache instances.</li>
+      <li>Refer to <MadCap:xref href="../Admin/SEMP/Using-SEMP.htm">SEMP</MadCap:xref> <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">“Using SEMP to Manage and Monitor Routers” in the [SolMsgBusMgt] guide</MadCap:conditionalText> for more details on the SEMP format, and how to send and receive SEMP request/replies.</li>
+      <li>For examples of making SEMP requests over the message bus, refer to the sample application SempGetOverMB.java or sempGetOverMb.c, available in the Java and C SDKs.  The examples demonstrate how a SEMP request/response can be accomplished over the message bus.</li>
+    </ul>
+    <p>For more information on the common statistics that can be queried via SEMP on the health of the event broker, refer to <MadCap:xref href="Gathering-Stats-SEMP.htm">Gathering Statistics with SEMP</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Solace"/>Solace Syslog</h2>
+    <p>The event broker generates Syslog messages for events related to system health, system operation, and resource utilization. Syslog messages are logged locally on the event broker, but can also be forwarded to a remote server. For more information, refer to <MadCap:xref href="Monitoring-Using-Syslog.htm">Monitoring Using Syslog</MadCap:xref>. <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">on SolOS Syslog, refer to Section 4.</MadCap:conditionalText></p>
+  </body>
+</html>

@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Software Event Broker Host Interface Configuration</h1>
+    <p>The default behavior for a Solace PubSub+ software event broker machine image in a hypervisor is to dynamically receive its IP address configuration from the host. Alternatively, you can also manually associate an IP interface with a host OS physical interface through Solace CLI or configuration keys. However, before any host OS physical interface can be used by the event broker, it first must be configured on the host.</p>
+    <p>The following sections provide examples that show how  host interfaces can be configured for eventual use by a PubSub+ software event broker. </p>
+    <p class="Note">In the examples that follow, it is assumed that you are logged into the host as <code>root</code>.</p>
+    <h2 class="with-rule"><a name="Configuring-Interfaces-with-Static-IP-addresses"/>Configuring Interfaces with Static IP Addresses</h2>
+    <p>To configure an interface with a static IP address on the software event broker host, for eventual use in software event broker configuration, specify the following environment variables in the <code>/etc/sysconfig/network-scripts/ifcfg-&lt;intf&gt;</code> file:</p>
+    <ul>
+      <li>
+        <code>DEVICE=&lt;intf&gt;</code>
+      </li>
+      <li>
+        <code>BOOTPROTO=none</code>
+      </li>
+      <li>
+        <code>ONBOOT=yes</code>
+      </li>
+      <li>
+        <code>IPADDR=&lt;ip-addr&gt;</code>
+      </li>
+      <li>
+        <code>NETMASK=&lt;mask&gt;</code>
+      </li>
+    </ul>
+    <p>For example,  to assign the interface <code>eth0</code> an IP address of <code>192.168.40.220</code> and a mask of <code>255.255.255.0</code>, edit the  <code>/etc/sysconfig/network-scripts/ifcfg-eth0</code> file as follows.</p>
+    <pre xml:space="preserve" class="Code">    DEVICE=eth0
+    BOOTPROTO=none
+    ONBOOT=yes
+    IPADDR=192.168.40.220
+    NETMASK=255.255.255.0</pre>
+    <p>Optionally, you may wish to add an IPv6 address for use by clients connecting in using the IPv6 address space.  Note that IPv6 is only supported for client messaging protocols and is not supported in for other broker administrative or control type connections.</p>
+    <p>To add an IPv6 address of <code>XXXX::XXXX</code> and a mask of <code>XXXX::XXXX</code>,  edit the <code>/etc/sysconfig/network-scripts/ifcfg-eth0</code>file as follows.</p>
+    <pre class="Code" xml:space="preserve">    IPV6INIT=yes
+    IPV6ADDR_SECONDARIES=XXXX:XXXX/X
+</pre>
+    <p>After saving the changes to the <code>ifcfg-eth0</code> file, the  interfaces, or the network service, needs to be restarted for the changes to take effect.</p>
+    <div class="Caution">
+      <p>Using <code>systemctl</code> commands to restart the network service  is not sufficient. For the changes to take effect,  either use <code>ifdown</code> and <code>ifup</code> commands or reboot the event broker. In addition, because the <code>ifdown</code> command causes the network connection to go down until you issue the <code>ifup</code> command, we recommend that you issue these commands in a console terminal.</p>
+    </div>
+    <p>For example:</p>
+    <pre class="Code" xml:space="preserve">    ifdown eth0
+    ifup eth0</pre>
+    <p>After the network configuration has changed you must use the newly configured IP address to reconnect to the broker.</p>
+    <p>Also, you must disable the cloud-init network module. To do so, confirm that the <code>/etc/cloud/cloud.cfg.d/99_network.cfg</code>  file contains the following content:</p>
+    <pre class="Code" xml:space="preserve">network:
+  config: disabled</pre>
+    <div class="Note">
+      <ul>
+        <li>If the <code>/etc/cloud/cloud.cfg.d/99_network.cfg</code> file does not exist, you must create it.</li>
+        <li>Spacing is important. Do not remove or add any additional spaces in the <code>/etc/cloud/cloud.cfg.d/99_network.cfg</code> file. </li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="Configuring-Default-Gateways"/>Default Gateway Configuration</h2>
+    <p>To configure a gateway as the default for use by all interfaces, add the gateway to <code>/etc/sysconfig/network</code> by editing the file with <code>sudo vi</code>.</p>
+    <pre class="Code" xml:space="preserve">    NOZEROCONF=yes
+    GATEWAY=192.168.40.1</pre>
+    <p>After making the above change, the network service, needs to be restarted for the changes to take effect.</p>
+    <div class="Caution">
+      <p>Using <code>systemctl</code> commands to restart the network service  is not sufficient. For the changes to take effect,  either use <code>ifdown</code> and <code>ifup</code> commands or reboot the event broker. In addition, because the <code>ifdown</code> command causes the network connection to go down until you issue the <code>ifup</code> command, we recommend that you issue these commands in a console terminal.</p>
+    </div>
+    <p>For example:</p>
+    <pre class="Code" xml:space="preserve">    ifdown eth0
+    ifup eth0</pre>
+    <p>After the network configuration has changed you must use the newly configured IP address to reconnect to the broker.</p>
+    <h2 class="with-rule"><a name="Configuring-Default-Gateways-Static-Routes"/>Default Gateway &amp; Static Routes Configuration</h2>
+    <p>Static routes associated with an interface <code>&lt;intf&gt;</code> are stored in the file <code>/etc/sysconfig/network-scripts/route-&lt;intf&gt;</code>.</p>
+    <p>Optionally, a default gateway can be defined on the first line of the <code>route-&lt;intf&gt;</code> file. For example, consider the construction of the file for <code>&lt;intf&gt; = eth0</code>. If the IP address of the default gateway is <code>192.168.40.1</code>, and the interface that can reach the default gateway is also <code>eth0</code>, then the first line of <code>/etc/sysconfig/network-scripts/route-eth0</code> is.</p>
+    <pre class="Code" xml:space="preserve">    default via 192.168.40.1 dev eth0</pre>
+    <p>Static routes are defined by adding lines to <code>/etc/sysconfig/network-scripts/route-&lt;intf&gt;</code> that are of the form,</p>
+    <pre class="Code" xml:space="preserve">    X.X.X.X/X via Y.Y.Y.Y dev interface</pre>
+    <p>Where <code>X.X.X.X/X</code> is the destination address, and <code>Y.Y.Y.Y</code> and <code>interface</code> are the address and interface respectively through which <code>X.X.X.X/X</code> can be reached.</p>
+    <p>Continuing with the example, if <code>10.10.10.0/24</code> can be reached through the <code>eth0</code> interface, assigned <code>10.10.10.1</code>, in the <code>10.10.10.0/24</code> subnet, then add this line for the static route to <code>/etc/sysconfig/network-scripts/route-eth0</code>.</p>
+    <pre class="Code" xml:space="preserve">    10.10.10.0/24 via 10.10.10.1 dev eth0</pre>
+    <p>So, in this example, the complete static route file <code>/etc/sysconfig/network-scripts/route-eth0</code> file is,</p>
+    <pre class="Code" xml:space="preserve">    default via 192.168.40.1 dev eth0
+    10.10.10.0/24 via 10.10.10.1 dev eth0</pre>
+    <p>After making the above change, the  interfaces, or the network service, needs to be restarted for the changes to take effect.</p>
+    <div class="Caution">
+      <p>Using <code>systemctl</code> commands to restart the network service  is not sufficient. For the changes to take effect,  either use <code>ifdown</code> and <code>ifup</code> commands or reboot the event broker. In addition, because the <code>ifdown</code> command causes the network connection to go down until you issue the <code>ifup</code> command, we recommend that you issue these commands in a console terminal.</p>
+    </div>
+    <p>For example:</p>
+    <pre class="Code" xml:space="preserve">    ifdown eth0
+    ifup eth0</pre>
+    <p>After the network configuration has changed you must use the newly configured IP address to reconnect to the broker.</p>
+    <h2 class="with-rule"><a name="Configuring-Alt-DNS-Servers"/>Alternative DNS Server Configuration</h2>
+    <p>To specify the use of alternative DNS servers, edit the host's <code>/etc/resolv.conf</code> file. For example, to add the DNS server <code>185.121.177.53</code>, add the following line to the host's <code>/etc/resolv.conf</code> file:</p>
+    <pre class="Code" xml:space="preserve">    nameserver 185.121.177.53</pre>
+    <p>If your situation involves having static DNS when using DHCP, you'll need to append the following to <code>/etc/dhcp/dhclient-enter-hooks</code> to disable DHCP from overwriting DNS.</p>
+    <p class="Code">make_resolv_conf(){<br/>:<br/>}</p>
+    <p>Then enter.</p>
+    <p class="Code">chmod +x /etc/dhcp/dhclient-enter-hooks</p>
+    <p>The event broker must be restarted to pick up changes to the host's <code>/etc/resolv.conf</code> file. After editing the file, the event broker can be restarted as follows:</p>
+    <pre class="Code" xml:space="preserve">    solacectl service restart</pre>
+  </body>
+</html>

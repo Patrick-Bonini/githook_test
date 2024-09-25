@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Message Consumption</h1>
+    <p>In this section we'll take a high-level look at the rules for specifying sources for consuming messages through non-JMS APIs in the following sections:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Specifyi">Specifying Consumption from Durable Queues</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Specifyi4">Specifying Consumption from Non-Durable Queues</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Specifyi2">Specifying Consumption from Durable Topic Endpoints</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Specifyi3">Specifying Consumption from Non-Durable Topics</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Client">Client Deletion of Durable Topic Endpoints</MadCap:xref>
+      </li>
+    </ul>
+    <p>Detailed rules for setting the source in an attach frame can be found in <MadCap:xref href="Con-Rules.htm#Rules">Rules for Source Specification</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Specifyi"/>Specifying Consumption from Durable Queues</h2>
+    <p>A client can bind to a durable queue by formatting the destination of the message as follows:</p>
+    <p class="Code">queue://<i>queue-name</i></p>
+    <p>The link source durability property should be set to <code>Configuration</code> and the expiry policy to <code>NEVER</code>.</p>
+    <p>If the queue doesn't exist on the event broker, and the client’s client-profile allows them to create guaranteed endpoints, the queue will automatically be created on the event broker as an exclusive queue. If non-exclusive queues are required, <code>copy-from</code> templates on the event broker can be used to override this default behavior.</p>
+    <p>The <code>queue://</code> prefix is <u>optional</u> and isn't case sensitive. If a prefix is not found on the link address, and the address doesn't start with <code>#</code>, the event broker will assume the client is attempting to bind to a durable queue, as long as no other setting has been used to specify the destination type.</p>
+    <h2 class="with-rule"><a name="Specifyi4"/>Specifying Consumption from Non-Durable Queues</h2>
+    <p>Depending upon the API used, a client can consume from a non-durable queue by formatting the AMQP link address as follows:</p>
+    <p class="Code">
+      <i>AMQP_NULL</i>
+    </p>
+    <p> or </p>
+    <p class="Code">
+      <i>empty_string</i>
+    </p>
+    <p>with the source dynamic flag set to <code>true</code>. The attach response will contain a temporary queue, <code>#P2P/QTMP/<i>queue-name</i></code>, in the attach response source address.</p>
+    <h2 class="with-rule"><a name="Specifyi2"/>Specifying Consumption from Durable Topic Endpoints</h2>
+    <p>A client can bind to a durable topic endpoint (DTE) by formatting the target address of the message as follows:</p>
+    <p class="Code">dsub://<i>topic-string</i></p>
+    <p>or</p>
+    <p class="Code">topic://<i>topic-string</i></p>
+    <p>The link source durability property must be set to <code>Configuration</code> and the expiry policy to <code>NEVER</code>.</p>
+    <p>The DTE name is specified in the link name in the attach frame and the topic subscription on the DTE is specified in the source addressed after the <code>dsub://</code> or <code>topic://</code> prefix. </p>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">Not all non-JMS APIs allow an application to set the link name required to identify the DTE. It's not recommended to use DTEs when the link name cannot be specified by the application since this can lead to DTEs that can't be identified by the application being created and leaked on the event broker.</p>
+    <p> JMS semantics around changing the topic assigned to a DTE apply. For example, if a client binds to the DTE with a different subscription than the one already associated with the DTE, the DTE’s existing queued messages are deleted, the existing subscription is removed from the endpoint, and the new subscription is applied to the endpoint.</p>
+    <p>If the DTE does not exist on the event broker, and the client’s client-profile allows them to create guaranteed endpoints, the DTE will automatically be created on the event broker as an exclusive DTE. If non-exclusive DTEs are required, <code>copy-from</code> templates on the event broker can be used to override this default behavior.</p>
+    <h2 class="with-rule"><a name="Specifyi3"/>Specifying Consumption from Non-Durable Topics</h2>
+    <p>A client can consume from a non-durable topic by formatting the AMQP link address as follows:</p>
+    <p class="Code">topic://<i>topic-string</i></p>
+    <h2 class="with-rule"><a name="Client"/>Client Deletion of Durable Topic Endpoints</h2>
+    <p>AMQP clients can delete client created durable topic endpoints (DTEs) by attaching an AMQP receiver link, where the link name is the <code>dte_name</code> and the source of the attach frame is <code>null</code>, and closing the link. The attach response from the event broker will have an empty source indicating that the DTE exists and is going to be deleted, or will have a null source indicating the DTE with the provided link name does not exist on the event broker.</p>
+  </body>
+</html>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Request Reply Messaging</h1>
+    <p>The <MadCap:xref href="../../Get-Started/message-exchange-patterns.htm#Request-">Request-Reply</MadCap:xref>  messaging pattern is different from the <MadCap:xref href="../../Get-Started/message-exchange-patterns.htm#Publish-"> Publish-Subscribe</MadCap:xref> messaging pattern because each time the subscriber consumes a message it sends a response to the publisher. For more information see <MadCap:xref href="Publishing-Messages-that.htm">Publishing Messages that Request Replies</MadCap:xref>.</p>
+    <p>This section provides an overview of the basic steps that required to implement a request reply messaging model using Guaranteed messages. Note that client applications must use a mechanism to correlate the request message with the reply message. Using the <code>CorrelationID</code> message property is one possible mechanism to achieve that goal.</p>
+    <ol>
+      <li>
+        <MadCap:xref href="#publishing_guaranteed_messages_3926332939_623561">Publishing Guaranteed Request Messages</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#publishing_guaranteed_messages_3926332939_627494">Replying to Guaranteed Request Messages</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#publishing_guaranteed_messages_3926332939_638198">Receiving Reply Messages</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Request">Request Reply Example</MadCap:xref>
+      </li>
+    </ol>
+    <p class="Note">If you're doing Request/Reply messaging with Multi-Node Routing (MNR), you must use the Request/Reply methods of the Solace APIs to prevent possible race conditions associated with subscription propagation.</p>
+    <h2 class="with-rule"><a name="publishing_guaranteed_messages_3926332939_623561"/>Publishing Guaranteed Request Messages</h2>
+    <p>To send a Guaranteed message that requires a corresponding reply from a consuming client, perform the following steps:</p>
+    <ol>
+      <li>Create the message and set the following message properties:</li>
+      <ul>
+        <li>a Persistent or Non-Persistent delivery mode</li>
+        <li>a unique ReplyTo destination. This is the destination a consuming client must send the reply to the request message to. This ReplyTo destination can be temporary (that is, a temporary Topic or Queue), or it can be durable (for example, a durable Queue or a Topic subscription assigned to a durable Queue).</li>
+        <li>a Topic or Queue destination to publish the request message to (see <MadCap:xref href="Creating-Messages-1.htm#Destination">Setting Destinations</MadCap:xref>). (<b>Note</b>: When using JCSMP, the destination is not a message property; instead it is passed in when the <code>send()</code> method is called.)</li>
+        <li>(optional, but recommended) a unique CorrelationID. A correlation ID enables a response to be matched to the request. When used, the implementation of correlation ID matching is the responsibility of the application.
+			<p>For information on setting message properties, see <MadCap:xref href="Creating-Messages-1.htm#Setting-Properties">Setting Message Properties</MadCap:xref>.</p></li>
+      </ul>
+      <li>Add the message content. For more information, see <MadCap:xref href="Adding-Data-Payloads.htm">Adding Data Payloads</MadCap:xref>.</li>
+      <li>Send the request message. For more information, see <MadCap:xref href="Sending-Guaranteed-Messages.htm#publishing_guaranteed_messages_3926332939_616965">Sending One Message at a Time</MadCap:xref>.</li>
+    </ol>
+    <h2 class="with-rule"><a name="publishing_guaranteed_messages_3926332939_627494"/>Replying to Guaranteed Request Messages</h2>
+    <p>To send a Guaranteed message as a reply to a received Guaranteed request message, perform the following steps:</p>
+    <ol>
+      <li>Receive the request message.
+        <p>To receive the request message, a replying client must use a Guaranteed Message Flow to bind to the provisioned endpoint that the published message is enqueued to. (For information, see <MadCap:xref href="Creating-Flows.htm">Creating Flows</MadCap:xref>.) The endpoint to bind to could be one of the following:</p><ul><li>A Queue that matches the messages’ Queue destination.</li><li>A Queue that is assigned a Topic subscription that matches the message’s Topic destination.</li><li>A Topic Endpoint that is assigned a Topic subscription that matches the message’s Topic destination.</li></ul></li>
+      <li>Get the following properties from the received request message so that they can be used to form the reply:
+				
+				<ul><li>the ReplyTo destination (see <MadCap:xref href="Creating-Messages-1.htm#Reply-To">Setting Reply To Destinations</MadCap:xref>)</li><li>the CorrelationID, if provided (see <MadCap:xref href="Creating-Messages-1.htm#Correlation-ID">Setting Correlation IDs</MadCap:xref>)</li></ul></li>
+      <li>Create the reply message and set the following message properties:
+        <ul><li>a Persistent or Non-Persistent delivery mode</li><li>a destination to publish the reply message to. This is the ReplyTo destination (either a Topic or Queue) that is obtained from the request message. : (When using JCSMP, the destination is not a message property; instead, it is passed in when the <code>send()</code> method is called.)</li><li>(optional) a CorrelationID that matches the Correlation ID (if provided) in the request message.
+      
+        <p>For information on setting message properties, see <MadCap:xref href="Creating-Messages-1.htm#Setting-Properties">Setting Message Properties</MadCap:xref>.</p></li></ul></li>
+      <li>Add the message content. For more information, see <MadCap:xref href="Adding-Data-Payloads.htm">Adding Data Payloads</MadCap:xref>.</li>
+      <li>Send the reply message. For more information, <MadCap:xref href="Sending-Guaranteed-Messages.htm#publishing_guaranteed_messages_3926332939_616965">Sending One Message at a Time</MadCap:xref>.</li>
+    </ol>
+    <h2 class="with-rule"><a name="publishing_guaranteed_messages_3926332939_638198"/>Receiving Reply Messages</h2>
+    <p>The process for receiving a reply message that is sent in response to a request is essentially the same process that is used to receive other Guaranteed Messages:</p>
+    <p>After a replying client has received the request message, processed it, and returned a reply message in response, a receiving client can consume the reply message through a Flow that is bound to the provisioned endpoint that the reply message will be enqueued to. (For information, see <MadCap:xref href="Creating-Flows.htm">Creating Flows</MadCap:xref>).</p>
+    <p class="Note">Although it is not a requirement, the receiving client can be the same client that originally sent the request that the reply was sent in response to.</p>
+    <h2 class="with-rule"><a name="Request"/>Request Reply Example</h2>
+    <p>It is important to note that in this example that Topic subscriptions are first added to the provisioned durable endpoints so that the replying client can receive the request and the requesting client can receive the corresponding response.</p>
+    <p class="GraphicCaption">Process for Issuing Requests and Receiving Replies</p>
+    <p class="GraphicCaption">
+      <img src="Images/req_reply_Guaranteed.jpg" alt=""/>
+    </p>
+  </body>
+</html>

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><MadCap:concept term="Cloud;Appliance;Software"/>Understanding Topics</h1>
+    <p>To understand how messages flow from publishers to subscribers, you need to understand the role played by topics in the publish-subscribe model. </p>
+    <h2 class="with-rule"><a name="What_are_Topics"/>What Are Topics?</h2>
+    <p>In an event-driven architecture (EDA), events are published to topics and endpoints can subscribe to one or more topics to attract events from publishers. Technically, <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Variables.CompanyName"/></MadCap:conditionalText>topics are simply strings composed of one or more levels added as metadata in a message header that let publishers classify messages and let subscribers specify what they want to receive messages about. This publish-subscribe model enables event brokers to use topics as routing information to send event messages everywhere they need to go. </p>
+    <p> However, a topic is more than just a string providing routing info. You can also think of a topic as a hierarchical definition of the subject of an event message. A topic can both route events to the appropriate recipients and categorize and describe the event itself. A well-defined topic contains details specific to the instance of an event and subscribers can receive only the event instances that are relevant to them rather than receiving messages about all instances and then processing the payloads before discarding messages they don't need. A well-defined topic structure can make your topics <i>smart</i>. </p>
+    <h3><a name="basic-syntax"/>Defining Topics</h3>
+    <p>A <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Variables.CompanyName"/></MadCap:conditionalText>topic is a string with the format <code>a/b/c/.../n</code>, where <code>a, b, c</code> and so on  are levels in a hierarchy that you design to describe your events. For example, if you're publishing information for Example Airline (EA), you might need topics like <code><span class="topicnoun">flight</span>/<span class="topicverb">boarding</span>/<span class="topicproperty">ea1234</span>/<span class="topicproperty">jfk</span></code> and <code><span class="topicnoun">flight</span>/<span class="topicverb">departed</span>/<span class="topicproperty">ea321</span>/<span class="topicproperty">yow</span></code> to organize the events you're publishing. <MadCap:conditionalText MadCap:conditions="SAP.SAPTempHide">You can learn about the full syntactical rules, construction, and encoding in <MadCap:xref href="../Messaging/SMF-Topics.htm">SMF Topics</MadCap:xref>.</MadCap:conditionalText></p>
+    <p>One or more topic levels can be defined using variables that are replaced with properties specific to the event when it occurs. Using variables allows topics to define the event itself and not just the category of the event. Variables could be used to include a location, an order id, and other data about the event within the topic. Both of the event instances for our airline, <code><span class="topicnoun">flight</span>/<span class="topicverb">boarding</span>/<span class="topicproperty">ea1234</span>/<span class="topicproperty">jfk</span></code> and <code><span class="topicnoun">flight</span>/<span class="topicverb">departed</span>/<span class="topicproperty">ea321</span>/<span class="topicproperty">yow</span></code> can be sent by an application using the topic <code><span class="topicnoun">flight</span>/<span class="topicverb">[status]</span>/<span class="topicproperty">[flightNumber]</span>/<span class="topicproperty">[origin]</span></code>. </p>
+    <p>To learn more about defining topics, <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">you can <MadCap:xref href="Getting-Started-Try-Broker.htm" target="_blank">Try [%=Product-Names.pubsub_brand_only%] Event Brokers</MadCap:xref> and </MadCap:conditionalText>read about <MadCap:xref href="../Messaging/Topic-Architecture-Best-Practices.htm" target="_blank">Topic Architecture Best Practices</MadCap:xref>. </p>
+    <h3><a name="topic-subscriptions"/>Topic Subscriptions</h3>
+    <p>A topic subscription is a string used to attract published events. Topic subscriptions can contain wildcards to match with multiple topics. The <code>*</code> and <code>&gt;</code> characters can be used as wildcards in topic subscriptions.</p>
+    <MadCap:snippetBlock src="../Resources/Snippets/wildcards.flsnp"/>
+    <h2>How Topics Describe and Route Events</h2>
+    <p>Consider the following topic example. The brackets "[ ]" indicate a variable in the topic that is replaced in the message by data specific to the event:</p>
+    <p>
+      <code><span class="topicnoun">flight</span>/<span class="topicverb">[status]</span>/<span class="topicproperty">[flightNumber]</span>/<span class="topicproperty">[origin]</span>/<span class="topicproperty">[destination]</span></code>
+    </p>
+    <p>This example could result in an event topic of <code><span class="topicnoun">flight</span>/<span class="topicverb">boarding</span>/<span class="topicproperty">ea1234</span>/<span class="topicproperty">jfk</span>/<span class="topicproperty">ord</span></code> where:</p>
+    <ul>
+      <li>
+        <p><code><span class="topicnoun">flight</span></code> indicates the type of event</p>
+      </li>
+      <li>
+        <p><code><span class="topicverb">boarding</span></code> indicates the action that generates the event</p>
+      </li>
+      <li>
+        <p><code><span class="topicproperty">ea1234</span>/<span class="topicproperty">jfk</span>/<span class="topicproperty">ord</span></code> are properties of the specific event</p>
+      </li>
+    </ul>
+    <p>This topic structure can be used by applications in the system to publish status information about any flight. Subscribing client applications can subscribe to only the events they need to receive. For example:</p>
+    <ul>
+      <li>
+        <p>The crew for EA flight 1234 can receive all events related to their flight with the subscription <code><span class="topicnoun">flight</span>/<span class="topicverb">*</span>/<span class="topicproperty">[flightNumber]</span>/&gt;</code></p>
+      </li>
+      <li>
+        <p>The ground crew at JFK can receive all  boarding and taxiing events with an origin of JFK and all landing events with a destination of JFK with the following subscriptions:</p>
+        <ul>
+          <li>
+            <code><span class="topicnoun">flight</span>/<span class="topicverb">boarding</span>/<span class="topicproperty">*</span>/<span class="topicproperty">jfk</span>/<span class="topicproperty">*</span></code>
+          </li>
+          <li>
+            <code><span class="topicnoun">flight</span>/<span class="topicverb">taxiing</span>/<span class="topicproperty">*</span>/<span class="topicproperty">jfk</span>/<span class="topicproperty">*</span></code>
+          </li>
+          <li>
+            <code><span class="topicnoun">flight</span>/<span class="topicverb">landing</span>/<span class="topicproperty">*</span>/<span class="topicproperty">*</span>/<span class="topicproperty">jfk</span></code>
+          </li>
+        </ul>
+      </li>
+    </ul>
+    <p>Using a rich topic hierarchy allows event brokers to intelligently route topics without deserializing, decoding, or interpreting the event. Event brokers don't need to understand the event, they just need to know how to act on the event's topic information. This hierarchy creates smart topics, which describe the event by using multiple, dynamic topic levels that subscribers can filter on to receive exactly the information they need.</p>
+    <h2><a name="rich-topics"/>How Rich Topic Hierarchies Benefit an Event Mesh</h2>
+    <p>Smart topics and subscriptions serve various purposes within an event mesh and enable the following benefits when combined with a rich topic hierarchy:</p>
+    <dl>
+      <dt>Event Routing</dt>
+      <dd>The event mesh relies on an event's topic and consumer subscriptions  to make routing decisions. Event brokers within a mesh can read the topic and match it to  consumer's subscriptions, which describe what kind of data the consumer is interested in. The event topic allows the event broker to make routing decisions without the need for complex understanding of the data encoded in the event's payload.</dd>
+      <dt>Event Filtering</dt>
+      <dd>Consumers in an event mesh can use subscriptions to have fine-grained control over what data they receive. When combined with a rich topic hierarchy, it allows consumers to receive exactly the data required from the event mesh. Without this fine-grained filtering, consumers may need to discard some of the received data, or an intermediary process would need to re-publish the data to a more specific stream. This filtering is an example of how Solace topics are <i>smart</i>.</dd>
+      <dt>Event Access Control</dt>
+      <dd>Access control lists (ACLs) allow for administrative management of which events publishers are permitted to produce and which events consumers can receive. This management allows you to control the flow of data both into, and out of an event mesh. When combined with a rich topic hierarchy, you can precisely control the flow of data  based on the description of the data in the topic. Lack of precise access control may enable rogue applications to consume privileged information or initiate restricted actions.</dd>
+      <dt>Event Handling Policy</dt>
+      <dd>You can define policies based on topic subscriptions that handle events within the event broker with respect to priority, eligibility for replay, and replication. The routing from a producer to a consumer can also be influenced using statically-defined bridging policies. With a rich topic hierarchy, administrators can ensure that the right messages are replicated, added to replay logs, etc.</dd>
+      <dt style="font-weight: normal;"> To learn more about building a rich topic hierarchy, see <MadCap:xref href="../Messaging/Topic-Architecture-Best-Practices.htm" target="_blank">Topic Architecture Best Practices</MadCap:xref>. </dt>
+    </dl>
+    <h2 class="with-rule" MadCap:conditions="SAP.SapHideFromOutput"><a name="Topic"/>More About <MadCap:variable name="Variables.CompanyName"/> Topics</h2>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Our Solace Developer Advocate walks through how topics are implemented in <MadCap:variable name="Variables.CompanyName"/> and how the <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker filters and routes messages based on subscriptions and wildcard characters. He also provides some examples for different types of use cases.</p>
+    <div class="vid-wrapper" MadCap:conditions="SAP.SapHideFromOutput">
+      <div class="vid-container">
+        <iframe width="560" height="315" src="https://www.youtube.com/embed/PP1nNlgERQI?modestbranding=1&amp;showinfo=0&amp;rel=0&amp;cc_lang_pref=en&amp;cc_load_policy=1" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen="allowfullscreen"/>
+      </div>
+      <div>All About Solace Topics!</div>
+    </div>
+    <p class="with-rule">How and when clients receive event messages and the how event brokers interact with publishers and clients depends on the type of messaging used. Learn more under <MadCap:xref href="message-delivery-modes.htm">Message Delivery Modes</MadCap:xref>. </p>
+  </body>
+</html>

@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Performing PubSub+ Cache Administrative Tasks</h1>
+    <p>You can perform a number of administrative tasks on a per Distributed Cache basis.</p>
+    <h2 class="with-rule"><a name="clearing-pubsubcache.events"/>Clearing PubSub+ Cache Events</h2>
+    <p>You may receive a one-shot event notification if one or more PubSub+ Cache Instances enters a lost message state.</p>
+    <p>The exact event that caused the lost message state is specified in the event log immediately preceding the <code>VPN_SOLCACHE_LOST_MSG_STATE</code> event.</p>
+    <p>First refer to the <MadCap:xref href="../../Monitoring/PubSub-Event-Reference.htm">SolOS Event Reference</MadCap:xref> and follow the recommended actions for the event. Then you can clear the "Recommended Actions" for this preceding event. Then, you can clear the one-shot event to ensure that the event is raised again if further lost or discarded messages are detected (refer to <MadCap:xref href="../../Monitoring/Clearing-One-Shot-Events.htm">Clearing One-Shot Events</MadCap:xref>).</p>
+    <h2 class="with-rule"><a name="deleting-cached-messages"/>Deleting Cached Messages</h2>
+    <p>To delete cached messages for a given topic for either a single PubSub+ Cache Instance or all PubSub+ Cache Instances in a Cache Cluster, enter the following commands:</p>
+    <pre>solace# admin
+solace(admin)# distributed-cache &lt;name&gt; message-vpn &lt;vpn-name&gt;
+solace(admin/distributed-cache)# delete-messages &lt;topic&gt; [cache-cluster &lt;cluster-name&gt;] [cache-instance &lt;instance-name&gt;]</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the name of an existing Distributed Cache.</p>
+    <p><code>&lt;vpn-name&gt;</code> is the name of an existing Message VPN.</p>
+    <p><code>&lt;topic&gt;</code> is the topic string for which messages are to be deleted. The topic string wildcards ‘*’ and ‘&gt;’ can also be used. For topic syntax information, refer to <MadCap:xref MadCap:unresolvedLink="import-link:a_topic_support_and_syntax_819845554_56063" href="../../Messaging/Topic-Support-and-Syntax.htm">Topic Support and Syntax</MadCap:xref>.</p>
+    <p><code>&lt;cluster-name&gt;</code> is the name the Cache Cluster for which you want to delete the messages cached by each of its PubSub+ Cache Instances.</p>
+    <p><code>&lt;instance-name&gt;</code> is the name of a particular PubSub+ Cache Instance.</p>
+    <h2 class="with-rule"><a name="starting-pubsubcache-instances"/>Starting PubSub+ Cache Instances</h2>
+    <p>When the Auto Start Mode is not enabled for a PubSub+ Cache Instance (refer to <MadCap:xref href="Configuring-PubSub-Cache-Ins.htm#Auto-Start">Enabling/Disabling Auto Start Mode</MadCap:xref>), it will remain in a “stopped” state instead of automatically restarting and resynchronizing with the Cache Manager.</p>
+    <p>To administratively start a single PubSub+ Cache Instance or all PubSub+ Cache Instances in a Cache Cluster that do not have Auto Start Mode enabled, enter the following commands:</p>
+    <pre>solace# admin
+solace(admin)# distributed-cache &lt;name&gt; message-vpn &lt;vpn-name&gt;
+solace(admin/distributed-cache)# start [cache-cluster &lt;cluster-name&gt;] [cache-instance &lt;instance-name&gt;]</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the name of an existing Distributed Cache</p>
+    <p><code>&lt;vpn-name&gt;</code> is the name of an existing Message VPN</p>
+    <p><code>&lt;cluster-name&gt;</code> is the name of the associated Cache Cluster</p>
+    <p><code>&lt;instance-name&gt;</code> is the name of the associated PubSub+ Cache Instance under the Cache Cluster</p>
+    <h2 class="with-rule"><a name="backing-up-restoring-pubsubcache-instance-messages"/>Backing Up/Restoring PubSub+ Cache Instance Messages</h2>
+    <p>An administrator can write the cached messages from a PubSub+ Cache Instance to a file, and then later restore the contents of a shutdown PubSub+ Cache Instance with cached messages that were saved to file.</p>
+    <p>The ability to back up and restore the messages that are cached by a PubSub+ Cache Instance can be useful for scheduled maintenance windows.</p>
+    <p class="Note">A PubSub+ Cache backup operation does not back up any remote topics that are used by Global Caching.</p>
+    <h3><a name="backing-up-cached-messages"/>Backing up Cached Messages</h3>
+    <p>Use the following steps to back up a PubSub+ Cache Instance’s cached messages are:</p>
+    <ol>
+      <li>Shut down the PubSub+ Cache Instance. (Refer to <MadCap:xref href="Configuring-PubSub-Cache-Ins.htm#Enable-Instances">Enabling/Disabling PubSub+ Cache Instances</MadCap:xref>.) 
+            <p>When a PubSub+ Cache Instance is shut down, it cannot receive live data or respond to cache requests, and it will not send and receive Global Caching heartbeat messages. However, the PubSub+ Cache Instance’s cached messages are maintained when it is shut down (subject to normal message lifetime aging).</p></li>
+      <li>Back up the PubSub+ Cache Instance’s cached messages. (Refer to <MadCap:xref href="#backing-up-cached-messages">Backing up Cached Messages</MadCap:xref>.)</li>
+      <li>Enable the PubSub+ Cache Instance. (Refer to <MadCap:xref href="Configuring-PubSub-Cache-Ins.htm#Enable-Instances">Enabling/Disabling PubSub+ Cache Instances</MadCap:xref>.) 
+            <p>The Cache Manager could synchronize the PubSub+ Cache Instances with the others in the Cache Cluster.</p></li>
+    </ol>
+    <h3><a name="restoring-cached-messages"/>Restoring Cached Messages</h3>
+    <p>Use the following steps to restore a PubSub+ Cache Instance with the cached messages that were saved to a backup file are:</p>
+    <ol>
+      <li>Individually shutdown all of the PubSub+ Cache Instances in the Cache Cluster. Refer to <MadCap:xref href="Configuring-PubSub-Cache-Ins.htm#Enable-Instances">Enabling/Disabling PubSub+ Cache Instances</MadCap:xref>.
+            <p class="Note">It is necessary to individually shut down each PubSub+ Cache Instance in the Cache Cluster instead of shutting down their parent Cache Cluster, so that you can control the order in which the PubSub+ Cache Instances are brought back online following the restore.</p></li>
+      <li>Run the restore operation for one PubSub+ Cache Instance so that it is restored with the cached messages that were saved to a backup file. Refer to <MadCap:xref href="#restoring-cached-messages">Restoring Cached Messages</MadCap:xref>.</li>
+      <li>Run No Shutdown for the restored PubSub+ Cache Instance. Refer to <MadCap:xref href="Configuring-PubSub-Cache-Ins.htm#Enable-Instances">Enabling/Disabling PubSub+ Cache Instances</MadCap:xref>.
+            <p>As the first PubSub+ Cache Instance in the Cache Cluster to reconnect to the Cache Manager, this particular PubSub+ Cache Instance becomes the leader PubSub+ Cache Instance that all of the others in the Cache Cluster will synchronize with. </p></li>
+      <li>Run No Shutdown for each of the remaining PubSub+ Cache Instances in the Cache Cluster. 
+            <p>These PubSub+ Cache Instances synchronize their data from the restored PubSub+ Cache Instance. Note that it is important that you wait until the restored PubSub+ Cache Instance is online before enabling the other PubSub+ Cache Instances in the Cache Cluster. If you do not wait until the first PubSub+ Cache Instance is fully restored, another PubSub+ Cache Instance that is enabled could become the leader from which all other PubSub+ Cache Instances synchronize.</p></li>
+    </ol>
+    <p><u>Example</u>:</p>
+    <p>The following code snippets provide an example of the steps required to restore cached messages from a backup file.</p>
+    <p>
+      <b>Step 1: Shut down all PubSub+ Cache Instances in the Cache Cluster.</b>
+    </p>
+    <pre>solace# show cache-instance *</pre>
+    <pre>
+                                          Admin  Oper     Auto  Stop    Lost
+Cache Instance       Cache-Cluster        Status Status   Start On Loss Msg
+-------------------- -------------------- ------ -------- ----- ------- ----
+v1.d1.c1.i1          v1.d1.c1             Up     Up       Yes   Yes     No
+v1.d1.c1.i2          v1.d1.c1             Up     Up       Yes   Yes     No
+</pre>
+    <pre>solace# configure
+solace(configure)# distributed-cache v1.d1 message-vpn v1
+solace(configure/distributed-cache)# cache-cluster v1.d1.c1
+solacesolace(...igure/distributed-cache/cache-cluster)# cache-instance v1.d1.c1.i1
+solace(...ed-cache/cache-cluster/cache-instance)## shutdown
+solace(...ed-cache/cache-cluster/cache-instance)## exit
+solacesolace(...igure/distributed-cache/cache-cluster)# cache-instance v1.d1.c1.i2
+solace(...ed-cache/cache-cluster/cache-instance)## shutdown 
+solace(...ed-cache/cache-cluster/cache-instance)## end
+solace# show cache-instance *</pre>
+    <pre>
+                                          Admin  Oper     Auto  Stop    Lost
+Cache Instance       Cache-Cluster        Status Status   Start On Loss Msg
+-------------------- -------------------- ------ -------- ----- ------- ----
+v1.d1.c1.i1          v1.d1.c1             Down   Down     Yes   Yes     No
+v1.d1.c1.i2          v1.d1.c1             Down   Down     Yes   Yes     No</pre>
+    <p>
+      <u style="font-weight: bold; text-decoration: none;">Step 2: Start the restore operation on one PubSub+ Cache Instance.</u>
+    </p>
+    <pre>solace# admin
+solace(admin)# distributed-cache v1.d1 message-vpn v1
+solace(admin/distributed-cache)# restore-cached-messages cache-instance v1.d1.c1.i1 file v1.d1.c1.i1.bkp
+solace(admin/distributed-cache)# end</pre>
+    <p>
+      <b>Step 3: Monitor the restore progress until it is complete.</b>
+    </p>
+    <p>The following two code snippets show the Last Restore of Cached Messages section of the cache-instance status. The first shows in-progress output, and the second shows restore complete output. </p>
+    <pre>solace# show cache-instance v1.d1.c1.i1 remote status</pre>
+    <pre>
+. . .
+     
+Last Restore Of Cached Messages
+    Last Successful Restore        : Jul 13 2012 07:43:20 PDT
+    Last Status                    : In Progress, 7% complete
+    Last Filename                  : /root/solCache/solCache_backups/
+                                   : v1.d1.c1.i1.bkp
+     
+    . . .</pre>
+    <pre>solace# 
+solace# show cache-instance v1.d1.c1.i1 remote status</pre>
+    <pre>
+. . .
+
+Last Restore Of Cached Messages
+    Last Successful Restore        : Jul 13 2012 07:44:21 PDT
+    Last Status                    : Ok
+    Last Filename                  : /root/solCache/solCache_backups/
+                                   :   v1.d1.c1.i1.bkp
+     </pre>
+    <p>
+      <b>Step 4: After the restore has completed, run the <code>no shutdown</code> command on the PubSub+ Cache Instance that the restore was performed on.</b>
+    </p>
+    <pre>solace# configure
+solace(configure)# distributed-cache v1.d1 message-vpn v1 
+solace(configure/distributed-cache)# cache-cluster v1.d1.c1 
+solacesolace(...igure/distributed-cache/cache-cluster)# cache-instance v1.d1.c1.i1
+solace(...ed-cache/cache-cluster/cache-instance)## no shutdown 
+solace(...ed-cache/cache-cluster/cache-instance)## end
+solace# show cache-instance *</pre>
+    <pre>
+                                          Admin  Oper     Auto  Stop    Lost
+Cache Instance       Cache-Cluster        Status Status   Start On Loss Msg
+-------------------- -------------------- ------ -------- ----- ------- ----
+v1.d1.c1.i1          v1.d1.c1             Up     Up       Yes   Yes     No
+v1.d1.c1.i2          v1.d1.c1             Down   Down     Yes   Yes     No</pre>
+    <p class="Note">After a restore operation, the size of the PubSub+ Cache Instance database may be smaller than the pre-backup database. This does not indicate lost messages.Rather, less memory is used for backed up messages than for live data messages. </p>
+    <p>
+      <b>Step 5: Perform no shutdown on all other PubSub+ Cache Instances, and wait for them to synchronize the restored messages.</b>
+    </p>
+    <pre>solace# configure
+solace(configure)# distributed-cache v1.d1 message-vpn v1
+solace(configure/distributed-cache)# cache-cluster v1.d1.c1
+solacesolace(...igure/distributed-cache/cache-cluster)# cache-instance v1.d1.c1.i2
+solace(...ed-cache/cache-cluster/cache-instance)## no shutdown 
+solace(...ed-cache/cache-cluster/cache-instance)## end
+solace# show cache-instance *</pre>
+    <pre>
+                                          Admin  Oper     Auto  Stop    Lost
+Cache Instance       Cache-Cluster        Status Status   Start On Loss Msg
+-------------------- -------------------- ------ -------- ----- ------- ----
+v1.d1.c1.i1          v1.d1.c1             Up     Up       Yes   Yes     No
+v1.d1.c1.i2          v1.d1.c1             Up     ClusSync Yes   Yes     No
+     </pre>
+    <pre>solace# show cache-instance *</pre>
+    <pre>
+                                          Admin  Oper     Auto  Stop    Lost
+Cache Instance       Cache-Cluster        Status Status   Start On Loss Msg
+-------------------- -------------------- ------ -------- ----- ------- ----
+v1.d1.c1.i1          v1.d1.c1             Up     Up       Yes   Yes     No
+v1.d1.c1.i2          v1.d1.c1             Up     Up       Yes   Yes     No</pre>
+    <h2 class="with-rule"><a name="backing-up-cached-messages2"/>Backing Up Cached Messages</h2>
+    <p>To back up the cached messages for a PubSub+ Cache Instance that is shutdown, enter the following command:</p>
+    <p class="Code">solace(admin/distributed-cache)# backup-cached-messages cache-instance &lt;instance-name&gt; [{file &lt;filename&gt;} | cancel]</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;instance-name&gt;</code> is the name of the PubSub+ Cache Instance that you want to backup.</p>
+    <p><code>file &lt;filename&gt;</code> is the name (0-255 characters) for the backup file. This file is saved to the directory indicated by the <code>SOLCACHE_MSG_STORE_DIRECTORY</code> parameter in the PubSub+ Cache Instance configuration file (refer to <MadCap:xref href="Customizing-PubSub-Cache-Ins.htm">Customizing PubSub+ Cache Instance Configuration Files</MadCap:xref>). Note that cached data for global topics is not written to the file.</p>
+    <p><code>cancel</code> stops a backup operation when it is in progress.</p>
+    <h2 class="with-rule"><a name="restoring-cached-messages2"/>Restoring Cached Messages</h2>
+    <p>When a restore operation is performed for a PubSub+ Cache Instance, the following occurs:</p>
+    <ul>
+      <li>any messages that are currently cached by the PubSub+ Cache Instance are deleted</li>
+      <li>the messages saved to the backup file, as well as their original timestamps, are restored to the PubSub+ Cache Instance</li>
+    </ul>
+    <p class="Note">The PubSub+ Cache Plug-in is not invoked for restored messages because the messages would have already been processed by the Plug-in when they were originally written to the cache.</p>
+    <p>When restoring messages from a backup file, messages from the backup file can be discarded if:</p>
+    <ul>
+      <li>They do not match the PubSub+ Cache Instance’s configured topic subscriptions.</li>
+      <li>They would cause the max-msgs-per-topic to be exceeded. In this case, the oldest messages for that topic are deleted, to stay within the max‑msgs-per-topic limit.</li>
+      <li>They exceed the PubSub+ Cache Instance’s configured maximum message lifetime (refer to <MadCap:xref href="Configuring-Cache-Clusters.htm#Config-Msg-Life">Configuring Message Lifetimes</MadCap:xref>).</li>
+    </ul>
+    <p>WARN event logs are generated to indicate how many messages were discarded for these reasons during the restore operation.</p>
+    <p>To restore the given cached messages for a PubSub+ Cache instance from a backup file, enter the following commands:</p>
+    <pre>solace# admin
+solace(admin)# distributed-cache &lt;name&gt; message-vpn &lt;vpn-name&gt;
+solace(admin/distributed-cache)# restore-cached-messages cache-instance &lt;instance-name&gt; [{file &lt;filename&gt;} | cancel]</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the name of an existing Distributed Cache</p>
+    <p><code>&lt;vpn-name&gt;</code> is the name of an existing Message VPN</p>
+    <p><code>&lt;instance-name&gt;</code> is the name of the PubSub+ Cache Instance that you want to restore</p>
+    <p><code>file &lt;filename&gt;</code> is the name (0-255 characters) of the backup cached messages file to use for the restore process</p>
+    <p><code>cancel</code> stops a restore operation when it is in progress</p>
+  </body>
+</html>

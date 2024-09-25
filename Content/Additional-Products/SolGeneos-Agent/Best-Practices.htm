@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Best Practices</h1>
+    <p>It is recommended that you use the following best practices when developing ITRS Geneos data views using Solace Geneos Agent framework.</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Monitor">Monitor Jar File and Package Names</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#best_practices_231636409_235621">Default Data View Names</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#best_practices_231636409_235624">Multiple Data Views in One Monitor</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#best_practices_231636409_235653">Introducing User-Defined Properties</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#best_practices_231636409_235703">Different View Content for Different Netprobes in a Monitor</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#best_practices_231636409_235709">Monitor Threading Model</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#best_practices_231636409_235722">Share Objects among Monitors</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Monitor"/>Monitor Jar File and Package Names</h2>
+    <p>It is recommended that classes used by one monitor should be placed into one jar file. The name of the jar file and properties file should match the monitor class name. This makes upgrading user developed monitors more manageable.</p>
+    <p>However, if several monitor classes share the same helper classes, there are two ways to bundle classes:</p>
+    <ol>
+      <li>Bundle shared classes into one jar file, and while monitor classes are still in their individual jar file.</li>
+      <li>Bundle monitors and shared classes into one jar.</li>
+    </ol>
+    <p class="Note">Option 1 is the preferred approach because it makes upgrading a specific monitor easier. In the sample project, a few helper classes that could be shared among monitors are bundled into <code>sample-util.jar</code>, while classes used exclusively by UsersMonitor are bunded into <code>users-monitor.jar</code>.</p>
+    <p>Different monitor classes and helper classes should be packaged in a way to avoid class name conflict.</p>
+    <h2 class="with-rule"><a name="best_practices_231636409_235621"/>Default Data View Names</h2>
+    <p>Default data view names are reserved for the Solace Geneos Agent, and the monitors provided by the agent are not meant to be overwritten. If you want to use the same view name but with customer-specific monitors, you can choose a different sampler, group header, or managed entity.</p>
+    <h2 class="with-rule"><a name="best_practices_231636409_235624"/>Multiple Data Views in One Monitor</h2>
+    <p>For simplicity, it is recommended that one monitor generates one data view. However, the agent framework also supports a monitor to generate multiple data views if doing so makes data collecting and reporting more efficient.</p>
+    <p>In the monitor properties file, there is a section for view definition:</p>
+    <p class="Code">#### view definition</p>
+    <p class="Code"># view name</p>
+    <p class="Code">#view.v0.viewName=xxx</p>
+    <p class="Code"># view active or not</p>
+    <p class="Code">#view.v0.active=true</p>
+    <p class="Code"># Sampler name</p>
+    <p class="Code">#view.v0.sampler=SolaceSampler</p>
+    <p class="Code"># Group header</p>
+    <p class="Code">#view.v0.groupHeader=SolOS</p>
+    <p class="Code"># Managed Entities</p>
+    <p class="Code">#view.v0.managedEntities=[np0, ManEnt]</p>
+    <p class="Code"> </p>
+    <p class="Code"># view name</p>
+    <p class="Code">#view.v1.viewName=yyy</p>
+    <p class="Code"># view active or not</p>
+    <p class="Code">#view.v1.active=true</p>
+    <p class="Code"># Sampler name</p>
+    <p class="Code">#view.v1.sampler=SolaceSampler</p>
+    <p class="Code"># Group header</p>
+    <p class="Code">#view.v1.groupHeader=SolOS</p>
+    <p class="Code"># Managed Entities</p>
+    <p class="Code">#view.v1.managedEntities=[np0, ManEnt]</p>
+    <p>In normal cases, you only need to give <code>view.v0.viewName</code> a correct view name. However, if more views will be generated, then <code>view.v1.viewName, view.v2.viewName</code>, and so on can be added to the monitor properties file.</p>
+    <p>When this monitor properties file is loaded by the agent, the monitor will have two views created and stored in the monitor’s <code>viewMap</code> to be retrieved and updated during collection and reporting time.</p>
+    <p>If different views have different sampler, group header, or managed entities, they can all be configured through the monitor properties file.</p>
+    <h2 class="with-rule"><a name="best_practices_231636409_235653"/>Introducing User-Defined Properties</h2>
+    <p>As mentioned in <MadCap:xref href="SolGeneos-Directories.htm#solgeneos_overview_2955917983_247348">Configuration Properties</MadCap:xref>, the agent only loads properties it understands into the corresponding services and monitors. If there is a need to add additional properties, monitor developers can do the following:</p>
+    <ol>
+      <li>For properties that will be shared by many monitors, monitor developers should add these properties into a user properties file whose name starts with <code>_user</code>. It is recommended that you do not add these properties to the global <code>solgeneosagent.properties</code> because it could cause naming conflicts with future agent loads or monitors developed by other people.
+				<p>For example, if there is a need to introduce a new property for Netprobe service, developers should create a <code>user_x.properties</code> file and define the property there. </p><p>The Netprobe service property has a pre-defined notion in <code>solgeneosagent.properties</code> file: <code>netprobe.&lt;alias&gt;.&lt;propertyName&gt;</code>. So the property defined in the user properties file should look like:</p><p><code>netprobe.np0.msgVpns=blue,red</code></p><p>The monitor implementation can call the following to retrieve these properties:</p><pre xml:space="preserve">UserPropertiesConfig userPropsConfig = SolGeneosAgent.onlyInstance.
+	getUserPropertiesConfig("_user_x.properties");
+if (userPropsConfig != null &amp;&amp; userPropsConfig.getProperties() != null) {
+  String msgVpns = 	       
+    userPropsConfig.getProperties().getProperty("netprobe.np0.msgVpns");
+}</pre><p>For a Netprobe service, <code>netprobe.&lt;alias&gt;</code> property prefix is stored in the Netprobe Service object; therefore the full property name can be obtained from the Netprobe service by providing the property suffix. Netprobe services configured for the monitor or its views can be retrieved from the monitor implementation class or the containing views. The following code snippet shows how to retrieve the above user defined property with the new approach to reduce hard coding.</p><pre xml:space="preserve">UserPropertiesConfig userPropsConfig = SolGeneosAgent.onlyInstance.
+	getUserPropertiesConfig("_user_x.properties");
+if (userPropsConfig != null &amp;&amp; userPropsConfig.getProperties() != null) {
+  NetprobeManagedEntityMapping mapping =       
+    getNetprobeManagedEntityMappings().iterator().next();
+  NetProbeService theNetProbe NetProbeService.getNetProbe(mapping.getNetprobeAlias());
+  String msgVpns =
+    userPropsConfig.getProperties().getProperty(theNetProbe.getPropertyName("msgVpn");
+}
+</pre></li>
+      <li>For properties specific to a monitor, add the property to the monitor properties file. For example, property <code>msgVpns</code> is required for a monitor. The property looks like this in the monitor properties file:
+        <p><code>msgVpns=blue,red</code></p><p>To retrieve the property from the monitor, you can do the following:</p><p><code>MonitorConfig monitorPropsConfig = SolGeneosAgent.onlyInstance.getMonitorConfig(this);</code></p><p><code>String msgVpns = monitorPropsConfig.getProperties().getProperty("msgVpns");</code></p></li>
+      <li>For properties specific to a particular view contained in the monitor, they should be added to the view definition in the monitor properties file. For example, the monitor generates two views, view 1 gets data from message VPN blue and red, view 2 gets data from message VPN green and yellow. The properties should look like this in the monitor properties file:
+        <p><code>view.v0.msgVpns=blue,red</code></p><p><code>view.v1.msgVpns=green,yellow</code></p><p>To retrieve the properties from the monitor, the developer can do the following:</p><pre xml:space="preserve">MonitorConfig monitorPropsConfig=     SolGeneosAgent.onlyInstance.getMonitorConfig(this);
+TreeMap&lt;String, View&gt; viewMap = getViewMap();
+if (viewMap != null &amp;&amp; viewMap.size() &gt; 0) {
+  for (Iterator&lt;String&gt; viewIt = viewMap.keySet().iterator();
+  	viewIt.hasNext();) {
+    View view = viewMap.get(viewIt.next());
+    String msgVpns = monitorPropsConfig.getProperties().getProperty(
+      view.getPropertyName("msgVpns"));
+  }
+}</pre></li>
+    </ol>
+    <h2 class="with-rule"><a name="best_practices_231636409_235703"/>Different View Content for Different Netprobes in a Monitor</h2>
+    <p>One instance of Solace Geneos Agentcan communicate with more than one Netprobes. Different views can be configured to collect data and send it to different Netprobes.</p>
+    <p>However, sometimes a view is required to have different content depending on the Netprobe. For example, <code>Netprobe-Apps</code> is only interested in Queues of Message VPN red and blue, while <code>Netprobe-QA</code> is interested in Queues of Message VPN green and yellow. </p>
+    <p>The agent framework does not dictate the layout or content of each data view, as long as they are Geneos Netprobe compliant. Therefore, it is totally up to the monitor developers to decide what goes into each data view. However, developers should try to avoid hard code association between view content and Netprobes. The recommended approach is to define additional properties for the Netprobe service or the views, so as to design the associations through properties. </p>
+    <p>For the above example, the monitor developer can add msgVpns property to the Netprobe server configuration. During collecting, the monitor can query the event broker properly depending on the value of this property and report the corresponding data to the intended Netprobes.</p>
+    <h2 class="with-rule"><a name="best_practices_231636409_235709"/>Monitor Threading Model</h2>
+    <p>Monitors are driven by the following threads:</p>
+    <ol>
+      <li>Monitor Timer</li>
+      <li>Collecting context thread (default to <code>DefaultCollectingContext</code>, which is provided by the agent service)</li>
+      <li>Reporting context thread (default to <code>DefaultReportingContext</code>, which is provided by the agent service)</li>
+    </ol>
+    <p>Monitors extending from <code>BaseMonitor</code> must share the Monitor Timer thread. However, collecting context and report context threads can be overwritten with monitor specific threads.</p>
+    <p>The default monitors that bundled with Solace Geneos Agentuse the following rules:</p>
+    <ul>
+      <li>All the monitors use the <code>DefaultReportingContext</code> for reporting data to Netprobes.</li>
+      <li>Monitors that must communicate with the event broker through SEMP use <code>DefaultCollectingContext</code>  for data collecting</li>
+      <li>Monitors such as <code>ServiceStatsMonitor</code> and <code>MonitorStatsMonitor</code> that do no require SEMP use <code>SelfMonitorCollectingContext</code>, which is also provided by the agent service.</li>
+    </ul>
+    <p>When developing your own monitors, if collecting context is set to null, then the data collecting task is executed on the Monitor Timer thread. On the other hand, if it is set to a user-defined threading context, then the data collecting tasks are executed on their own thread. The same behavior applies to reporting context.</p>
+    <p>To make the agent more scalable, it is highly recommended that user-developed monitors utilize the three default threading contexts provided by the agent service, and only override the collecting context thread or reporting context thread when it is necessary. </p>
+    <h2 class="with-rule"><a name="best_practices_231636409_235722"/>Share Objects Among Monitors</h2>
+    <p>Sometimes objects may need to be shared among monitors, such as the http client used by the <code>UsersMonitor</code> sample.</p>
+    <p>Monitor developers can create their own caching data structures to store these shared objects, or they can use <code>userObjects</code> provided by Solace Geneos Agent. </p>
+    <p>To acess and update <code>userObjects</code>, call:</p>
+    <ul>
+      <li>
+        <code>SolGeneosAgent.onlyInstance.getUserObject(keyString)</code>
+      </li>
+      <li>
+        <code>SolGeneosAgent.onlyInstance.setUserObject(keyString, Object)</code>
+      </li>
+    </ul>
+    <p>For example, the http client used by <code>UsersMonitor</code> can be stored and retrieved by calling:</p>
+    <ul>
+      <li>
+        <code>SolGeneosAgent.onlyInstance.getUserObject("httpClientKey");</code>
+      </li>
+      <li>
+        <code>SolGeneosAgent.onlyInstance.setUserObject("httpClientKey", httpClient);</code>
+      </li>
+    </ul>
+    <p>The above two methods are thread-safe. However, once the shared object is obtained from the cache, if it is being accessed from multiple threads, monitor developers must guarantee its thread safety.</p>
+  </body>
+</html>

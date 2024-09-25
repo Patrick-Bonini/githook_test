@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><a name="Creating"/>Creating Queues with the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Go API</h1>
+    <p>It is possible to provision queues on the <MadCap:variable name="Variables.CompanyName"/> event broker using the Go API and a <code>PersistentMessageReceiverBuilder</code>. These queues can be durable or non-durable (see our blog post <a href="https://solace.com/blog/solace-endpoints-durable-vs-non-durable/" class="link-internal">Understanding Solace Endpoints: Durable vs. Non-Durable</a>), and are not provisioned on the event broker until you call <code>Start()</code> on your <code>PersistentMessageReceiver</code>.</p>
+    <h3>
+            Create a Non-Durable Queue </h3>
+    <p>To create a non-durable queue, pass <code>resource.QueueNonDurableExclusive(queueName)</code> into the parameters of the <code>Build()</code> function when building a <code>PeristentMessageReceiver</code>. The queue is  provisioned on the broker when you call the <code>Start()</code> function on your <code>PersistentMessageReceiver</code>. This non-durable queue is deleted after the client application that created the queue disconnects from the event broker. The following example shows how to create a non-durable queue:</p>
+    <pre xml:space="preserve">
+nonDurableExclusiveQueue := resource.QueueNonDurableExclusive("queueName")  // Creates a reference to an exclusive, non-durable queue with the specified name
+topic := resource.TopicSubscriptionOf(topicString)			     // Creates a TopicSubscription of the specified topic string
+
+/* Creates an instance of PersistentMessageReceiverBuilder, which is used to create PersistentMessageReceivers. */              
+persistentReceiver, err := messagingService.CreatePersistentMessageReceiverBuilder().
+	WithSubscriptions(topic).					    // Sets a list of TopicSubscriptions to subscribe to when starting the receiver.
+	Build(nonDurableExclusiveQueue)					    // Returns *IllegalArgumentError if the queue is nil.</pre>
+    <p class="Note">If the client disconnects unexpectedly (for example, due to a networking issue), the queue is not deleted until 60 seconds later. This allows auto-reconnect logic to reconnect the client to the queue before it disappears.</p>
+    <h3>
+            Create a Durable Queue </h3>
+    <p>To create a durable queue, call the <code>WithMissingResourcesCreationStrategy()</code>function when building your <code>PersistentMessageReceiver</code>. <code>MissingResourcesCreationStrategy</code> takes a parameter that has two possible values: </p>
+    <ul>
+      <li>
+        <p><code>config.MissingResourcesCreationStrategy(config.PersistentReceiverDoNotCreateMissingResources)</code>— The default value, which disables any attempt to create missing resources. </p>
+      </li>
+      <li>
+        <p><code>config.MissingResourcesCreationStrategy(config.PersistentReceiverCreateOnStartMissingResources)</code>—  Creates the queue provided in the <code>Build()</code> function as long as the client has sufficient permissions (an exception is thrown otherwise).</p>
+      </li>
+    </ul>
+    <p> The queue is provisioned on the broker when you call the <code>Start()</code> function on your <code>PersistentMessageReceiver</code>.</p>
+    <p class="Note"> For the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Go API, durable endpoint provisioning is implemented using the Missing Resource Creation Strategy, which means that you cannot deprovision the endpoints.</p>
+    <p>The following example shows how to create a durable queue using the Missing Resource Creation Strategy: </p>
+    <pre xml:space="preserve">durableExclusiveQueue := resource.QueueDurableExclusive("queueName")        // Creates an exclusive, durable queue with the specified name
+topic := resource.TopicSubscriptionOf(topicString)			     // Creates a TopicSubscription of the specified topic string
+strategy := config.MissingResourcesCreationStrategy(config.PersistentReceiverCreateOnStartMissingResources)      // Represents the various missing resource creation strategies available to publishers requiring guaranteed resources
+
+/* Creates an instance of PersistentMessageReceiverBuilder, which is used to create PersistentMessageReceivers. */              
+persistentReceiver, err := messagingService.CreatePersistentMessageReceiverBuilder().
+	WithMissingResourcesCreationStrategy(strategy).                     // Defines what actions the API may take when missing resources are detected.
+	WithSubscriptions(topic).					    // Sets a list of TopicSubscriptions to subscribe to when starting the receiver.
+	Build(durableExclusiveQueue)					    // Returns *IllegalArgumentError if the queue is nil.</pre>
+    <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker may be configured with queue templates, which allow you to set custom attributes on queues you create with the Go API. When using the Missing Resource Creation Strategy, queue templates will only override the provided queue attributes if the name of the queue you create matches the template <code>name-filter</code>. For information about queue templates see <MadCap:xref href="../../Messaging/Guaranteed-Msg/Endpoints.htm#Endpoint">Endpoints</MadCap:xref>, and for instructions on how to configure a queue template using the <MadCap:variable name="Variables.CompanyName"/> CLI see <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-Endpoint-Templates.htm">Configuring Endpoint Templates</MadCap:xref>.</p>
+    <div class="Note">
+      <p>You cannot use the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Go API to deprovision queues created with the Missing Resource Creation Strategy. Use SEMP or the <MadCap:variable name="Variables.CompanyName"/><MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker Command Line Interface (CLI) to deprovision these queues.</p>
+    </div>
+  </body>
+</html>
