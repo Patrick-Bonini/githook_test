@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Kafka Bridging<MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"> Overview</MadCap:conditionalText></h1>
+    <p>Kafka bridging allows for the configuration of two objects to bridge between a Kafka cluster and a<MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">n</MadCap:conditionalText> <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Variables.CompanyName"/></MadCap:conditionalText><MadCap:variable name="Product-Names.pubsub_brand_only"/> software event broker. Once configured, message flow is possible in both directions. This behavior is directly embedded in the event broker, in other words, no external Kafka Connect infrastructure is required in order to pass messages to and from Kafka. </p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">
+      <img src="../../Resources/Images/Kafka-Bridging/kafka_bridging_overview.png" alt=""/>
+    </p>
+    <p>A Kafka bridge consists of the following configuration objects:</p>
+    <ul>
+      <li>
+        <p>A <MadCap:xref href="#Kafka">Kafka Receiver </MadCap:xref>—receives events from one or more Kafka topics, converts the events to Solace Message Format (SMF)  messages, and publishes them to topics on the <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker.</p>
+      </li>
+      <li>
+        <p>A <MadCap:xref href="#Kafka2">Kafka Sender</MadCap:xref>—takes SMF messages from one or more queues, converts the messages to Kafka events, and sends them to Kafka topics on the remote Kafka cluster.</p>
+      </li>
+    </ul>
+    <p MadCap:conditions="SAP.SapHideFromOutput">This feature is only supported on software event brokers, and not appliances.</p>
+    <div class="Warning">Any Beta Kafka bridging configuration made in event broker versions earlier than 10.6.1 used in standalone deployments is discarded upon upgrade to version 10.6.1 or later. In addition, you must remove any Beta Kafka bridging configuration used in a redundant high availability deployment before attempting to upgrade to 10.6.1 or later.</div>
+    <h2 class="with-rule"><a name="Kafka"/>Kafka Receiver </h2>
+    <p>Each Kafka receiver contains a list of topic bindings. Each topic binding names the Kafka topic that messages are drawn from, and includes attributes that dictate how messages from the Kafka topic are  translated into a Solace message. </p>
+    <p>Messages translated from a Kafka topic are published into the Solace message bus. Because a Kafka topic may not be appropriate as a<MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">n</MadCap:conditionalText> <MadCap:variable name="Variables.CompanyName"/> topic, you must use a <a href="../../Messaging/Substitution-Expressions-Overview.htm" target="_blank" class="link-internal">substitution expression</a> to construct a<MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">n</MadCap:conditionalText> <MadCap:variable name="Variables.CompanyName"/> topic for  the received message. Substitution expressions are a<MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">n</MadCap:conditionalText> <MadCap:variable name="Variables.CompanyName"/>-specific language used to replace specific text attributes with system generated output. A common pattern in Kafka topics, for example, is to embed a hierarchy in them using dots or underscores (e.g. "a.b.c"), and an expression such as <code>${replace(kafkaTopic(),".","/")}</code> would convert these to an SMF topic and allow for more rich topic matching once within the <MadCap:variable name="Variables.CompanyName"/> network.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">These components are illustrated in the following diagram:</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">
+      <img src="../../Resources/Images/Kafka-Bridging/kafka_bridging_overview_receiver.png" alt=""/>
+    </p>
+    <p>The following table describes how  messages are converted from Kafka brokers to <MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers:</p>
+    <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col style="width: 33%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <col style="width: 33%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <col style="width: 33%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Kafka</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">
+            <MadCap:variable name="Variables.CompanyName"/>
+          </th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Comments</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">payload</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">payload</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The payload is always written to the <MadCap:variable name="Variables.CompanyName"/> binary attachment.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">partition key</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">partition  key</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The <MadCap:variable name="Variables.CompanyName"/> partition  key is set based on how you configure the topic binding's  local key substitution expression. <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">For more information, see <MadCap:xref href="Kafka-Bridging-Setup-Overview.htm#Key">Configuring Partitioned Queue Key Generation</MadCap:xref>.</MadCap:conditionalText></td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">topic</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">user property <code>k_topic</code></td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1"> </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">partition number</td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">user property <code>k_partition</code></td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1"> </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">partition offset</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">user property <code>k_offset</code></td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1"> </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">timestamp</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">sender timestamp</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1"> </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">headers</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">user properties</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">All  Kafka headers are converted to <MadCap:variable name="Variables.CompanyName"/> user properties.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">&lt;various&gt;</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">topic</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">The <MadCap:variable name="Variables.CompanyName"/> topic is set based on how you configure the topic binding's  local topic substitution expression. <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">For more information, see <MadCap:xref href="Kafka-Bridging-Setup-Overview.htm#Topic">Configuring SMF Topic Generation</MadCap:xref>.</MadCap:conditionalText></td>
+        </tr>
+      </tbody>
+    </table>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For information about how to set up an event broker to receive events from a Kafka cluster using a Kafka receiver, see <MadCap:xref href="Kafka-Bridging-Setup-Overview.htm#Configur14">Configuring a Kafka Receiver</MadCap:xref>.</p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">For information about how to set up an event broker to receive events from a Kafka cluster using a Kafka receiver, see <MadCap:xref href="../../Cloud/Broker-Manager/config-kafka-bridge.htm#Config-receiver">Creating a Kafka Receiver</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Kafka2"/>Kafka Sender</h2>
+    <p>Each Kafka sender contains a list of queue bindings. Each queue binding names the queue that messages are drawn from, and includes attributes that dictate how those messages are sent to a Kafka cluster. These are ordinary queues, configured outside of the context of the Kafka sender, and as such the messages that the queue attracts depend on the set of queue subscriptions configured for it. These messages are then sent to a single Kafka topic configured per queue binding. </p>
+    <p>Because Kafka topics are partitioned, with partition choice being determined by the client (in this case the <MadCap:variable name="Variables.CompanyName"/> event broker), each Kafka sender offers several partition choice options:</p>
+    <ul>
+      <li>
+        <p>Random—select a random partition of the Kafka topic.</p>
+      </li>
+      <li>
+        <p>Explicit—select an explicit partition of the Kafka topic.</p>
+      </li>
+      <li>
+        <p>Consistent—use a hash of a partition key to select a partition.</p>
+      </li>
+    </ul>
+    <p>When using a consistent partition selection scheme, you can use  a <a href="../../Messaging/Substitution-Expressions-Overview.htm" target="_blank" class="link-internal">substitution expression</a> to determine the partition key . For example, you could use the expression <code>${topic()}</code>, which would generate a partition key which matches the published Solace topic. This would result in all messages with the same Solace topic being sent to the same Kafka topic partition. </p>
+    <p>A substitution expression can be used to generate a key for the Kafka message even if a consistent partition scheme is not being used. There might be  other entities in the Kafka cluster that use the key, and being able to set it using a substitution expression can be useful, even if the Kafka sender doesn't use it to determine the partition.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">These components are illustrated in the following diagram:</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">
+      <img src="../../Resources/Images/Kafka-Bridging/kafka_bridging_overview_sender.png" alt="">
+            </img>
+    </p>
+    <p>The following table describes how messages are converted from <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">Solace </MadCap:conditionalText><MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers to Kafka brokers:</p>
+    <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col style="width: 33%;" class="TableStyle-Table_Num-Column-Column1">
+            </col>
+      <col style="width: 33%;" class="TableStyle-Table_Num-Column-Column1">
+            </col>
+      <col style="width: 33%;" class="TableStyle-Table_Num-Column-Column1">
+            </col>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Solace </th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Kafka</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Comments</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">payload</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">payload</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1"> </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1"> </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">topic</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The Kafka topic is set based on how you configure the queue binding's remote topic attribute. This is a single fixed value per queue binding.<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> For more information, see <MadCap:xref href="Kafka-Bridging-Setup-Overview.htm#Configur12">Configuring SMF to Kafka Topic Mapping.</MadCap:xref></MadCap:conditionalText></td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">&lt;various&gt;</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">partition key</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The Kafka partition key is generated per-message based on how you configure the queue binding's  remote key substitution expression. <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">For more information, see <MadCap:xref href="Kafka-Bridging-Setup-Overview.htm#Remote">Configuring Kafka Partition Key Generation</MadCap:xref>.</MadCap:conditionalText></td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">sender timestamp</td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">timestamp</td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1"> </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">user properties</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">headers</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">All  <MadCap:variable name="Variables.CompanyName"/> user properties are converted to Kafka headers.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For information about how to set up the event broker to send messages to a Kafka cluster using a Kafka sender, see <MadCap:xref href="Kafka-Bridging-Setup-Overview.htm#Configur13">Configuring a Kafka Sender</MadCap:xref>.</p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">For information about how to set up the event broker to send messages to a Kafka cluster using a Kafka sender, see <MadCap:xref href="../../Cloud/Broker-Manager/config-kafka-bridge.htm#Config-sender">Creating a Kafka Sender</MadCap:xref>.</p>
+  </body>
+</html>

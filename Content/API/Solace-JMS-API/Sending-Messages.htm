@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Sending Messages</h1>
+    <p>To send a message to a destination, call <code>send()</code> from an acquired <code>MessageProducer</code> object, and pass in the message to be sent.</p>
+    <p>The following parameters for the message can be also passed in with a <code>send(...)</code> method or they can be set when the <code>MessageProducer</code> is created:</p>
+    <ul>
+      <li><code>destination</code>—The destination to send the message to.</li>
+      <li><code>deliveryMode</code>—The delivery mode to use (Persistent or Non-Persistent) for the message.</li>
+      <li>
+        <p><code>priority</code>—The priority for the message.</p>
+        <p class="Note">When an endpoint is configured to enforce message priority, it increases the chance that duplicate messages will be delivered to a consuming client after it recovers from a connection failure (refer to <MadCap:xref href="../../Messaging/Guaranteed-Msg/Message-Priority.htm">Message Priority</MadCap:xref>).</p>
+      </li>
+      <li><code>timeToLive</code>—The message’s TTL value (in milliseconds). A value of 0 means that the message never expires.</li>
+    </ul>
+    <p class="Note">If these values are provided at the message level, they override the default values set at the <code>MessageProducer</code> level (refer to <MadCap:xref href="Creating-Message-Produce.htm">Creating Message Producers</MadCap:xref>).</p>
+    <p>The following example shows how to send a text message:</p>
+    <p class="Code">ConnectionFactory cf = (ConnectionFactory)context.lookup("cf/default");<br/>Destination destination = (Destination)context.lookup("topic/testDest");<br/>connection = cf.createConnection();<br/>session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);<br/>producer = session.createProducer(destination);<br/>Message message = session.createTextMessage("This is a text message");<br/>producer.send(message);</p>
+    <h2><a name="pre-send-hook"/>Using Pre-Send Hooks When Sending Messages</h2>
+    <p> You can use the <i>producer interceptor</i> (or pre-send hook)  in the JMS API to implement core concerns for an application,  such as logging or encryption prior to sending a message. This  pre-send hook is used to intercept the JMS message during the producer process and allows you to implement your core concern. The producer interceptor transparently runs before the message is processed by the underlying Solace JMS API when you send the message. To use it, you must implement the <span style="font-family: monospace;">MessageProducerInterceptor</span> interface and activate the interface using  <span style="font-family: monospace;">SupportedProperty.SOLACE_SOLACE_JMS_MESSAGE_PRODUCER_INTERCEPTOR_CLASS_NAME</span>, which specifies the fully-qualified name of the message producer interceptor that implements the <span style="font-family: monospace;">MessageProducerInterceptor</span> interface. When you call any of the <span style="font-family: monospace;">send</span> methods, your implementation runs prior to the message being sent. For more information, see the following in the <MadCap:variable name="Variables.CompanyName"/> JMS API Reference:</p>
+    <ul>
+      <li>
+        <p>
+          <span style="font-family: monospace;">MessageProducerInterceptor</span>
+        </p>
+      </li>
+      <li>
+        <p>
+          <span style="font-family: monospace;">MessageProducerInterceptingContext.MessageProducerInterceptingContext</span>
+        </p>
+      </li>
+      <li>
+        <p>
+          <span style="font-family: monospace;">SupportedProperty.SOLACE_JMS_MESSAGE_PRODUCER_INTERCEPTOR_CLASS_NAME</span>
+        </p>
+      </li>
+    </ul>
+    <p>For example, let's say you had a method that performs an operation on the message prior to it being sent in the <span style="font-family: monospace;">MyMessageProducerInterceptor.java</span> file:</p>
+    <pre xml:space="preserve">package com.myexample.MyMessageProducerInterceptor;
+import com.solacesystems.jms.interceptors.MessageProducerInterceptor;
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.TextMessage;
+
+ 
+/**
+ * A sample producer interceptor that can be used for transparent message encryption.
+ */
+public class MyMessageProducerInterceptor implements MessageProducerInterceptor {
+  public MyMessageProducerInterceptor ()
+  {
+
+  }
+  @Override
+  public void onPrePublish(
+  MessageProducerInterceptingContext interceptingContext) throws JMSException {
+ 
+    Message msg = interceptingContext.getMessage();
+    if (msg instanceof TextMessage) {
+       String text = ((TextMessage)msg).getText();
+       msg.clearBody();
+      ((TextMessage)msg).setText(text + ": intercepted");
+    }
+   }
+}</pre>
+    <p>Here's an example of how to enable the producer interceptor:</p>
+    <pre xml:space="preserve">
+import com.solacesystems.jms.SolConnectionFactory;
+import com.solacesystems.jms.SolJmsUtility;
+import com.solacesystems.jms.SupportedProperty;
+import java.util.Hashtable;
+import javax.jms.Connection;
+import javax.jms.ConnectionFactory;
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.MessageProducer;
+import javax.jms.Queue;
+import javax.jms.Session;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
+
+
+public static class ConfigureProducerInterceptor {
+ 
+  private static final String SOLJMS_INITIAL_CONTEXT_FACTORY = "com.solacesystems.jndi.SolJNDIInitialContextFactory";
+  private static final String PRODUCER_INTERCEPTOR_CLASS_NAME = MyMessageProducerInterceptor.class.getName();
+ 
+  /**
+   * An example of how to configure the interceptor with initial context and JNDI.
+   *
+   * @throws NamingException can be thrown when JNDI lookup fails
+   * @throws JMSException    can be thrown for an internal API reasons
+   */
+  public void exampleOfConfigureInterceptorWithInitialContextAndJNDI() throws NamingException, JMSException {
+    // The default JNDI name of the connection factory.
+    // SolConnectionFactory needs to be configured over JNDI for the default connection
+
+    final Hashtable&lt;String, Object&gt; env = new Hashtable&lt;String, Object&gt;();
+    env.put(InitialContext.INITIAL_CONTEXT_FACTORY, SOLJMS_INITIAL_CONTEXT_FACTORY);
+    //...
+    //... more another configuration
+    // username and password are not defined in this example and provided as sample variables
+    env.put(Context.SECURITY_PRINCIPAL, username);
+    env.put(Context.SECURITY_CREDENTIALS, password);
+    //Enable the use of SMFs without specifying a trust store 
+    //for illustration purposes; not recommended for use in production
+    env.put(SupportedProperty.SOLACE_JMS_SSL_VALIDATE_CERTIFICATE, false);  
+    // Enable the interceptor over initial context
+    env.put(SupportedProperty.SOLACE_JMS_MESSAGE_PRODUCER_INTERCEPTOR_CLASS_NAME, PRODUCER_INTERCEPTOR_CLASS_NAME);
+    // Create a new context based on the environment
+    final InitialContext initialContext = new InitialContext(env);
+    //Create a connection 
+    final ConnectionFactory cf = (ConnectionFactory) initialContext.lookup("cf/default");
+    final Connection connection = cf.createConnection();
+    //Create a session
+    final Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+    // Set the topic to send the message
+    final Destination destination = session.createTopic("myTopic");
+    // Publish a message where it's  transparently calls the producer interceptor prior to sending the message
+    TextMessage textMessage = session.createTextMessage("this message was intercepted to transparently do something like encryption, logging, etc.");
+    final MessageProducer producer = session.createProducer(destination);
+    producer.send(textMessage);
+  }</pre>
+    <pre xml:space="preserve">}
+ 
+</pre>
+  </body>
+</html>

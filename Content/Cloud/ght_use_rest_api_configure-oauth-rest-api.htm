@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="SAP.SapHideFromOutput">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Managing Single Sign-On for  <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s with the <MadCap:variable name="Product-Names.cloud_product_titlecase"/> REST API</h1>
+    <p>With the <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.cloud_product_long"/></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><MadCap:variable name="Product-Names.cloud_product_firstuse"/></MadCap:conditionalText> REST API, you can enable single sign-on (SSO) in the <MadCap:variable name="Product-Names.console_ui_long"/> using OpenID Connect (OIDC). You can enable  <i><MadCap:variable name="Product-Names.broker_cloud_short_title"/> SSO</i> for management access to one or more <MadCap:variable name="Product-Names.broker_cloud_short"/>s after you have enabled <i>Console SSO</i>. </p>
+    <p>This REST API allows you to configure only <MadCap:variable name="Product-Names.broker_cloud_short_title"/> SSO for an <MadCap:variable name="Product-Names.broker_cloud_short"/>. You must use a separate REST API to configure client  access to events and messages on the  <MadCap:variable name="Product-Names.broker_cloud_short"/>. For more information, see <MadCap:xref href="ght_use_rest_api_authentication.htm">Managing Authentication with the [%=Product-Names.cloud_product_titlecase%] REST API</MadCap:xref>.</p>
+    <p>This tutorial shows you how to:</p>
+    <ul>
+      <li>Disable or enable SSO for management access on <MadCap:variable name="Product-Names.broker_cloud_short"/>s. For more information, see <MadCap:xref href="#enable-disable-oidc-configuration">Enabling or Disabling OAuth for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</li>
+      <li>Retrieve the SSO configuration status for a specific  <MadCap:variable name="Product-Names.broker_cloud_short"/>. For more information, see <MadCap:xref href="#get-oidc-config-status">Getting the SSO Configuration Status for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</li>
+      <li>Test SSO access on the <MadCap:variable name="Product-Names.broker_cloud_short"/> using <MadCap:variable name="Product-Names.pubsubmanager_long"/>. For more information, see <MadCap:xref href="configure-oauth-for-broker-services.htm#test-oidc-sso">Testing Single Sign-On for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</li>
+      <li>Check the SSO status on the <MadCap:variable name="Product-Names.broker_cloud_short"/> and take action as required. This is a recommended maintenance practice and ensures that your <MadCap:variable name="Product-Names.broker_cloud_short"/>s are updated with the most recent SSO configuration (such as claims that have been added or removed). For more information, see <MadCap:xref href="#maintain-event-broker-oidc-configuration">Keeping the[%=Product-Names.broker_cloud_short_title%]s Updated with Recent Account Changes using the REST API</MadCap:xref>.</li>
+    </ul>
+    <h2>Before You Begin</h2>
+    <p>Before you can start this tutorial, you require the following:</p>
+    <ul>
+      <li>You must have an Enterprise Account for <MadCap:variable name="Product-Names.cloud_product_short"/>.<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> Trial accounts do not support SSO configuration via Open ID Connect (OIDC).</MadCap:conditionalText></li>
+      <li>The roles in your Enterprise Account must be mapped appropriately to the roles in your identity provider:<ul><li>the Administrator and <MadCap:variable name="Product-Names.cm_editor"/> roles give edit permissions to the Message VPN on the <MadCap:variable name="Product-Names.broker_cloud_short"/></li><li>the <MadCap:variable name="Product-Names.cm_viewer"/> role gives read access to  Message VPN on the <MadCap:variable name="Product-Names.broker_cloud_short"/></li></ul></li>
+      <li>If you have multiple connection endpoints (or <a href="create-service.htm#Configure-Custom-Ports" class="link-internal">private and public endpoints</a>) configured for the <MadCap:variable name="Product-Names.broker_cloud_short"/>, the redirect URIs need to be configured on the identity provider (IdP).</li>
+      <li><a href="cloud-sso.htm" class="link-internal">SSO</a> via OIDC must be enabled on the account.</li>
+      <li><a href="configure-cloud-user-management.htm" class="link-internal">Role management</a> must be set up on the account.</li>
+      <li><a href="configure-cloud-user-management.htm#Configur" class="link-internal">Just-in-time provisioning</a> must be configured on the account.</li>
+      <li>To make the REST API calls, you require an API token  in the account with at least the following permissions:
+                </li>
+      <ul>
+        <li><b>View service OAuth configuration (service_oauth:read)</b>—permits you get SSO configuration status of an <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li>
+        <li><b>Update service OAuth configuration (service_oauth:write)</b>—permits you to set whether SSO configuration status is used on an <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li>
+      </ul>
+      <li>
+        <p>A REST client of your choice. Postman is a good choice if you want a visual REST API development tool. At this time, there is no Solace Blog available so if you use Postman, simply make each call by typing the REST API call after you've set up the environment in Postman to use your API token. For more information about setting up Postman, see <MadCap:xref href="ght_api_tokens.htm">Using an API Token with Postman</MadCap:xref>.</p>
+      </li>
+      <MadCap:snippetBlock src="../Resources/Snippets/Cloud/restapi_checktoken_nosolaceblog.flsnp"/>
+    </ul>
+    <p> </p>
+    <h2><a name="Add_the_Service_URI"/>Adding the <MadCap:variable name="Product-Names.broker_cloud_short_title"/> URI to Your Identity Provider</h2>
+    <p>The identity provider (IdP) you've chosen  must know the redirect URIs of each <MadCap:variable name="Product-Names.broker_cloud_short"/>s. </p>
+    <p>You can retrieve the URI using one of the following methods:</p>
+    <ul>
+      <li>Use the <MadCap:variable name="Product-Names.console_ui_long"/>. For more information, see <MadCap:xref href="configure-oauth-for-broker-services.htm#retrieve-uri-event-broker-service">Retrieving the URI for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</li>
+      <li>Use the REST API. For more information, see <MadCap:xref href="#Create_an_API_Token">Retrieving the URI for the [%=Product-Names.broker_cloud_short_title%] to Add to as a Redirect URI</MadCap:xref>.</li>
+    </ul>
+    <h2><a name="Create_an_API_Token"/>Retrieving the URI for the <MadCap:variable name="Product-Names.broker_cloud_short_title"/> to Use as a Redirect URI</h2>
+    <p>To retrieve the URI for a specific <MadCap:variable name="Product-Names.broker_cloud_short"/>, you need to know the service identifier and perform a GET call to: </p>
+    <pre xml:space="preserve"><MadCap:variable name="Manifest-Products-Links.CloudRestAPIBaseURL"/>api/v2/platform/serviceOidcConfigurations/&lt;service_identifer&gt;</pre>
+    <p>From the response, you can use the value from <code>uri</code>  as the redirect URI to add to your identity provider (IdP). If have configured <a href="create-service.htm#configure-port-9.13later" class="link-internal">multiple connection endpoints</a>, the redirect URIs are returned as a  comma-delimited list. You add the redirect URIs to your IdP as a comma-separate list if your IdP supports it, otherwise add each redirect URI separately.</p>
+    <MadCap:snippetBlock src="../Resources/Snippets/Cloud/oauth-format-uri.flsnp"/>
+    <h2><a name="enable-disable-oidc-configuration"/>Enabling or Disabling <MadCap:variable name="Product-Names.broker_cloud_short_title"/> SSO Using the REST API</h2>
+    <p>You can use the <MadCap:variable name="Product-Names.cloud_product_short"/> REST API to enable or disable single sign-on (SSO) for management access on an <MadCap:variable name="Product-Names.broker_cloud_short"/>. When SSO is enabled, the most recent SSO configuration is used on the <MadCap:variable name="Product-Names.broker_cloud_short"/>. </p>
+    <p>To use the REST API,  you require  the unique identifier (<code>&lt;service_identifer&gt;</code>) of the <MadCap:variable name="Product-Names.broker_cloud_short"/> to perform these steps:</p>
+    <p class="Note">Before you follow these steps, you must have the API token configured in Postman. The examples all use Postman, but you can issue the requests using a means you choose, such as cURL. </p>
+    <ol>
+      <li>In Postman, issue a <code>PUT</code> request  to <code><MadCap:variable name="Manifest-Products-Links.CloudRestAPIBaseURL"/>api/v2/platform/serviceOidcConfigurations/&lt;service_identifer&gt;</code>.</li>
+      <li>
+        <p>In the body of the request,  use one of the following in as the body for the <code>PUT</code> request:</p>
+        <ul>
+          <li>
+            <p>To <u>enable</u> (or add) the SSO configuration on the  <MadCap:variable name="Product-Names.broker_cloud_short"/>, use the following in body:</p>
+            <pre xml:space="preserve">{
+   "configuredState" : "enabled"
+}</pre>
+          </li>
+          <li>
+            <p>To <u>disable</u> (or remove) the SSO configuration  for an <MadCap:variable name="Product-Names.broker_cloud_short"/>, use the following in the body:</p>
+            <pre xml:space="preserve">
+{
+   "configuredState" : "disabled"
+}</pre>
+          </li>
+        </ul>
+      </li>
+    </ol>
+    <p>After you have enabled SSO on the <MadCap:variable name="Product-Names.broker_cloud_short"/>, you can authenticate  to the  <MadCap:variable name="Product-Names.broker_cloud_short"/> using your identity provider.</p>
+    <p> A <code>202</code> response is returned when the call completes successfully. To determine if SSO on the <MadCap:variable name="Product-Names.broker_cloud_short"/> was enabled, you must retrieve the status. If it the SSO configuration failed, the reason is provided in the <code>failureMessage</code>. For more information about retrieving the SSO status for an <MadCap:variable name="Product-Names.broker_cloud_short"/>, see <MadCap:xref href="#get-oidc-config-status">Determining the OIDC Configuration Status for an [%=Product-Names.broker_cloud_short_title%] using the REST API</MadCap:xref>.</p>
+    <p>The following error codes are returned if the REST API call failed:</p>
+    <ul>
+      <li><b>403</b>—The necessary permissions are not enabled on the API token.</li>
+      <li><b>400</b>—The requirements to enable the SSO configuration  on the <MadCap:variable name="Product-Names.broker_cloud_short"/> are not met or the conditions to use Event Broker SSO are not met in the account. This may include one of the following reasons:<ul><li> SSO is not configured nor enabled</li><li>Role-mapping has not been configured nor enabled</li><li>Just-in-time  user provisioning has not been enabled in the role mapping configuration</li><li>The <MadCap:variable name="Product-Names.broker_cloud_short"/> does not support SSO</li></ul></li>
+    </ul>
+    <h2><a name="get-oidc-config-status"/>Determining the SSO Status for an <MadCap:variable name="Product-Names.broker_cloud_short_title"/> Using the REST API</h2>
+    <p>You can retrieve the SSO status of an <MadCap:variable name="Product-Names.broker_cloud_short"/>. This check to determines if SSO is  enabled or disabled on an individual  <MadCap:variable name="Product-Names.broker_cloud_short"/>, whether the SSO configuration is current, and the redirect URIs for the <MadCap:variable name="Product-Names.broker_cloud_short"/>. To retrieve the SSO status, use a  <code>GET</code> call to <code><MadCap:variable name="Manifest-Products-Links.CloudRestAPIBaseURL"/>api/v2/platform/serviceOidcConfigurations/&lt;service_identifer&gt;</code>. You must know the service identifier for the service you want to query.<br/></p>
+    <p>For example, a <code>GET</code> call to:<br/><code><MadCap:variable name="Manifest-Products-Links.CloudRestAPIBaseURL"/>api/v2/platform/serviceOidcConfigurations/548cdd2l3a4</code> gives the following response that indicates that SSO is enabled:</p>
+    <pre xml:space="preserve">
+{
+    "data": {
+    "serviceId": "548cdd2l3a4",
+    "name": "My-First-Service",
+    "dataCenter": "US Central (Iowa)
+    "configuredState": "enabled",
+    "currentState": "enabled",
+    "upToDate": "true"
+    "uri: "https://548cdd2l3a4.<MadCap:variable name="Manifest-Products-Links.CloudConsoleMessagingURL"/>/oauth/complete"
+    }
+}
+</pre>
+    <dl>
+      <dt>
+        <code>serviceId</code>
+      </dt>
+      <dd>
+        <p>The unique identifier for the <MadCap:variable name="Product-Names.broker_cloud_short"/> in <MadCap:variable name="Product-Names.cloud_product_short"/>.</p>
+      </dd>
+      <dt>
+        <code>name</code>
+      </dt>
+      <dd>
+        <p>The name of the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+      </dd>
+      <dt>
+        <code>dataCenter</code>
+      </dt>
+      <dd>
+        <p>The location where the <MadCap:variable name="Product-Names.broker_cloud_short"/> resides. It usually corresponds to the region name that was selected when  the <MadCap:variable name="Product-Names.broker_cloud_short"/> was created.</p>
+      </dd>
+      <dt>
+        <code>configuredState</code>
+      </dt>
+      <dd>
+        <p>Whether the SSO configuration is enabled. This can have a value of <code>enabled</code> or <code>disabled</code>.</p>
+      </dd>
+      <dt>
+        <p>
+          <code>currentState</code>
+        </p>
+      </dt>
+      <dd>
+        <p>Actual state of the SSO configuration on the <MadCap:variable name="Product-Names.broker_cloud_short"/>. This can have the values of:</p>
+      </dd>
+      <dd>
+        <ul>
+          <li><code>disabled</code>—No SSO configuration is available on the <MadCap:variable name="Product-Names.broker_cloud_short"/> and SSO has been disabled. <MadCap:variable name="Product-Names.broker_cloud_short_intitalcap"/>s that have this state support SSO.<MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput"> Desciptions for Enabled and Disabled look Backwards here</MadCap:conditionalText></li>
+          <li><code>enabled</code>—The SSO configuration was successfully updated on the <MadCap:variable name="Product-Names.broker_cloud_short"/> and SSO has been enabled. If the URI has been updated on your identity provider, you can use SSO credentials to access <MadCap:variable name="Product-Names.pubsubmanager_short"/>.</li>
+          <li><code>inProgress</code>—An operation to enable, update, or remove the SSO configuration from the  <MadCap:variable name="Product-Names.broker_cloud_short"/> is in progress.</li>
+          <li><code>failed</code>—Enabling, disabling, or updating the SSO configuration failed. You can try again or check the reason in <code>failedMesssage</code>.</li>
+          <li><code>unsupported</code>—The <MadCap:variable name="Product-Names.broker_cloud_short"/> doesn't support SSO. This can be because you using a legacy broker version. For information about upgrading your <MadCap:variable name="Product-Names.broker_cloud_short"/>, see <MadCap:xref href="upgrade-event-broker.htm">Upgrading [%=Product-Names.broker_cloud_short_title%]s in [%=Product-Names.cloud_product_titlecase%]</MadCap:xref>.</li>
+        </ul>
+      </dd>
+      <dt>
+        <p>
+          <a name="uptodate-json"/>
+          <code>upToDate</code>
+        </p>
+      </dt>
+      <dd>
+        <p>If the value is <code>true</code>, the <MadCap:variable name="Product-Names.broker_cloud_short"/> has an updated SSO configuration consistent with the one configured on the <MadCap:variable name="Product-Names.console_ui_short"/>. If the value is <code>false</code>, the <MadCap:variable name="Product-Names.broker_cloud_short"/>  has an outdated SSO configuration and must update it. To update the configuration, call the REST API to resend the SSO configuration to the <MadCap:variable name="Product-Names.broker_cloud_short"/>. For more information, see <MadCap:xref href="#enable-disable-oidc-configuration">Enabling or Disabling OAuth for an [%=Product-Names.broker_cloud_short_title%] using the REST API</MadCap:xref>.</p>
+      </dd>
+      <dt>
+        <p>
+          <code>uri</code>
+        </p>
+        <dd>
+          <p>The URI to add as a redirect in your identity provider (IdP). If have configured <a href="create-service.htm#configure-port-9.13later" class="link-internal">multiple connection endpoints</a>, there may be multiple broker URIs to add to your identity provider (IdP).  Multiple URIs are required when you have private and public endpoints.</p>
+        </dd>
+      </dt>
+      <dt>
+        <p>
+          <code>failureMessage</code>
+        </p>
+      </dt>
+      <dd>
+        <p>The message from the latest attempt to modify the SSO configuration. This value is only returned in the response when the  <code>currentState</code> is in the  <code>failed</code> or <code>unsuppported</code> state.</p>
+      </dd>
+    </dl>
+    <h2><a name="maintain-event-broker-oidc-configuration"/>Keeping <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s Updated with Recent Account Changes Using the REST API</h2>
+    <p>If the Console SSO configuration in your account in <MadCap:variable name="Product-Names.cloud_product_short"/> changes, the resulting changes in the SSO configuration must be updated on  each <MadCap:variable name="Product-Names.broker_cloud_short"/> to synchronize the updates.  For example, if you updated, deleted, or added any claims in the <MadCap:variable name="Product-Names.console_ui_long"/>, you must update each <MadCap:variable name="Product-Names.broker_cloud_short"/> with the updated SSO configuration.</p>
+    <p>To determine if an  <MadCap:variable name="Product-Names.broker_cloud_short"/> requires an update, you can issue a <code>GET</code> request to determine the status of the <MadCap:variable name="Product-Names.broker_cloud_short"/>. In the response, if <code>upToDate</code> is <code>false</code>, then the <MadCap:variable name="Product-Names.broker_cloud_short"/> must be updated with the SSO configuration. </p>
+    <p>For more information about the <code>upToDate</code> attribute, see <MadCap:xref href="#get-oidc-config-status">Retrieving the SSO Configuration Status for an [%=Product-Names.broker_cloud_short_title%] using the REST API</MadCap:xref>.</p>
+    <p>To update the <MadCap:variable name="Product-Names.broker_cloud_short"/>, send a <code>PUT</code> request with the <code>configuredState</code> set to <code>enabled</code>. This call causes the specified <MadCap:variable name="Product-Names.broker_cloud_short"/> to be updated with the most recent SSO configuration. For more about using the PUT request, see <MadCap:xref href="#enable-disable-oidc-configuration">Enabling or Disabling OAuth for an [%=Product-Names.broker_cloud_short_title%] using the REST API</MadCap:xref>.</p>
+  </body>
+</html>

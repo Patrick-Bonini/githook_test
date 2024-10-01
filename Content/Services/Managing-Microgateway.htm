@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Microgateway Configuration</h1>
+    <p>A Microgateway  allows a Solace PubSub+ event broker to act as an HTTP load balancer, or simple API gateway between a RESTful API Client and remote microservices. For more information, refer to <MadCap:xref href="Microgateways-Overview.htm">Microgateways</MadCap:xref>.</p>
+    <p>This section describes the various limitations of Microgateways and provides a list of the configuration parameters that are required before an  event broker can act as a Microgateway.</p>
+    <p class="Note">To propagate REST requests through the event broker it must first be configured for basic Guaranteed Messaging.  Refer to <MadCap:xref href="../Messaging/Guaranteed-Msg/Managing-Guaranteed-Messaging.htm">Guaranteed Messaging</MadCap:xref> for more information. In addition, special consideration must be taken when configuring queues used in a Microgateway deployment. For more information refer to <MadCap:xref href="#Configure_Queues">Configuring Queues for a Microgateway</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Limitations"/>Limitations</h2>
+    <p>Microgateways have the following limitations:</p>
+    <ul>
+      <li> The HTTP CONNECT and TRACE methods are not supported.</li>
+      <li>The event broker does not support the ability to change the original HTTP method when the REST delivery point (RDP) delivers a message to the REST consumer.</li>
+      <li>The event broker does not support the ability to change the query parameters of messages when the RDP delivers a message to the REST consumer.</li>
+      <li>The event broker does not support eavesdropping applications over HTTP. The only applications that can receive requests over HTTP are the remote microservices. If you add an eavesdropping HTTP application, responses from both the microservices and the eavesdropping application result in a race condition for the originating REST client.</li>
+      <li>Many functions of API gateways are not provided with the Microgateway feature including:<ul><li>Fan-out and response consolidation </li><li>Payload transformation</li><li>API lifecycle management</li><li>API version control</li></ul></li>
+    </ul>
+    <h2 class="with-rule"><a name="Receive_Requests"/>Configuring to Receive REST Requests</h2>
+    <p>Follow the steps below to configure a Solace PubSub+ event broker to receive REST requests.</p>
+    <ol>
+      <li>Enable system level REST service for incoming REST connections (refer to <MadCap:xref href="Managing-Services.htm#REST-Service">Managing REST Service</MadCap:xref>).</li>
+      <li>Configure incoming REST service for one or more Message VPNs (refer to <MadCap:xref href="Managing-REST-Service.htm#Config-In-REST-Connections">Configuring Incoming Connections</MadCap:xref>).<ol style="list-style-type: lower-alpha;"><li>Specify a dedicated listen port for the REST service (refer to <MadCap:xref href="Managing-REST-Service.htm#Set-Listen">Setting Listen Ports</MadCap:xref>).</li><li>Configure REST for either plain-text or SSL service (refer to <MadCap:xref href="Managing-REST-Service.htm#Enabling-Plain">Enabling REST Plain Text Service</MadCap:xref> and <MadCap:xref href="Managing-REST-Service.htm#Enabling-SSL">Enabling REST SSL Service</MadCap:xref>).</li></ol></li>
+      <li>Enable gateway mode for the Message VPNs (refer to <MadCap:xref href="#Configure_VPN_Mode">Configuring the REST Message VPN Mode</MadCap:xref>).</li>
+      <li>Optionally, configure ACLs  to control the URIs that REST clients have access to, and the HTTP methods they are allowed to use (refer to <MadCap:xref href="../Security/Managing-Access-Control-Lists.htm">Configuring Access Control Lists</MadCap:xref>).</li>
+    </ol>
+    <h2 class="with-rule"><a name="Publish_Requests"/>Configuring to Publish REST Requests</h2>
+    <p>Follow the steps below to configure a Solace PubSub+ event broker to publish REST requests.</p>
+    <ol>
+      <li>Enable system-level REST service for outgoing REST connections (refer to <MadCap:xref href="Managing-Services.htm#Enable-Outgoing-REST">Enabling Outgoing REST Connections</MadCap:xref>).</li>
+      <li>Configure and enable a REST delivery point (RDP) within a REST-enable Message VPN (refer to <MadCap:xref href="Managing-RDPs.htm">Managing REST Delivery Points</MadCap:xref>).<ol style="list-style-type: lower-alpha;"><li>Configure at least one queue binding for the RDP (refer to <MadCap:xref href="Managing-RDPs.htm#managing_rest_messaging_1948951837_1016325">Managing REST Delivery Point Queue Bindings</MadCap:xref>).</li><li>Optionally, configure how the event broker handles the authority value in outbound URIs (refer to <MadCap:xref href="Managing-RDPs.htm#Replacin">Replacing the Authority Value in Outbound URIs</MadCap:xref>).   </li></ol></li>
+      <li>Configure and enable a REST consumer (refer to <MadCap:xref href="Managing-RDPs.htm#managing_rest_messaging_1948951837_1004015">Configuring REST Consumers</MadCap:xref>).<ol style="list-style-type: lower-alpha;"><li>Configure connection parameters for the REST consumer (refer to <MadCap:xref href="Managing-RDPs.htm#managing_rest_messaging_1948951837_1004967">Configuring Remote Connection Info for REST Consumers</MadCap:xref>).</li></ol></li>
+    </ol>
+    <h2 class="with-rule"><a name="Configure_VPN_Mode"/>Configuring the REST Message VPN Mode</h2>
+    <p>By default, REST-enabled VPNs  operate in messaging mode.</p>
+    <p>To configure the REST Message VPN mode, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/message-vpn/service/rest)# mode {gateway | messaging}</p>
+    <p><u>Where</u>:</p>
+    <p><code>gateway</code> configures the Message VPN to act as a Microgateway through which REST messages are propagated.</p>
+    <p><code>messaging</code> configures the Message VPN to act as an event broker on which REST messages are queued.</p>
+    <p class="Note">The no version of the this command (<code>no mode</code>) returns the Message VPN to the default mode (messaging).</p>
+    <h2 class="with-rule"><a name="Configure_Queues"/>Configuring Queues for a Microgateway</h2>
+    <p>Configuring a Message VPN to act as a Microgateway alters the way the event broker encodes incoming requests and responses for internal transportation. This change in processing requires careful consideration when creating queues for traffic management, or when adding eavesdropping applications to the deployment.</p>
+    <h3>Configuring Queues for Traffic Management to Microservices</h3>
+    <p>Message VPNs configured to act as Microgateways encode the HTTP method (POST, GET, DELETE) and path  of incoming requests to Solace message topics for internal transportation. This enables the event broker to deliver each HTTP method to separate queues. You can use this functionality to configure traffic management to remote microservices.</p>
+    <p>To add a topic subscription to a queue used in a Microgateway deployment enter the following CONFIG command. </p>
+    <p class="Code">solace(configure/message-spool/queue)# subscription topic &lt;HTTP method&gt;/&lt;target-path&gt;</p>
+    <p>For example, to add a subscription for all POST requests with a specific path:</p>
+    <p class="Code">solace(configure/message-spool/queue)# subscription topic POST/store/orders</p>
+    <p>To add a subscription for all HTTP requests with a specific path:</p>
+    <p class="Code">solace(configure/message-spool/queue)# subscription topic */store/account/orders</p>
+    <p>To add subscriptions for individual HTTP methods  regardless of path:</p>
+    <p class="Code">solace(configure/message-spool/queue)# subscription topic POST/&gt;<br/>solace(configure/message-spool/queue)# subscription topic GET/&gt;</p>
+    <p>For an example describing how to configure queues for traffic management to microservices, refer to <MadCap:xref href="Microgateway-Traffic-Mgmt-Example.htm">Traffic Management to Microservices Configuration Example</MadCap:xref>.</p>
+    <h3>Configuring Queues for Eavesdropping Applications</h3>
+    <p>In order for the eavesdropping application to receive requests and responses propagated by the Microgateway, you must add the following  topic subscriptions to each corresponding queue:</p>
+    <ul>
+      <li>One or more subscriptions that match  existing subscriptions used to receive requests from REST clients. </li>
+      <li>One or more subscriptions that correspond with the reply-to topics generated by the event broker. These topics are generated according to the following format: <code>#P2P/&lt;virtual-router-name&gt;/_rest-&lt;tsid&gt;/&lt;request-method&gt;/&lt;request-path&gt;</code>.</li>
+    </ul>
+    <p>For example, to add a topic subscription to a queue so that a corresponding eavesdropping application receives all responses from remote microservices:</p>
+    <p class="Code">solace(configure/message-spool/queue)# subscription topic #P2P/v:solace/_rest-*/&gt;</p>
+    <p>For an example describing how to configure queues for eavesdropping applications, refer to <MadCap:xref href="Microgateway-Eavesdropping-App-Example.htm">Eavesdropping Application Configuration Example</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Passing_OAuth_Tokens"/>Passing OAuth Tokens to REST Consumers</h2>
+    <p>In a REST/HTTP client connection, the event broker uses the <code>Authorization: basic &lt;b64_username_password&gt;</code> HTTP header field for its own authentication. In gateway mode, the broker passes any type of authorization header other than <code>basic</code> through to the REST consumer. You can use this mechanism to pass OAuth credentials through the broker to have the remote host handle the authorization.</p>
+    <p>To pass OAuth credentials through the broker, configure the REST clients to insert the OAuth token in a <code>bearer</code> type authorization header:</p>
+    <pre class="Code">Authorization: bearer &lt;oauth_bearer_access_token&gt;</pre>
+    <p>This header is passed through the broker and will be received unchanged by the remote server. Because the broker does not validate anything in the header, you must ensure that the OAuth token has not expired and will work as expected at the destination.</p>
+    <p class="Note">OAuth tokens can be very long. PubSub+ event brokers don't impose any limit on the size of an HTTP header field, except that the HTTP header fields must all fit into the overall message size limitations (approximately 30MB for guaranteed messages in most cases). In addition, although HTTP allows header field values to be split across multiple lines, we recommend using one line per HTTP header field.</p>
+    <p class="Note">In gateway mode, the PubSub+ event broker passes duplicate HTTP header fields through to the remote server. If a REST client sends multiple (non-basic) authorization headers, they are all passed unchanged through the event broker; the remote server is expected to handle these duplicate headers gracefully.</p>
+  </body>
+</html>

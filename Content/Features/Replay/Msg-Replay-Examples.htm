@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Message Replay Examples</h1>
+    <p>The following sections provide some simple examples of how to configure and initiate a message replay from an event broker using <MadCap:variable name="Product-Names.solace_cli"/> commands. </p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Create">Create a Replay Log</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Start">Start Replay on a Queue</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Cancel">Cancel Replay on a Queue</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Start2">Start Replay on a Topic-Endpoint</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Cancel2">Cancel Replay on a Topic-Endpoint</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Enable">Enable Replay on Temporary Queues</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Trim">Trim Logged Messages</MadCap:xref>
+      </li>
+    </ul>
+    <p>For detailed information about the <MadCap:variable name="Product-Names.solace_cli"/> commands shown in the examples, see these sections:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="Msg-Replay-Config.htm">Configuring Message Replay</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="Msg-Replay-Playback.htm">Playing Back a Replay Log</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Create"/>Create a Replay Log</h2>
+    <p>You can create a replay log using the following commands:</p>
+    <p class="Code">solace1&gt; enable<br/>solace1# configure<br/>solace1(configure)# message-spool message-vpn &lt;vpn-name&gt;<br/>solace1(configure/message-spool)# create replay-log &lt;log-name&gt;<br/>solace1(configure/message-spool/replay-log)# max-spool-usage &lt;size-in-MB&gt;<br/>solace1(configure/message-spool/replay-log)# no shutdown<br/>solace1(configure/message-spool/replay-log)# exit</p>
+    <p>By default, <code>max-spool-usage</code> size is set to 0. To log messages, the <code>max-spool-usage</code> size, <code>&lt;size-in-MB&gt;</code>, must be greater than 0. To determine the required size fo the replay log,  see  <MadCap:xref href="Msg-Replay-Config.htm#calc-replay-log-size">Calculating the Required Replay Log Size</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Start"/>Start Replay on a Queue</h2>
+    <p class="Code">solace1# admin<br/>solace1(admin)# message-spool message-vpn &lt;vpn-name&gt;<br/>solace1(admin/message-spool)# queue &lt;queue-name&gt;<br/>solace1(admin/message-spool/queue)# start-replay</p>
+    <p>The <code>start-replay</code> command in the above example starts the replay from the beginning of the log. You can specify the date and time from which you want to start the replay (<code>start-replay from-date &lt;from-date&gt;</code>) where the from-date is in the format <code>YYYY-MM-DDThh:mm:ssTZD</code> , and <code>TZD</code> is the time zone designator. For example, a date and time specific <code>start-replay</code> line might look like this,</p>
+    <p class="Code">solace1(admin/message-spool/queue)# start-replay from-date 2018-08-13T11:34:13-04:00</p>
+    <p>Alternatively, you can specify a replication group message ID after which you want to start the replay (<code>start-replay after-msg &lt;replication-group-msg-id&gt;</code>).</p>
+    <h2 class="with-rule"><a name="Cancel"/>Cancel Replay on a Queue</h2>
+    <p>You can cancel replay on a queue using the following commands:</p>
+    <p class="Code">solace1# admin<br/>solace1(admin)# message-spool message-vpn &lt;vpn-name&gt;<br/>solace1(admin/message-spool)# queue &lt;queue-name&gt;<br/>solace1(admin/message-spool/queue)# cancel-replay</p>
+    <p MadCap:conditions="Default.HideFromAllOutput">Original: When you cancel replay on the queue, all clients are unbound from the queue. If there's an issue for any of the clients applications to unbind frp, the queue, the cancel replay operation may not succeed. You can force the cancel to succeed using the <code>force-complete</code> option, however the command may cause subsequent client bind errors to that queue.</p>
+    <p>When you cancel replay, all clients are unbound. If there's an issue unbinding any of the  client applications, the <code>cancel-replay</code> command might not succeed. You can force the command to succeed by using <code>force-complete</code>, however this may cause subsequent bind errors to that queue.</p>
+    <p class="Code">solace1(admin/message-spool/queue)# cancel-replay force-complete</p>
+    <h2 class="with-rule"><a name="Start2"/>Start Replay on a Topic-Endpoint</h2>
+    <p>You can start replay on a topic command using the following commands:</p>
+    <p class="Code">solace1# admin<br/>solace1(admin)# message-spool message-vpn &lt;vpn-name&gt;<br/>solace1(admin/message-spool)# topic-endpoint &lt;topic-endpoint-name&gt;<br/>solace1(admin/message-spool/topic-endpoint)# start-replay</p>
+    <p>The <code>start-replay</code> command in the above example starts the replay from the beginning of the log. You can specify the date and time from which you want to start the replay (<code>start-replay from-date &lt;from-date&gt;</code>) where the <code>from-date</code> is in the format <code>YYYY-MM-DDThh:mm:ssTZD</code>, and <code>TZD</code> is the time zone designator. For example, a date and time specific <code>start-replay</code> line might look like this,</p>
+    <p class="Code">solace1(admin/message-spool/topic-endpoint)# start-replay from-date 2018-08-13T11:34:13-04:00</p>
+    <p>Alternatively, you can specify a replication group message ID after which you want to start the replay (<code>start-replay after-msg &lt;replication-group-msg-id&gt;</code>) where the <code>replication-group-msg-id</code> string should be as given via a PubSub+ event broker management interface such as <MadCap:variable name="Product-Names.solace_cli"/>, <MadCap:variable name="Product-Names.pubsubmanager_long"/>, or SEMPv2. You can also obtain it  by converting the replication group message ID to a string using a <MadCap:variable name="Manifest-Products-APIs.PubSub-GenericAll-Messaging-API"/>.</p>
+    <h2 class="with-rule"><a name="Cancel2"/>Cancel Replay on a Topic-Endpoint</h2>
+    <p>You can cancel replay on a topic endpoint using the following commands:</p>
+    <p class="Code">solace1# admin<br/>solace1(admin)# message-spool message-vpn &lt;vpn-name&gt;<br/>solace1(admin/message-spool)# topic-endpoint &lt;topic-endpoint-name&gt;<br/>solace1(admin/message-spool/topic-endpoint)# cancel-replay</p>
+    <p>When a replay is canceled, the event broker sends an unbind to all clients bound to the endpoint and waits for an unbind ack from each client. If you don’t want to wait for unbind acks, use the <code>force-complete</code> option,</p>
+    <p class="Code">solace1(admin/message-spool/topic-endpoint)# cancel-replay force-complete</p>
+    <h2 class="with-rule"><a name="Enable"/>Enable Replay on Temporary Queues</h2>
+    <p>To enable replay on temporary queues, you can make use of queue templates to override the durability requested by the application.  In this case,  the API signals in a durable queue and you configure the event broker to override the durability to one that is non-durable.</p>
+    <p class="Note">Non-durable topic endpoints  support replay without any further configuration.</p>
+    <p>First you create a queue template to override durability for certain queue names (in this example, all queue names of the form <code>tmpQforReplay/</code>).</p>
+    <pre xml:space="preserve">
+solace1&gt; enable
+solace1# configure
+solace1(configure)# message-spool message-vpn &lt;vpn-name&gt;
+solace1(configure/message-spool)# create queue-template forReplayToTemp
+solace1(configure/message-spool/queue-template)# durability-override non-durable
+solace1(configure/message-spool/queue-template)# name-filter tmpQforReplay/*
+solace1(configure/message-spool/queue-template)# end</pre>
+    <p>Then, include the above template for queue creation for  a client profile (in this example the default client profile).</p>
+    <pre xml:space="preserve">
+solace1(configure)# client-profile default message-vpn &lt;vpn-name&gt;
+solace1(configure/client-profile)# message-spool
+solace1(configure/client-profile/message-spool)# api-queue-management
+solace1(...le/message-spool/api-queue-management)# copy-from-template-on-create forReplayToTemp
+solace1(...le/message-spool/api-queue-management)# end</pre>
+    <p>Once enabled, applications can initiate replay to any temporary queue  with the specified name or for any temporary queue created by a client with the specified profile.</p>
+    <p class="Note">Replay requests to non-durable endpoints initiated administratively via <MadCap:variable name="Product-Names.solace_cli"/> or SEMP are not supported.</p>
+    <h2 class="with-rule"><a name="Trim"/>Trim Logged Messages</h2>
+    <p>You can manually trim the replay log using the following commands:</p>
+    <p class="Code">solace1# admin<br/>solace1(admin)# message-spool message-vpn &lt;vpn-name&gt;<br/>solace1(admin/message-spool)# replay-log &lt;log-name&gt;<br/>solace1(admin/message-spool/replay-log)# trim-logged-messages older-than-date &lt;older-than-date&gt;</p>
+    <p><code>&lt;older-than-date&gt;</code> is in the format <code>YYYY-MM-DDThh:mm:ssTZD</code> and <code>TZD</code> is the time zone designator. For example, the <code>trim-logged-messages</code> line might look like this:</p>
+    <p class="Code">solace1(admin/message-spool/replay-log)# trim-logged-messages older-than-date 2018-08-13T11:34:13-04:00</p>
+    <p>For more information about the trim-logged-messages command, see  <MadCap:xref href="Msg-Replay-Playback.htm#trim-log">Deleting Messages from Replay Log Using trim-logged-messages</MadCap:xref> .</p>
+  </body>
+</html>

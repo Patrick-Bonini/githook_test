@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><MadCap:concept term="Cloud;Appliance;Software"/>Controlling Client Access with ACL Profiles</h1>
+    <p>After a client authenticates successfully, the event broker checks the ACL profile assigned to the client based on either:</p>
+    <ul>
+      <li>the client's username, or</li>
+      <li> the LDAP authorization groups that the client belongs to (when LDAP authorization is used)</li>
+    </ul>
+    <p>This ACL profile controls whether an authenticated client is permitted to:</p>
+    <ul>
+      <li>establish a connection with the event broker (see <MadCap:xref href="#Client-Connect-Access-Controls">Client Connection Access Controls</MadCap:xref>)</li>
+      <li>publish and subscribe to specific topics (see <MadCap:xref href="#client_authentication_and_authorization_2866343001_215561">Topic Access Controls</MadCap:xref>)</li>
+    </ul>
+    <div class="Note">
+      <ul>
+        <li>If an administrator doesn't assign a specific ACL profile to a client username, that username is automatically assigned the ACL profile named <code>default</code>. The default ACL profile is preconfigured for each Message VPN on an event broker. Although you can modify the configuration of the <code>default</code> ACL profile, this ACL profile can't be deleted.</li>
+        <li>All internal clients that are automatically created by the system for internal features (for example, the Config-Sync client <code>#config-sync</code>) are assigned to the ACL profile <code>#acl-profile</code>.</li>
+      </ul>
+    </div>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For information about using the <MadCap:variable name="Product-Names.solace_cli"/> to configure and manage ACLs on event brokers, see <MadCap:xref MadCap:unresolvedLink="import-link:managing_access_control_lists_4168580380_92633" href="Managing-Access-Control-Lists.htm">Configuring Access Control Lists</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Client-Connect-Access-Controls"/>Client Connection Access Controls</h2>
+    <p>ACL profiles have a client connection access control that determines whether clients are allowed to connect to an event broker.</p>
+    <p>Client connection attempts can be configures to <code>allow</code> (permit client connections) or <code>disallow</code> (deny client connections). The default action for user-defined ACLs is <code>disallow</code>. The default action for the <code>default</code> and <code>#acl-profile</code> ACL profiles is <code>allow</code>.</p>
+    <p>After you set the default client connection action, you can create a list of clients that should be exceptions to the default action. Clients to be excepted must be defined in Classless Inter‑Domain Routing (CIDR) address format (nnn.nnn.nnn.nnn/nn). Any client whose address falls into any of the IP/mask in this list has the opposite behavior to the configured default action. There is a system-level limit of 10,000 ACL profile connect exceptions.</p>
+    <p>For example, if the client-connect access control for an ACL uses a default action of <code>allow</code>, but 10.1.1.0/24 is listed as an exception, clients on the 10.1.1.0/24 network are denied access to the Message VPN. Similarly, if the default client connection action is <code>disallow</code>, and a client on a network on the exceptions list attempts to connect, that client is connected with no restrictions.</p>
+    <p class="Note">Changing the default client connect action, or removing clients from the exceptions list, does not immediately affect clients that already have an established connection to the event broker. They remain connected.</p>
+    <p>A global statistic and a per-message VPN statistic is incremented for every denied connection attempt. In addition, a circular log is also maintained that captures:</p>
+    <ul>
+      <li>the current timestamp</li>
+      <li>the IP/port of the denied client</li>
+      <li>the username of the denied client</li>
+      <li>the Message VPN of the denied client</li>
+      <li>the client name of the denied client (shown only when the <code>show log acl</code> User EXEC command is used with the wide parameter option)</li>
+      <li>the ACL profile name that triggered the denial (shown only when the <code>show log acl</code> User EXEC command is used with the wide parameter option)</li>
+    </ul>
+    <h2 class="with-rule"><a name="client_authentication_and_authorization_2866343001_215561"/>Topic Access Controls</h2>
+    <p>ACL profiles provide publish-topic and subscribe-topic access controls, which enable you to set which topics Solace Message Format (SMF) and Message Queuing Telemetry Transport (MQTT) clients can publish to and which topics they can subscribe to. </p>
+    <p>An ACL profileʼs publish-topic access control has:</p>
+    <ul>
+      <li>A default action of <code>allow</code> or <code>disallow</code>, where <code>allow</code> sets the default action to allow the publishing of messages to topics, and <code>disallow</code> sets the default action to disallow the publishing of messages to topics.  The configured default action  applies to both SMF and MQTT topics.</li>
+      <li>An optional list of  specific topics that you want to be excepted from the default publish-topic action. Topic exceptions must be made for SMF and MQTT topics syntax separately. 
+                </li>
+    </ul>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For more information about setting publish-topic access control, see <MadCap:xref href="Managing-Access-Control-Lists.htm#Config-Topics-May-Pub-To">Configuring Topic Publish Permissions</MadCap:xref>.</p>
+    <p>An ACL profileʼs subscribe-topic access control has:</p>
+    <ul>
+      <li>A default action of <code>allow</code> or <code>disallow</code>, where <code>allow</code> sets the default subscribe action to allow clients to subscribe to topics, and <code>disallow</code> sets the default subscribe action to disallow clients from subscribing to topics.  The configured default action  applies to both SMF and MQTT topics.</li>
+      <li>An optional list of  specific topics that you want to be excepted from the default subscribe-topic action. Topic exceptions must be made for SMF and MQTT topics syntax separately. 
+               </li>
+    </ul>
+    <div class="Caution">
+      <p>Using ACL profiles with a default subscribe action set to <code>allow</code> is not recommended when the goal is to restrict access to specific topics. This approach can result in unexpected behavior, particularly concerning wildcard handling (see <MadCap:xref href="#Wildcard">Wildcard Handling</MadCap:xref>). ACL profiles with a default subscribe action of <code>allow</code> are best suited for scenarios where there are no restrictions on the topics a client can subscribe to.</p>
+    </div>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For more information on setting subscribe-topic access control, see <MadCap:xref href="Managing-Access-Control-Lists.htm#Config-Topics-May-Sub-To">Configuring Topic Subscribe Permissions</MadCap:xref>.</p>
+    <p>There is no limit to the number of publish or subscription topic exceptions per ACL profile. However, there is a maximum of 40,000 exceptions (publish and subscription topic exceptions combined) allowed among all profiles. Also keep in mind that the more exceptions there are, the more difficult it is to comprehend and manage your topic access control configuration.</p>
+    <p>The topics that these access controls affect can be regular topic subscriptions, and reserved Solace topics that are used for special messaging features. For example, there are unique topics that allow clients to publish and subscribe to topics bound to durable queues (<code>#P2P/QUE/&lt;queue‑name&gt;</code>) and topics that are only for the consumption of one specific client (<code>#P2P/v:routerName/clientUsernameHash/clientName/&gt;</code>). For a complete list of special topics and their usage, see <MadCap:xref href="../Messaging/Reserved-Topics.htm">Reserved Topics</MadCap:xref>.</p>
+    <h3><a name="Using"/>Using Substitution Variables in Topic Exceptions</h3>
+    <p>Substitution can be helpful for deployments that have a lot of connecting clients (for example, IoT deployments may have thousands or hundreds of thousands of clients) where you may want to configure ACL rules so that those clients can only:</p>
+    <ul>
+      <li>publish to topics containing their own client username or MQTT client ID (to prevent a client from impersonating another client)</li>
+      <li>subscribe to topics containing their own client username or MQTT client ID (to prevent a client from receiving data that is intended for another client)</li>
+      <li> listen to their own #P2P topic (to prevent a client from receiving a reply message that is intended for another client)</li>
+    </ul>
+    <p>To manually set up these types of restrictions for large numbers of clients is not practical. So, instead you can configure ACL topic exceptions with special substitution variables for one of the following:</p>
+    <ul>
+      <li>client username (<code>$client-username</code>)—When <code>$client-username</code> is encountered in an ACL topic exception, the event broker will substitute the client username provided by the client or retrieved from the TLS client-certificate during client login.</li>
+      <li>client username hash (<code>$client-username-hash</code>)—When a client attempts to establish a connection, the event broker will automatically create a #P2P topic (<code>#P2P/v:routerName/client-username-hash/clientname/&gt;</code>) for the client so that it can use Direct Request/Reply messaging. The event broker creates this topic based on the client username provided by the client or retrieved from the TLS client-certificate during client login. The variable <code>$client-username-hash</code> represents the unique 8-byte long “client-username-hash” that the event broker generates for clients using that client username.</li>
+      <li>client’s MQTT ID (<code>$client-id</code>)— This configuration only applies to MQTT sessions. When <code>$client-id</code> is encountered in an ACL topic exception, the event broker will substitute the MQTT client-ID that the client provided when it established its session. </li>
+    </ul>
+    <p>The strings <code>$client-id</code>, <code>$client-username</code>, and <code>$client-username-hash</code> have special meaning only for ACL exception topics. If they are used in regular topic subscriptions, they will be treated as literal strings and have no special meaning.</p>
+    <p>If substitution variables are used in ACL topic exceptions, when the event broker applies the ACL profile for a client, it replaces the variables in the topic exceptions with the corresponding client username or MQTT client ID that the client provided when it established its connection to the event broker or the client-username-hash generated by the event broker.</p>
+    <p>Substitution variables must appear alone at any level in the topic exception, but they can appear multiple times in a single exception. For example, <code>FRUIT/$client-id/$client-username/APPLES</code> are valid uses of substitution variables. While <code>FRUIT/$client-id*</code> and <code>FRUIT/$client-id$client-id/*</code> are not valid because <code>$client-id</code> does not stand alone at a level.</p>
+    <div class="Caution">
+      <p class="Tbl_Body">If you use substitution variables in ACL topic exceptions, you must ensure that  client usernames or MQTT client IDs do not contain the “/” character. Although “/” is a valid character in MQTT client IDs or client usernames, because the event broker uses “/” as a delimiter between levels in a topic, any MQTT client IDs or client usernames that contain “/” characters will never be able to match the <code>$client-id</code> or <code>$client-username</code> elements of an ACL rule. Note that the event broker does not enforce this restriction.</p>
+    </div>
+    <h3><a name="Wildcard"/>Wildcard Handling</h3>
+    <p>Subscriptions are either fully accepted or fully rejected depending on whether they match the configured topic access controls. Special rules are employed when handling subscriptions containing wildcards to ensure configured ACLs are effective in blocking the traffic they have been configured to disallow. Wildcard subscriptions that match an ACL profile’s exceptions are disallowed if the ACL profile’s default rule is to allow all subscriptions. For example:</p>
+    <ul>
+      <li>If an ACL profile has been configured to allow all subscriptions except for the SMF subscription <code>ANIMALS/CATS</code>, subscriptions containing wildcards can lead to unexpected behavior. A subscription using a <code>&gt;</code> wildcard (covering <code>ANIMALS/CATS</code>) is disallowed, but a subscription containing a <code>*</code> wildcard is allowed. In other words, a subscription to <code>ANIMALS/&gt;</code> is disallowed, but a subscription to <code>ANIMALS/C*</code> is allowed.</li>
+      <li>If the ACL profile’s default rule disallows all subscriptions, wildcard characters in the subscription are not given any special treatment when establishing matching exception rules. For example, if an ACL profile has been configured to disallow all subscriptions except <code>ANIMALS/DOGS</code>, an SMF subscription request to <code>ANIMALS/&gt;</code> would be disallowed given that the “&gt;” would not be treated as a wildcard character and therefore not cover the exception rule of <code>ANIMALS/DOG</code>. In suppressing the subscription, which requested everything below <code>ANIMALS</code>, the ACL profile’s intention of only allowing access to <code>ANIMALS/DOG</code> is enforced.</li>
+    </ul>
+    <h3><a name="Subscrib"/>Subscribe Topic Access Controls with Guaranteed Messaging</h3>
+    <p>ACLs can be used with Guaranteed messaging, but the following limitations should be considered:</p>
+    <ul>
+      <li>Subscribe-topic access controls are not considered when a consuming client binds directly to a durable endpoint (either a queue or topic endpoint). Therefore, a client can bypass subscribe-topic access control restrictions that have been set for it.</li>
+      <li>Subscribe-topic access controls can prevent a client from adding a specific topic subscription to a queue if the client is not permitted to subscribe to that topic. However, a client can bind to an existing queue that has been mapped to a topic that the client is not permitted to subscribe to because the client’s subscribe-topic access controls are not checked when it binds to a queue.</li>
+    </ul>
+    <h3><a name="Topic"/>Topic Access Control Statistics</h3>
+    <p>A global, per-Message VPN, and per-client statistic is incremented for every denied publish or subscribe topic attempt. In addition, a circular log is also maintained that captures:</p>
+    <ul>
+      <li>the current timestamp</li>
+      <li>the username of the denied client</li>
+      <li>the Message VPN the client was a member of</li>
+      <li>the topic that was denied</li>
+      <li>the client name of the denied client (shown only when the <code>show log acl</code> User EXEC command is entered with the wide parameter option)</li>
+      <li>the ACL profile name that triggered the denial (shown only when the <code>show log acl</code> User EXEC command is entered with the wide parameter option)</li>
+    </ul>
+  </body>
+</html>

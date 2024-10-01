@@ -1,0 +1,427 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><a name="Messaging-Service"/>Messaging Service</h1>
+    <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python provides the <code>MessagingService</code> class, which handles all the functionality for interacting with a <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker. To create a <code>MessagingService</code> instance, you must first configure a properties dictionary with the information required to establish a connection to the event broker, including the host details and the authentication scheme.</p>
+    <h2 class="with-rule"><a name="Creating-A-Properties-Object"/>Creating a Property Dictionary</h2>
+    <p>To connect to an event broker, you need to configure service properties in a dictionary. A properties dictionary can have a number of properties, however it must contain the <code>host</code> and <code>vpn-name</code> keys. The broker properties dictionary is passed to the <code>MessagingServiceClientBuilder</code> to configure the connection to the event broker. There are five categories of properties that can be configured in a broker properties dictionary:</p>
+    <ul>
+      <li><code>solace.messaging.config.solace_properties.service_properties</code> (required for the <code>vpn-name</code> property)</li>
+      <li><code>solace.messaging.config.solace_properties.transport_layer_properties</code> (required for <code>host</code> property )</li>
+      <li>
+        <code>solace.messaging.config.solace_properties.authentication_properties</code>
+      </li>
+      <li>
+        <code>solace.messaging.config.solace_properties.client_properties</code>
+      </li>
+      <li>
+        <code>solace.messaging.config.solace_properties.transport_layer_security_properties</code>
+      </li>
+    </ul>
+    <p>For more information,  see the <a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a></a>.</p>
+    <p>The code below shows an example of a broker properties dictionary used for establishing a connection to an event broker using basic authentication:</p>
+    <pre xml:space="preserve">
+from solace.messaging.config.solace_properties import transport_layer_properties, service_properties, authentication_properties
+# ...
+broker_props = {
+    transport_layer_properties.HOST: "tcps://messaging.solace.cloud:55443",
+    service_properties.VPN_NAME: "my_VPN",
+    authentication_properties.SCHEME_BASIC_USER_NAME: "my_username",
+    authentication_properties.SCHEME_BASIC_PASSWORD: "my_password",
+    }</pre>
+    <p>Alternatively if you're running samples, the configuration you want to use can be passed into the client application via a JSON file. The following sample code shows how you can use the <code>json.loads()</code> function to parse JSON data and use it to create a broker properties dictionary:</p>
+    <pre xml:space="preserve">
+import json
+# ...
+# Read the JSON file
+with open('/path/to/config.json') as file:
+       json_data = file.read()
+
+# Unmarshal JSON into a dictionary
+configDict = json.loads(json_data)
+
+# Use from_properties(configDict) to use JSON data when creating your MessagingService instance
+messaging_service = MessagingService.builder()<b>.from_properties(configDict)</b>.build()</pre>
+    <p>For a more detailed example, see the <code>read_config()</code> function in <a href="https://github.com/SolaceSamples/solace-samples-python/blob/main/howtos/sampler_boot.py" class="link-offsite">sampler_boot.py</a> in the <MadCap:variable name="Variables.CompanyName"/> GitHub repository.</p>
+    <h2 class="with-rule"><a name="Message"/>End-to-End Payload Compression</h2>
+    <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API can perform end-to-end payload compression to allow for: </p>
+    <ul>
+      <li>
+        <p>faster message throughput </p>
+      </li>
+      <li>
+        <p>reduced bandwidth usage</p>
+      </li>
+      <li>
+        <p>improved performance in your applications</p>
+      </li>
+    </ul>
+    <p>While end-to-end payload compression creates more work for individual <MadCap:variable name="Product-Names.pubsub_brand_only"/> APIs, it enables faster aggregate rates of message publishing and message receiving. The <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker offers transport message compression that compresses the entire message, see <MadCap:xref href="../../Messaging/Message-Compression.htm#top">Streaming Compressed Connections</MadCap:xref>. However, when you send and receive large messages, compressing the entire message creates a lot of work for the event broker, which can result in slower throughput. If your application needs to send and receive large messages, we recommend you use end-to-end payload compression to improve performance.</p>
+    <ol>
+      <li>
+        <p>
+          <MadCap:xref href="#Consider">Considerations When Compressing Message Payloads</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Compress-Python">Compressing Message Payloads in the [%=Product-Names.pubsub_brand_only%] Python API</MadCap:xref>
+        </p>
+      </li>
+    </ol>
+    <MadCap:snippetBlock src="../API-Developer-Guide/Snippets/message-payload-compression.flsnp"/>
+    <h3><a name="Compress-Python"/>Compressing Message Payloads in the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API</h3>
+    <p>Your publisher application can compress the payload of any message before you publish it. To compress a message payload, you must set <code>PAYLOAD_COMPRESSION_LEVEL</code>, which tells the API you want end-to-end payload compression enabled. The payload compression level property can be set to an integer from 0-9:</p>
+    <ul>
+      <li>
+        <p><code>0</code>—Payload compression is disabled. This is the default setting.</p>
+      </li>
+      <li>
+        <p><code>1 - 9</code>—Payload compression is enabled. 1 is the lowest level of compression with the fastest data throughput, and 9 is the highest level of compression with the slowest data throughput.</p>
+      </li>
+    </ul>
+    <p>Your payload compression level should be adjusted according to your network and performance requirements. The following code snippet shows how to set <code>PAYLOAD_COMPRESSION_LEVEL</code> in a broker properties dictionary:</p>
+    <pre xml:space="preserve">
+from solace.messaging.config.solace_properties import service_properties
+# ...
+service_props = {
+    # ...
+    service_properties.PAYLOAD_COMPRESSION_LEVEL: 9 
+}</pre>
+    <h2 class="with-rule"><a name="Establish-conneection-to-event-broker"/>Establishing a Connection to an Event Broker </h2>
+    <p>A <code>MessagingService</code> object allows the API to establish a connection to the event broker. To create a <code>MessagingService</code> object, do the following:</p>
+    <ol>
+      <li>
+        <p>Call the <code>MessagingService</code> class' <code>builder()</code> function to return a <code>MessagingServiceClientBuilder</code> object.</p>
+      </li>
+      <li>
+        <p>The <code>MessagingServiceClientBuilder</code> object gives you access to a number of functions that let you customize a <code>MessagingService</code> object. These include the following:</p>
+        <ul>
+          <li><code>from_properties(configuration: dict)</code>—Pass the necessary broker properties dictionary to the <code>MessagingServiceClientBuilder</code>.</li>
+          <li style="font-weight: normal;font-size: 11pt;">
+            <code>with_authentication_strategy(authentication_strategy: AuthenticationStrategy)</code>
+          </li>
+          <li>
+            <code>with_transport_security_strategy(transport_layer_security_strategy: TransportSecurityStrategy)</code>
+          </li>
+          <li>
+            <code>with_reconnection_retry_strategy(strategy: RetryStrategy)</code>
+          </li>
+        </ul>
+      </li>
+      <li>
+        <p>Call the <code>build()</code> function on the <code>MessagingServiceClientBuilder</code> object to return a <code>MessagingService</code> object.</p>
+      </li>
+      <li>
+        <p>Call the <code>connect()</code> function on your <code>MessagingService</code> object to connect to the event broker. </p>
+      </li>
+    </ol>
+    <p>For more information,  see the <a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a></a>.</p>
+    <p>The following sample code shows how to create a simple <code>MessagingService</code> instance and connect it to an event broker:</p>
+    <pre xml:space="preserve">
+# Build A messaging service with a reconnection strategy of 20 retries over an interval of 3 seconds
+messaging_service = MessagingService.builder().from_properties(broker_props)\
+    .with_reconnection_retry_strategy(RetryStrategy.parametrized_retry(20, 3)) \
+    .with_authentication_strategy(BasicUserNamePassword.of("my_username", "my_password")) \
+    .build()
+
+# Blocking connect thread
+messaging_service.connect()	</pre>
+    <p class="Note">To sever a <code>MessagingService</code> object's connection to the event broker, call <code>disconnect()</code> on it. This also makes the <code>MessagingService</code> object eligible for garbage collection.</p>
+    <h2 class="with-rule"><a name="Connecting-Through-Proxies"/>Connecting to a Host Event Broker Through Proxies in the Python API</h2>
+    <p>You can use  HTTP or SOCKS5 proxies to connect to event brokers inside your private network. Instead of requiring you to give firewall access to each client,  you only need to make one firewall exception for the external proxy server, which authenticates the clients to the broker. You may need to use proxies to meet security requirements. <MadCap:variable name="Variables.CompanyName"/> supports proxies in most situations.</p>
+    <p>To set a host use:</p>
+    <p class="Code">transport_layer_properties.HOST</p>
+    <p>To connect to an event broker through an HTTP or SOCKS protocol version 5 proxy server, the configured host setting must include those parameters required for a standard, direct connection to an event broker, but it must also include a proxy service string:</p>
+    <p class="Code">[Protocol:]Host[:Port][%ProxyService]</p>
+    <p><u>Where</u>:</p>
+    <p><code>ProxyService</code>—The proxy server that is used to connect to event broker. The proxy service string format is specified as:</p>
+    <p class="Code">[ProxyProtocol]://[username:password@]proxyHost[:proxyPort]</p>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li><code>ProxyProtocol</code>—The protocol used to communication with the proxy server. The valid values are:
+                <ul><li><code>socks5</code>—Connect to the server with the SOCKS Protocol Version 5, RFC 1928 (IETF Standards Track Document).</li><li><code>httpc</code>—Connect to the server with the HTTP Connect Protocol, RFC 2817 (IETF Standards Track Document).</li></ul></li>
+      <li><code>username:password@</code>—If authentication is required for the proxy server, the username and password may be specified before the proxy host.
+            </li>
+      <li><code>proxyHost</code>—The IP address (or hostname) of the proxy server.
+            </li>
+      <li><code>proxyPort</code>—The port to connect to for a connection. If the port number is not specified, the default is port 1080 for SOCKS5 and port 3128 default for HTTP Connect.
+            </li>
+    </ul>
+    <p><u>Examples</u>:</p>
+    <p>The following examples show how to connect to an event broker through a proxy server.</p>
+    <ul>
+      <li><code>192.168.160.28%socks5://192.168.1.1</code>—Connects to an event broker at 192.168.160.28 through a SOCKS5 proxy server at 192.168.1.1.</li>
+      <li><code>192.168.160.28%httpc://192.168.1.1</code>—Connects to an event broker at 192.168.160.28 through an HTTP-Connect proxy server at 192.168.1.1.</li>
+      <li><code>tcps:solace.company.com%socks5://User:PassWord@proxy.company.com:13128</code>—Connect to an event broker at <code>solace.company.com</code> using SSL over TCP through a SOCKS5 proxy server at <code>proxy.company.com</code>, port 13128. Authenticate with the proxy server using username <code>User</code> and password <code>PassWord</code>.</li>
+      <li><code>http://192.168.160.28:44444%httpc://proxy.company.com:11050</code>—Connect to the event broker at 192.168.160.28, port 44444, using HTTP. Connect through the proxy server at proxy.company.com, port 11050.</li>
+    </ul>
+    <h2 class="with-rule"><a name="Transport-Layer-Security"/>Using Transport Layer Security</h2>
+    <p>Transport Layer Security (TLS) allows for encrypted authentication and data transmission between the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API and a <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker. The Python API supports Transport Layer Security versions. The versions available are TLS 1.1, and TLS 1.2 . The recommended version to use is the most recent version of TLS. </p>
+    <p>You can use the <code>with_transport_security_strategy()</code> function with the <code>config</code> package to configure the TLS connection properties to use, or whether or not to disable certificate validation entirely. When you use TLS, you must always use the secure TCP  protocol (<code>tcps</code>or <code>https</code>) in  setting the <code>host</code> property for your connection, for example:</p>
+    <p>
+      <pre xml:space="preserve">broker_props = {
+    solace.messaging.config.solace_properties.transport_layer_properties.HOST: "<b>tcps</b>://messaging.solace.cloud:55443",
+    solace.messaging.config.solace_properties.service_properties.VPN_NAME: "myVPN",
+}</pre>
+    </p>
+    <p>We recommend using certificate validation when configuring your messaging service. The Python API's <code>config</code> module provides the following functions for configuring certificate validation:</p>
+    <ul>
+      <li>
+        <p>
+          <code>with_certificate_validation(ignore_expiration: bool, validate_server_name: bool, trust_store_file_path: str, trusted_common_name_list: str)</code>
+        </p>
+        <ul>
+          <li><code>ignore_expiration</code>— When set to true, expired certificates are accepted. This is not recommended because it poses a security risk.						</li>
+          <li><code>validate_server_name</code>— When set to true, the default setting, certificates without the matching host are not accepted. </li>
+          <li><code>trust_store_file_path</code>— The location of the trust store files. If an empty string is passed, no file path will be set.</li>
+          <li><code>trusted_common_name_list</code>— A comma-separated list of acceptable common names for matching with server certificates. An empty string will match no names.
+Modern TLS implementations confirm the subject alternative name in the server certificate, so it is usually unnecessary to set this parameter. If your server certificate cannot be upgraded appropriately, you may use <code>trusted_common_name_list</code> for additional validation of the server certificate.					</li>
+        </ul>
+        <p> </p>
+        <p>The following sample code shows the recommended security setup for client applications when you use TLS: </p>
+        <pre xml:space="preserve">
+# Creates a transport security strategy with validation on certificates that excludes dated TLS/SSL protocols			
+transport_security = TLS.create().with_certificate_validation(True, False, "./trusted-store", "") \
+                .with_excluded_protocols(TLS.SecureProtocols.TLSv1,
+                                         TLS.SecureProtocols.TLSv1_1,
+                                         TLS.SecureProtocols.SSLv3) 
+			
+# Build A messaging service
+messaging_service = MessagingService.builder().from_properties(broker_props)\
+               .with_authentication_strategy(BasicUserNamePassword.of("username", "password")) \
+               .with_transport_security_strategy(transport_security) \
+               .build()	
+</pre>
+      </li>
+      <li>
+        <p><code>without_certificate_validation()</code>—This function configures your TLS connection not to  validate server certificates. </p>
+        <p class="Warning">Only use <code>without_certificate_validation()</code>  in development environments. We recommend that you never use this function in production environments because it creates a security vulnerability.</p>
+        <p> The following sample code shows how to use the <code>without_certificate_validation()</code> function:</p>
+        <p>
+          <pre xml:space="preserve">
+# Creates a transport security strategy without validation on certificates			
+transport_security = TLS.create().without_certificate_validation()
+			
+# Build a messaging service
+messaging_service = MessagingService.builder().from_properties(broker_props)\
+               .with_authentication_strategy(BasicUserNamePassword.of("username", "password")) \
+               .with_transport_security_strategy(transport_security) \
+               .build()						</pre>
+        </p>
+      </li>
+    </ul>
+    <p MadCap:conditions="Default.HideFromAllOutput">
+      <b>The sections below were removed at the request of Ragnar: "I recommend deleting this entire section. Let them find out about these options from the reference manual or support. No TLS user should configure cipher-suites, or excluded-protocols any more."</b>
+    </p>
+    <p MadCap:conditions="Default.HideFromAllOutput">There are also a number of functions that you may find useful to configure the TLS connection using <code>WithTransportSecurityStrategy()</code>. Here are three functions commonly used to configure the TLS connection:</p>
+    <ul>
+      <li MadCap:conditions="Default.HideFromAllOutput">
+        <p><code>with_cipher_suites()</code>—The list of cipher suites used when negotiating the TLS connection can be configured. You can configure the Python API to limit it to use a set of stronger ciphers and to help <MadCap:annotation MadCap:createDate="2022-10-07T17:59:25.9763670-04:00" MadCap:creator="GilYu" MadCap:initials="GI" MadCap:comment="The list of Cipher Suites used when negotiating the TLS connection can be configured. Limiting the API to a set of stronger ciphers can guarantee a more secure connection between applications and an event broker." MadCap:editor="GilYu" MadCap:editDate="2022-10-07T17:59:26.7709784-04:00">guarantee</MadCap:annotation> a more secure connection between the client applications and event brokers.</p>
+        <p>Cipher suites are a useful method of encrypting communication through an TLS handshake and offer improved security between applications connected through the  event broker. For a more detailed explanation and a list of supported cipher suites see <a href="../../Security/TLS-SSL-Message-Encryption-Overview.htm#Cipher" class="link-internal">Cipher Suites</a>.</p>
+        <p>The following code sample shows how to use the <code>with_cipher_suites()</code> function:</p>
+        <p>
+          <pre xml:space="preserve">
+# Creates a transport security strategy with a comma separated list of cipher suites to use			
+transport_security = TLS.create().with_certificate_validation(True, False, "./trusted-store", "") \
+               <b>.with_cipher_suites("AES256-SHA, DES-CBC3-SHA")</b>  
+			
+# Build a messaging service
+messaging_service = MessagingService.builder().from_properties(broker_props)\
+               .with_authentication_strategy(BasicUserNamePassword.of("username", "password")) \
+               .with_transport_security_strategy(transport_security) \
+               .build()	
+</pre>
+        </p>
+      </li>
+      <li MadCap:conditions="Default.HideFromAllOutput">
+        <p><code>with_excluded_protocols()</code>—You may not want to use specific protocols to connect with microservices. For example, you may not want to use legacy protocols. Use this function to specify the Secure Socket Layer (SSL) protocols not to use. Here is sample code that shows you how to exclude a specific protocol: </p>
+        <p>
+          <pre xml:space="preserve">
+# Creates a transport security strategy with validation on certificates that excludes dated TLS/SSL protocols			
+transport_security = TLS.create().with_certificate_validation(True, False, "./trusted-store", "") \
+               .with_excluded_protocols(TLS.SecureProtocols.TLSv1) 
+			
+# Build a messaging service
+messaging_service = MessagingService.builder().from_properties(broker_props)\
+               .with_authentication_strategy(BasicUserNamePassword.of("username", "password")) \
+               .with_transport_security_strategy(transport_security) \
+               .build()	
+</pre>
+        </p>
+      </li>
+    </ul>
+    <p>You can also configure the aspects of the TLS connection using  <code>transport_layer_security_properties</code> in a properties dictionary. The TLS connection can be configured using various fields found in  <code>solace.messaging.config.solace_properties.transport_layer_security_properties</code>. We recommend that you use the default settings (set to <code>true</code> and enabled) to ensure secure connections for the following properties: </p>
+    <ul>
+      <li>
+        <code>solace.messaging.config.solace_properties.transport_layer_security_properties.CERT_REJECT_EXPIRED</code>
+      </li>
+      <li>
+        <code>solace.messaging.config.solace_properties.transport_layer_security_properties.CERT_VALIDATE_SERVERNAME</code>
+      </li>
+      <li>
+        <code>solace.messaging.config.solace_properties.transport_layer_security_properties.CERT_VALIDATED</code>
+      </li>
+    </ul>
+    <p>For more information,  see the <a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a></a>.</p>
+    <h2 class="with-rule"><a name="Authentication"/>Authentication </h2>
+    <p> The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Messing API for Python supports a number of  authentication schemes (or strategies). that you can choose from. The scheme that you choose may depend on the credentials that the connecting client is required to provide. You can use one of the following  authentication schemes:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Basic">Basic Authentication </MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Kerberos">Kerberos Authentication </MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Client">Client Certificate Authentication </MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#OAuth">OAuth Certification </MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="Basic"/>Basic Authentication </h3>
+    <p>Basic authentication is the default client authentication scheme  which allows a client to authenticate with an event broker using a client username and password. To specify basic authentication, create an instance of a <code>MessagingService</code> and specify the following as the parameter for the <code>with_authentication_strategy()</code> function:</p>
+    <ul>
+      <li>
+        <code>BasicUserNamePassword.of(username: str, password: str)</code>
+      </li>
+      <ul>
+        <li><code>username</code>— The user name to use to create a <code>BasicUserNamePassword</code> object.</li>
+        <li><code>password</code>—The password to use to create a <code>BasicUserNamePassword</code> object.</li>
+      </ul>
+    </ul>
+    <p>For more information,  see the <a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a></a>.</p>
+    <p>The following sample code shows how to use basic authentication:</p>
+    <pre xml:space="preserve">
+# Build a messaging service
+messaging_service = MessagingService.builder().from_properties(broker_props)\
+               .with_authentication_strategy(BasicUserNamePassword.of("username", "password")) \
+               .build()	
+</pre>
+    <h3><a name="Kerberos"/>Kerberos Authentication </h3>
+    <p>The Python API provides support for  <a href="../../Security/Configuring-Client-Authentication.htm#Config-Kerberos" class="link-internal">Kerberos Authentication</a>. Connecting using this function requires you to load a Kerberos Keytab on the  broker (see <a href="https://docs.solace.com/Admin/Managing-Event-Broker-Files.htm" class="link-offsite">Managing Event Broker Files</a>) and Kerberos authentication must be configured and enabled for any Message VPNs that Kerberos-authenticated clients connect to.</p>
+    <p>. Call the <code>with_authentication_strategy()</code> function and pass the following as the parameters:</p>
+    <ul>
+      <li>
+        <code>Kerberos.of(service_name: str)</code>
+        <ul>
+          <li><code>service_name</code>—A valid Kerberos service name.</li>
+        </ul>
+      </li>
+    </ul>
+    <p>For more information,  see the <a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a></a>.</p>
+    <p>The following sample code shows how to use Kerberos for authentication:</p>
+    <pre xml:space="preserve">
+# Build a messaging service
+messaging_service = MessagingService.builder().from_properties(broker_props)\
+               .with_authentication_strategy(Kerberos.of("client_kerberos_service_name")) \
+               .build()	
+</pre>
+    <h3><a name="Client"/>Client Certificate Authentication </h3>
+    <p>To use the <a href="../../Security/Configuring-Client-Authentication.htm#Client-Cert" class="link-internal">Client certificate authentication</a> scheme, the following steps are required: </p>
+    <ol>
+      <li>
+        <p>Configure the host event broker to use TLS connections (see <MadCap:xref href="#Transport-Layer-Security">Using Transport Layer Security</MadCap:xref>).</p>
+      </li>
+      <li>
+        <p>Your application must connect to the broker using TLS.</p>
+      </li>
+      <li>
+        <p>Enable Client certificate verification on the Message VPN that the application uses to connect.</p>
+      </li>
+      <li>
+        <p>The client-side certificate must be present in a keystore file and configured using the following:</p>
+        <ul>
+          <li>
+            <p>
+              <code>ClientCertificateAuthentication.of(certificate_file: str, key_file: str, key_password: str)</code>
+            </p>
+          </li>
+          <ul>
+            <li><code>certificate_file</code>—The file that contains the client certificate or the client-certificate chain. </li>
+            <li><code>key_file</code>—The file contains the client private key.</li>
+            <li><code>key_password</code>—The password if the private key (<code>key_file</code>) is password protected.</li>
+          </ul>
+        </ul>
+      </li>
+    </ol>
+    <p>For more information,  see the <a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a></a>.</p>
+    <p> The following sample code shows how to configure client certificate authentication:</p>
+    <pre xml:space="preserve">
+# Build a messaging service
+messaging_service = MessagingService.builder().from_properties(broker_props)\
+               .with_authentication_strategy(ClientCertificateAuthentication.of(certificate_file,
+                                                                                key_file, 
+                                                                                key_password)) \
+               .build()	
+</pre>
+    <h3><a name="OAuth"/>OAuth 2.0 Authentication</h3>
+    <p>OAuth 2.0 is an open standard for access delegation and authorization. It is commonly used as a mechanism  to grant websites or applications access to users' information on other websites without giving them access to sensitive credentials. The  OAuth authentication scheme allows access through the use of tokens issued to third-party clients by an authorization server that provides access to Message VPNs on <MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers. To use OAuth 2.0 authentication, configure the host event broker to use TLS connections (see <MadCap:xref href="#Transport-Layer-Security">Using Transport Layer Security</MadCap:xref>) and make sure your application connects to the event broker using TLS. For more information, see <MadCap:xref href="../../Security/Configuring-Client-Authentication.htm#OAuth">OAuth Authentication</MadCap:xref>.</p>
+    <p>The Python API supports different fields that can be sent to the event broker:</p>
+    <ul>
+      <li>
+        <p><code>access_token</code>—A <code>String</code> for applications to make requests for data access.</p>
+        <p>
+          <b>and/or</b>
+          <br/>
+        </p>
+        <p><code>oidc_id_token</code>—A <code>String</code> for Open ID Connect (OIDC) connections.</p>
+      </li>
+      <li><code>issuer_identifier</code>—(Optional) A <code>String</code> to identify the appropriate OAuth provider configuration.</li>
+    </ul>
+    <p>OAuth authentication requires an <code>access_token</code>, an <code>oidc_id_token</code>, or both to be enabled using this function:</p>
+    <ul>
+      <li>
+        <code>OAuth2.of(access_token: str, oidc_id_token: str, issuer_identifier: str)</code>
+        <ul>
+          <li>At least one of <code>access_token </code>or <code>oidc_id_token</code> must be provided. Optionally, <code>issuer_identifier </code>can be provided. If any of the parameters is not required, <code>None</code> can be passed.</li>
+        </ul>
+      </li>
+    </ul>
+    <p>For more information,  see the <a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a></a>.</p>
+    <p> The following sample code shows how to use  OAuth authentication with OpenID Connect (OIDC):</p>
+    <pre xml:space="preserve">
+# Configure service access to use a Open ID connect authentication with an ID token and an optional access token.
+messaging_service = MessagingService.builder().from_properties(broker_props)\
+               .with_authentication_strategy(OAuth2.of("my_access_token", 
+                                                       "my_oidc_token",
+                                                       None)) \
+               .with_transport_security_strategy(transport_security) \
+               .build()	
+</pre>
+    <pre xml:space="preserve">
+# Configure service access to use OAuth 2 authentication with an access token and an optional issuer identifier.
+messaging_service = MessagingService.builder().from_properties(broker_props)\
+               .with_authentication_strategy(OAuth2.of("my_access_token",
+                                                       None, 
+                                                       "my_issuer_identifier")) \
+               .with_transport_security_strategy(transport_security) \
+               .build()	
+</pre>
+    <h3>Required Event Broker Configurations</h3>
+    <p>For a client application to use an OAuth authentication scheme, a Message VPN OAuth  profile must be configured for the host event broker and OAuth authentication must be configured and enabled for any Message VPNs to which a client connects. For more information, see <MadCap:xref href="../../Security/Configuring-Client-Authentication.htm#OAuth">OAuth Authentication</MadCap:xref>.</p>
+    <h3>Refreshing Expired OAuth Tokens</h3>
+    <p>By default, event brokers disconnect clients when their tokens expire (see <MadCap:xref href="../../Security/Configuring-Client-Authentication.htm#Disconnect-Token-Expiry">Disconnect on Token Expiration</MadCap:xref>). When a client session  is disconnected, the client application tries to reconnect a number of times using the same OAuth token based on the <code>RECONNECTION_ATTEMPTS</code> property. If the reconnection attempts are exceeded, then the connection cannot be re-established and the client application must recreate the session with all its subscriptions.</p>
+    <p>To avoid needing to destroy and recreate the session, the client should update the OAuth token before it expires, or while reconnecting. To update the OAuth token, use the <code>update_property(name: str, value: Any)</code> function, which allows you to set a modifiable service property after the creation of the <code>MessagingService</code> object. The first parameter is one of the following strings and the second parameter is the token:</p>
+    <ul>
+      <li><code>messaging_service.update_property(authentication_properties.SCHEME_OAUTH2_ACCESS_TOKEN, new_access_token)</code> to update an expired access token</li>
+      <li><code>messaging_service.update_property(authentication_properties.SCHEME_OAUTH2_OIDC_ID_TOKEN, new_id_token)</code> to update an expired ID token
+</li>
+    </ul>
+    <p class="Note">Modifiable service properties may not update immediately and may require the next reconnection attempt to update.</p>
+    <p>Refreshing the expired token can happen while:</p>
+    <ul>
+      <li>
+        <p>the client application is connected. In this case, the client contacts the authentication server to refresh the token and modifies the session to use the updated token the next time the API connects to the event broker.</p>
+      </li>
+      <li>
+        <p style="font-weight: normal;">the client application is reconnecting. The reconnecting event includes a diagnostic subCode.  If this subCode is <code>Login Failure</code>, this may indicate that your token has expired.   In this case, the API tries to reconnect (using the expired token). The client  then contacts the authentication server to refresh the token and modifies the session to use the updated token the next time the API attempts to reconnect to the event broker.</p>
+      </li>
+    </ul>
+    <p style="font-weight: normal;">In general, it is better if the client application is aware of potential token expiry and refreshes the token before it expires.</p>
+    <p class="Note">When the client application's session is reconnected, the Python API re-applies the client application's direct subscriptions. If there is a change in the ACLs as a result of the refreshed token, the subscriptions may be rejected by the event broker.</p>
+  </body>
+</html>

@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Configuring Message Replay</h1>
+    <p>To begin configuring a replay log on a Message VPN using <MadCap:variable name="Product-Names.solace_cli"/>, you can use the following CONFIG commands. </p>
+    <p class="Code">solace&gt; enable<br/>solace# configure<br/>solace(configure)# message-spool message-vpn &lt;vpn-name&gt;</p>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li><code>&lt;vpn-name&gt;</code>—The name of Message VPN on which you wish to set up or configure a replay log.</li>
+    </ul>
+    <p>After you're in the Message VPN, you can use the following <MadCap:variable name="Product-Names.solace_cli"/> commands,</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#replay-l">replay-log</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#max-spoo">max-spool-usage</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#topic-filters">topic-filter</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#shutdown">shutdown</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="replay-log-creation"/>Create or Delete a Replay Log</h2>
+    <p>You can create one replay log per Message VPN. To do so, use the following <code>create replay-log</code> command.</p>
+    <p class="Code">solace(configure/message-spool)# create replay-log &lt;replay-log-name&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;replay-log-name&gt;</code>—The name of the message replay log. It can be up to 185 characters long, should not contain any of the following characters or symbols in the name:</p>
+    <ul>
+      <li> hash (<code>#</code>)</li>
+      <li>less than(<code>&lt;</code>)</li>
+      <li>greater than(<code>#&lt;&gt;*?&amp;;</code>)</li>
+      <li>asterisk( <code>*</code>)</li>
+      <li>question mark (<code>?</code>)</li>
+      <li>ampersand (<code>&amp;</code>)</li>
+      <li>semi-colon (<code>;</code>)</li>
+    </ul>
+    <p>Upon creation, the replay log is disabled. To enable message replay, run the <code>no shutdown</code> command.  For example:</p>
+    <pre xml:space="preserve">solace(configure/message-spool/replay-log)# no shutdown</pre>
+    <p>To delete a replay log and all the logged messages, use the <code>no replay-log &lt;replay-log-name&gt;</code> command and type <code>y</code> to confirm only if you want delete the replay log.</p>
+    <div class="Caution">
+      <p class="Tbl_Body">It's important to be aware that running the <code>no replay-log &lt;replay-log-name&gt;</code> command irreversibly deletes all logged messages! </p>
+    </div>
+    <pre xml:space="preserve">solace(configure/message-spool/replay-log)# shutdown
+solace(configure/message-spool/replay-log)# exit
+solace(configure/message-spool)# no replay-log &lt;replay-log-name&gt;
+
+This command will delete all logged messages on the message-vpn.
+Do you want to continue (y/n)? y</pre>
+    <h2 class="with-rule"><a name="max-spool-usage-config"/>Configuring the Replay Log Size<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> Using <code>max-spool-usage</code></MadCap:conditionalText></h2>
+    <p>The <code>max-spool-usage</code> command allows you to set the maximum space that can be used by the replay log. <MadCap:variable name="Variables.CompanyName"/> recommends that you provision the replay log's <code>max-spool-usage</code> to be <b>25% more than</b> the amount of data you need to retain in the replay log. For example, if you need to retain 10,000 MB of data, configure the replay log's <code>max-spool-usage</code> to be 12,500 MB. The additional 25% accounts for:</p>
+    <ul>
+      <li>
+        <p> Replay log trimming, which occurs at 90% of the replay log's configured quota for <code>max-spool-usage</code> .</p>
+      </li>
+      <li>
+        <p>The replay log is indexed to optimize performance and the index utilization is included in the configured quota for <code>max-spool-usage</code>.</p>
+        <p class="Note">The recommendation to provision <code>max-spool-usage</code> 25% over the amount of data you need retain is based on an estimate. The actual index overhead varies depending on the size of the messages and the topic lengths stored in the replay log. If trimming occurs prematurely or excessively and impacts the retention of the required data, consider adjusting the <code>max-spool-usage</code> accordingly.</p>
+      </li>
+    </ul>
+    <p>To configure the replay log, perform the following commands in the <MadCap:variable name="Product-Names.solace_cli"/>:</p>
+    <pre xml:space="preserve">solace(configure/message-spool)# replay-log &lt;replay-log-name&gt;<br/>solace(configure/message-spool/replay-log)# max-spool-usage &lt;size-in-MB&gt;</pre>
+    <p>
+      <u>Where:</u>
+    </p>
+    <p><code>&lt;replay-log-name&gt;</code>—The name of message replay log.</p>
+    <p><code>&lt;size-in-MB&gt;</code>—The maximum space that can be taken up by the replay log in megabytes (MB). The following are special considerations when you set this value:</p>
+    <ul>
+      <li>You cannot run the  <code>no shutdown</code> on the replay log if <code>max-spool-usage</code> is zero (0).</li>
+      <li>You cannot set <code>max-spool-usage</code> to zero (0) if the replay log is enabled.</li>
+    </ul>
+    <p class="Caution">If you’re changing <code>max-spool-usage</code> to a value lower than that currently in use, you’ll cause the log to be trimmed, starting with the oldest messages.</p>
+    <p>The <code>no max-spool-usage</code> command sets the size to zero. </p>
+    <p class="Note">The replay log spool usage counts towards the Message VPN <code>max-spool-usage</code> so in <span> addition to checking the configured quota </span><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><span>of <code>max-spool-usage</code></span></MadCap:conditionalText> for the replay log, ensure that you validate that the Message VPN's spool usage<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> (<code>max-spool-usage</code>)</MadCap:conditionalText> is sufficiently large to allow messages to be stored on queues that are not in the replay log. <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">For more information about setting the  <code>max-spool-usage</code> value for the Message VPN, see <MadCap:xref href="../../Messaging/Guaranteed-Msg/VPN-Level-Msg-Spool-Config.htm">Message VPN-Level Guaranteed Messaging Configuration</MadCap:xref>.</MadCap:conditionalText></p>
+    <h3 MadCap:conditions="Default.HideFromAllOutput"><a name="calc-replay-log-size"/>Determining the Required Size for the Replay Log</h3>
+    <p MadCap:conditions="Default.HideFromAllOutput"><MadCap:variable name="Variables.CompanyName"/> recommends that you provision the replay log's <code>max-spool-usage</code> by 25% more than the amount of data that you need to retain. For example, if you need to retain 10,000 MB of data, configure the replay log's <code>max-spool-usage</code> to be 12,500 MB. Overprovisioning by 25% accounts for:</p>
+    <ul MadCap:conditions="Default.HideFromAllOutput">
+      <li>
+        <p> Replay log trimming, which occurs at 90% of the configured quota for <code>max-spool-usage</code> .</p>
+      </li>
+      <li>
+        <p>The replay log is indexed to optimize performance and the index utilization is included in the quota.</p>
+        <p class="Note">The recommendation to provision <code>max-spool-usage</code> 25% over the amount of data you need retain is based on an estimate. The actual index overhead varies depending on the size of the messages and the topic lengths stored in the replay log. If trimming occurs prematurely or excessively, impacting the retention of the required data, consider adjusting the <code>max-spool-usage</code> accordingly.</p>
+      </li>
+    </ul>
+    <p MadCap:conditions="Default.HideFromAllOutput">From DavidMcKay/Duane:</p>
+    <ul MadCap:conditions="Default.HideFromAllOutput">
+      <li>
+        <p>When configuring the replay log's max-spool-usage you need to account for both the fact that the replay log trims at 90% of the configured max-spool-usage and that the replay log is indexed to optimize performance and there is overhead associated with storing the index. Solace recommends over-provisioning the replay log's max-spool-usage by 25% to address this. If, for example, you need to maintain a week's worth of data in the replay log and you expect the replay log to receive 1000MB of data per week, you should set the replay log's max-spool-usage to 1000MB x 1.25 or 1250MB. Note that the 25% recommendation is an estimate. The actual index overhead depends on the sizes of the messages in the replay log and the lengths of those messages' topics. If you find that the replay log is trimming too soon or too late to maintain the desired amount of data you can increase or decrease the max-spool-usage configuration to adjust.</p>
+      </li>
+    </ul>
+    <p MadCap:conditions="Default.HideFromAllOutput">Use the following formula to calculate the maximum space required by the replay log.</p>
+    <ul>
+      <li MadCap:conditions="Default.HideFromAllOutput">
+        <code>Max_Replay_Log_Size = 1.25 x Number_of_Messages_to_be_Logged x Average_Message_Size</code>
+      </li>
+    </ul>
+    <p style="text-decoration: none;" MadCap:conditions="Default.HideFromAllOutput">For example:</p>
+    <p MadCap:conditions="Default.HideFromAllOutput">Let's say you require 24 hours worth of data to be held, and during that time you estimate you'll receive 2,000,000 messages, each on average 1,024 bytes in size.</p>
+    <p MadCap:conditions="Default.HideFromAllOutput">Max_Replay_Log_Size = 1.11 x 2,000,000 x 1,024 bytes = 2,273,280,000 bytes, which is approximately 2274 MB.
+        </p>
+    <p MadCap:conditions="Default.HideFromAllOutput">So you would run the command,  <code>max-spool-usage &lt;size-in-MB&gt;</code>  where  <code>size-in-MB</code> is 2274 (or larger).</p>
+    <p class="Note" MadCap:conditions="Default.HideFromAllOutput">In addition to checking the configured quota of <code>max-spool-usage</code> of the replay log, ensure that you validate that the Message VPN's <code>max-spool-usage</code> is sufficiently large to allow messages to be stored on queues that are not in the replay log. For more information about setting the  <code>max-spool-usage</code> value for the Message VPN, see <MadCap:xref href="../../Messaging/Guaranteed-Msg/VPN-Level-Msg-Spool-Config.htm">Message VPN-Level Guaranteed Messaging Configuration</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="topic-filters"/>Specifying the Messages to Add to the Replay Log </h2>
+    <p>By default,  all Guaranteed messages (that are not rejected to the publisher) are stored in the replay log. Because message spool space is consumed for every published message  stored in the replay log, depending on your deployment, you may want to use <i>topic filters</i> to  include or exclude messages to improve performance, and to control the messages that are written to the replay log. </p>
+    <p>The <code>topic-filter</code> command allows you to:</p>
+    <ul>
+      <li>Provision topic filter subscriptions that specify which messages are written to the replay log. Any messages that do not match the configured  topics are still delivered to the subscribing clients, but are not written to the replay log.</li>
+      <li> Configure wildcard subscriptions. For example, you can:<ul><li>Use a greater than symbol (<code>&gt;</code>) as a wildcard to include all messages. </li><li>Use  wildcards on topics, for example an asterisk as part of the topic path (<code>a/b/*</code>).</li></ul></li>
+      <li>Use topic exceptions that can exclude certain subscriptions specified with an exclamation mark (<code>!</code>).</li>
+    </ul>
+    <p>You can use combinations of subscriptions and exceptions. For example, you could use <code>&gt;</code> to include all topics, and then use the topic exceptions to exclude specific topics you don't want in the replay log, such as <code>!a/b/c</code>.</p>
+    <p class="Code">solace(configure/message-spool)# replay-log &lt;replay-log-name&gt;<br/>solace(configure/message-spool/replay-log)# topic-filter<br/>solace(...message-spool/replay-log/topic-filter)# create subscription &lt;topic&gt;</p>
+    <p>
+      <u>Where:</u>
+    </p>
+    <p><code>&lt;topic&gt;</code>—The name  of the topic subscription to be added, in the format, <code>a/b/c</code>. You can also configure wildcard subscriptions (<code>&gt;</code>, <code>*</code>) and subscription exceptions  (<code>!</code>) to identify the messages that are to be written to the replay log. For more details about the syntax, see <MadCap:xref href="../../Messaging/SMF-Topics.htm">SMF Topics</MadCap:xref>.</p>
+    <p>To delete a specified topic subscription from the topic filters, you can use the  <code>no subscription &lt;topic&gt;</code> command.</p>
+    <p>After you have configured the topic filter subscriptions, use the <code>no shutdown</code> command to enable topic filtering for the replay log, and conversely the  <code>shutdown</code> command to disable it.  </p>
+    <pre>solace(configure/message-spool/replay-log)# topic-filter<br/>solace(...message-spool/replay-log/topic-filter)# no shutdown</pre>
+    <h2 class="with-rule">
+      <a name="shutdown"/>
+      <span>Disabling or Enabling a Replay Log</span>
+    </h2>
+    <p>You can disable or enable a replay log using the <code>shutdown</code> or   <code>no shutdown</code> commands, respectively. Optionally, you can enable or disable traffic ingress or egress traffic to and from the replay log using the  <code>ingress</code> and <code>egress</code> as parameters to your command.</p>
+    <p>You can use the following commands to enable traffic to replay log:</p>
+    <pre>solace(configure/message-spool)# replay-log &lt;replay-log-name&gt; <br/>solace(configure/message-spool/replay-log)# no shutdown </pre>
+    <p> You use the following commands to disable traffic to a replay log:</p>
+    <pre>solace(configure/message-spool)# replay-log &lt;replay-log-name&gt; <br/>solace(configure/message-spool/replay-log)# shutdown</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;replay-log-name&gt;</code>—The name of message replay log.</p>
+    <p><code>ingress</code>—The command applies to the enabling or disabling of new message spooling to the replay log. If you disable ingress traffic to the replay log, it creates gaps in the replayable data and is not recommended.</p>
+    <p><code>egress</code> The command applies to the enabling or disabling of the delivery of logged messages to replaying endpoints. If you disable egress traffic from the replay log, it pauses all ongoing replays of logged messages.</p>
+    <p><code>full</code>—The command applies  to both ingress and egress traffic. When no parameters are specified, this is the default behavior.</p>
+  </body>
+</html>

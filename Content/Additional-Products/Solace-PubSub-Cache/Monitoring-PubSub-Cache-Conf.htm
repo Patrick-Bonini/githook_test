@@ -1,0 +1,490 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Monitoring PubSub+ Cache Configuration and Operations</h1>
+    <p>You can use the following show commands to monitor the PubSub+ Cache configuration and operational status:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Show-Product-Key">Show Product Key</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Show-Dist-Cache">Show Distributed Cache</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Show-Cache-Cluster">Show Cache Cluster</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Cache-Instance">Show Cache Instance</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Show-Product-Key"/>Show Product Key</h2>
+    <p>To view the system product keys and features that they unlock, enter the following User EXEC command:</p>
+    <pre>solace&gt; show product-key</pre>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre>solace&gt; show product-key<br/>Product Key : &lt;key-value&gt;<br/>  Unlocked Features : 1<br/>    Solace Last Value Cache (SolCache)</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <h2 class="with-rule"><a name="Show-Dist-Cache"/>Show Distributed Cache</h2>
+    <p>To view the configuration and status of a Distributed Cache on the event broker, enter the following User EXEC command:</p>
+    <pre>solace&gt; show distributed-cache {&lt;name&gt; [message-vpn &lt;vpn-name&gt;] [detail] | summary}</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the Distributed Cache name</p>
+    <p><code>&lt;vpn-name&gt;</code> is the name of the associated Message VPN</p>
+    <p><code>detail</code> asks to show detailed information for the Distributed Cache</p>
+    <p><code>summary</code> asks to show a summary of all Distributed Caches, their Cache Clusters, and associated PubSub+ Cache Instances.</p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example 1:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre xml:space="preserve">solace# show distributed-cache *
+
+Cache Management Status Flags:  A=Admin   O=Oper    R=Redundancy
+                 Status Values: U=Up      U=Up      A=Auto
+                                D=Down    D=Down    P=Primary
+                                                    B=Backup
+
+                                                      Clusters  Instances  Lost
+Cache Name                  Message VPN        A O R  (up/conf) (up/conf)  Msg
+--------------------------- ------------------ ------ --------- ---------- ----
+cacheName1                  myVpn              U U A    0 / 1     0 / 1    No
+cacheName2                  myVpn              U U A    0 / 0     0 / 0    No</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example 2:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre xml:space="preserve">solace# show distributed-cache * detail
+
+Distributed Cache          : cacheName1
+  Message VPN              : myVpn
+  Cache Management
+    Admin State            : Enabled
+    Oper State             : Up
+      Last Failure Reason  : 
+      Last Failure Time    : never
+    Redundancy             : Auto
+  Schedule Delete Message  : never
+  Heartbeat Interval (sec) : 10
+  Clusters (up)            : 0
+  Clusters (configured)    : 1
+  Instances (up)           : 0
+  Instances (configured)   : 1
+  Lost Message             : No
+
+Distributed Cache          : cacheName2
+  Message VPN              : myVpn
+  Cache Management
+    Admin State            : Enabled
+    Oper State             : Up
+      Last Failure Reason  : 
+      Last Failure Time    : never
+    Redundancy             : Auto
+  Schedule Delete Message  : never
+  Heartbeat Interval (sec) : 10
+  Clusters (up)            : 0
+  Clusters (configured)    : 0
+  Instances (up)           : 0
+  Instances (configured)   : 0
+  Lost Message             : No</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example 3:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre xml:space="preserve">solace# show distributed-cache summary
+
+Total Number of Distributed Caches : 2
+Total Number of Cache Clusters     : 1
+Total Number of Cache Instances    : 1</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <p>The <code>cacheManagementUp</code> attribute reflects the operational state of distributed cache management. The state will be <code>up</code> if the following conditions are satisfied:</p>
+    <ul>
+      <li>DR/Replication for the Message VPN is either <code>disabled</code> or <code>DR-active</code></li>
+      <li>The virtual router associated with the Distributed Cache is in an active role for the associated Message VPN</li>
+      <li>The Distributed Cache is enabled</li>
+    </ul>
+    <h2 class="with-rule"><a name="Show-Cache-Cluster"/>Show Cache Cluster</h2>
+    <p>To view the contents of a Cache Cluster under a Distributed Cache on the event broker, enter the following User EXEC command:</p>
+    <pre>solace&gt; show cache-cluster &lt;name&gt; [distributed-cache &lt;cache-name&gt;] [message-vpn &lt;vpn-name&gt;] [detail | topics [filter &lt;topic-pattern&gt;]]</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the Cache Cluster name</p>
+    <p><code>&lt;cache-name&gt;</code> is the name of the Distributed Cache the Cache Cluster belongs to</p>
+    <p><code>&lt;vpn-name&gt;</code> is the name of the associated Message VPN the Cache Cluster belongs to</p>
+    <p><code>&lt;cluster-name&gt;</code> is the name of the associated Cache Cluster</p>
+    <p><code>detail</code> asks to show detailed information for the Cache Cluster</p>
+    <p><code>topics</code> asks to show information on topics the Cache Cluster is responsible for</p>
+    <p><code>filter &lt;topic-pattern&gt;</code> asks to filter the topic information based on the specified topic string pattern</p>
+    <p><u>Examples</u>:</p>
+    <pre>solace&gt; show cache-cluster *</pre>
+    <pre>                                                  Admin  Instances  Config Lost
+Cluster Name     Cache Name       Message VPN     Status (up/conf)  Topics Msg
+---------------- ---------------- --------------- ------ ---------- ------ ----
+eq-cluster1      equities         default         Up       2 / 2         1 No
+eq-cluster2      equities         default         Up       0 / 1         1 No
+eq-cluster3      equities         default         Up       0 / 1         1 No
+fi-cluster1      fixed-income     default         Up       0 / 4         0 No
+fi-cluster2      fixed-income     default         Up       0 / 0         0 No
+fi-cluster3      fixed-income     default         Up       0 / 0         0 No</pre>
+    <p>                                                 </p>
+    <pre>solace&gt; show cache-cluster eq-cluster1 detail</pre>
+    <pre xml:space="preserve">Cache Cluster               : eq-cluster1
+  Distributed Cache         : equities
+  Message VPN               : default
+  Admin Status              : Up
+  Deliver-To-One Override   : Enabled
+  Max Memory (MB)           : 2048
+  Max Msgs Per Topic        : 1
+  Max Topics                : 2000000
+  Message Lifetime          : Unlimited
+  New Topic Advertisement   : Disabled
+  Request Queue Depth       : 100000
+  Instances (up)            : 2
+  Instances (configured)    : 2
+  Topics (configured)       : 1
+  Lost Message              : No
+  Global Caching
+    Heartbeat Interval (sec)    : 3
+    Topic Lifetime (sec)        : 3600
+    Admin Status                : Disabled
+    Topic Prefixes (configured) : 3
+    Home Cache Clusters         : 2
+	abc
+	xyz
+ 
+Event Threshold              Set Value    Clear Value
+---------------------------- ------------ ------------
+Data Byte Rate (bytes/sec)   2000000000   1500000000
+Data Message Rate (msgs/sec) 48000        36000
+Max Memory (%)               80           60
+Max Topics (%)               80           60
+Request Queue Depth (%)      80           60
+Request Rate (msgs/sec)      80000        1000
+Response Rate (msgs/sec)     80000        1000</pre>
+    <h2 class="with-rule"><a name="Cache-Instance"/>Show Cache Instance</h2>
+    <p>To view the contents of local and remote PubSub+ Cache Instances under a Distributed Cache on the event broker, enter the following User EXEC command:</p>
+    <pre>solace&gt; show cache-instance &lt;name&gt; [cache-cluster &lt;cluster-name&gt;] [distributed-cache &lt;cache-name&gt;] [message-vpn &lt;vpn-name&gt;] [detail | remote {status | home-cache-clusters | topics [detail] [filter &lt;topic-pattern&gt;] [type {local | global}]}]</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the PubSub+ Cache Instance name</p>
+    <p><code>&lt;cluster-name&gt;</code> is the name of the Cache Cluster that the PubSub+ Cache Instance belongs to</p>
+    <p><code>&lt;cache-name&gt;</code> is the name of the Distributed Cache that the PubSub+ Cache Instance belongs to</p>
+    <p><code>&lt;vpn-name&gt;</code> is the name of the Message VPN that the PubSub+ Cache Instance belongs to</p>
+    <p><code>detail</code> shows detailed information on the specified PubSub+ Cache Instance</p>
+    <p><code>remote</code> shows the statistics of the PubSub+ Cache Instances managed by the Designated Router over the message bus</p>
+    <p><code>status</code> shows status information on the PubSub+ Cache Instances</p>
+    <p><code>home-cache-clusters</code> shows remote global caching home-cache-clusters status</p>
+    <p><code>topics</code> shows information on topics cached by the PubSub+ Cache Instances</p>
+    <p><code>detail</code> shows a more detailed display of each topic</p>
+    <p><code>filter &lt;topic-pattern&gt;</code> filters the topic information based on the specified topic string pattern. Filter topics, can contain wildcards * or ?</p>
+    <p><code>type</code> shows only topics of the specified type</p>
+    <p><code>local</code> shows only local topics</p>
+    <p><code>global</code> shows only global topics</p>
+    <p class="Note">For information on the possible administrative and operational states that a PubSub+ Cache Instance could be in, refer to <MadCap:xref href="#Instance-States">PubSub+ Cache Instance States</MadCap:xref>.</p>
+    <p><u>Examples</u>:</p>
+    <pre>solace&gt; show cache-instance *</pre>
+    <pre xml:space="preserve">                                          Admin  Oper     Auto  Stop     Lost
+Cache Instance&gt;      Cache-Cluster        Status Status   Start On Loss  Msg
+-------------------- -------------------- ------ -------- ----- -------- ---
+fi-cluster1-instance fi-cluster1          Up     NotAvail Yes   Yes      No
+fi-cluster1-instance fi-cluster1          Down   NotAvail No    No       No
+fi-cluster1-instance fi-cluster1          Up     NotAvail Yes   Yes      No
+eq-cluster1-instance eq-cluster1          Up     Up       Yes   Yes      No
+eq-cluster1-instance eq-cluster1          Up     Up       Yes   Yes      No
+eq-cluster2-instance eq-cluster2          Up     NotAvail Yes   Yes      No</pre>
+    <p> </p>
+    <pre>solace&gt; show cache-instance eq-cluster1-instance1 detail</pre>
+    <pre xml:space="preserve">Cache Instance          : eq-cluster1-instance1
+  Cache Cluster         : eqcluster1
+  Distributed Cache     : equities
+  Message VPN           : default
+  Admin Status          : Up
+  Operational Status    : Up
+  Auto Start            : Yes
+  Stop On Lost Message  : Yes
+  Last Stopped          : Never
+  Reason For Last Stop  :
+  Lost Message          : No
+    Last Set Rxd        : Never
+    Last Clear Txd      : Never
+  Reg With Appliance    : Feb 19 2012 20:39:05
+  Last Heartbeat Rxd    : Feb 20 2012 15:39:35
+			</pre>
+    <p> </p>
+    <pre>solace&gt; show cache-instance instance1 remote status</pre>
+    <pre xml:space="preserve">Cache Instance                     : instance1
+  Cache Cluster                    : cluster1
+  Distributed Cache                : dist-cache-001
+  Message VPN                      : default
+  Operational Status               : Up
+  Cache Software Version           : 5.5.0.1
+  Cache Software Build Date        : May  4 2012 13:22:35
+  API Version                      : 5.5.0.3
+  API Platform                     : Linux26-x86_64_opt
+  User                             : 'root'  Computer: 'perf-128-61'  Process ID: 1992
+  Plugin Description               : Solace Default Plugin v1.0
+  Plugin Status                    : DISABLED
+  Connected To Host                : host '192.168.164.80', IP 192.168.164.80:55555
+  Client                           : instance1
+  Current Time                     : May 24 2012 13:58:30 EDT
+  Process Start Time               : May 24 2012 11:23:15 EDT
+  Last Connection Uptime           : May 24 2012 11:23:15 EDT
+  Last Connection Downtime         : Never
+  Total Mem Utilization (MB)       : 101
+  CPU Utilization (%)              : 2
+  Heartbeat Requests Txd           : 974
+  Heartbeat Responses Rxd          : 974
+  Global Caching
+    Heartbeat Requests Txd         : 0
+    Heartbeat Responses Rxd        : 0
+    Home Clusters Connected        : 0
+    Home Clusters Configured       : 0
+    Suspect Topics                 : 0
+  New Topic Advertisments Txd      : 0
+  Config Updates Rxd               : 13
+  Invalid Requests Rxd             : 0
+  Cache Requests Rxd               : 3860
+    Local Topics                   : 3860
+    Global Topics                  : 0
+    Global Topics Forwarded        : 0
+    Timeout                        : 0
+  Cache Responses Txd              : 3860
+    OK                             : 3343
+    No Match                       : 517
+    Timeout                          : 0
+  Lost Message                     : No
+    Last Set                       : Never
+    Last Clear Rxd                 : Never
+  Last Clear Stats Rxd             : Never
+  Last Backup Of Cached Messages
+    Last Successful Backup         : Never
+    Last Status                    : N/A
+    Last Filename                  : N/A
+  Last Restore Of Cached Messages
+    Last Successful Restore        : Never
+    Last Status                    : N/A
+    Last Filename                  : N/A
+ 
+  Current Value     Peak Value
+  ------------- --------------
+  Incoming Data Msg (1 sec sample) (msgs/s)              9993          10208
+  Incoming Data Msg (60 sec sample) (msgs/s)             9999           9999
+  Incoming Data Byte (1 sec sample) (bytes/s)          749475         765600
+  Incoming Data Byte (60 sec sample) (bytes/s)         749978         749982
+  Outgoing Data Msg (1 sec sample) (msgs/s)                10            500
+  Outgoing Data Msg (60 sec sample) (msgs/s)                2             58
+  Cache Request (1 sec sample) (msgs/s)                     1              1
+  Cache Request (60 sec sample) (msgs/s)                    0              0
+  Cache Request Queue Depth                                 0              1
+  Cached Topics                                            10             50
+    Local Cached Topics                                    10             50
+    Global Cached Topics                                  n/a            n/a
+  Messages Cached                                          10            611
+    Local Cached Messages                                  10            611
+    Global Cached Messages                                n/a            n/a
+
+  Message Bytes Cached                                    750          45825
+ 
+  Messages Cached (cumulative)                       77081139
+  Message Bytes Cached (cumulative)                1486118129
+  Message Lost Indications Rxd                              0
+  Messages Discarded (since last lost clear)                0
+    Parse Error (lost message)                              0
+    Too Big Error (lost message)                            0
+    Max Topics (lost message)                               0
+    Max Memory (lost message)                               0
+    Cluster Sync Fail (lost message)                        0
+    Cluster Sync Suspect (lost message)                     0
+    P2P Topic Filter                                        0</pre>
+    <div class="Note">
+      <ul>
+        <li>As shown by the above example, status requests display cache request and response time-out statistics.</li>
+        <li>When a messaging API sends a cache request, it indicates the amount of time it is willing to wait for a response. When the PubSub+ Cache Instance receives the cache request, it timestamps it and inserts it into the request queue. When the PubSub+ Cache Instance eventually extracts the cache request from the request queue, it checks to see how long the request has been in the queue. If this time exceeds the time that the API is willing to wait for a response, then the request is discarded and the Cache Requests Rxd time-out statistic is incremented.</li>
+        <li>When a cache request is too large to handle in one cache response, the PubSub+ Cache Instance responds with the “more” flag set. If the API does not send a ‘get-next cache-request’ within the allotted session time-out (the default is 10 seconds), the cache request session is canceled, and the Cache Responses Txd time-out statistic is incremented.</li>
+      </ul>
+    </div>
+    <pre>solace&gt; show cache-instance eq-cluster1-instance1 remote topics</pre>
+    <pre xml:space="preserve">
+Cache Instance               : eq-cluster1-instance1
+Cache Cluster              : eq-cluster1
+Distributed Cache          : equities
+Message VPN                : default
+ 
+		   Current   Cumulative Current    Cumulative Last
+Topic             Msg Count Msg Count  Byte Count Byte Count Arrival
+---------------- ---------- ---------- ---------- ---------- ---------------
+md/nyse/bac              1       2000       1026    2052000  Feb 26 2012 06: 24:18
+md/nyse/c                1       1000       1024    1024000  Feb 26 2012 06: 24:18
+md/nyse/ge               1       1000       1025    1025000  Feb 26 2012 18: 22:12
+md/nyse/pfe              1       1000       1026    1026000  Feb 26 2012 06: 24:1
+---------------- ---------- ---------- ---------- ---------- ---------------
+Total                    4       5000       4101    5127000
+		</pre>
+    <p>If you are using Global Caching, you can enter the following User EXEC command to display the status of the home Cache Clusters that a PubSub+ Cache Instance can request global topics from.</p>
+    <pre>solace&gt; show cache-instance v1.dc21.Local1.instance4 remote home-cache-clusters</pre>
+    <pre xml:space="preserve">
+Cache Instance                     : v1.dc21.Local1.instance4
+  Cache Cluster                    : v1.dc21.Local1
+  Distributed Cache                : v1.dc21
+  Message VPN                      : v1
+  Global Heartbeats Txd            : 21010
+ 
+Home Cache Cluster                 : v1.dc11.Home1
+  Heartbeat Status                 : Connected
+  Heartbeats Received              : 20310
+  Last Heartbeat Timeout           : Never
+  Cache Requests Rxd               : 552901
+  Cache Requests Forwarded         : 250900
+    OK                             : 250900
+    Fail                           : 0
+    No Match                       : 0
+    Timeout                        : 0		</pre>
+    <h2 class="with-rule"><a name="Instance-States"/>PubSub+ Cache Instance States</h2>
+    <p>This section provides information on possible administrative and operational states that a PubSub+ Cache Instance could be in. These states can be viewed through many <b>show cache-instance</b>User EXEC commands (refer to <MadCap:xref href="#Cache-Instance">Show Cache Instance</MadCap:xref>).</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Admin-State">PubSub+ Cache Instance Administrative State</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Operational-State">PubSub+ Cache Instance Operational State</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Lost-Msg-State">Lost Message State</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="Admin-State"/>PubSub+ Cache Instance Administrative State</h3>
+    <p>The table below lists the administrative states that can appear for a PubSub+ Cache Instance that has established communications with the Designated Router. These states are displayed in the <b>show cache-instance</b> User EXEC command output.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">PubSub+ Cache Instance Administrative States</p>
+      </caption>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Administrative State</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">down</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">The PubSub+ Cache Instance is running, is connected to the message bus, and can communicate with the Cache Manager on the Designated Router. However, all of its topic subscriptions are removed from the network. Thus, a PubSub+ Cache Instance in the down state neither receives nor caches any messages, and it neither receives nor responds to cache requests.</p>
+            <p class="Tbl_Body">A PubSub+ Cache Instance can enter the down state when the shutdown command is issued for it or its parent Cache Cluster or Distributed Cache.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">stopped</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">The PubSub+ Cache Instance is connected to the message bus, and it can receive and cache messages, but it cannot receive nor respond to cache requests. </p>
+            <p class="Tbl_Body">The typical cause for a stopped state is that the PubSub+ Cache Instance is not configured for auto-start, and after the PubSub+ Cache Instance is enabled, it enters this state. Thus, it is awaiting for an admin start command (refer to <MadCap:xref href="Performing-PubSub-Cache-Admi.htm#configuring_and_managing_solcache_541341864_270635">Starting PubSub+ Cache Instances</MadCap:xref>).</p>
+            <p class="Tbl_Body">A PubSub+ Cache Instance can also enter this state if cluster synchronization fails or if the PubSub+ Cache Instance is configured for ‘stop-on-lost-message’ and a ‘lost-message’ event occurs.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="Operational-State"/>PubSub+ Cache Instance Operational State</h3>
+    <p>The table below lists the potential operational states that can appear for a PubSub+ Cache Instance that has established communications with the Designated Router. These states are displayed in the <b>show cache-instance</b> User EXEC command output.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">PubSub+ Cache Instance Operational States</p>
+      </caption>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Operational State</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">registered</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">The PubSub+ Cache Instance has successfully registered and authenticated with the Designated Router. If a PubSub+ Cache Instance fails to register, an event log is generated.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">config-sync</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">The PubSub+ Cache Instance is synchronizing its configuration with the Designated Router. A config-sync state can occur when the configuration is pending confirmation from the PubSub+ Cache Instance back to the Designated Router.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">cluster-sync</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">The PubSub+ Cache Instance is fetching cached messages from or providing cached messages to another PubSub+ Cache Instance in the Cache Cluster.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">up</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body">The PubSub+ Cache Instance is caching messages that match configured topic subscriptions and is ready to respond to cache requests.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">unknown</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">The PubSub+ Cache Instance has not been heard from.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">invalid</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">A mismatched configuration exists between the Designated Router and one or more of the PubSub+ Cache Instances attempting to register with it.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="Lost-Msg-State"/>Lost Message State</h3>
+    <p>A PubSub+ Cache Instance can enter a Lost Message state, which indicates in the Cache Request Responses that the data integrity may be suspect. A PubSub+ Cache Instance can enter a Lost Message state under any of the following conditions:</p>
+    <ul>
+      <li>The router indicates that messages were lost in transit through the message bus.</li>
+      <li>Local discards on ingress messages to PubSub+ Cache service occurred. This could occur, for example, due to exceeding memory or topic limitations, invalid format or size.</li>
+      <li>The PubSub+ Cache Instance disconnected from the message bus and subsequent reconnects occurred without a clean Cache Cluster synchronization.</li>
+      <li>A custom Ingress Message Plug-in failure occurred. For information on the Ingress Message Plug-in, refer to <MadCap:xref href="Using-Ingress-Message-Plugins.htm">Using Ingress Message Plug-Ins</MadCap:xref>.</li>
+    </ul>
+    <p class="Note">Failure to add topic subscriptions to the message bus is not considered an indication of lost messages. In such a case, an event log is generated.</p>
+    <p>On entering a Lost Message state, an event message is generated to indicate back to the Designated Router that a message has been lost. And to avoid high volumes of lost message events while in this state, no further lost message events are sent back to the Designated Router. (One side effect of this is that subsequent discard notifications are masked.)</p>
+    <p>To clear the Lost Message state, an administrative clear-event action must be performed for the Distributed Cache. (Refer to <MadCap:xref href="Performing-PubSub-Cache-Admi.htm#configuring_and_managing_solcache_541341864_270896">Clearing PubSub+ Cache Events</MadCap:xref>.)</p>
+    <p class="Note">Administrative actions do not mark the PubSub+ Cache Instance as having lost messages. Therefore the following actions do not affect the Lost Message state:</p>
+    <ul>
+      <li>Deletion of messages through the use of either a <b>scheduled-delete-message</b> Distributed Cache CONFIG command (refer to <MadCap:xref href="Configuring-Distributed-.htm#Sched-Message-Deletes">Scheduling Message Deletes</MadCap:xref>) or an administrative <b>delete-messages</b> Distributed Cache Admin EXEC command (refer to <MadCap:xref href="Performing-PubSub-Cache-Admi.htm#configuring_and_managing_solcache_541341864_270883">Deleting Cached Messages</MadCap:xref>).</li>
+      <li>Shutdown, then later re-enable the Distributed Cache or PubSub+ Cache Instances.</li>
+      <li>Topic subscription churn.</li>
+      <li>Startup of a new PubSub+ Cache Instance process. (The new PubSub+ Cache Instance still synchronizes with the existing PubSub+ Cache Instances, since the Lost Message state does not survive across process termination.)</li>
+    </ul>
+    <h2 class="with-rule"><a name="Clearing-Instance-Stats"/>Clearing PubSub+ Cache Instance Statistics</h2>
+    <p>To clear the statistics for one or more PubSub+ Cache Instances under a Distributed Cache, enter the following Privileged EXEC command: </p>
+    <pre>solace# clear cache-instance &lt;name&gt; [cache-cluster &lt;cluster-name&gt;] [distributed-cache &lt;cache-name&gt;] [message-vpn &lt;vpn-name&gt;] stats</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the PubSub+ Cache Instance name</p>
+    <p><code>&lt;cluster-name&gt;</code> is the name of the Cache Cluster that the PubSub+ Cache Instance belongs to</p>
+    <p><code>&lt;cache-name&gt;</code> is the name of the Distributed Cache that the PubSub+ Cache Instance belongs to</p>
+    <p><code>&lt;vpn-name&gt;</code> is the name of the Message VPN that the PubSub+ Cache Instance belongs to</p>
+  </body>
+</html>

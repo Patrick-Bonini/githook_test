@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Enabling Guaranteed Messaging for HA Appliances</h1>
+    <p>To provide HA appliance redundancy for clients publishing and/or receiving Guaranteed messages, an active/standby redundancy model must be used.</p>
+    <p>With this redundancy model, one appliance within the redundant pair is configured to provide Guaranteed Messaging service as the “primary” or active appliance, while the other appliance is configured to provide Guaranteed Messaging service as the “backup” or standby appliance. Neither appliance can be configured to provide Guaranteed Messaging service as both a “primary” and a “backup”.</p>
+    <p class="Note">Although Guaranteed Messaging can be enabled for an active/active HA pair, clients are only able to publish Guaranteed messages to and/or receive Guaranteed messages from the primary interface on one of the appliances, and appliance failover for Guaranteed Messaging clients is only provided for that primary interface. However, when Guaranteed Messaging is enabled for an active/active HA pair, it does permit the Config-Sync facility to be used, which automatically propagates configuration information between both redundant Solace PubSub+ appliances.</p>
+    <h2 class="with-rule"><a name="Before"/>Before you begin</h2>
+    <ol>
+      <li>The procedure for enabling Guaranteed Messaging for an HA pair provided below assumes that each appliance has:
+			<ul><li>An ADB and HBA installed.</li><li>Access to the same external disk storage array (For more information refer to <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-External-Disk-Arrays.htm">Configuring External Disk Arrays for Guaranteed Messaging</MadCap:xref>).</li><li>Redundancy enabled.</li></ul></li>
+      <li>Although Guaranteed Messaging can only be used with HA pairs if both Guaranteed Messaging and redundancy are started and running successfully on both the primary and backup appliances, the order in which they are started is unimportant. For information on starting redundancy, refer to <MadCap:xref href="Active-Standby-HA-Appliances.htm">Active/Backup HA Appliances</MadCap:xref>.</li>
+      <li>The procedure also assumes that the appliance that will be the primary has:
+			<ul><li>At least one Message VPN properly configured for Guaranteed Messaging.</li><li>At least one client username in that Message VPN  assigned a client profile that allows Guaranteed message publishing and/or receiving. These client usernames will be used by connecting clients.</li></ul></li>
+      <li>After the Config-Sync facility is enabled, the system-level and Message VPN‑level configuration parameters from the primary appliance are copied over to the backup appliance with assert‑leader operations.</li>
+    </ol>
+    <h2 class="with-rule"><a name="Procedur"/>Procedure</h2>
+    <p>To configure Guaranteed Messaging for a redundant pair of appliances, perform the following steps:</p>
+    <ol>
+      <li>On both the primary and mate appliances, configure the Worldwide Name (WWN) to use when accessing the Logical Unit Number (LUN) on the external disk storage array. The WWN configured for each appliance must match. For more information, refer to <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-External-Disk-Arrays.htm">Configuring External Disk Arrays for Guaranteed Messaging</MadCap:xref>.
+			<p class="Code">solace1(configure)# hardware message-spool<br/>solace1(configure/hardware/message-spool)# disk-array wwn 10:00:00:53:E5:40:9A:0F</p><p> </p><p class="Code">solace2(configure)# hardware message-spool<br/>solace2(configure/hardware/message-spool)# disk-array wwn 10:00:00:53:E5:40:9A:0F</p></li>
+      <li>Start Guaranteed Messaging and message spooling on the primary appliance.        <p class="Code">solace1(configure)# hardware message-spool<br/>solace1(configure/hardware/message-spool)# no shutdown</p></li>
+      <li>Start Guaranteed Messaging and message spooling on the backup appliance.
+			<p class="Code">solace2(configure)# hardware message-spool<br/>solace2(configure/hardware/message-spool)# no shutdown</p></li>
+      <li>Enable Config-Sync for the primary appliance. You can configure Config-Sync to run over a TLS connection, so we've presented two choices so you can pick one appropriate to your situation.
+			
+				<ul><li><u>Without TLS</u><![CDATA[
+					]]><p class="Code">solace1(configure)# config-sync<br/>solace1(configure/)# no shutdown</p></li><li><u>Over TLS</u><![CDATA[
+						
+						]]><ol><li>Configure a pre-shared key.
+								You should note that the key must be the same for both appliances.	For more information refer to <MadCap:xref href="Pre-Shared-Keys-Appl.htm">Pre-Shared Authentication Keys for Appliances</MadCap:xref>.						
+			<p class="Code">solace1(configure)# redundancy<br/>solace1(configure/redundancy)# authentication<br/>solace1(configure/redundancy/authentication)# pre-shared-key key &lt;pre-shared-key&gt;</p></li><li>Configure config-sync.						<p class="Code">solace1(configure)# config-sync<br/>solace1(configure/config-sync)# ssl<br/>solace1(configure/)# no shutdown</p></li></ol></li></ul></li>
+      <li>Enable Config-Sync for the backup appliance. You can configure Config-Sync to run over a TLS connection, so we've presented two choices so you can pick one appropriate to your situation.
+				<![CDATA[      
+			
+				]]><ul><li><u>Without TLS</u><![CDATA[
+					]]><p class="Code">solace2(configure)# config-sync<br/>solace2(configure/)# no shutdown</p></li><li><u>Over TLS</u><![CDATA[
+						
+						]]><ol><li>Configure a pre-shared key.
+								You should note that the key must be the same for both appliances.		For more information refer to <MadCap:xref href="Pre-Shared-Keys-Appl.htm">Pre-Shared Authentication Keys for Appliances</MadCap:xref>.	<![CDATA[						
+			]]><p class="Code">solace2(configure)# redundancy<br/>solace2(configure/redundancy)# authentication<br/>solace2(configure/redundancy/authentication)# pre-shared-key key &lt;pre-shared-key&gt;</p></li><li>Configure config-sync.						<p class="Code">solace2(configure)# config-sync<br/>solace2(configure/config-sync)# ssl<br/>solace2(configure/)# no shutdown</p></li></ol></li></ul></li>
+      <li>Administratively assert the system-level configuration parameters for one of the appliances over its mate.        <p class="Code">solace1# admin<br/>solace1(admin)# config-sync<br/>solace1(admin/)# assert-leader router</p><p class="Note">Typically, the active appliance in the redundant pair will be chosen as the leader for the initial synchronization of configuration.</p></li>
+      <li>Administratively assert the Message VPN-level configuration parameters of the same appliance over its mate.
+			<p class="Code">solace1# admin<br/>solace1(admin)# config-sync<br/>solace1(admin/)# assert-leader message-vpn *</p></li>
+    </ol>
+  </body>
+</html>

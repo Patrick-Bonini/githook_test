@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Performing an Uncontrolled Failover</h1>
+    <p>In the event of an unplanned failure of an active data center or network isolation, there will not be an opportunity to gracefully release activity from the Message VPNs at that replication site.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/Features/DR-Replication/types-uncontrolled-failovers.flsnp"/>
+    <p> In all these types of failovers, the following general steps must be taken:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Recover_from_Uncontrolled_Make_Active">Step 1: Make Message VPNs at Standby Site Replication Active to Restore Service</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Recover_from_Uncontrolled_no_connect">Step 2: Ensure Clients Cannot Connect to the Failed Site </MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Recover_from_Uncontrolled_suspend_replication">Step 3: If Necessary, Suspend Replication</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Recover_from_Uncontrolled_bring_back">Step 4: Bring Message VPNs at the Failed Site Back Online as Replication Standby</MadCap:xref>
+      </li>
+    </ul>
+    <p>In the provided example, the New York replication site has experienced the failure, and its mate Boston site takes over activity until the New York site has been restored. For simplicity, only a single Message VPN (<code>Trading_VPN</code>) is presented in the example. When the failure occurred, <code>Trading_VPN</code> had a replication active state at the New York site and a replication standby state at the Boston  site.</p>
+    <p class="Note">While these simple examples only show replication sites with a single Message VPN, in real-world scenarios, these steps must be performed for each Message VPN involved in a replication site failover.</p>
+    <h2 class="with-rule"><a name="Conseque"/>Consequences of an Uncontrolled Failover</h2>
+    <MadCap:snippetBlock src="../../Resources/Snippets/Features/DR-Replication/consequences-uncontrolled-fail-over.flsnp"/>
+    <p class="Note">We recommend that you <a href="../../get-support.htm" class="link-internal">Contact Solace</a> for help resolving any issues that may be present in the circumstances of a specific uncontrolled failover.</p>
+    <h2 class="with-rule"><a name="Recover_from_Uncontrolled_Make_Active"/>Step 1: Make Message VPNs at Standby Site Replication Active to Restore Service</h2>
+    <p>This procedure should be followed after it has been determined that an uncontrolled failure has occurred for a data center site.</p>
+    <h4>Make a Replication Standby Message VPN Replication Active</h4>
+    <p>To restore service, change the replication state of the Message VPN to active.</p>
+    <h4>Boston Data Center</h4>
+    <pre>BOS_EventBroker(configure)# message-vpn Trading_VPN
+BOS_EventBroker(configure/message-vpn)# replication state active</pre>
+    <p>Clients will now be able to connect to the Message VPN.</p>
+    <p>Since a standby site is not available, asynchronous messages and transactions will be stored in the replication queue. By default, synchronous replication will switch to asynchronous, causing those messages and transactions to also be stored in replication queue. If reject-msg-when-sync ineligible is set on the Message VPN, synchronous replication will be blocked until the standby Message VPN is restored.</p>
+    <h2 class="with-rule"><a name="Recover_from_Uncontrolled_no_connect"/>Step 2: Ensure Clients Cannot Connect to the Failed Site </h2>
+    <p>It is important that the failed site does not come up with its replication Message VPNs in active state. If both sites have an active replication state at the same time, proper operation cannot be guaranteed. Since the failed event broker was configured with replication state active when it failed or became unreachable, when it recovers that will be its default state. Note that if the failed site cannot be recovered, and its configuration has to be restored from a backup, that backup configuration may have been saved with an active replication state, so this step applies in that case as well.</p>
+    <p>In this step, the goal is to allow the failed event broker to be brought back up, but also prevent clients from connecting. To do that, you should block ports that allow client connectivity, while still allowing the event broker to be managed through the management ports.</p>
+    <p MadCap:conditions="Default.HideFromAllOutput">Implementing this step requires a customer-specific administrative plan and depends on the type of failure. </p>
+    <ul MadCap:conditions="Default.HideFromAllOutput">
+      <li>For appliances:<ul><li>Administratively shut down the NAB interface(s). This option may be available during network isolation of the message backbone where management access is maintained.</li><li>Remove data cables from NAB data ports</li><li>Prevent L2 switches that provide connectivity to the NAB ports from powering up</li><li>Power up L2 switches that provide connectivity to the NAB ports, but disable the NAB ports</li><li>Prevent IP event brokers that provide client connectivity from providing connectivity to the event broker’s NAB ports</li></ul></li>
+      <li>For software brokers:<ul><li>Block the client ports from the host environment  </li></ul></li>
+    </ul>
+    <p MadCap:conditions="Default.HideFromAllOutput">There may be other ways to accomplish this step, but this step should be formalized before a uncontrolled failure occurs so it is clear what actions to take should an actual failure occur.</p>
+    <p>There may be a number of ways to accomplish this step; the specific actions to perform should be tested before an uncontrolled failure occurs so it is clear what to do in an actual failure scenario.</p>
+    <h2 class="with-rule"><a name="Recover_from_Uncontrolled_suspend_replication"/>Step 3: If Necessary, Suspend Replication</h2>
+    <p>If the failed site takes a long time to recover, there is risk that the replication queue will fill up. If this happens, messages published to replicated topics (in or out of transactions will be rejected), since no replication service can be provided. If you know that there will be a prolonged outage or the replication queue is getting close to filling up (high event log has been triggered on the replication queue), it may be necessary to suspend the replication service to continue to provide non-replicated service to the replicated topics. </p>
+    <p>To suspend replication, disable the reject-msg-to-send behavior on the replication queue using the following CONFIG command:</p>
+    <pre>solace(configure/message-vpn/replication/queue)# no reject-msg-to-sender-on-discard</pre>
+    <p>Note that with this setting, replicated service will continue until the replication queue gets full. Once it is full, only local, non-replicated service is provided.</p>
+    <h2 class="with-rule"><a name="Recover_from_Uncontrolled_bring_back"/>Step 4: Bring Message VPNs at the Failed Site Back Online as Replication Standby</h2>
+    <p>Once the failed site has been recovered with management access by no client access (see <MadCap:xref href="#Recover_from_Uncontrolled_no_connect">Step 2: Ensure Clients Cannot Connect to the Failed Site </MadCap:xref>), then it can be prepared to be the standby site. Here the steps for preparing the recovered event broker to be the standby site:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#StepConfigAllStandby">Step 4-1: Configure All Message VPNs as Standby</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#StepVerifyMsgSpool">Step 4-2: Verify the Message Spool</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#StepHeur_Complete">Step 4-3: Heuristically Complete Transactions</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#StepAllowClientConnects">Step 4-4: Allow Clients to Connect</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#StepWait_forSyncElig">Step 4-5: Wait For Synchronous Replication to be Eligible</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#StepReenable_Replic">Step 4-6: If Necessary, Re-enable Replication</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Step">Step 4-7: Retrieving Replication Queue Spooled Messages from the Failed Site</MadCap:xref>
+      </li>
+      <h3><a name="StepConfigAllStandby"/>Step 4-1: Configure All Message VPNs as Standby</h3>
+      <p>Configure all Message VPNs on the restored Replication site with a standby Replication state. In this example, the Message VPN <code>Trading VPN</code> at the New York site is configured with a standby Replication state:</p>
+      <p style="font-family: Helvetica;font-weight: bold;font-style: normal;letter-spacing: 0em;text-decoration: none;">
+        <b>NY Data Center</b>
+      </p>
+      <pre>NY_EventBroker1(configure)# message-vpn Trading_VPN
+NY_EventBroker1(configure/message-vpn)# replication state standby</pre>
+      <p>The Config-Sync facility propagates this setting to the <code>Trading_VPN</code> Message VPN on <code>Ny-Appliance2</code>.</p>
+      <h3><a name="StepVerifyMsgSpool"/>Step 4-2: Verify the Message Spool</h3>
+      <p>You should verify that the message spool for the event brokers at the failed Replication site are now capable of providing service. </p>
+      <p>Before continuing, ensure that the message spool on the recovered site is active for the primary virtual router. In the sample output below (which may vary by event broker type and version), the <code>Activity Status</code> of <code>Local Inactive</code> and the <code>Message Spool Status</code> of <code>AD-Not Ready</code> indicates that the event broker and the message spool it uses are not active.</p>
+      <pre>NY_EventBroker1# show redundancy
+Configuration Status     : Enabled
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solaceBackup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Down
+
+Primary Virtual Router  Backup Virtual Router
+                               ----------------------  ----------------------
+
+Activity Status                Local Inactive          Local Active
+Routing Interface              1/1/lag1:1              1/1/lag1:3
+VRRP VRID                      33                      34
+Routing Interface Status       Up                      Up
+VRRP Status                    Master                  Master
+VRRP Priority                  75                      250
+Message Spool Status           AD-NotReady             AD-Disabled
+Priority Reported By Mate      Backup-Reconcile        Primary-Reconcile</pre>
+      <p>In this situation, you must resolve the issue preventing failed event broker to become active. If you cannot resolve the issue, <a href="../../get-support.htm" class="link-internal">contact Solace</a>.</p>
+      <h3><a name="StepHeur_Complete"/>Step 4-3: Heuristically Complete Transactions</h3>
+      <p>If applicable, heuristically commit or heuristically rollback any prepared transactions on the failed site. Once heuristically completed, delete them to free up the resources.</p>
+      <p>To commit, rollback or delete a transaction, enter the appropriate  ADMIN commands on the failed site:</p>
+      <p style="font-weight: bold;">NY Data Center</p>
+      <pre>solace(admin/message-spool) commit-transaction xid &lt;xid&gt;</pre>
+      <p>and/or</p>
+      <pre>solace(admin/message-spool) rollback-transaction xid &lt;xid&gt;</pre>
+      <p>and then</p>
+      <pre>solace(admin/message-spool) delete-transaction xid &lt;xid&gt;</pre>
+      <p><u>Where</u>:</p>
+      <p><code>xid</code> specifies the XID of the transaction to be committed, rolled back, or deleted.</p>
+      <h3><a name="StepAllowClientConnects"/>Step 4-4: Allow Clients to Connect</h3>
+      <p>You previously had blocked traffic to prevent client connectivity (<MadCap:xref href="#Recover_from_Uncontrolled_no_connect">Step 2: Ensure Clients Cannot Connect to the Failed Site</MadCap:xref>). You now must unblock the ports to allow client connectivity. This step allows clients to connect as well as to the replication bridge, which allows data to be synchronized from the active site (Boston  site to the New York site in the example). <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput"> &lt;WRITER NOTE: In step 2, it was hidden so do the same thing as it was vague&gt; The method through which connectivity to the NAB data ports is restored depends on the action chosen in <MadCap:xref href="#Recover_from_Uncontrolled_no_connect">Step 2: Ensure Clients Cannot Connect to the Failed Site</MadCap:xref> of the parent procedure.</MadCap:conditionalText></p>
+      <h3><a name="StepWait_forSyncElig"/>Step 4-5: Wait For Synchronous Replication to be Eligible</h3>
+      <p>Once connectivity is restored between the recovered site and the active site, the replication bridge will connect from the standby site to the active site and drain the replication queue in order to synchronize the two sites. Depending on how much message and transaction data is in the replication queue and the available bandwidth between the sites, this process may take a long time. When this process is complete, the Replication service will no longer be degraded and the Message VPN will become eligible for synchronous replication.</p>
+      <p> In the following example, the information is shown for the Boston  site, which is acting as active for the recently failed New York site.</p>
+      <pre>BOS_EventBroker# show message-vpn Trading_VPN replication
+
+Flags Legend:
+A - Admin State (U=Up, D=Down)
+C - Config State (A=Active, S=Standby)
+B - Local Bridge State (U=Up, Q=Queue Unbound, D=Down, -=N/A)
+R - Remote Bridge State (U=Up, D=Down, -=N/A)
+Q - Queue State (U=Up, D=Down, -=N/A)
+S - Sync Replication Eligible (Y=Yes, N=No, -=N/A)
+M - Reject Msg When Sync Ineligible (Y=Yes, N=No)
+T - Transaction Replication Mode (A=Async, S=Sync, -=N/A)
+Message VPN                      A C W B R Q S M T
+-------------------------------- - - - - - - - - -
+Trading_VPN                      U A N - U U - N A
+BOS_EventBroker# 
+</pre>
+      <p>The ‘Y’ under the ‘S’ column indicates that synchronous Replication is eligible for the Message VPN <code>Trading_VPN</code>.</p>
+      <h3><a name="StepReenable_Replic"/>Step 4-6: If Necessary, Re-enable Replication</h3>
+      <p>If you previously had to suspend replication because the replication queue overflowed, re-enable it. Enter the following CONFIG command:</p>
+      <pre>solace(configure/message-vpn/replication/queue)# reject-msg-to-sender-on-discard</pre>
+      <h3><a name="Step"/>Step 4-7: Retrieving Replication Queue Spooled Messages from the Failed Site</h3>
+      <p>Asynchronously spooled messages on the formerly active site (NY)  can only be consumed when the activity is failed back to the formerly active state site (NY).</p>
+      <p>In order to retrieve these messages, fail back to the formerly active state site (NY) in the next maintenance window.</p>
+    </ul>
+  </body>
+</html>

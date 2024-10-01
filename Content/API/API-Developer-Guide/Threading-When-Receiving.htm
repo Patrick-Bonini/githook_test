@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Threading When Receiving Messages</h1>
+    <p>When receiving published messages, the Context uses a processing thread to read messages off the socket, parse them, and then, depending on the messaging API and whether a synchronous or asynchronous mode is used, enqueue the messages for delivery or consumption, or perform customer notification and message dispatch.</p>
+    <p>Client applications can use one of the following modes to receive published messages:</p>
+    <ul>
+      <li>
+        <u>Asynchronous</u>
+        <p>Client applications can use the Java, Java RTO, C, and .NET APIs to receive published messages asynchronously. Refer to <MadCap:xref href="#api_threading_1096948177_601598">Receiving Messages Asynchronously</MadCap:xref>.</p>
+      </li>
+    </ul>
+    <ul>
+      <li>
+        <u>Synchronous</u>
+        <p>Client applications can also useJCSMP to receive published messages synchronously. Refer to <MadCap:xref href="#api_threading_1096948177_600318">Receiving Messages Synchronously</MadCap:xref>.</p>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="api_threading_1096948177_601598"/>Receiving Messages Asynchronously</h2>
+    <p>A client application can use the Java, Java RTO, C, and .NET APIs to receive messages in an asynchronous manner. That is, when messages are available, they are automatically sent (“pushed”) to a message callback or message delegate interface from the API to the client application.</p>
+    <p>When receiving messages asynchronously, the Context uses a processing thread for consumer notification and dispatching the queued messages to consumers; all callbacks from the API to the application, such as message receive callbacks, event callbacks, and timer callbacks, run from a Context thread.</p>
+    <p class="Note">When a client application is using asynchronous transacted sessions, messages are dispatched from one or more transacted session dispatcher threads. Either a single transacted session dispatcher thread that is bound to the Context (this is the default) or separate transacted session dispatcher threads that are that are bound to each transacted session can be used. For more information, refer to <MadCap:xref href="Using-Local-Transactions.htm">Using Local Transactions</MadCap:xref>.</p>
+    <p style="font-weight: bold;">JCSMP</p>
+    <p>By default,JCSMP’s Context uses one thread to read messages off the socket, parse them, and then enqueue them on the consumer notification dispatcher queue. It uses another thread for consumer notification and dispatching the queued messages to consuming client applications.</p>
+    <p>The maximum number of messages that can be queued by the Context per Session before they are delivered to consumers is as follows:</p>
+    <ul>
+      <li>Direct messages—5,000</li>
+      <li>Guaranteed messages—The maximum number of messages permitted by each flow’s Guaranteed message window size. (A Guaranteed message window size limits the number of messages that the API can receive before it must return an acknowledgment to the event broker that it received the messages in the window.)</li>
+    </ul>
+    <p>The consumer notification dispatcher queue that is used to asynchronously notify consumers of messages and exceptions through an <code>XMLMessageListener</code> can be resized, if necessary. This queue should be large enough to buffer the maximum number of notifications that are generated for all consumer flows (Guaranteed and Direct messages) in all of the Sessions in a Context. If an <code>XMLMessageListener</code> does not always return control quickly and the consumer notification dispatcher queue fills up, the API thread attempting to enqueue notifications to this queue can be temporarily blocked and can cause messages to queue on the event broker. </p>
+    <p>To resize the consumer notification dispatcher queue, call <code>JCSMPGlobalProperties.setConsumerDispatcherQueueSize()</code>.</p>
+    <p class="Note">Global properties may only be set before any Sessions have been created from the <code>JCSMPFactory</code>.</p>
+    <p>
+            The figure below shows the Context threads that are used to receive messages asynchronously through JCSMP.</p>
+    <p class="GraphicCaption">Receiving Messages Asynchronously Using the JCSMP</p>
+    <p class="GraphicCaption">
+      <img src="Images/java_receive_threading_async.jpg" alt=""/>
+    </p>
+    <p>For ultra low latency applications, you can enable the <code>MESSAGE_CALLBACK_ON_<br/>REACTOR</code> Session property to reduce message latency. When this Session property is enabled, messages delivered asynchronously to an <code>XMLMessageListener</code> are delivered directly from the I/O thread instead of from the consumer notification and dispatch thread. Although enabling this Session property reduces message latency, it also decreases the maximum message throughput.</p>
+    <div class="Caution">
+      <p class="Tbl_Body"> An application using the <code>MESSAGE_CALLBACK_ON_REACTOR</code> Session property must not call any blocking methods in the <code>onReceive()</code> callback; doing so could cause the application to deadlock.</p>
+    </div>
+    <p>
+            The figure below shows shows the Context thread that is used to receive messages asynchronously through the JCSMP when the <code>MESSAGE_CALLBACK_ON_REACTOR</code> Session property is enabled.</p>
+    <p class="GraphicCaption">Receiving Messages Asynchronously Through JCSMP when Message Callback on Reactor is Enabled</p>
+    <p style="font-weight: bold;">Java RTO, C, and .NET APIs</p>
+    <p style="font-weight: bold;">
+      <img src="Images/java_receive_threading_async_with_IO_Callback.jpg" alt=""/>
+    </p>
+    <p>Contexts used by the Java RTO, C, and .NET APIs asynchronously receive messages in a way similar to that used by JCSMP when the <code>MESSAGE_CALLBACK_ON_REACTOR</code> Session property is enabled. The Java RTO, C, and .NET APIs only use one processing thread for the Context. This thread reads messages off the socket, parses them, and then performs consumer notification and dispatches the messages to consuming applications.</p>
+    <p class="Note">For the C API, the required Context thread can optionally be supplied by the client application instead of relying on the internal API thread. Refer to <MadCap:xref href="C-API-Best-Practices.htm#Selectin">Selecting a Threading Model</MadCap:xref>.</p>
+    <p>
+            The figure below shows shows the Context thread that is used to receive messages asynchronously through the Java RTO, C, and .NET APIs.</p>
+    <p class="GraphicCaption">Receiving Messages Asynchronously With the Java RTO, C, and .NET APIs</p>
+    <p class="GraphicCaption">
+      <img src="Images/c_Net_receive_threading_async.jpg" alt=""/>
+    </p>
+    <h2 class="with-rule"><a name="api_threading_1096948177_600318"/>Receiving Messages Synchronously</h2>
+    <p>When receiving messages in a synchronous manner, the client application uses explicit receive calls to retrieve messages from the message queues that the API uses for each consumer. When receiving messages synchronously, the client application provides the threads that “pull” the enqueued messages from the API.</p>
+    <p style="font-weight: bold;">JCSMP </p>
+    <p>To receive messages, the client application must use <code>start()</code> to enable receiving messages from the event broker, and then use synchronous <code>receive(...)</code> calls to receive the next available message. The receive methods can manage the potential blocks by waiting indefinitely until there are messages, not waiting when there are no messages (that is, immediately timing out when there are no messages), or timing out after a set period of time when there are no messages.</p>
+    <p>
+            The figure below shows shows the Context thread and application threads that are used when messages are received synchronously through JCSMP .</p>
+    <p class="GraphicCaption">Receiving Messages Synchronously Using JCSMP </p>
+    <p>
+      <img src="Images/java_receive_threading_sync.jpg" alt=""/>
+    </p>
+    <p style="font-weight: bold;">Java RTO, C, and .NET APIs</p>
+    <p>The Java RTO, C, and .NET APIs can only receive messages asynchronously.</p>
+  </body>
+</html>

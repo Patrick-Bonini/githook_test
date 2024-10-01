@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" xml:lang="en-ca">
+  <head>
+    <title/>
+  </head>
+  <body>
+    <h1>Using F5 Big-IP as a Load Balancer for External Internet Connectivity</h1>
+    <p>This section describes how to configure an N+1 redundancy configuration using the F5 Big-IP appliance as a load balancer for external internet connectivity through Solace Web messaging, as follows:</p>
+    <ol style="list-style-type: decimal;margin-left: 18pt;" start="1">
+      <li>Create a pool for web servers and add the internet-facing web server interface addresses to it.</li>
+      <li>Create a pool for Solace PubSub+ event brokers and add the Internet-facing interface addresses of the event brokers to it.</li>
+      <li>Create a virtual server. This is the server clients connect to.</li>
+      <li>Configure the F5 Big-IP appliance as a load balancer to route requests to the Web servers or event brokers based on tags in the request URLs. This is done by creating an F5 iRule and associating it with the virtual server.</li>
+    </ol>
+    <p>For example, consider the network shown in the figure below with two web servers, two Solace PubSub+ appliances, and one F5 Big-IP appliance acting as a load balancer. In this network the following is true: </p>
+    <ul style="list-style-type: disc;margin-left: 18pt;">
+      <li style="list-style-type: disc;">Each of the Solace PubSub+ appliances is configured with a web-url-suffix matching its name. For example, the CLI configuration performed on <code>Solace1</code> is:
+        <p class="Code">Solace1# configure <br/>Solace1(config)# service web-transport <br/>Solace1(config-service-web)# web-url-suffix ?appliance=Solace1</p></li>
+      <li style="list-style-type: disc;">On the F5 Big-IP appliance acting as a load balancer, the web servers are added to a pool called <code>web_server_pool</code> while the Solace PubSub+ appliances are added to a pool called <code>solace_appliance_pool</code>.</li>
+      <li style="list-style-type: disc;">The URL specified in the session properties by the application to the Solace Web messaging API contains the string <code>https://203.0.113.1/FxPortal</code>.</li>
+    </ul>
+    <p class="TblCaption">Figure 1 - N+1 Redundancy Configuration for External Internet Connectivity</p>
+    <p class="GraphicCaption">
+      <img src="Images/Using F5 Big IP as a Load.png" style="width: auto;height: auto;max-width: 500px;" MadCap:mediastyle="@media print { max-width: 500px; }" alt="N + 1 Redundancy"/>
+    </p>
+    <p>Given the above, the F5 iRule associated with the virtual server configured on the F5 Big-IP appliance acting as load balancer is:</p>
+    <p class="Code">when HTTP_REQUEST {<br/>  if { [HTTP::path] starts_with "/FxPortal" } {<br/>    if { [HTTP::uri] ends_with "?appliance=Solace1" } {<br/>      node 10.10.2.1 80<br/>    } elseif { [HTTP::uri] ends_with "?appliance=Solace2" } {<br/>      node 10.10.2.2 80<br/>    } else {<br/>      pool solace_appliance_pool<br/>    }<br/>  } else { <br/>    pool web_server_pool<br/>  }<br/>}</p>
+    <p>The client connects to the virtual server/load balancer. If, for example, the user types the following address into their browser address bar: https://203.0.113.1/</p>
+    <p>The F5 Big-IP appliance routes the above request to one of the web servers, which returns the application to the client’s browser. The application code specifies a session URL as a session property to the Solace Web messaging API to connect to the Solace PubSub+ appliance. For example, it uses a parameter such as: </p>
+    <p class="Code">https://203.0.113.1/FxPortal</p>
+    <p>The F5 Big-IP appliance routes this request to one of the Solace PubSub+ appliances in the pool in a load-balanced manner. The handshake between the Solace PubSub+ appliance and the Solace Web messaging API includes the web-url-suffix configured on the Solace PubSub+ appliance. Subsequent requests from the application include the web-url-suffix in the request URL, which is added by the Solace Web messaging API, thereby allowing the F5 Big-IP appliance to route the requests to the same Solace PubSub+ appliance handling the session. For example, if an application was originally load balanced to the appliance named Solace1, subsequent requests would look like:</p>
+    <p class="Code">https://203.0.113.1/FxPortal?appliance=Solace1</p>
+    <p>For a more advanced example, consider the network shown in the figure below. </p>
+    <p class="GraphicCaption">Figure 2 - Advanced N+1 Redundancy Configuration for External Internet Connectivity</p>
+    <p class="GraphicCaption">
+      <img src="Images/Figure 5 2 Advanced N 1 Redundancy.png" alt=""/>
+    </p>
+    <p>The configuration in Figure 2 is created as follows:</p>
+    <ol style="list-style-type: decimal;margin-left: 18pt;" start="1">
+      <li>Configure Solace1 with the web-url-suffix <code>"?appliance=Solace1"</code>.</li>
+    </ol>
+    <ol style="list-style-type: decimal;margin-left: 18pt;" start="2">
+      <li>Configure Solace2 with the web-url-suffix <code>“?appliance=Solace2”</code>.</li>
+    </ol>
+    <ol style="list-style-type: decimal;margin-left: 18pt;" start="3">
+      <li>On the F5 Big-IP appliance acting as a load balancer, add:</li>
+      <ul>
+        <li>the web servers to a pool called <code>web_server_pool</code>.</li>
+        <li>all eight of the internet-facing Solace PubSub+ appliance interfaces to a pool called <code>solace_appliance_pool</code>.</li>
+        <li>the four Iinternet-facing Solace1 appliance interfaces to a pool called <code>solace_appliance1_pool</code>.</li>
+        <li>the four internet-facing Solace2 appliance interfaces to a pool called <code>solace_appliance2_pool</code>.</li>
+      </ul>
+    </ol>
+    <ol style="list-style-type: decimal;margin-left: 18pt;" start="4">
+      <li>Create the virtual server.</li>
+    </ol>
+    <p>Given the above, the F5 iRule associated with the virtual server configured on the F5 Big-IP appliance acting as load balancer is:</p>
+    <p class="Code">when HTTP_REQUEST {<br/>  if { [HTTP::path] starts_with "/FxPortal" } {<br/>    if { [HTTP::uri] ends_with "?appliance=Solace1" } {<br/>      pool solace_appliance1_pool<br/>    } else if { [HTTP::uri] ends_with "?appliance=Solace2" } {<br/>      pool solace_appliance2_pool<br/>    } else {<br/>      pool solace_appliance_pool<br/>    }<br/>  } else {<br/>    pool web_server_pool<br/>  }<br/>}</p>
+    <p>Based on the IP addresses in Figure 1, the pools are:</p>
+    <table>
+      <tbody>
+        <tr>
+          <td>
+            <p>
+              <code>web-server_pool</code>
+            </p>
+          </td>
+          <td>
+            <p>
+              <code>solace_appliance_pool</code>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <p>10.10.1.1</p>
+          </td>
+          <td>
+            <p>10.10.2.1</p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <p>10.10.1.1</p>
+          </td>
+          <td>
+            <p>10.10.2.2</p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <p> </p>
+          </td>
+          <td>
+            <p>10.10.2.3</p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <p> </p>
+          </td>
+          <td>
+            <p>10.10.2.4</p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <p> </p>
+          </td>
+          <td>
+            <p>10.10.2.5</p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <p> </p>
+          </td>
+          <td>
+            <p>10.10.2.6</p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <p> </p>
+          </td>
+          <td>
+            <p>10.10.2.7</p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <p> </p>
+          </td>
+          <td>
+            <p>10.10.2.8</p>
+          </td>
+        </tr>
+        <tr>
+          <td> </td>
+          <td> </td>
+        </tr>
+        <tr>
+          <td>
+            <p>
+              <code>solace_appliance1_pool</code>
+            </p>
+          </td>
+          <td>
+            <p>
+              <code>solace_appliance2_pool</code>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <p>10.10.2.1</p>
+          </td>
+          <td>
+            <p>10.10.2.5</p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <p>10.10.2.2</p>
+          </td>
+          <td>
+            <p>10.10.2.6</p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <p>10.10.2.3</p>
+          </td>
+          <td>
+            <p>10.10.2.7</p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <p>10.10.2.4</p>
+          </td>
+          <td>
+            <p>10.10.2.8</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p> </p>
+  </body>
+</html>

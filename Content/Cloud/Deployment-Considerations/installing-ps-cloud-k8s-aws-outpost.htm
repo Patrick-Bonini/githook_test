@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Installing <MadCap:variable name="Product-Names.cloud_product_titlecase" MadCap:conditions="SAP.SapHideFromOutput"/> in AWS Outposts </h1>
+    <div class="Caution">Installing <MadCap:variable name="Product-Names.cloud_product_short"/> in AWS Outposts is a Controlled-Availability (CA) feature. <a href="../../get-support.htm" target="_blank" class="link-internal">Contact <MadCap:variable name="Variables.CompanyName"/></a> to see if this feature is suitable for your use case and deployment requirements.</div>
+    <p><MadCap:variable name="Variables.CompanyName"/> supports deploying <MadCap:variable name="Product-Names.broker_cloud_short"/>s in Amazon Elastic Kubernetes Service (EKS) in AWS Outposts as a <a href="../stages_concept.htm#Controlled_Availability" target="_blank" class="link-internal">controlled availability</a> feature. AWS Outposts provide the ability to deploy your <MadCap:variable name="Product-Names.broker_cloud_short"/> to EKS clusters on Amazon hardware located on-premises. For more information, see the <a href="https://aws.amazon.com/outposts/" target="_blank" class="link-offsite">AWS Outposts Family</a> documentation. </p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/k8s-environment-specific-intro.flsnp"/>
+    <p>For customer-owned deployments, you are  responsible for the set up of the Kubernetes cluster and the maintenance and operation of the cluster. The following information can help you to understand the requirements of that Kubernetes cluster that you create:
+				<ul><li>The EKS cluster in the AWS Outposts must fulfill the <MadCap:xref href="#outposts-prereqs">Prerequistes </MadCap:xref></li><li>Review the <MadCap:xref href="#outpost-considerations">Considerations for Deploying [%=Product-Names.cloud_product_short%] Using AWS Outposts</MadCap:xref>.</li><li> One way to create and  understand the requirements for the Kubernetes EKS cluster is to use the  examples (Terraform  module and deployment scripts) available from  <MadCap:variable name="Variables.CompanyName"/>.</li></ul><p class="Note">Available from <MadCap:variable name="Variables.CompanyName"/> are sample scripts and Terraform modules you can use as reference example to understand what is required in your Kubernetes cluster. The example is provided as-is. You (the customer) can modify the files as required to create your Kubernetes cluster. If you choose to do so, then you are responsible to maintain and modify the files for your deployment. For more information, <a href="../../get-support.htm" class="link-internal"> contact <MadCap:variable name="Variables.CompanyName"/></a>.</p></p>
+    <h2><a name="outpost-considerations"/>Considerations for Deploying <MadCap:variable name="Product-Names.cloud_product_short"/> Using AWS Outposts </h2>
+    <p>Be aware of the following considerations when choosing to deploy <MadCap:variable name="Product-Names.cloud_product_short"/> to AWS Outposts:</p>
+    <ul>
+      <li>
+        <p><MadCap:variable name="Variables.CompanyName"/> only supports deployment of <MadCap:variable name="Product-Names.cloud_product_short"/> to Amazon Elastic Kubernetes Service (EKS) for AWS Outposts.</p>
+      </li>
+      <li>
+        <p><MadCap:variable name="Variables.CompanyName"/> only supports the use of AWS Outposts Rack for deploying <MadCap:variable name="Product-Names.cloud_product_short"/> to EKS on AWS Outposts. See <a href="https://aws.amazon.com/outposts/rack/" target="_blank" class="link-offsite">AWS Outposts Rack</a>  in the AWS Outposts documentation for more information.</p>
+      </li>
+      <li>
+        <p>You must configure the AWS Outposts to use <b>direct VPC routing for AWS Outposts</b>. Direct VPC routing is the default configuration option for local gateway route tables when deploying to AWS Outposts. See <a href="https://docs.aws.amazon.com/outposts/latest/userguide/routing.html#direct-vpc-routing" target="_blank" class="link-offsite">Direct VPC Routing</a> in the AWS Outposts documentation for more information.</p>
+      </li>
+      <li>
+        <p>You must create a <code>placement group</code> as <code>partition</code> with a count of <code>2</code>. See <MadCap:xref href="#outpost-placement-group">Placement Groups</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>You must configure your EKS cluster <code>storage_class</code> with GP2 storage when deploying <MadCap:variable name="Product-Names.cloud_product_short"/> to EKS on AWS Outposts. For more information, see <MadCap:xref href="#outpost-storage">Storage Class</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>You must size your CIDR correctly to accommodate both system usage, and the number of <MadCap:variable name="Product-Names.broker_cloud_short"/>s your cluster will host. For more information, see <MadCap:xref href="#outpost-ip-reqs">IP Range and CIDR Sizing</MadCap:xref>. </p>
+      </li>
+      <li>
+        <p>If you intend to expose your <MadCap:variable name="Product-Names.broker_cloud_short"/>s to external networks, you must use <MadCap:variable name="Variables.CompanyName"/>'s custom MetalLB load balancer. For more information, see <MadCap:xref href="#outpost-metallb-setup">Using [%=Variables.CompanyName%]'s Custom MetalLB Load Balancer</MadCap:xref>.</p>
+      </li>
+    </ul>
+    <h2><a name="outposts-prereqs"/>Prerequistes </h2>
+    <dl>
+      <dt>Permissions</dt>
+      <dd>You require an AWS account with the permissions listed below. These permissions are required only by the individual when deployment is done using a Terraform module:</dd>
+      <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/eks-related/eks-permissions.flsnp"/>
+    </dl>
+    <ul>
+      <dl>
+        <dt>Elastic  Load Balancers</dt>
+        <dd>The worker node group requires this permission to install the EKS cluster.</dd>
+      </dl>
+    </ul>
+    <dl>
+      <dt>Networking</dt>
+      <dd>If you plan to use AWS NAT gateways for outgoing traffic, you must create an Elastic IP (EIP) address for each NAT Gateway that you intend to use with the following considerations:
+            <ul><li>The EIPs for the NAT gateways must be created upfront.</li><li><MadCap:variable name="Variables.CompanyName"/><b> recommends  two EIPs</b> are created. A minimum of one EIP allocation ID is required. </li></ul></dd>
+      <dd>EIPs are not required if you plan to route traffic over your on-premises network. </dd>
+    </dl>
+    <h2><a name="outpost-eks-cluster-reqs"/>EKS Cluster Specifications</h2>
+    <p>Before you (the customer) install the <MadCap:variable name="Product-Names.cloud_agent_short"/>, you must configure the EKS cluster on your AWS Outpost with the technical specifications listed in the following sections:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#outpost-placement-group">Placement Groups</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#outpost-instance-type">Instance Type Requirements</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#outpost-storage">Storage Class</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#outpost-ip-reqs">IP Range and CIDR Sizing</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#outpost-metallb-setup">[%=Variables.CompanyName%]'s Custom MetalLB Load Balancer</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#outposts-autoscaling">Autoscaling</MadCap:xref>
+      </li>
+    </ul>
+    <p>For more detailed information about using Amazon EKS, see the
+            <a href="https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html" target="_blank" class="link-offsite" style="font-style: italic;">User Guide</a>
+            on the Amazon EKS documentation site.</p>
+    <h3><a name="outpost-placement-group"/>Placement Groups</h3>
+    <p>AWS Outposts don't have traditional availability zones, as the AWS Outposts is a physical object residing in one of your datacenters. This has implications for the configuration of your cluster in order to maintain the High Availability (HA) status of your <MadCap:variable name="Product-Names.broker_cloud_short"/>s. </p>
+    <p>To maintain the HA status of your <MadCap:variable name="Product-Names.broker_cloud_short"/>, you must create a <code>placement group</code> on the AWS Outposts, configured as a <code>partition</code> with a count of <code>2</code>.</p>
+    <p>The <code>partition placement group</code> ensures the placement of the individual nodes of the HA <MadCap:variable name="Product-Names.broker_cloud_short"/> in different partitions. The different partitions do not share underlying hardware. If the hardware in one partition fails, the backup node of the HA <MadCap:variable name="Product-Names.broker_cloud_short"/> takes over. </p>
+    <ul>
+      <li>
+        <p>For information about HA <MadCap:variable name="Product-Names.broker_cloud_short"/>s, see <MadCap:xref href="../ha_concept.htm">High Availability in [%=Product-Names.cloud_product_titlecase%]</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>For information about configuring placement groups in AWS Outposts, see <a href="https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/concepts-placement-groups.html" target="_blank" class="link-offsite">Working with placement groups</a> in the AWS Documentation.</p>
+      </li>
+    </ul>
+    <h3><a name="outpost-instance-type"/>Instance Type Requirements</h3>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/eks-related/instance-type.flsnp"/>
+    <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Scaling Tier</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Instance Type Required</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Monitor</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">M5.large</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">Developer</MadCap:conditionalText>
+            <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">Standard</MadCap:conditionalText>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">R5.large</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <MadCap:variable name="Product-Names.class_250"/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">R5.large</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <MadCap:variable name="Product-Names.class_1k"/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">R5.large</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <MadCap:variable name="Product-Names.class_5k"/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">R5.xlarge</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <MadCap:variable name="Product-Names.class_10k"/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">R5.xlarge</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <MadCap:variable name="Product-Names.class_50k"/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">R5.2xlarge</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <MadCap:variable name="Product-Names.class_100k"/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1"> R5.2xlarge</td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="outpost-storage"/>Storage Class</h3>
+    <p>The EKS storage class (<code>type</code>) must be GP2. </p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/eks-related/common-storage-info.flsnp"/>
+    <p>The properties of your<code> StorageClass</code> yaml should be similar to the following:
+        </p>
+    <pre xml:space="preserve">apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp2
+parameters:
+  csi.storage.k8s.io/fstype: xfs
+  type: gp2
+  encrypted: "true"
+provisioner: ebs.csi.aws.com
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true</pre>
+    <h3><a name="outpost-nat-gateway"/>NAT Gateway</h3>
+    <p class="Note">The following network configurations are not required if you route outgoing traffic through your on-premises network. </p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/eks-related/nat-gateway.flsnp"/>
+    <h2><a name="outpost-ip-reqs"/>IP Range and CIDR Sizing</h2>
+    <p>You must consider the CIDR requirement for your worker nodes when deploying <MadCap:variable name="Product-Names.cloud_product_short"/> to EKS on AWS Outpost. Note that if you are  using <MadCap:variable name="Variables.CompanyName"/>'s custom MetalLB load balancer, it requires one CIDR for its IP pool definition.</p>
+    <p> The calculations below are based on custom settings for <code>WARM_IP_TARGET</code> and <code>WARM_ENI_TARGET</code>:</p>
+    <pre xml:space="preserve">kubectl set env ds aws-node -n kube-system WARM_IP_TARGET=1     
+kubectl set env ds aws-node -n kube-system WARM_ENI_TARGET=0</pre>
+    <p>Details about these settings are available in the <a href="https://github.com/aws/amazon-vpc-cni-k8s/blob/master/docs/eni-and-ip-target.md" target="_blank" class="link-offsite">Amazon Kubernetes VPC CNI documentation on GitHub</a>.</p>
+    <p>You can calculate your CIDR requirement for the EKS worker node subnet with the following equation:</p>
+    <p>5 + 10 + HA*10 + (SA+1) * 4</p>
+    <p>The values in the equation are explained below: </p>
+    <ul>
+      <li>
+        <p>The first number (5) represents the number of IPs reserved for the AWS subnet. This includes the first four IPs and the last IP (for example, in a /24 CIDR, IP .255 would be the last IP reserved).</p>
+      </li>
+      <li>
+        <p>The second number (10) represents the IPs required for system usage, including: </p>
+        <ul>
+          <li>
+            <p id="setup-card-topics">Two for the autoscaler </p>
+          </li>
+          <li>
+            <p id="setup-card-topics">Two for the Core DNS </p>
+          </li>
+          <li>
+            <p id="setup-card-topics">Two for the  CSI controller</p>
+          </li>
+          <li>
+            <p id="setup-card-topics">Two for the MetalLB controller </p>
+          </li>
+          <li>
+            <p id="setup-card-topics">Two for the worker nodes IPs. </p>
+          </li>
+        </ul>
+      </li>
+      <li>
+        <p>The third section of the equation (HA*10) represents the total IPs required by high availability (HA) <MadCap:variable name="Product-Names.broker_cloud_short"/>s in your cluster. Each HA <MadCap:variable name="Product-Names.broker_cloud_short"/> requires 10 IPs, including: </p>
+        <ul>
+          <li>
+            <p>Three for the pods</p>
+          </li>
+          <li>
+            <p>One for the loadbalancer</p>
+          </li>
+          <li>
+            <p>Six for worker nodes</p>
+          </li>
+        </ul>
+      </li>
+      <li>
+        <p>The forth section of the equation (SA+1) represents the total IPs required by <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">standalone (SA)</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">standard</MadCap:conditionalText> class <MadCap:variable name="Product-Names.broker_cloud_short"/>s in your cluser. Each <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">SA</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">standard</MadCap:conditionalText> <MadCap:variable name="Product-Names.broker_cloud_short"/> requires four IPs, including:</p>
+        <ul>
+          <li>
+            <p>One for pods</p>
+          </li>
+          <li>
+            <p>One for the loadbalancer</p>
+          </li>
+          <li>
+            <p>Two for worker nodes. </p>
+          </li>
+          <li>
+            <p>The plus one accounts for the IP required by the extra worker node used during upgrades. Only one additional node is required regardless of how many <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">SA</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">standard</MadCap:conditionalText> <MadCap:variable name="Product-Names.broker_cloud_short"/> you deploy. </p>
+          </li>
+        </ul>
+      </li>
+    </ul>
+    <h2><a name="outpost-metallb-setup"/>Using the Custom MetalLB Load Balancer</h2>
+    <p>If you choose to use a load balancer to connect to the <MadCap:variable name="Product-Names.broker_cloud_short"/>s you deploy to your EKS cluster in AWS Ouptost, you must use the custom MetalLB load balancer provided by <MadCap:variable name="Variables.CompanyName"/> to do so.  Deploying the MetalLB load balancer must be done before you deploy the <MadCap:variable name="Product-Names.cloud_agent_short"/>. You must also update the clusters <code>kube-proxy-config</code>, in the <code>kube-system</code> namespace, which you can do after creating the cluster.</p>
+    <ol>
+      <li>
+        <p>To update the <code>kube-proxy-config</code>, perform a PATCH to the <code>kube-proxy-config</code> in the <code>kube-system</code> namespace with the following payload:</p>
+        <pre xml:space="preserve">localDetectMode: InterfaceNamePrefix
+detectLocal:
+  interfaceNamePrefix: eni</pre>
+        <p>The PATCH adds the fields in the payload to the <code>kube-proxy-config</code>, which are not there by default</p>
+      </li>
+      <li>
+        <p>Generate the <code>metallb.yaml</code> helm value file as an output of the <code>worker_group</code> module with the following script: </p>
+        <pre>terraform -chdir=worker_group/ output -raw metallb_values &gt; metallb.yaml
+
+helm upgrade --install metallb \
+  "https://test-charts-solace.s3.eu-central-1.amazonaws.com/metallb-0.0.0.tgz" \
+  --namespace kube-system \
+  --values metallb.yaml</pre>
+      </li>
+      <li>You must reserve a subset worker group's IPs for the metalLB load balancer. This requires that you decide on an IP range and define the <code>reservation_type</code> as <code>explicit</code>. You can do this with the following terraform module:<![CDATA[		]]><pre>resource "aws_ec2_subnet_cidr_reservation" "metal_lb_reservation" {
+  cidr_block       = var.metal_lb_cidr_block
+  reservation_type = "explicit"
+  subnet_id        = var.subnet_id
+}</pre></li>
+      <li>
+        <p>After the MetalLB controller pod is running, you can apply the MetalLB Custom Resource Definitions (CRD) to the cluster. </p>
+      </li>
+      <ol>
+        <li>
+          <p>Use the following script to apply the IP address pool that you defined with the terraform module in step 3, where <code>&lt;First IP of MetalLB CIDR&gt;-&lt;Last IP of MetalLB CIDR&gt;</code> must match the CIDR passed by the <code>metal_lb_cidr_block</code> variable when deploying the <code>worker_group</code>. This represents the pool of IP addresses which are reserved for MetalLB to assign to services.</p>
+          <pre>apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: first-pool
+  namespace: kube-system
+spec:
+  addresses:
+    - &lt;First IP of MetalLB CIDR&gt;-&lt;Last IP of MetalLB CIDR&gt;</pre>
+        </li>
+        <li>
+          <p>Create an AWS Advertisement object. This configures MetalLB to use an AWS advertisement strategy to advertise its IP address to services. </p>
+          <pre xml:space="preserve">apiVersion: metallb.io/v1beta1
+kind: AWSAdvertisement
+metadata:
+  name: aws
+  namespace: kube-system
+spec:
+  ipAddressPools:
+  - first-pool</pre>
+        </li>
+      </ol>
+    </ol>
+    <h3><a name="outposts-autoscaling"/>Autoscaling</h3>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/eks-related/autoscaling-info.flsnp"/>
+  </body>
+</html>

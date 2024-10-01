@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <title/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Appliance"/>Setting Up a Basic Configuration</h1>
+    <p>The Solace PubSub+ appliance doesn't come set up with a basic configuration of the primary components and services required to permit clients to send and receive messages.</p>
+    <p>The following procedure shows how to configure a powered up appliance for Direct Messaging utilizing the default SMF messaging service. It then provides steps to configure other optional functionality: Direct Messaging with the optional Web transport service, Guaranteed Messaging, and Message Queuing Telemetry Transport (MQTT) topic syntax support.</p>
+    <p>To set up a basic configuration, perform the following steps:</p>
+    <ol>
+      <li>Start the Message VPN named <code>default</code>:
+				
+        <p class="Code">solace&gt; enable<br/>solace# configure<br/>solace(configure)# message-vpn default<br/>solace(configure/message-vpn)# no shutdown</p></li>
+      <li>Disable authentication on the Message VPN named <code>default</code>:
+				
+         <p class="Code">solace(configure/message-vpn)# authentication user-class client<br/>solace(...message-vpn/authentication/user-class)# auth-type none<br/>solace(...message-vpn/authentication/user-class)# end</p><p class="Note">Although no authentication is used here, as a convenience to allow you to quickly get the appliance ready for messaging, Solace strongly recommends against using no client authentication, especially in production scenarios. </p></li>
+      <li>Start the client username named <code>default</code> on the Message VPN named <code>default</code>:
+				
+			<p class="Code">solace# configure<br/>solace(configure)# client-username default message-vpn default<br/>solace(configure/client-username)# no shutdown<br/>solace(configure/client-username)# end</p><p>At this point, you should now be able to send and receive Direct messages (see <MadCap:xref href="../../Messaging/Direct-Msg/Direct-Messages.htm">Working With Direct Messages</MadCap:xref> for further information on Direct messaging) using the Solace API samples built according to the <MadCap:xref href="../../API/API-Developer-Guide/Quick-Start.htm">Quick Start</MadCap:xref> section in the APIs &amp; Protocols <MadCap:xref href="../../API/API-Developer-Guide/Developer-Guide-Home.htm">Developer Guide</MadCap:xref>.</p></li>
+      <li> If you want to enable the Web transport service so that Web-based messaging applications may send Direct messages to, and receive Direct messages from, the appliance, perform the following steps:</li>
+      <ol style="list-style-type: lower-alpha;">
+        <li>
+          <p> Unlock the Web Transport service on the event broker:</p>
+          <p class="Code">solace#<br/>solace# admin<br/>solace(admin)# product-key &lt;key-value&gt;<br/>solace(admin)# exit</p>
+          <div class="Note">
+            <ul>
+              <li><code>&lt;key-value&gt;</code> is the  Solace-provided product key. </li>
+              <li>By default, Web transport service on the appliance is locked, and you require a valid Solace provided product key to unlock it.</li>
+            </ul>
+          </div>
+        </li>
+        <li>Start the Web Transport service:        <p class="Code">solace(configure)# service web-transport<br/>solace(configure/service/web-transport)# no shutdown<br/>solace(configure/service/web-transport)# end</p><p>At this point, you should now be able to send and receive Direct messages (see <MadCap:xref href="../../Messaging/Direct-Msg/Direct-Messages.htm">Working With Direct Messages</MadCap:xref> for further information on Direct messaging) using the Solace JavaScript API samples built according to the <MadCap:xref href="../../API/API-Developer-Guide/Quick-Start.htm">Quick Start</MadCap:xref> section in the APIs &amp; Protocols <MadCap:xref href="../../API/API-Developer-Guide/Developer-Guide-Home.htm">Developer Guide</MadCap:xref>.</p></li>
+      </ol>
+      <li>If you want to enable Guaranteed Messaging service  so that messaging applications may send Guaranteed messages to, and receive Guaranteed messages from, the appliance, perform the following steps:
+                <p class="Note">To support Guaranteed Messaging, a Solace PubSub+ appliance must have an Assured Delivery Blade (ADB) and Host Bus Adapter (HBA) installed.</p></li>
+      <ol style="list-style-type: lower-alpha;">
+        <li>
+                    Enable the appliance’s internal disk drive for Guaranteed message spooling:
+                    <p class="Code">solace# configure<br/>solace(configure)# hardware message-spool<br/>solace(configure/hardware/message-spool)# internal-disk</p><p class="Note">Although the internal disk is used here as a convenience to allow you to quickly get the appliance ready for messaging, using the internal disk for Guaranteed Messaging is intended only for test purposes, and shouldn't be used in a production environment.</p></li>
+        <li>Start the message spool and set it as the primary:
+                    <p class="Code">solace(configure/hardware/message-spool)# no shutdown primary<br/>solace(configure/hardware/message-spool)# end</p></li>
+        <li>Set the maximum message spool usage for the Message VPN <code>default </code>to 1000 MB:
+                <p class="Code">solace# configure<br/>solace(configure)# message-spool message-vpn default<br/>solace(configure/message-spool)# max-spool-usage 1000<br/>solace(configure/message-spool)# exit</p></li>
+        <li>Configure the client profile named <code>default</code> to allow the client to send and receive Guaranteed messages:
+                <p class="Code">solace# configure<br/>solace(configure)# client-profile default message-vpn default<br/>solace(configure/client-profile)# message-spool<br/>solace(configure/client-profile/message-spool)# allow-guaranteed-message-send<br/>solace(configure/client-profile/message-spool)# allow-guaranteed-message-receive</p></li>
+        <li>Configure the client profile named <code>default</code> to allow the client to dynamically create endpoints:
+					<p class="Code">solace(configure/client-profile/message-spool)# allow-guaranteed-endpoint-create<br/>solace(configure/client-profile/message-spool)# end</p><p>At this point, you are now be able to send and receive Guaranteed messages (see <MadCap:xref href="../../Messaging/Guaranteed-Msg/Guaranteed-Messages.htm">Working With Guaranteed Messages</MadCap:xref> for further information on Guaranteed messaging) using the Solace API samples built according to the <MadCap:xref href="../../API/API-Developer-Guide/Quick-Start.htm">Quick Start</MadCap:xref> section in the APIs &amp; Protocols <MadCap:xref href="../../API/API-Developer-Guide/Developer-Guide-Home.htm">Developer Guide</MadCap:xref>.</p></li>
+      </ol>
+      <li>If you want the appliance to support client applications that use <a href="../../API/MQTT/MQTT-Topics.htm" class="link-internal">MQTT topic syntax</a> for their message topics and subscriptions, perform the following steps:
+				<ol style="list-style-type: lower-alpha;"><li>Enable the system-level service for MQTT messaging:
+				<p class="Code">solace&gt; enable<br/>solace# configure<br/>solace(configure)# service mqtt<br/>solace(configure/service/mqtt)# no shutdown<br/>solace(configure/service/mqtt)# end</p></li><li><p>Configure a listen port for plain-text MQTT service on the Message VPN <code>default</code>:</p><p class="Code">solace&gt; enable<br/>solace# configure<br/>solace(configure)# message-vpn default<br/>solace(configure/message-vpn)# service mqtt<br/>solace(configure/message-vpn/service/mqtt)# listen-port 1234</p></li><li><p>Enable plain-text MQTT service on the Message VPN <code>default</code>:</p><p class="Code">solace(configure/message-vpn/service/mqtt)# no plain-text shutdown<br/>solace(configure/message-vpn/service/mqtt)# end</p></li></ol></li>
+    </ol>
+  </body>
+</html>

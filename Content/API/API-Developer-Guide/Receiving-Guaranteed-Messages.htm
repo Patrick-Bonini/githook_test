@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Receiving Guaranteed Messages</h1>
+    <MadCap:snippetBlock src="../../Resources/Snippets/receive-guranteed-messages.flsnp"/>
+    <h4>Related Event Broker Provisioning and Configuration Information</h4>
+    <p>For clients to consume messages from the Message VPN they are connected to, the event broker must have Guaranteed Messaging and message spooling enabled. In addition, the clients must be assigned appropriately configured client profiles and/or Access Control List (ACL) profiles:</p>
+    <ul>
+      <li>To receive messages with a Guaranteed Transport delivery mode, clients must be assigned client profiles that have the <code>allow-guaranteed‑message‑receive</code> parameter enabled. In addition, if clients are going to use non-durable message consumers, the assigned client profiles must also have the <code>allow‑guaranteed‑endpont-create</code> parameter enabled because these clients automatically create temporary queues/topic-endpoints. </li>
+      <li>To allow clients to subscribe to topics (or to only a specific set of topics) clients must be assigned ACLs with the appropriate access controls.</li>
+    </ul>
+    <p>For more information on how to configure event brokers for Guaranteed Messaging and authorizing connected clients through client profiles and ACLs, refer to <MadCap:xref href="../../Security/Configuring-Client-Authentication.htm">Managing Client Authentication and Authorization</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="receiving_guaranteed_messages_1016811797_624073"/>Queues</h2>
+    <p>Messages published to a Queue destination are spooled to a matching Queue endpoint on the event broker. Therefore, a queue acts as both a destination that messages can be published to and as an endpoint on the event broker that clients can bind to and then browse or consume messages from. In this way, a Queue can be used in a typical Point-to-Point (P2P) model.</p>
+    <p>However, it is also possible to add Topic subscriptions to a Queue so messages published to matching Topics are delivered to the Queue. (For more information, refer to <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-Queues.htm#Adding">Adding Topic Subscriptions to Queues</MadCap:xref>.) Therefore, it is also possible to use Queues in a Publish and Subscribe (Pub/Sub) model.</p>
+    <p>Multiple Flows can be bound to a Queue, but a single spooled message can only be consumed by a single consuming client bound through one of those Flows. If the Queue is configured with an access type of exclusive, only the first Flow to bind can actively receive messages. If the first Flow disconnects, the second Flow can start receiving messages, and so on. An exclusive queue always delivers messages in the order they are received.</p>
+    <p>If the Queue is configured with an access type of non‑exclusive, each bound Flow receives messages in a round-robin fashion. For more information on access types, refer to <MadCap:xref href="Defining-Endpoint-Proper.htm">Defining Endpoint Properties</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="receiving_guaranteed_messages_1016811797_624083"/>Topic Endpoints</h2>
+    <p>A Topic Endpoint attracts messages published to a Topic that match the Topic subscription that is associated with the endpoint. Topic Endpoints are equivalent to durable topic subscriptions in Java Message Service (JMS). Topic Endpoints can be used in a pub/sub model.</p>
+    <p>For an exclusive topic endpoint, only one client can bind and receive messages; if other clients attempt to bind, they will be rejected. An exclusive durable topic endpoint always delivers messages in the order they are received. For non-exclusive durable topic endpoints, multiple consumers can bind and each is serviced in round‑robin fashion. </p>
+    <div class="Note">
+      <ul>
+        <li>When using the JCSMP or .NET APIs, a client must obtain the appropriate Topic instance to use Topic subscriptions to receive messages (refer to <MadCap:xref href="Creating-Topics.htm">Creating Topics</MadCap:xref>).</li>
+        <li>When using the JavaScript or Node.js APIs, both Queues and Topic Endpoints are modeled as queues and passed in as a <code>solace.QueueDescriptor</code> object to the <code>solace.MesssageConsumerProperties</code>, which is used to create the message consumer.</li>
+        <li>It is possible for messages published with a Direct delivery mode to be spooled to a Topic Endpoint when there is a match between the message’s Topic destination and the Topic subscription set for the Topic Endpoint. In this case, when the message is spooled to the endpoint, it is given a non‑persistent delivery mode so that the receiving client can consume the message over its established consumer Flow. For more information, refer to <MadCap:xref href="../../Messaging/Guaranteed-Msg/Topic-Matching-and-Delivery-Modes.htm">Topic Matching and Message Delivery Modes</MadCap:xref>.</li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="receiving_guaranteed_messages_1016811797_626222"/>Endpoint Durability</h2>
+    <p>Endpoints can be durable or temporary (that is, non-durable).</p>
+    <ul>
+      <li>Durable endpoints have life spans independent of any particular Session. Messages can accumulate on a durable endpoint even when no Session is connected.
+        <p class="Note">Durable endpoints can only be used with a physical event broker when it has an Assured Delivery Blade (ADB) installed and Guaranteed Messaging and message spooling enabled. For information configuring an event broker for Guaranteed Messaging, refer to <MadCap:xref MadCap:unresolvedLink="import-link:managing_guaranteed_messaging_1618706360_92633" href="../../Messaging/Guaranteed-Msg/Managing-Guaranteed-Messaging.htm">Managing Guaranteed Messaging</MadCap:xref>.</p></li>
+      <li>Temporary endpoints are created by the client in a Session and last for the duration of the Session. When a Session is closed, temporary endpoints and their messages are deleted. On graceful closure of a client Session, temporary endpoints are deleted immediately. On other closures (for example, when switching to a redundant event broker or a connection failure), temporary endpoints are maintained for a period of sixty seconds to allow the reestablishment of the Session.</li>
+    </ul>
+  </body>
+</html>

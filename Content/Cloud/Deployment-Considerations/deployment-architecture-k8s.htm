@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <!-- I don't like this but it was a request to have everything appear on one standard web page 
+		FUTURE:REMOVECSS
+		-->
+    <style>
+			th, td {
+			padding-bottom: 1px;
+			}
+			td img{
+			height: 30px;
+			width: 30px;
+			display: block;
+			margin-left: auto;
+			margin-right: auto;
+			margin-bottom:1px;
+			margin-top: 1px;
+			}
+			p {
+			
+			margin-bottom:3px;
+			margin-top: 1px;
+			}
+			img
+			{
+			image-rendering: auto;
+			max-width: none;
+			}
+		</style>
+  </head>
+  <body>
+    <h1><a name="top"/>Deployment Architecture for Kubernetes</h1>
+    <p><MadCap:variable name="Product-Names.cloud_product_short_initialcase"/> can be installed in a customer's on-premises or cloud-<a name="k8s-deployment-architecture"/>based Kubernetes cluster.</p>
+    <p>To orchestrate <MadCap:variable name="Product-Names.broker_cloud_short"/>s, <MadCap:variable name="Variables.CompanyName"/> deploys the <a href="../Security/mission-control-agent-security.htm" class="link-internal"><MadCap:variable name="Product-Names.cloud_agent_long"/></a> in a dedicated namespace. The <MadCap:variable name="Product-Names.cloud_agent_short"/> creates a secure connection back to the <MadCap:variable name="Product-Names.home_cloud_long"/> and relays user commands from the console to the <MadCap:variable name="Product-Names.broker_cloud_short"/>. This configuration is firewall friendly; all connections originate outbound.</p>
+    <p>The following diagram shows the deployment architecture for <MadCap:variable name="Product-Names.cloud_product_short"/> in Kubernetes environments.</p>
+    <div class="thumbnail-container">
+      <img src="../../Resources/Images/Cloud-Deployment-Guides/architecture-k8s-complete.png" class="solacethumbnail" alt="Diagram showing the architecture components involved when a user creates an event broker service or reads the new event broker service information. The Cloud Console sends a requests through the Home Cloud to the Mission Control Agent. The Mission Control Agent returns new event broker service information to the user through the same pathway. The Mission Control Agent also deploys and configures the event brokers in separate pods. The traffic received from the event brokers are load balanced by an external load balancer and external applications are connected through the load balancer address. Additionally, the Mission Control Agent creates a host name for a public I P address through Amazon Web services route 53. This host name also points to the load balancer address and connects to external applications."/>
+    </div>
+    <p>For more details, see <MadCap:xref href="resource-requirements-k8s.htm">Resource Requirements</MadCap:xref> and <MadCap:xref href="connectivity-model-k8s.htm">Kubernetes Connectivity Model</MadCap:xref>.</p>
+    <h2><a name="Kubernet"/>Kubernetes Cluster Details</h2>
+    <p><MadCap:variable name="Product-Names.cloud_product_short_initialcase"/> uses Availability Zones and Kubernetes StatefulSets to manage the deployment of <MadCap:variable name="Product-Names.broker_cloud_short"/>s, as shown in the following diagram:</p>
+    <div class="thumbnail-container">
+      <img src="../../Resources/Images/Cloud-Deployment-Guides/architecture-k8s-simplified-cluster-detail.png" class="solacethumbnail" alt="Diagram showing the components described in the surrounding text."/>
+    </div>
+    <p>The <MadCap:variable name="Product-Names.broker_cloud_short"/> consists of three <MadCap:variable name="Product-Names.broker_sw_short"/>s, each deployed in a separate pod. Each pod also contains a Datadog agent that provides monitoring data and logs to the central monitoring service. </p>
+    <p MadCap:conditions="Default.NotForPDF">For details, see <MadCap:xref href="../Security/security-centralized-monitoring-service.htm">Centralized Monitoring Service and Datadog Agents</MadCap:xref>.</p>
+    <p MadCap:conditions="Default.OnlyForPDF">For details, see <a href="http://docs.solace.com/Solace-Cloud/Security/security-centralized-monitoring-service.htm" class="link-internal">Centralized Monitoring Service and Datadog Agents.</a></p>
+    <h3><a name="availability-zones"/>Availability Zones</h3>
+    <p>To ensure that high-availability <MadCap:variable name="Product-Names.broker_cloud_short"/>s are properly provisioned, <MadCap:variable name="Product-Names.cloud_product_short"/> requires three Availability Zones (AZs), one for each member of the High Availability (HA) triplet (primary messaging broker, backup messaging broker, and monitoring broker). For each HA service, the <MadCap:variable name="Product-Names.cloud_agent_short"/> deploys the primary pod in one AZ, the backup pod in a second AZ, and the monitoring pod in a third AZ. This guarantees that pods for the same HA service are not running on the same hardware.</p>
+    <h4><a name="no-availability-zones"/>No Availability Zones</h4>
+    <p>Some regions do not have availability zones available, or you may decide that you don't require an availability zone configured for your Kubernetes cluster.</p>
+    <p>When your target cluster doesn't have Availability Zones, the <MadCap:variable name="Product-Names.cloud_agent_short"/> still deploys the pods. In this case, it is possible for multiple pods to be affected by any outages that occur. Because of this, for those deployments without Availability Zones, we recommend that worker nodes be scheduled on separate physical machines.</p>
+    <p>When availability zones are not available, it's important to note that the IaaS has reduced fault tolerance when compared to having availability zones present. Regardless of this fact, the region operates with the best availability possible in all deployments.</p>
+    <h4><a name="on-prem-az"/>Availability Zones for On-Premises Deployments</h4>
+    <p>On-premises deployments should pay special attention to how they organize their Availability Zones (AZ). It is important, where possible, to have the individual worker nodes of high-availability (HA) <MadCap:variable name="Product-Names.broker_cloud_short"/>s physically distanced when possible. Any physical distance helps ensure the resiliency of your HA <MadCap:variable name="Product-Names.broker_cloud_short"/>s.</p>
+    <p>You can achieve physical distance by deploying your event broker services to different data centers you own, with each data center as an AZ. Even in situations where you only have one data center, you can sub-divide that data center into different AZs. Examples of how you can create separation include creating an AZ for each:</p>
+    <ul>
+      <li>room in your data center</li>
+      <li>electric circuit within your data center</li>
+      <li>rack in your data center</li>
+      <li>server in your data center</li>
+    </ul>
+    <p>Using availability zones requires you label each of the worker nodes in the Kubernetes cluster with its associated availability zone. See <a href="https://kubernetes.io/docs/setup/best-practices/multiple-zones/" target="_blank" class="link-offsite">Running in multiple zones</a> in the Kubernetes’ documentation for information.</p>
+    <h3><a name="statefulsets"/>StatefulSets</h3>
+    <p>A StatefulSet is the Kubernetes Workload API object used to manage stateful applications.</p>
+    <p>StatefulSets manage the deployment and scaling of a set of pods, and provide guarantees about the ordering
+            and uniqueness of these pods. <MadCap:variable name="Product-Names.cloud_product_short_initialcase"/> uses three StatefulSets to manage the deployment of a HA group, one for each role (primary, backup, monitoring).</p>
+    <p>For more information about StatefulSets, see the <a href="https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/" class="link-offsite">Kubernetes documentation.</a></p>
+    <p>For information about the list of broker versions available in <MadCap:variable name="Product-Names.cloud_product_short"/>, see <MadCap:xref href="../cloud-event-broker-releases.htm">Software Event Broker Versions and Support in [%=Product-Names.cloud_product_short%</MadCap:xref>.</p>
+  </body>
+</html>

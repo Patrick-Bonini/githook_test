@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="Default.OnlyForPDF">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Complete Configuring the <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s as a Replication Pair</h1>
+    <p>You have now created an <MadCap:variable name="Product-Names.broker_cloud_short"/> (Target service and also referred to as the Backup site) and copied the configuration from your VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/> to migrate (Source service and also referred to as the Primary site). When you created your Target service with the same Message VPN name, you had started the process to configure it as the <i>replication mate</i> of the Source service. You must now complete the remaining configuration of  two <MadCap:variable name="Product-Names.broker_cloud_short"/>s as replication mates for your replication pair. </p>
+    <p>The remaining steps for completing the configuration for the Source and Target services as a replication pair are as follows:</p>
+    <ol>
+      <li><a href="#enable-ssh-port" class="link-internal">Enable <b>Secured CLI Host (SSH)</b></a> on the Target service  that you are migrating to  if you did not do this at service creation time for the new service.</li>
+      <li><a href="#replication-cloud-client-username" class="link-internal">Create specific client profiles and client usernames for replication</a> on each <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li>
+    </ol>
+    <p>For a summary of the configuration settings used in the steps below, see <MadCap:xref href="cloud-vmmig-examplesheet.htm">Example Replication Information</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="enable-ssh-port"/>Enable the Secure CLI Host (SSH) Port on the <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</h2>
+    <p>We recommend that you enable the Secure CLI Host port only for private endpoints in <MadCap:variable name="Product-Names.dedicated_region"/>s or  <MadCap:variable name="Product-Names.customer-controlled_region"/>s because those are accessible via private IP addresses instead of the public Internet.</p>
+    <p>For <MadCap:variable name="Product-Names.public_region"/>s, we recommend that you only enable the CLI port when you it's time to configure replication, or when a failover is required; otherwise disable the management port.</p>
+    <p>You can enable the Secure CLI Host (SSH) port in the <MadCap:variable name="Product-Names.console_ui_long"/>. Remember to apply the same changes for both the Primary site (Source service) and Backup site (Target service) <MadCap:variable name="Product-Names.broker_cloud_short"/>s in your replication pair. For more information, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><![CDATA[  ]]><MadCap:xref href="../edit-port-configuration.htm">Changing the Port Configuration for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/edit-port-configuration.htm" class="link-offsite">Changing the Port Configuration for an [%=Product-Names.broker_cloud_short_title%]</a></MadCap:conditionalText>.</p>
+    <h2 class="with-rule"><a name="replication-cloud-client-username"/>Create a Client Profile and Client Username for Replication</h2>
+    <p>You must create a client profile specifically for replication. A replication-specific client profile is required because:</p>
+    <ul>
+      <li>If there is a difference of message delivery priority between replication and messaging activities, it ensure a higher priority is given to site replication.</li>
+      <li>WAN tuning is required for replication. You must set <b>Priority Queues - G-1 Minimum Burst</b>  to <code>66000</code>.  The default value the setting is <code>256</code>.</li>
+    </ul>
+    <p class="Note">We recommend you use the same client profile and client username for both replication mates. </p>
+    <p>For example:</p>
+    <ol>
+      <li>
+        <p>On the Source service, create a replication-specific <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><a href="../client-profiles.htm#creating-client-profiles" target="_blank" class="link-internal">client profile</a></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/client-profiles.htm#creating-client-profiles" target="_blank" class="link-offsite">client profile</a></MadCap:conditionalText> (for example, <b>myfirstclientprofile</b> on <b>Primary-myfirstservice</b>) and configure the following settings:</p>
+        <ul>
+          <li>Toggle <b>Add Shared Subscriptions</b> to enable it.</li>
+          <li>Set <b>Priority Queues - G-1 Minimum Burst</b> to 66000.</li>
+        </ul>
+      </li>
+      <li>
+        <p>Confirm the following additional settings in the client profile:</p>
+        <ul>
+          <li>Send guaranteed messages (Enabled)</li>
+          <li>Use transacted sessions (Enabled)</li>
+          <li>Use compression (Enabled)</li>
+          <li>Receive guaranteed messages (Enabled)</li>
+          <li>Allow client to create endpoints (Enabled)</li>
+          <li>Connect as a bridge (Enabled)</li>
+        </ul>
+      </li>
+      <li>Verify that the <b>Connect When Replication Standby</b> setting is disabled. This setting is not used for replication in <MadCap:variable name="Product-Names.cloud_product_short"/>.
+            </li>
+      <li>
+        <p><MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><a href="../client-profiles.htm#create-client-username" target="_blank" class="link-internal">Create a client username</a></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/client-profiles.htm#create-client-username" target="_blank" class="link-offsite">Create a client username</a></MadCap:conditionalText> and set the <b>Client Profile</b> field to the client profile you created in the previous step.</p>
+        <p> For example, create a client username called  <code>myfirstclientusername</code> on <code>Primary-myfirstservice</code></p>
+      </li>
+      <li>Enable the client username and set the password (for example, <code>myfirstclientpassword</code>). Make a note of the password for configuring the rest of replication.</li>
+      <li>Repeat steps 1 to 5 for the Target service in your replication pair. For example, create a client profile named <b>myfirstclientprofile</b> on the <MadCap:variable name="Product-Names.broker_cloud_short"/> called <b>Backup-myfirstservice</b>.</li>
+    </ol>
+  </body>
+</html>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Head-of-Line Blocking</h1>
+    <p>Head-of-Line (HoL) blocking refers to a situation where:</p>
+    <ul>
+      <li>Guaranteed messages are being sent over DMR links or VPN Bridge links between event brokers, and</li>
+      <li>one or more guaranteed endpoints is full</li>
+      <li>some Guaranteed Messages can't be delivered because they are stuck behind messages that are destined for one of the full endpoints</li>
+    </ul>
+    <p>When an endpoint is full, and a new message is published to that endpoint, the broker has only two choices available to it. The broker can either discard the message, or it can refuse to accept the new message from the publisher. The default action of the PubSub+ broker is to push back on the publishers of messages to that endpoint, by sending negative-acknowledgements (NACKs) to the publisher. This default behavior ensures that the event mesh never loses a published message.</p>
+    <p>This mechanism is very effective when the publisher and consumer of the message are on the same broker. In this case, the only publishers affected are the ones trying to send messages to that full endpoint. The problem arises when the publisher and the consumer are on different brokers, and the messages must be sent over an inter-broker link (either a DMR link or a VPN bridge). This situation is illustrated in the following diagram:</p>
+    <div class="thumbnail-container">
+      <img src="../../Resources/Images/Guaranteed-Msg/HoL-blocking-example.png" class="solacethumbnail" style="mc-thumbnail-max-height: auto;mc-thumbnail-max-width: 500px; mc-thumbnail: popup;" alt=""/>
+    </div>
+    <p>In the diagram above, <b>Queue1</b> (subscribed to topic <code>a/b/c</code>) has filled up because there is no connected client to consume the messages in the queue. Because the messages are originating on another broker, <b>Broker2</b> knows that it can't send a NACK to the broker that published the message because that broker, <b>Broker1</b>, has already sent an ACK to the publishing application. So <b>Broker2</b> simply discards the message. <b>Broker1</b> times out waiting for an ACK from <b>Broker2</b>, and after the timeout has elapsed, it redelivers the message.</p>
+    <p>As a result, messages published to topic <code>d/e/f</code> on <b>Queue2</b>, and topic <code>g/h/i</code> on <b>Queue3</b> can't be delivered, because they're stuck behind, or head-of-line blocked, by the messages on the inter-broker link that are being sent to topic <code>a/b/c</code>. That one full queue prevents all other Guaranteed Messaging destined for that Message VPN from being delivered over the inter-broker link.</p>
+    <h2>How to Prevent Head-of-Line Blocking</h2>
+    <p>To prevent HoL blocking, you can monitor your brokers to detect the conditions where it may occur, and also choose configuration settings that reduce its likelihood.</p>
+    <h4>Monitor for Guaranteed Endpoints That Aren't Being Serviced</h4>
+    <p>The most important tool in preventing head of line blocking is monitoring the alert events for queue and topic endpoints. If an application isn't consuming messages from an endpoint (or isn't consuming them fast enough), the endpoint  fills up and the Message VPN gets HoL blocked. Solace has chosen the default values for endpoint depths and alerting thresholds with the goal of providing sufficient time for you to fix this issue. How much time you have to react depends very much on the size of messages being written to the endpoint, and the rate at which messages are being delivered to the endpoint. </p>
+    <p>The following table shows how much time you have to react to alerts, assuming the default depth and alerting thresholds that the broker assigns to endpoints when they are created (you can, of course, tune these values to better suit your needs). The table also assumes a 1 KB message size, a default queue size, and a default alert threshold.</p>
+    <table style="width: 75%;margin-left: 0;margin-right: auto;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Inbound Rate to Guaranteed Endpoint</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Time to React (From Alert to Endpoint Full)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">1K msg/sec</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">	62.5 minutes</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">30K msg/sec</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">2.08 minutes</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>When the broker alerts an administrator that an endpoint is getting full, the administrator should:</p>
+    <ul>
+      <li>Reach out to the "owner" of the endpoint, and work with them to get the consumer application back on-line and consuming from the endpoint</li>
+      <li>If the queue is a non-exclusive queue, but the offered traffic rate is so high that the consuming applications can't keep up, add more consumer applications to the queue to further divide the workload</li>
+      <li>If the endpoint's consumer can't be restored, shut down ingress on the endpoint. Note that  this solution is only effective when the endpoint has not been configured as <code>reject-msg-to-sender-on-discard including-when-shutdown</code>.<p class="Caution"> This action causes messages destined for the endpoint to be discarded.</p></li>
+    </ul>
+    <h4>Ensure Message Spools Are Properly Sized</h4>
+    <p>It's also very important that you have a large message spool configured on the broker. It must be large enough that one full endpoint can't use up the entire message spool allocated to either the Message VPN or the broker. Solace recommends that the <code>max-spool-usage</code> property for each message VPN be set to at least 10 GB, and preferably 25 GB or more. We also recommend that <code>max-spool-usage</code> for the entire broker  be set to the sum of <code>max-spool-usage</code> for each of the Message VPNs (this is an especially important consideration for the software broker, where the default <code>max-spool-usage</code> for the broker is a very small value to allow it to run in a small footprint on designers' laptop and desktop computers).</p>
+    <p>For details about the default values for <code>max-spool-usage</code>, see <MadCap:xref href="Message-Spooling.htm#max-spool-usage">Maximum Spool Usage</MadCap:xref>.</p>
+    <h4>Choose "Discard" Rather Than "Block Publisher" Actions on Your Endpoints</h4>
+    <p>The PubSub+ Event Broker defaults to endpoint options that err on the side of never losing a message.</p>
+    <p>If your application messages have a limited lifetime, then Solace recommends enabling time-to-live (TTL) on the endpoints, so that old messages that haven't been consumed from the endpoint are automatically removed from that endpoint. </p>
+    <p>If you have the endpoint configured to send messages to a dead-message-queue (DMQ) on TTL expiry, make sure that you have an active consumer reading messages from the DMQ. If the broker can't move a message to a DMQ, the broker discards the message.</p>
+    <p>You can also configure the endpoints to discard messages destined for full endpoints, rather than rejecting the message to the publisher. This ensures that inter-broker links never get HoL blocked  when the endpoint is full. Instead, new messages destined for that endpoint are discarded.</p>
+    <h4>Use Replay to Recover Discarded Messages</h4>
+    <p>If the Message VPN containing the endpoints causing HoL blocking has message replay enabled, this may make it more viable for you to choose "discard" rather than "block publisher" actions on your endpoints. After the consumer is back online, you can use replay  to deliver the discarded messages to the consumer. Message replay can be initiated by the consuming application or the  broker administrator. In this scenario, it's likely that the broker administrator will need to initiate the replay towards the endpoint that experienced the message discards.</p>
+    <p>Relying on replay to recover discarded messages assumes that the consumer can been brought back online within a reasonable period of time, before any discarded messages have been removed from the replay log. The replay log makes use of the same disk storage as the message spool, so it doesn't have infinite capacity.</p>
+  </body>
+</html>

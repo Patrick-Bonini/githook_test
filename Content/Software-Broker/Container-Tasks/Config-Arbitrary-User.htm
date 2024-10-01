@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><MadCap:concept term="Software"/>Configuring Container Users</h1>
+    <p> For production deployments, it's good security practice to run software event broker containers with a non-zero UID:</p>
+    <ul>
+      <li>If the container runtime is launched by a root user (that is, in rootful mode), the host user namespace is shared with the software event broker container; therefore having a non-root container user limits the damage that a malicious process could cause if it were to break out of the container and into the host. </li>
+      <li>With <a href="rootless-containers.htm" class="link-internal">rootless containers</a>, the host and containers do not share a user namespace. Root users within the container are mapped to non-root users in the host.</li>
+    </ul>
+    <h4><a name="specify-user"/>Specifying the Container UID</h4>
+    <p>Both Docker and Podman allow you to specify which user a container should run as. In both cases, the <code>UID</code> is set with the <code>--user</code> or <code>-u</code> option in the <code>create</code> or <code>run</code> command. </p>
+    <p>If you don't specify this argument, the  command runs as the user specified in the container image. </p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/solace-default-uid-rootless.flsnp"/>
+    <h2 class="with-rule"><a name="Cap-Add"/>Additional Linux Capabilities</h2>
+    <p>When a software event broker container is created, all the processes launched within the container have effective Linux capabilities </p>
+    <p>If there is an operational need to set a Linux environment limit, and making such adjustments is allowed by the environment, you can specify the <code>--ulimits</code> option when you create the software event broker container. For example, if the environment allows it, we recommend that you permit the software event broker container to <code>mlock()</code> as much memory as it requires. To do this, you specify <code>--ulimit memlock=-1</code> when you call the <code>docker create</code> or <code>podman create</code> command. For more information about using the <code>--ulimit</code>option, </p>
+    <h2 class="with-rule"><a name="Config-Privileged-Ports"/>Configuring Privileged Ports</h2>
+    <p>A typical Linux operating system (including the container runtime's Linux virtual machine) sets the privileged port range from 0 to 1023 for the root user. If a user has a non-zero <code>UID</code>, the privileged ports will not be available for use. To overcome this issue, you can set port numbers using configuration keys.</p>
+    <p>For a list of configuration keys you can use to set the port numbers of various services, refer to <MadCap:xref href="Config-SW-Broker-Container-Cfg-Keys.htm">Initializing a Software Event Broker Container</MadCap:xref>. </p>
+    <h2 class="with-rule"><a name="Vol-Ownership"/>Volume Ownership and Permissions</h2>
+    <p>The software event broker container user must have read and write access to all the files and directories in its associated volumes. The mechanism for doing this is different for rootful versus rootless containers:</p>
+    <ul>
+      <li>Rootful containers share the user namespace with the host, so you can simply run <code>chown</code> or <code>chmod</code> to apply the required permissions.</li>
+      <li>Rootless containers have a separate user namespace, so you can use <code>podman unshare</code> to run <code>chown</code> or <code>chmod</code> within the container's user namespace to update the permissions. For details, see <MadCap:xref href="rootless-containers.htm">Rootless Containers</MadCap:xref> and <MadCap:xref href="Config-Container-Storage.htm">Managing Storage for Container Images</MadCap:xref>.</li>
+    </ul>
+    <p>You can use the following <code>chown</code> command (with <code>unshare</code> if you're using rootless Podman) on the Linux host to change the owner and group of the software event broker container's volume to the desired<code>&lt;UID&gt;:&lt;GID&gt;</code></p>
+    <pre>chown --recursive &lt;container uid&gt;:&lt;container gid&gt; &lt;host path of volume&gt;</pre>
+    <p>To ensure that the volumes have read and write access privileges for the software event broker container user, execute the following <code>chmod</code> (with <code>unshare</code> if you're using rootless Podman) command on the Linux host.</p>
+    <pre>chmod --recursive u+rwx,g-rwx,o-rwx</pre>
+    <p>The default <code>umask</code> for the container is 0077, so the software event broker container has read and write access to all the new files.</p>
+    <p>If an external tool needs read access to files in one of the volumes, you can use the <code>chmod</code> command on the Linux host and specify a <code>umask</code> of 0022 when creating the container.</p>
+    <pre class="Code" xml:space="preserve">chmod --recursive u+rwX,g+rX,o+rX</pre>
+  </body>
+</html>

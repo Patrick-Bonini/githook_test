@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><MadCap:concept term="Appliance"/>Changing Appliance Software</h1>
+    <p> Solace PubSub+ appliances are shipped with preloaded, default software. As future software releases become available, you can save them to an external file server on your network, and later install them on your appliances.</p>
+    <p>With Solace PubSub+ appliances you can downgrade to earlier software versions  installed on them, or rollback to the previous software that was running before the last upgrade was performed.</p>
+    <div class="Note" MadCap:conditions="Default.HideFromAllOutput">
+      <p MadCap:conditions="Default.HideFromAllOutput">All of the Solace PubSub+ event brokers within a messaging network cannot differ by more than one major or minor software version. Also, features introduced in newer software releases do not work with event brokers that are running older releases.</p>
+    </div>
+    <h2 class="with-rule"><a name="general_router_admin_tasks_906262394_267202"/>Displaying Versions</h2>
+    <p>Solace PubSub+ event broker software consists of the following major components:</p>
+    <ul>
+      <li>Command Line Interface (CLI)</li>
+      <li>Data Plane</li>
+      <li>Control Plane</li>
+      <li>Management Plane</li>
+    </ul>
+    <p>To determine the version of all components, as well as current and available software loads, and the amount of time the system has been running, enter the following User EXEC CLI command: </p>
+    <p class="Code">solace&gt; show version </p>
+    <div class="Note">
+      <p>Event brokers do not currently support upgrades or patches to an individual event broker software component. So in a properly installed event broker, all of the software components display the same release number.</p>
+    </div>
+    <h2 class="with-rule"><a name="system_and_software_maintenance_tasks_3138406956_314072"/>Upgrading Versions</h2>
+    <p>Procedures for upgrading older versions of software on appliances and software event brokers to the most recent versions are described in their respective sections: <MadCap:xref href="../Software-Broker/SW-Broker-Upgrade/SW-Broker-Upgrade.htm">Upgrade Procedures</MadCap:xref> for software event brokers, or <MadCap:xref href="Appliance-Upgrade/Appliance-Upgrade.htm">Upgrade Procedures</MadCap:xref> for appliances.</p>
+    <h2 class="with-rule"><a name="system_and_software_maintenance_tasks_3138406956_208346"/>Downgrading Versions</h2>
+    <p>To change the software version on an appliance to an earlier version than what is currently installed (that is, to downgrade an appliance’s software load to an older version), use the steps presented in the following procedures as appropriate.</p>
+    <p class="Note">These procedures assume that you are moving between currently supported loads.</p>
+    <p class="Caution">
+                    Downgrading software versions is supported on appliances only.
+                Do not attempt to use these procedures to downgrade a software broker.</p>
+    <div class="Caution">
+      <ul>
+        <li>On downgrade, all spooled Guaranteed messages are lost.</li>
+        <li>The current configuration is not preserved on downgrade. After the appliance restarts, it uses the last configuration saved with the software version you downgrade to.</li>
+        <li>Downgrades that require changing the underlying version of SolBase will not preserve files in the root partition of the appliance’s internal file system. This will affect any Linux services configured on the appliance for applications such as NetProbe or Solace Geneos Agent, and those services must be re-configured after the downgrade.</li>
+        <li>Downgrading or reloading software loads will disrupt service because these operations restart an appliance to activate the old software. It is best to downgrade software at a time when a service disruption is of minimal impact to clients.</li>
+        <li>Downgrading from the remote appliance of a Message VPN bridge will stop Guaranteed messages from being delivered across that VPN bridge. If this occurs, remove the durable message queue configured on that VPN bridge, then add it back again. For example, for a VPN bridge configured with a queue named <code>q/market/orders</code>:
+			
+                    <p class="Code"><code>solace(configure/bridge/remote/message-vpn# message-spool no queue</code><br/><code>solace(configure/bridge/remote/message-vpn)# message-spool queue q/market/orders</code></p></li>
+      </ul>
+    </div>
+    <h3><a name="Downgrad"/>Downgrading Standalone and Redundant Appliances</h3>
+    <p>Use the following procedure to downgrade or reload software versions on appliances in either standalone or redundant deployments. </p>
+    <p class="Note">In the examples, both a standalone appliance, and the first appliance in the redundant pair, are referred to as <code>solace1</code>, and the mate appliance in a redundant pair is referred to as <code>solace2</code>. If downgrading or reloading a pair of redundant mates, some of the procedures must be repeated on the second appliance (as indicated). </p>
+    <ol>
+      <li>Verify the current software versions installed and available on the appliance  to be downgraded.
+            <p>Enter the following User EXEC command in the Solace CLI:</p><p class="Code">solace1&gt; show version</p><p>Key things to observe in this display include:</p><ul><li>the backout load is the software version that was running before the last upgrade was performed</li><li>the locally available software versions are listed under the “Loads available on the appliance" heading</li><li>the required SolBase for each load is indicated</li></ul></li>
+      <li>Make a local copy of the current software configuration in the <code>/configs</code> subdirectory.
+				<p>Enter the following commands:</p><p class="Code">solace1&gt; enable<br/>solace1# copy current-config /configs/&lt;old_version&gt;_preDowngradeCfg</p><p><u>Where</u>:</p><p><code>&lt;old_version&gt;</code> is the version number of the software that you are downgrading from. </p></li>
+      <li>If the software version that you want to downgrade to is not already installed on the appliance, you must copy that version on to the appliance to be downgraded from an SFTP or SCP server.
+        <p>On each appliance, copy the old software from an external file server (using SFTP or SCP) to the <code>/loads</code> subdirectory on the appliance, enter one of the following commands:</p><p class="Code">solace1# copy sftp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads<br/>solace1# copy scp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads</p><p><u>Where</u>:</p><p><code>&lt;username&gt;</code> is your SFTP or SCP user name and <code>&lt;ip-addr&gt;</code> and <code>&lt;remote-pathname&gt;</code> point to where the old software is located.</p></li>
+      <li>
+        <p>The target load needs the appropriate SolBase (as indicated by the <code>show version</code> command output). Use  SFTP or SCP to copy the appropriate SolBase  for each load to the appliance.</p>
+        <p><u>Examples</u>:</p>
+        <p class="Code">solace1# copy sftp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads<br/>solace1# copy scp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads</p>
+        <p><u>Where</u>:</p>
+        <p><code>&lt;username&gt;</code> is your  SFTP or SCP user name and <code>&lt;ip-addr&gt;</code> and <code>&lt;remote-pathname&gt;</code> point to where the SolBase files are located.</p>
+      </li>
+      <li>
+                If you are using a redundant pair of appliances, shut down redundancy, and enter the following commands.
+                <p class="Code">solace1&gt; enable<br/>solace1# configure<br/>solace1(configure)# redundancy<br/>solace1(configure/redundancy)# shutdown<br/>solace1(configure/redundancy)# exit</p></li>
+      <li>Shut down the message backbone IP and enter these commands.           <p class="Code">solace1(configure)# service msg-backbone shutdown</p></li>
+      <li>Shut down and then reset the message spool.
+                <p class="Code">solace1(configure)# hardware message-spool<br/>solace1(configure/hardware/message-spool)# shutdown<br/>solace1(configure/hardware/message-spool)# end<br/>solace1# admin<br/>solace1(admin)# system message-spool<br/>solace1(admin/system/message-spool)# reset<br/>solace1(admin/system/message-spool)# end</p></li>
+      <li>If you are using a redundant pair of appliances, repeat steps 1 to 7 on the mate appliance (<code>solace2</code>).</li>
+      <li>Downgrade the software version.
+			<p>Enter the following command and answer all prompts that display on screen:</p><p class="Code">solace1# boot {&lt;version&gt; | backout}</p><p><u>Where</u>:</p><p><code>&lt;version&gt;</code> is the version number of the old software that you are downgrading to. </p><p><code>backout</code> rolls the software version back to the previous one that was running before the last upgrade was performed. </p></li>
+      <li>Reset the message spool after the appliance restarts and the ADB Power Module is in the "OK" state. Use the <code>show hardware details</code> command to verify the ADB Power Module's state. If the state is "Charging", it can take up to 15 minutes to transition to "OK".
+            <p class="Note"> It may be necessary to shut down redundancy or the message spool before resetting the message spool if the last configuration saved by the software version that has been downgraded to had redundancy or the message spool active.</p><p>Enter the following commands:</p><p class="Code">solace1&gt; enable<br/>solace1# admin<br/>solace1(admin)# system message-spool<br/>solace1(admin/system/message-spool)# reset<br/>solace1(admin/system/message-spool)# end</p></li>
+      <li>If you are using a redundant pair of appliances, perform the steps 9 and 10 for the mate appliance (<code>solace2</code>).</li>
+      <li>
+               Re-enable the message spool, as well as redundancy (if you are using redundant appliances), and enter the following commands. 
+				<p class="Code">solace1# configure<br/>solace1(configure)# no hardware message-spool shutdown primary<br/>solace1(configure/hardware/message-spool)# end</p><p> </p><p class="Code">solace1# configure<br/>solace1(configure)# redundancy<br/>solace1(configure/redundancy)# no shutdown<br/>solace1(configure/redundancy)# end</p><p class="Note">You may also need to enable message backbone service on the appliance to restart the messaging services.</p></li>
+      <li>If you are using redundant appliances, re-enable the message spool and redundancy for the mate appliance (<code>solace2</code>).
+				    <p class="Code">solace2# configure<br/>solace2(configure)# no hardware message-spool shutdown backup<br/>solace2(configure/hardware/message-spool)# end</p><p> </p><p class="Code">solace2(configure)# redundancy<br/>solace2(configure/redundancy)# no shutdown<br/>solace2(configure/redundancy)# end</p><p class="Note">You may also need to enable message backbone service on the appliance to restart the messaging services.</p></li>
+      <li>
+        <p>When downgrading a redundant pair of appliances, their configurations may need reconciliation. Use Config-Sync to assert one appliance’s configuration over its mate. For more information, refer to <MadCap:xref href="../Features/Config-Sync/Configuring-Config-Sync.htm#Assertin">Asserting Routers’ System Configurations Over Their Mates</MadCap:xref>.</p>
+      </li>
+    </ol>
+    <h3><a name="Downgrad2"/>Downgrading Replication Sites</h3>
+    <p>This procedure provides a simplified overview of the steps required to downgrade software versions used by the event brokers in each Replication site. The exact steps may differ depending on your specific deployment. In this procedure, the Replication sites to be downgraded are referred to as Site 1 and Site 2.</p>
+    <ol>
+      <li>
+        <p>On each event broker, make a local copy of the current software configuration in the <code>/configs</code> subdirectory.</p>
+      </li>
+      <li>
+        <p>If you are downgrading from software version 7.2.x or higher, the target load needs the appropriate SolBase (as indicated by the <b>show version</b> User EXEC command). Copy the correct SolBase file to the event brokers’ <code>/loads</code> directory.</p>
+      </li>
+      <li>
+        <p>On Site 2’s primary appliance, switch the Replication configuration state from Active to Standby for each Message VPN that Replication is administratively-enabled.</p>
+      </li>
+      <li>
+        <p>On Site 2, wait for the Replication queues of the formerly active Message VPNs to completely drain.</p>
+      </li>
+      <li>
+        <p>On Site 1’s primary event broker,  switch each Message VPN that is Replication standby to Replication active.  Clients are now using Site 1.</p>
+      </li>
+      <li>On Site 2, do the following:<ul><li>If the appliance is running load 7.1.x or higher, enter the <b>service msg-backbone shutdown</b> Config command.</li><li>If the appliance is running load lower than 7.1.x, enter the <b>service smf shutdown</b> Config command.</li></ul></li>
+      <li>
+        <p>On Site 2’s primary appliance, shutdown Replication on each Message VPN on which it is enabled.  This step is required  to disable Config-Sync.</p>
+      </li>
+      <li>On Site 2, disable Config-Sync on every appliance.</li>
+      <li>
+        <p>On Site 2, on each event broker, enable Replication for each Message VPN that was shut down step in 7.</p>
+      </li>
+      <li>On Site 2, do the following:<ul><li>If the appliance is running load 7.1.x or higher, enter the <b>no service msg-backbone shutdown</b> Config command.</li><li>If the appliance is running load lower than 7.1.x, enter the <b>no service smf shutdown</b> Config command.</li></ul></li>
+      <li>On Site 2, enable Config-Sync on every appliance that was disabled in step 8.</li>
+      <li>
+        <p>On Site 1’s primary appliance, switch the Replication configuration state from Active to Standby for each Message VPN that Replication is administratively-enabled.</p>
+      </li>
+      <li>
+        <p>On Site 1, wait for the Replication queues of the formerly active Message VPNs to completely drain.</p>
+      </li>
+      <li>
+        <p>On Site 2, switch each Message VPN that is Replication standby to Replication active.  Clients are now using Site 2.</p>
+      </li>
+      <li>
+        <p style="font-weight: normal;">Downgrade the appliances in Site 1.</p>
+        <p style="font-weight: normal;">Follow the procedures provided in <MadCap:xref href="#Downgrad">Downgrading Standalone and Redundant Appliances</MadCap:xref>.</p>
+        <div class="Note">
+          <ul>
+            <li>You may skip steps 1 through 4 in that downgrade procedure, as you may have already carried them out in this procedure.</li>
+            <li>
+              <p>If you are downgrading a redundant pair of appliances, delay the final step to reconcile their configurations until Replication is Active.</p>
+            </li>
+          </ul>
+        </div>
+      </li>
+      <li>
+        <p>On Site 2, on each appliance, switch each Message VPN that has a Replication of Active to Replication Standby.</p>
+      </li>
+      <li>
+        <p>On Site 2, wait for the Replication queues of the formerly active Message VPNs to completely drain.</p>
+      </li>
+      <li>
+        <p>On Site 1’s primary appliance,  switch each Message VPN that is Replication standby to Replication active.  Clients are now using Site 1.</p>
+      </li>
+      <li>
+        <p style="font-weight: normal;">Downgrade the appliances in Site 2.</p>
+        <p style="font-weight: normal;">Follow the procedures provided in <MadCap:xref href="#Downgrad">Downgrading Standalone and Redundant Appliances</MadCap:xref>.</p>
+        <p class="Note"> You may skip steps 1 through 4 in that downgrade procedure, as you may have already carried them out in this procedure. </p>
+      </li>
+    </ol>
+    <h2 class="with-rule"><a name="system_and_software_maintenance_tasks_3138406956_217186"/>Deleting Versions</h2>
+    <p>To delete any version of the software already installed on an appliance, with the exception of the software identified as either the current or backout load, perform the following steps.</p>
+    <p class="Note">Deleting software versions is only supported on appliances.</p>
+    <ol>
+      <li>To display and determine the current software versions installed and available on the appliance, enter the following User EXEC command:
+				<p class="Code">solace&gt; show version</p><p>Take note of the version values listed under “Loads available on the appliance” near the bottom.</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p class="Code">solace&gt; show version<br/>. . .	<br/>SolOS Loads available on the appliance:<br/><br/>Index  SolOS Version                          Required SolBase Version<br/>------ -------------------------- ------------------------<br/>1          soltr_7.1.1.631                      1.0.0.5<br/>2       soltr_7.2.0.2171                  2.0.0.31<br/>3         soltr_7.2.0.2172                   2.0.0.31<br/>4          soltr_7.2.0.2179                    2.0.0.31<br/>. . .	</p></MadCap:dropDownBody></MadCap:dropDown></li>
+      <li>To delete a software version already installed in the <code>/loads</code> subdirectory on the appliance, enter the following commands:
+        <p class="Code">solace&gt; enable<br/>solace#<br/>solace# delete-load &lt;version&gt;</p><p><u>Where</u>:</p><p><code>&lt;version&gt;</code> is the version number of the software to be deleted.</p></li>
+    </ol>
+  </body>
+</html>

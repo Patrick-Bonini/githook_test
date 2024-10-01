@@ -1,0 +1,608 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Managing Custom TLS Server Certificates for an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h1>
+    <p>You can use the <MadCap:variable name="Product-Names.cloud_product_short"/> v2 REST APIs for <MadCap:variable name="Product-Names.missionctrl_short"/> to manage custom TLS/SSL server certificates for your <MadCap:variable name="Product-Names.broker_cloud_short"/>s without assistance from <MadCap:variable name="Variables.CompanyName"/>. Management of custom server certificates includes uploading, installing, reviewing, and deleting custom server certificates. </p>
+    <p>Uploading and installing a custom server certificate to your <MadCap:variable name="Product-Names.broker_cloud_short"/> allows you to <a href="configure-domain-name.htm" target="_blank" alt="Link to configuring custom domain hostnames topic" class="link-internal">assign a custom domain hostname</a> to your <MadCap:variable name="Product-Names.broker_cloud_short"/> that matches the common name (CN) of the server certificate. Installing a custom server certificate and assigning a custom domain hostname allows you to <a href="configure-oauth-for-broker-services.htm" target="_blank" alt="link to configuring single sign on topic" class="link-internal">enable single sign-on</a> for the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+    <p>We recommend using the v2 REST API described here for installing custom TLS server certificates over other options such as the command line interface (CLI) because of enhanced benefits native to the v2 REST API, such as:</p>
+    <ul>
+      <li>
+        <p>Visibility of the server certificate expiration date for the <MadCap:variable name="Product-Names.broker_cloud_short"/> on the <b>Status</b> tab of <MadCap:variable name="Product-Names.cluster_mgr"/>.</p>
+      </li>
+      <li>
+        <p>Resiliency of storing the certificate as a Kubernetes secret. If a pod needs to be recreated, the <MadCap:variable name="Product-Names.broker_cloud_short"/> it contains does not need to have its certificate reinstalled to continue functioning.</p>
+      </li>
+    </ul>
+    <p>Before managing a custom server certificate for your <MadCap:variable name="Product-Names.broker_cloud_short"/> using the <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">v2 REST APIs</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">REST APIs for <MadCap:variable name="Product-Names.cloud_product_short"/></MadCap:conditionalText>, you should review the <MadCap:xref href="#consider-self-serve-certs">Considerations for Managing Server Certificates</MadCap:xref>.</p>
+    <h2><a name="consider-self-serve-certs"/>Considerations for Managing Server Certificates </h2>
+    <p>Be aware of the following considerations when managing server certificates for your <MadCap:variable name="Product-Names.broker_cloud_short"/>:
+</p>
+    <ul>
+      <li>
+        <p>You must upload and install server certificates on one <MadCap:variable name="Product-Names.broker_cloud_short"/> at a time. </p>
+      </li>
+      <li>
+        <p>An <MadCap:variable name="Product-Names.broker_cloud_short"/> can have three server certificates, including the default server certificate provided by <MadCap:variable name="Variables.CompanyName"/>.</p>
+      </li>
+      <li>
+        <p>Only server certificates with RSA private keys are supported. ECDSA private keys are not supported.</p>
+      </li>
+      <li>
+        <p>You can upload only PEM encoded server certificates. <MadCap:variable name="Product-Names.broker_cloud_short_intitalcap"/>s do not support DER encoded server certificates. </p>
+      </li>
+      <li>
+        <p>The system validates uploaded server certificates. Validation ensures that the server certificate:</p>
+      </li>
+      <ul>
+        <li>
+          <p>components are in the right order </p>
+        </li>
+        <li>
+          <p>is syntactically correct</p>
+        </li>
+        <li>
+          <p>dates are valid, and not expired</p>
+        </li>
+      </ul>
+      <li>
+        <p>You can upload plain text or encrypted server certificates. Encrypted certificates require entry of a passphrase during installation.</p>
+      </li>
+      <li>
+        <p>If your server certificates and private key are in a PKCS file, you must extract the server certificates and add them to a concatenated string before uploading them. You must also extract the private key as a string before uploading as well. See <MadCap:xref href="#prep_certs" alt="Link to Preparing a Server Certifcate for upload">Preparing a Server Certificate</MadCap:xref> for example commands you can use to extract and concatenate server certificates into a text file.</p>
+      </li>
+      <li>
+        <p>The <MadCap:variable name="Product-Names.cloud_agent_short"/> stores uploaded server certificates as an encrypted, <MadCap:variable name="Product-Names.broker_cloud_short"/>-specific Kubernetes secret prior to installation.</p>
+      </li>
+      <li>
+        <p>The <MadCap:variable name="Product-Names.cloud_agent_short"/> stores installed server certificates on the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+      </li>
+      <li>
+        <p>After installing a custom server certificate, you must <a href="configure-domain-name.htm" target="_blank" class="link-internal">configure a custom domain hostname</a> for the <MadCap:variable name="Product-Names.broker_cloud_short"/>. </p>
+      </li>
+      <li>
+        <p>If you want to revert to the default server certificate, <a href="../get-support.htm" target="_blank" alt="link to get support" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a>.</p>
+      </li>
+      <li>
+        <p>You require an API key with at least the access to <MadCap:variable name="Product-Names.missionctrl_short"/> permission  (<code>mission_control:access</code>). You also require additional permissions based on the action you want to perform: </p>
+        <ul>
+          <li>
+            <p><a href="#upload_cert" class="link-internal">Uploading</a> and <a href="#install_cert" class="link-internal">Installing</a> a server certificates: Create services (<code>services:post</code>)</p>
+          </li>
+          <li>
+            <p><a href="#get_cert_list" class="link-internal">Get All</a>, <a href="#get_cert_info" class="link-internal">Get by ID</a>: Get Services with Management Credentials <code>(services:get</code>)</p>
+          </li>
+          <li>
+            <p><a href="#delete_cert" class="link-internal">Delete server certificates</a>: Delete Services (<code>services:delete</code>)</p>
+          </li>
+        </ul>
+        <p>For more information see <MadCap:xref href="ght_api_tokens.htm#Create">Creating an API Token</MadCap:xref>.</p>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="prep_certs"/>Preparing a Server Certificate for Upload</h2>
+    <p>Uploading a server certificate and using the v2 REST API requires adding a string containing the server certificates you want to upload and install, as well as another string with the private key . Typically, your certificate provider gives you a single PKCS file containing the certificates and private key you require. You can use OpenSSL to extract the contents of the PKCS file. You can concatenate the server certificates into a text file, from which you can copy and paste the them for use with the <a href="#upload_cert" alt="link to uploading a server certificate procedure" class="link-internal">Initiate an upload of a server certificate</a> API.</p>
+    <p>Below we provide examples of how you can:</p>
+    <ul>
+      <li>
+        <p>
+          <a href="#extract_cert_key" alt="link to extract certificate and private key commands" class="link-internal">extract certificates and keys from a PKCS file using OpenSSL commands</a>
+        </p>
+      </li>
+      <li>
+        <p>
+          <a href="#chain_certs" alt="link to concatenating server certificates commands" class="link-internal">concatenate the certificates using an <code>awk</code> command</a>
+        </p>
+      </li>
+      <li>
+        <p>
+          <a href="#extract_and_chain_certs" alt="link to combined command for extracting and concatenating server certificates" class="link-internal">extract and concatenate certificates to a text file</a>
+        </p>
+      </li>
+    </ul>
+    <h3><a name="extract_cert_key"/>Extracting the Certificate or Keys from a PKCS File</h3>
+    <p>You can use OpenSSL commands to extract the contents of the PCKS file. Below you will find a command for extracting certificates and another command for extracting a private key.</p>
+    <ul>
+      <li>
+        <p>To extract the certificates, use the following command:</p>
+        <pre>openssl pkcs12 -info -in INFILE.p12 -nokeys</pre>
+      </li>
+      <li>
+        <p>To extract the private key, use the following command.</p>
+        <pre>openssl pkcs12 -info -in INFILE.p12 -nocerts</pre>
+      </li>
+    </ul>
+    <h3><a name="chain_certs"/>Concatenating Certificates Using an AWK Command</h3>
+    <p>You can use an <code>awk</code> command to string the certificates together after extracting them. </p>
+    <pre>cert.pem | awk '{printf "%s\\n", $0}'</pre>
+    <h3><a name="extract_and_chain_certs"/>Extracting and Concatenating Certificates to a Text File </h3>
+    <p>You can combine the commands above to extract the server certificates from a provided PKCS file (<code>certificates.p12</code>) and create a text file (<code>containerFile.txt</code>) with the concatenated certificates, whose contents you can paste into the a certificate parameter field of the <a href="#upload_cert" alt="link to uploading a server certificate procedure" class="link-internal">Initiate an upload of a server certificate</a> API. </p>
+    <pre xml:space="preserve">openssl pkcs12 -info -in example.p12 -nodes -nokeys | awk '{printf "%s\\n", $0}'&gt;&gt;containerFile.txt</pre>
+    <h2 class="with-rule">Adding Server Certificates to <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</h2>
+    <p>Installing a server certificate on your <MadCap:variable name="Product-Names.broker_cloud_short"/> requires three steps:</p>
+    <ol>
+      <li>
+        <p><a href="#upload_cert" alt="link to uploading a server certificate" class="link-internal" title="link to uploading a server certificate">Uploading the server certificate to the <MadCap:variable name="Product-Names.broker_cloud_short"/></a>.
+                </p>
+      </li>
+      <li>
+        <p><a href="#install_cert" alt="Link to installing a server certificate" class="link-internal">Installing the server certificate to the <MadCap:variable name="Product-Names.broker_cloud_short"/></a>.
+                </p>
+      </li>
+      <li>
+        <p><a href="#config_custdomain" alt="link to configuring a custom domain hostname" class="link-internal">Configuring a customer domain hostname for the <MadCap:variable name="Product-Names.broker_cloud_short"/></a>.
+                </p>
+      </li>
+    </ol>
+    <h3><a name="upload_cert"/>Uploading a Server Certificate to an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h3>
+    <ol>
+      <li MadCap:conditions="SAP.SapHideFromOutput">
+        <p>Determine the unique identifier for the <MadCap:variable name="Product-Names.broker_cloud_short"/> you want to upload the server certificate to, using one of the following methods:</p>
+      </li>
+      <ul MadCap:conditions="SAP.SapHideFromOutput">
+        <li>
+          <p>In <MadCap:variable name="Product-Names.cluster_mgr"/>, select the <MadCap:variable name="Product-Names.broker_cloud_short"/> and get its unique identifier from the last segment in the URL. For example, <code>9c5vurtex4b</code> is the identifier from <code>https://console.solace.cloud/services/9c5vurtex4b</code>.</p>
+        </li>
+        <li>
+          <p>Use the <a href="[%=Manifest-Products-Links.ReadmeReference%]/getservices" target="_blank" class="link-offsite" alt="link to Get list of services REST API">Get list of services</a> REST endpoint to find the unique identifier (<code>id</code>) of the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+        </li>
+      </ul>
+      <li MadCap:conditions="SAP.SapHideFromOutput">
+        <p>Use the <a href="[%=Manifest-Products-Links.ReadmeReference%]/uploadservercertificate" target="_blank" alt="link to Initiate an upload of a server certificate API" class="link-offsite" title="link to Initiate an upload of a server certificate API">Initiate an upload of a server certificate</a> API to upload your server certificate to the <MadCap:variable name="Product-Names.broker_cloud_short"/>. </p>
+        <p>Specify the <b>Path Parameter</b> fields as follows:
+</p>
+      </li>
+      <li MadCap:conditions="SAP.SapOnlyOutput">Upload the server certificate to the <MadCap:variable name="Product-Names.broker_cloud_short"/> by issuing a POST request to the following URL: <br/><pre xml:space="preserve">https://${ENDPOINT}/serverCertificates</pre><p>Replace the variables in the string above with the definitions listed in the table below:
+      <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Variable</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1"><code>ENDPOINT</code></td><td class="TableStyle-Table_Num-BodyA-Column1-Body1"><p>The URL to the <MadCap:variable name="Product-Names.broker_cloud_short"/>: <code>${CLOUD_HOST}/api/v2/missionControl/eventBrokerServices/${SERVICE_ID}</code></p><p>Where:
+			<ul><li><p><code>CLOUD_HOST</code>—The URL for the <MadCap:variable name="Product-Names.console_ui_short"/>,  for example <code>&lt;region&gt;.console.pubsub.em.services.cloud.sap</code>. For more information, see <MadCap:xref href="cloud-login-urls.htm" target="_blank" alt="Link to logging into the cloud console">Logging into the [%=Product-Names.console_ui_long%]</MadCap:xref></p></li><li><p><code>SERVICE_ID</code>—The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> where you want to create the roles. You can find the ID either:</p><ul><li>at the end of the URL for your <MadCap:variable name="Product-Names.broker_cloud_short"/>, for example: <code><MadCap:variable name="Manifest-Products-Links.CloudConsoleOnly"/>services/<b>k8vv6x131e1</b></code>, </li><li>using a GET call. See <MadCap:xref href="ght_use_rest_api_services.htm#getdetails-service">Getting the Connection Details for the [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref>.
+</li></ul></li></ul></p></td></tr></tbody></table></p><p MadCap:conditions="SAP.SapOnlyOutput">Provide the following in the body of the POST request:</p><pre xml:space="preserve">{
+  "certificate": "{certificate}",
+  "privateKey": "{privateKey}"
+}		 </pre><p>Replace the variables above with the definitions listed in the table below</p></li>
+      <p>
+        <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+          <col class="TableStyle-Table_Num-Column-Column1"/>
+          <col class="TableStyle-Table_Num-Column-Column1"/>
+          <thead>
+            <tr class="TableStyle-Table_Num-Head-Header1">
+              <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">Body </MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">Post </MadCap:conditionalText>Parameter</th>
+              <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <code>certificate</code>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Copy and paste the contents of the server certificate’s PEM file into the field, starting from and including the lines <code>-----BEGIN CERTIFICATE-----</code> to <code>-----END CERTIFICATE-----</code>. The field has a maximum capacity of 32 KB.  The string you add to this field must contain all of the server certificates as a concatenated string. For more information, see <MadCap:xref href="#prep_certs" alt="link to preparing server certificates commands">Preparing a Server Certificate for Upload</MadCap:xref>.</td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+                <code>privateKey</code>
+              </td>
+              <td class="TableStyle-Table_Num-BodyA-Column1-Body1">Copy and paste the contents of private key's PEM file into the field, starting from and including the lines <code>-----BEGIN PRIVATE KEY-----</code> to <code>-----END PRIVATE KEY-----</code>. The field has a maximum capacity of 5 KB.</td>
+            </tr>
+          </tbody>
+        </table>
+      </p>
+    </ol>
+    <p>A successful POST request returns code 202 Accepted, with an <code>operationId</code> as part of the payload of the response body. You can get the status of the operation <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">using the <a href="https://api.solace.dev/cloud/reference/getserviceoperation" target="_blank" alt="link to the get the status of a service operation" class="link-offsite">Get the status of a service operation</a> REST API with the <code>operationId</code> to query the status of the operation.</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">by issuing a GET request to: </MadCap:conditionalText><![CDATA[      ]]><pre MadCap:conditions="SAP.SapOnlyOutput" xml:space="preserve">https://${ENDPOINT}/operations/${operationsId}</pre></p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">Replace the variables in the string above with the definitions listed in the table below:
+        </p>
+    <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0" MadCap:conditions="SAP.SapOnlyOutput">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Variable</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1" MadCap:conditions="SAP.SapOnlyOutput">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>ENDPOINT</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The URL to the <MadCap:variable name="Product-Names.broker_cloud_short"/>: <code>${CLOUD_HOST}/api/v2/missionControl/eventBrokerServices/${SERVICE_ID}</code></p>
+            <p>Where:
+			<ul><li><p><code>CLOUD_HOST</code>—The URL for the <MadCap:variable name="Product-Names.console_ui_short"/>,  for example <code>&lt;region&gt;.console.pubsub.em.services.cloud.sap</code>. For more information, see <MadCap:xref href="cloud-login-urls.htm" target="_blank" alt="Link to logging into the cloud console">Logging into the [%=Product-Names.console_ui_long%]</MadCap:xref></p></li><li><p><code>SERVICE_ID</code>—The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> where you want to create the roles. You can find the ID either:</p><ul><li>at the end of the URL for your <MadCap:variable name="Product-Names.broker_cloud_short"/>, for example: <code><MadCap:variable name="Manifest-Products-Links.CloudConsoleOnly"/>services/<b>k8vv6x131e1</b></code>, </li><li>using a GET call. See <MadCap:xref href="ght_use_rest_api_services.htm#getdetails-service">Getting the Connection Details for the [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref>.
+</li></ul></li></ul></p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1" MadCap:conditions="SAP.SapOnlyOutput">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <code>operationId</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">The unique identifier of the operation you want to query, included as part of the payload of the response body to an asynchronous API post.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>You can test that the server certificate was successfully installed by <a href="#get_cert_list" alt="link to getting a list of server certificates uploaded to an event broker srvice procedure" class="link-internal">getting a list of server certificates uploaded to an <MadCap:variable name="Product-Names.broker_cloud_short"/></a>. A successfully installed server certificate will appear in the response with a unique <code>Id</code> and <code>installed</code> status of <code>false</code>, and <code>certificateType</code> of <code>custom</code>. </p>
+    <h3><a name="install_cert"/>Installing a Server Certificate on an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h3>
+    <p>After uploading a server certificate to an <MadCap:variable name="Product-Names.broker_cloud_short"/>, you can install it. Installing the server certificate makes it the active certificate for the <MadCap:variable name="Product-Names.broker_cloud_short"/>. Only one server certificate can be active at any time. After installing a custom server certificate, you must <a href="#config_custdomain" alt="link to section about configuring custom domain hostname" class="link-internal">configure a custom domain hostname</a> for the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">To install a custom server certificate, use the <a href="[%=Manifest-Products-Links.ReadmeReference%]/installservercertificate" target="_blank" alt="Link to Initiate installation of a server certificate by its ID API" class="link-offsite" title="Link to Initiate installation of a server certificate by its ID API">Install a server certificate</a> API to install an uploaded server certificate to the <MadCap:variable name="Product-Names.broker_cloud_short"/>. </p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">Install the server certificate to the <MadCap:variable name="Product-Names.broker_cloud_short"/> by issuing a POST request to the following URL:<pre xml:space="preserve">https://${ENDPOINT}/serverCertificates/${certificateId}/install</pre></p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">Replace the variables in the string above with the definitions listed in the table below:
+</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Specify the <b>Path Parameter</b> fields as follows:
+<![CDATA[     
+            ]]></p>
+    <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Variable</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1" MadCap:conditions="SAP.SapOnlyOutput">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>ENDPOINT</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The URL to the <MadCap:variable name="Product-Names.broker_cloud_short"/>: <code>${CLOUD_HOST}/api/v2/missionControl/eventBrokerServices/${SERVICE_ID}</code></p>
+            <p>Where:
+			<ul><li><p><code>CLOUD_HOST</code>—The URL for the <MadCap:variable name="Product-Names.console_ui_short"/>,  for example <code>&lt;region&gt;.console.pubsub.em.services.cloud.sap</code>. For more information, see <MadCap:xref href="cloud-login-urls.htm" target="_blank" alt="Link to logging into the cloud console">Logging into the [%=Product-Names.console_ui_long%]</MadCap:xref></p></li><li><p><code>SERVICE_ID</code>—The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> where you want to create the roles. You can find the ID either:</p><ul><li>at the end of the URL for your <MadCap:variable name="Product-Names.broker_cloud_short"/>, for example: <code><MadCap:variable name="Manifest-Products-Links.CloudConsoleOnly"/>services/<b>k8vv6x131e1</b></code>, </li><li>using a GET call. See <MadCap:xref href="ght_use_rest_api_services.htm#getdetails-service">Getting the Connection Details for the [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref>.
+</li></ul></li></ul></p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1" MadCap:conditions="SAP.SapHideFromOutput">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>serviceId</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> where you want to install the server certificate. You can determine the unique identifier for an <MadCap:variable name="Product-Names.broker_cloud_short"/> using the <MadCap:variable name="Product-Names.console_ui_short"/> or by using a GET call. See <a href="[%=Manifest-Products-Links.ReadmeReference%]/getservices" target="_blank" class="link-offsite" MadCap:conditions="SAP.SapHideFromOutput" alt="link to Get a list of services REST API">Get a list of event broker services</a>.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <code>certificateId</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">The unique identifier of the server certificate you want to install. You can get the certificate ID using a GET request. For more information, see <MadCap:xref href="#retrieve_cert">Retrieving Server Certificate Information from an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p MadCap:conditions="SAP.SapOnlyOutput">Provide the following in the body of the POST request:</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Define the  <b>Body Parameter</b> field with the information listed in the table below: 
+</p>
+    <pre xml:space="preserve">{
+  "passphrase": "{passphrase}"
+}</pre>
+    <p>
+      <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+        <col class="TableStyle-Table_Num-Column-Column1">
+                </col>
+        <col class="TableStyle-Table_Num-Column-Column1">
+                </col>
+        <thead>
+          <tr class="TableStyle-Table_Num-Head-Header1">
+            <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">Body </MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">Post </MadCap:conditionalText>Parameter</th>
+            <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="TableStyle-Table_Num-Body-Body1">
+            <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+              <code>passphrase</code>
+            </td>
+            <td class="TableStyle-Table_Num-BodyA-Column1-Body1">If the server certificate you uploaded in step 1 was encrypted, you must enter its passphrase. If you are reinstalling the default <MadCap:variable name="Variables.CompanyName"/> provided server certificate, you do not require the passphrase.</td>
+          </tr>
+        </tbody>
+      </table>
+    </p>
+    <p>A successful POST request returns code 202 Accepted, with an <code>operationId</code> as part of the payload of the response body. You can get the status of the operation <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">using the <a href="https://api.solace.dev/cloud/reference/getserviceoperation" target="_blank" alt="link to the get the status of a service operation" class="link-offsite">Get the status of a service operation</a> REST API with the <code>operationId</code> to query the status of the operation.</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">by issuing a GET request to: </MadCap:conditionalText><![CDATA[      ]]><pre MadCap:conditions="SAP.SapOnlyOutput" xml:space="preserve">https://${ENDPOINT}/operations/${operationsId}</pre></p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">Replace the variables in the string above with the definitions listed in the table below:
+        </p>
+    <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0" MadCap:conditions="SAP.SapOnlyOutput">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Variable</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1" MadCap:conditions="SAP.SapOnlyOutput">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>ENDPOINT</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The URL to the <MadCap:variable name="Product-Names.broker_cloud_short"/>: <code>${CLOUD_HOST}/api/v2/missionControl/eventBrokerServices/${SERVICE_ID}</code></p>
+            <p>Where:
+			<ul><li><p><code>CLOUD_HOST</code>—The URL for the <MadCap:variable name="Product-Names.console_ui_short"/>,  for example <code>&lt;region&gt;.console.pubsub.em.services.cloud.sap</code>. For more information, see <MadCap:xref href="cloud-login-urls.htm" target="_blank" alt="Link to logging into the cloud console">Logging into the [%=Product-Names.console_ui_long%]</MadCap:xref></p></li><li><p><code>SERVICE_ID</code>—The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> where you want to create the roles. You can find the ID either:</p><ul><li>at the end of the URL for your <MadCap:variable name="Product-Names.broker_cloud_short"/>, for example: <code><MadCap:variable name="Manifest-Products-Links.CloudConsoleOnly"/>services/<b>k8vv6x131e1</b></code>, </li><li>using a GET call. See <MadCap:xref href="ght_use_rest_api_services.htm#getdetails-service">Getting the Connection Details for the [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref>.
+</li></ul></li></ul></p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1" MadCap:conditions="SAP.SapOnlyOutput">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <code>operationId</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">The unique identifier of the operation you want to query, included as part of the payload of the response body to an asynchronous API post.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>You can test that the server certificate was successfully installed by <MadCap:xref href="#get_cert_info">Getting Information About a Specific Server Certificate by its ID</MadCap:xref>. If the certificate is installed, its <code>installed</code> property shows as <code>true</code>. </p>
+    <p>Server certificates installed using the v2 REST API show their expiry date on the <b>Status</b> tab in <MadCap:variable name="Product-Names.cluster_mgr"/>. Certificates that expire within the next 90 days show a status of <b>Expires Soon</b>. Expired certificates show a status of <b>Expired</b>.<br/></p>
+    <h3><a name="config_custdomain"/>Configuring a Custom Domain Hostname for an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h3>
+    <p>After uploading and installing a custom server certificate, you must configure a custom domain hostname for the <MadCap:variable name="Product-Names.broker_cloud_short"/>. Failure to configure a custom domain hostname will cause name mismatch warnings to appear when attempting to connect to the <MadCap:variable name="Product-Names.broker_cloud_short"/>. For more information, see <MadCap:xref href="configure-domain-name.htm" target="_blank">Configuring Custom Domain Hostnames for [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="retrieve_cert"/>Retrieving Server Certificate Information From an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h2>
+    <p>You can retrieve information about the server certificates uploaded to an <MadCap:variable name="Product-Names.broker_cloud_short"/>. You can also get more detailed information about a specific server certificate using the server certificates' unique ID. </p>
+    <p>For more information, see:</p>
+    <ul>
+      <li>
+        <p>
+          <MadCap:xref href="#get_cert_list" alt="link to get list of certificates API">Getting a List of Server Certificates Uploaded to an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#get_cert_info" alt="link to get certificate details API">Getting Information About a Specific Server Certificate by ID</MadCap:xref>
+        </p>
+      </li>
+    </ul>
+    <h3><a name="get_cert_list"/>Getting a List of Server Certificates Uploaded to an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h3>
+    <p MadCap:conditions="SAP.SapHideFromOutput">To get a list of server certificates uploaded to an <MadCap:variable name="Product-Names.broker_cloud_short"/>, use the <a href="[%=Manifest-Products-Links.ReadmeReference%]/getallservercertificates" target="_blank" alt="Link to Get all server certificates API" class="link-offsite" title="Link to Get all server certificates API">Get all server certificates</a> API. The returned information includes the server certificate IDs, type (custom or <MadCap:variable name="Variables.CompanyName"/> managed), and whether the certificate is installed. </p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">Get a list of all server certificates uploaded to an <MadCap:variable name="Product-Names.broker_cloud_short"/> by issuing a GET request to the following URL: <br/><pre xml:space="preserve">https://${ENDPOINT}/serverCertificates</pre></p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">Replace the variables in the string above with the definitions listed in the table below:
+      <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Variable</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1"><code>ENDPOINT</code></td><td class="TableStyle-Table_Num-BodyA-Column1-Body1"><p>The URL to the <MadCap:variable name="Product-Names.broker_cloud_short"/>: <code>${CLOUD_HOST}/api/v2/missionControl/eventBrokerServices/${SERVICE_ID}</code></p><p>Where:
+			<ul><li><p><code>CLOUD_HOST</code>—The URL for the <MadCap:variable name="Product-Names.console_ui_short"/>,  for example <code>&lt;region&gt;.console.pubsub.em.services.cloud.sap</code>. For more information, see <MadCap:xref href="cloud-login-urls.htm" target="_blank" alt="Link to logging into the cloud console">Logging into the [%=Product-Names.console_ui_long%]</MadCap:xref></p></li><li><p><code>SERVICE_ID</code>—The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> where you want to create the roles. You can find the ID either:</p><ul><li>at the end of the URL for your <MadCap:variable name="Product-Names.broker_cloud_short"/>, for example: <code><MadCap:variable name="Manifest-Products-Links.CloudConsoleOnly"/>services/<b>k8vv6x131e1</b></code>, </li><li>using a GET call. See <MadCap:xref href="ght_use_rest_api_services.htm#getdetails-service">Getting the Connection Details for the [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref>.
+</li></ul></li></ul></p></td></tr></tbody></table></p>
+    <p>A successful GET request returns code 200. <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">The body of the response contains the following information:</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">The response will contain the <code>id</code>, <code>installed</code> status, and <code>certificateType</code> information for all uploaded certificates.</MadCap:conditionalText> </p>
+    <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0" MadCap:conditions="SAP.SapOnlyOutput">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Response item</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>id</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The unique identifier for the server certificate. The ID is a combination of the <MadCap:variable name="Product-Names.broker_cloud_short"/> ID and path to the server certificate. </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1" MadCap:conditions="Default.HideFromAllOutput">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>type</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The type of object. In this case a certificate.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>installed</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Indicates whether or not the server certificate is installed on the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+            <ul>
+              <li>
+                <p><code>true</code>—The server certificate is installed.</p>
+              </li>
+              <li>
+                <p><code>false</code>—The server certificate is not installed.</p>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <code>certificateType</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>The type of server certificate:</p>
+            <ul>
+              <li>
+                <p><code>SolaceManaged</code>—The default server certificate installed on the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+              </li>
+              <li>
+                <p><code>Custom</code>—a custom server certificate installed on the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+              </li>
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="get_cert_info"/>Getting Information About a Specific Server Certificate by Its ID</h3>
+    <p>You can get information about a specific server certificate installed on an <MadCap:variable name="Product-Names.broker_cloud_short"/> using the server certificates ID. Information returned includes the server certificate IDs, type (custom or default), and whether the certificates are installed, validity dates, common name, and serial number, and details about the server certificate. </p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">To get information about a server certificate by its ID, use the <a href="[%=Manifest-Products-Links.ReadmeReference%]/getservercertificatebyid" target="_blank" alt="link to get a server certificate by ID v2 REST API" class="link-offsite" title="link to get a server certificate by ID v2 REST API">Get a server certificate by ID</a> API. </p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">To get a list of all server certificates uploaded to an <MadCap:variable name="Product-Names.broker_cloud_short"/> issue a GET request to the following URL: <br/><pre xml:space="preserve">https://${ENDPOINT}/serverCertificates/${certificateId}</pre></p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Specify the <b>Path Parameter</b> fields as follows:
+     
+            </p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">Replace the variables in the string above with the definitions listed in the table below:
+</p>
+    <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Variable</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1" MadCap:conditions="SAP.SapOnlyOutput">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>ENDPOINT</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The URL to the <MadCap:variable name="Product-Names.broker_cloud_short"/>: <code>${CLOUD_HOST}/api/v2/missionControl/eventBrokerServices/${SERVICE_ID}</code></p>
+            <p>Where:
+			<ul><li><p><code>CLOUD_HOST</code>—The URL for the <MadCap:variable name="Product-Names.console_ui_short"/>,  for example <code>&lt;region&gt;.console.pubsub.em.services.cloud.sap</code>. For more information, see <MadCap:xref href="cloud-login-urls.htm" target="_blank" alt="Link to logging into the cloud console">Logging into the [%=Product-Names.console_ui_long%]</MadCap:xref></p></li><li><p><code>SERVICE_ID</code>—The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> where you want to create the roles. You can find the ID either:</p><ul><li>at the end of the URL for your <MadCap:variable name="Product-Names.broker_cloud_short"/>, for example: <code><MadCap:variable name="Manifest-Products-Links.CloudConsoleOnly"/>services/<b>k8vv6x131e1</b></code>, </li><li>using a GET call. See <MadCap:xref href="ght_use_rest_api_services.htm#getdetails-service">Getting the Connection Details for the [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref>.
+</li></ul></li></ul></p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <code>certificateId</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">The unique identifier for the custom server certificate you uploaded. </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>A successful GET request returns code 200. <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">The body of the response contains the following information:</MadCap:conditionalText></p>
+    <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0" MadCap:conditions="SAP.SapOnlyOutput">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Response item</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>id</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The unique identifier for the server certificate.  The ID is a combination of the <MadCap:variable name="Product-Names.broker_cloud_short"/> ID and path to the server certificate.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>type</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The type of object. In this case a <code>servercertificate</code>.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>installed</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Indicates whether or not the server certificate is installed on the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+            <ul>
+              <li>
+                <p><code>true</code>—The server certificate is installed.</p>
+              </li>
+              <li>
+                <p><code>false</code>—The server certificate is not installed.</p>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <code>certificateType</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>The type of server certificate:</p>
+            <ul>
+              <li>
+                <p><code>SolaceManaged</code>—The default server certificate installed on the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+              </li>
+              <li>
+                <p><code>Custom</code>—a custom server certificate installed on the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>validityNotBefore</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The date the server certificate is valid from in ISO 8601 date/time format.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>validityNotAfter</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The date the server certificate expires, in ISO 8601 date/time format.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>subjectCN</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The server certificate’s common name (CN).</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <code>serialNumber</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">The server certificate’s serial number. The certificate authority issues the serial number, which uniquely identifies the certificate.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <code>installedCertificateDetails</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>This field appears only for an installed server certificate. The field provides information about the server certificate, and subject public key in a string, including:
+							<ul><li>Serial Number</li><li>Signature Algorithm</li><li>Issuer</li><li>Validity dates</li><li>Subject</li><li>Subject public key info, including:</li><ul><li>Public Key Algorithm</li><li>RSA Public Key value</li><li>Modulus</li></ul></ul></p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="delete_cert"/>Deleting a Server Certificate From an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h2>
+    <p>You can delete server certificates when you no longer need them. You cannot delete the <MadCap:variable name="Variables.CompanyName"/>-provided default server certificate or a currently installed custom server certificate. </p>
+    <p>To delete a server certificate<MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">, issue a DELETE request to: </MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> use the <a href="[%=Manifest-Products-Links.ReadmeReference%]/deleteservercertificatebyid" target="_blank" alt="link to delete a server certificate v2 API" class="link-offsite" title="link to delete a server certificate v2 API">Delete a server certificate by ID</a> API</MadCap:conditionalText>.<br/><pre MadCap:conditions="SAP.SapOnlyOutput" xml:space="preserve">https://${ENDPOINT}/serverCertificates/${certificateId}</pre></p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Specify the <b>Path Parameter</b> fields as follows:
+     
+            </p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">Replace the variables in the string above with the definitions listed in the table below:
+        </p>
+    <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Variable</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1" MadCap:conditions="SAP.SapOnlyOutput">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>ENDPOINT</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The URL to the <MadCap:variable name="Product-Names.broker_cloud_short"/>: <code>${CLOUD_HOST}/api/v2/missionControl/eventBrokerServices/${SERVICE_ID}</code></p>
+            <p>Where:
+			<ul><li><p><code>CLOUD_HOST</code>—The URL for the <MadCap:variable name="Product-Names.console_ui_short"/>,  for example <code>&lt;region&gt;.console.pubsub.em.services.cloud.sap</code>. For more information, see <MadCap:xref href="cloud-login-urls.htm" target="_blank" alt="Link to logging into the cloud console">Logging into the [%=Product-Names.console_ui_long%]</MadCap:xref></p></li><li><p><code>SERVICE_ID</code>—The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> where you want to create the roles. You can find the ID either:</p><ul><li>at the end of the URL for your <MadCap:variable name="Product-Names.broker_cloud_short"/>, for example: <code><MadCap:variable name="Manifest-Products-Links.CloudConsoleOnly"/>services/<b>k8vv6x131e1</b></code>, </li><li>using a GET call. See <MadCap:xref href="ght_use_rest_api_services.htm#getdetails-service">Getting the Connection Details for the [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref>.
+</li></ul></li></ul></p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <code>certificateId</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">The unique identifier of the server certificate you want to delete. You can get the certificate ID using a GET request. For more information, see <MadCap:xref href="#retrieve_cert">Retrieving Server Certificate Information from an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>A successful POST request returns code 202 Accepted, with an <code>operationId</code> as part of the payload of the response body. You can get the status of the operation <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">using the <a href="https://api.solace.dev/cloud/reference/getserviceoperation" target="_blank" alt="link to the get the status of a service operation" class="link-offsite">Get the status of a service operation</a> REST API with the <code>operationId</code> to query the status of the operation.</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">by issuing a GET request to: </MadCap:conditionalText><![CDATA[      ]]><pre MadCap:conditions="SAP.SapOnlyOutput" xml:space="preserve">https://${ENDPOINT}/operations/${operationsId}</pre></p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">Replace the variables in the string above with the definitions listed in the table below:
+        </p>
+    <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0" MadCap:conditions="SAP.SapOnlyOutput">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Variable</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1" MadCap:conditions="">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>ENDPOINT</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The URL to the <MadCap:variable name="Product-Names.broker_cloud_short"/>: <code>${CLOUD_HOST}/api/v2/missionControl/eventBrokerServices/${SERVICE_ID}</code></p>
+            <p>Where:
+			<ul><li><p><code>CLOUD_HOST</code>—The URL for the <MadCap:variable name="Product-Names.console_ui_short"/>,  for example <code>&lt;region&gt;.console.pubsub.em.services.cloud.sap</code>. For more information, see <MadCap:xref href="cloud-login-urls.htm" target="_blank" alt="Link to logging into the cloud console">Logging into the [%=Product-Names.console_ui_long%]</MadCap:xref></p></li><li><p><code>SERVICE_ID</code>—The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> where you want to create the roles. You can find the ID either:</p><ul><li>at the end of the URL for your <MadCap:variable name="Product-Names.broker_cloud_short"/>, for example: <code><MadCap:variable name="Manifest-Products-Links.CloudConsoleOnly"/>services/<b>k8vv6x131e1</b></code>, </li><li>using a GET call. See <MadCap:xref href="ght_use_rest_api_services.htm#getdetails-service">Getting the Connection Details for the [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref>.
+</li></ul></li></ul></p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1" MadCap:conditions="">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <code>operationId</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">The unique identifier of the operation you want to query, included as part of the payload of the response body to an asynchronous API post.</td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

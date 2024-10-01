@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:searchable="False">
+  <head>
+    <title/>
+    <meta name="robots" content="noindex, nofollow"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Software"/>Microsoft Hyper-V</h1>
+    <p>This tutorial walks you through the steps to set up a single <MadCap:variable name="Product-Names.pubsub_brand_only"/> <MadCap:variable name="Product-Names.broker_sw_short"/> machine image instance  in Microsoft Hyper-V.</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#before-you-begin">Before You Begin</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#get-broker">Step 1: Get a Software Event Broker</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#create-vm">Step 2: Create a New Virtual Machine</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#configure-hostname">Step 3: Configure the Host Name</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#access-cli">Step 4: Access the Solace CLI</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#review-configuration">Step 5: Review Configuration Defaults</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#next-steps">Next Steps</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="before-you-begin"/>Before You Begin</h2>
+    <p>It's assumed that you have a Windows machine with Hyper-V enabled.</p>
+    <h3><a name="system-requirements"/>System Requirements</h3>
+    <MadCap:snippetBlock src="../../../Resources/Snippets/vm-setup-system-requirements-machine-images.flsnp"/>
+    <p>The software event broker requires storage with medium to high bandwidth/IOPS and low latency. The virtual machine image uses settings for the widest compatibility; these settings are not tuned for performance. For information about getting the best storage performance for your system, consult the <a href="" target="_blank" class="link-offsite">Hyper-V documentation</a>.</p>
+    <h3><a name="ha"/>High Availability Considerations</h3>
+    <MadCap:snippetBlock src="../../../Resources/Snippets/vm-setup-HA-considerations.flsnp"/>
+    <h2 class="with-rule"><a name="get-broker"/>Step 1: Get a Software Event Broker</h2>
+    <p>The first step is to download an edition of PubSub+ <MadCap:variable name="Product-Names.broker_sw_short"/>. For Hyper-V, the event broker is distributed as a compressed Virtual Hard Disk (.vhd) file.</p>
+    <ol>
+      <li>Download the virtual machine image:<ol style="list-style-type: lower-alpha;"><li>Go to the <a href="https://solace.com/downloads/" class="link-internal">Solace PubSub+ Event Broker downloads page.</a></li><li>Scroll to the Microsoft Hyper-V section, and then select the required edition of the software event broker.</li><li>Fill in your details, and then click <b>Get The Downloads</b>.</li><li>Click <b>Download</b> under the PubSub+ edition.</li></ol><p> A file called <code>solace-pubsub-&lt;edition&gt;-&lt;version&gt;.vhd</code> is downloaded.</p></li>
+      <li>
+        <p>Verify the MD5 checksum of the downloaded file. For example, run the following command in PowerShell:</p>
+        <pre>certutil -hashfile &lt;path_to_gz&gt; MD5</pre>
+      </li>
+      <li>Unpack the compressed file to the folder where Hyper-V stores virtual hard disk images (usually <b>C:\Users\Public\Public Documents\Hyper-V\Virtual hard disks</b>).</li>
+    </ol>
+    <h2 class="with-rule"><a name="create-vm"/>Step 2: Create a New Virtual Machine</h2>
+    <p>To start an event broker instance in Hyper-V, you must create a new VM image from the VHD file.</p>
+    <p>To do this, follow these steps:</p>
+    <ol>
+      <li>Open the Hyper-V Manager.</li>
+      <li>On the left-side menu, right-click the Windows Server instance that will host the new VM and select <b>New</b> &gt; <b>Virtual Machine</b>.<p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/HyperV/hyperv-image1.png" class="img-border" alt=""/></p><p>The <b>New Virtual Machine Wizard</b> opens.</p></li>
+      <li>Once you've read the information on the <b>Before You Begin</b> screen of the wizard, click <b>Next</b>.<br/><p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/HyperV/HyperV-image2.png" class="img-border" style="max-width: 100%;" alt=""/></p></li>
+      <li>Provide a <b>Name</b> for the event broker instance, and then click <b>Next</b>.
+			<p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/HyperV/HyperV-image3.png" alt="" MadCap:mediastyle="@media print { max-width: 420px; }" style="max-width: 100%;" class="img-border"/></p></li>
+      <li>Select <b>Generation 1</b> for the virtual machine and click <b>Next</b>.<p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/HyperV/HyperV-image4.png" alt="" MadCap:mediastyle="@media print { max-width: 420px; }" style="max-width: 100%;" class="img-border"/></p></li>
+      <li>
+        <p>Assign memory for the  event broker instance. Then, click <b>Next</b>.</p>
+        <p>The memory required for the event broker depends on the number of client connections you want to support. For details, see <MadCap:xref href="../../System-Resource-Requirements.htm">System Resource Requirements</MadCap:xref>. </p>
+        <p>
+          <img src="../../../Resources/Images/SW-Broker-Setup/Machine/HyperV/HyperV-image5.png" alt="" MadCap:mediastyle="@media print { max-width: 420px; }" style="max-width: 100%;" class="img-border"/>
+        </p>
+      </li>
+      <li>Select a network adapter connected to a virtual switch. Then, click <b>Next</b>.
+            <p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/HyperV/HyperV-image6.png" alt="" MadCap:mediastyle="@media print { max-width: 420px; }" style="max-width: 100%;" class="img-border"/></p><p class="Note">You must have an external virtual switch available prior to creating the new virtual machine if the event broker instance is to be reachable from external hosts.</p></li>
+      <li>For the virtual hard disk, select the VHD file from <MadCap:xref href="#get-broker">Step 1: Get a Software Event Broker</MadCap:xref>. Then, click <b>Next</b>.
+            <p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/HyperV/HyperV-image7.png" alt="" MadCap:mediastyle="@media print { max-width: 420px; }" style="max-width: 100%;" class="img-border"/></p></li>
+      <li>Review the settings and then click <b>Finish</b>.
+            <p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/HyperV/HyperV-image8.png" alt="" MadCap:mediastyle="@media print { max-width: 420px; }" style="max-width: 100%;" class="img-border"/></p><p>Wait until the Wizard closes. The  <b>Virtual Machines</b> list displays the event broker image.</p><p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/HyperV/HyperV-image9.png" alt="" MadCap:mediastyle="@media print { max-width: 420px; }" style="max-width: 100%;" class="img-border"/></p></li>
+      <li>Right click your newly created  event broker and select <b>Settings</b>.<p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/HyperV/HyperV-image10.png" class="img-border" alt=""/></p><p>Under <b>Hardware</b>, select the <b>Processor</b> tab  and increase the number of virtual processors to 2, and then click <b>Apply</b> and <b>OK</b>.</p><p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/HyperV/HyperV-image11.png" class="img-border" alt=""/></p></li>
+      <li>Power on the  event broker.
+         <p>In the <b>Virtual Machines</b> list, right-click the  event broker instance, and then click <b>Start</b>.</p><p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/HyperV/HyperV-image12.png" alt="" MadCap:mediastyle="@media print { max-width: 420px; }" style="max-width: 100%;" class="img-border"/></p></li>
+      <li>Open the console.<p>Right-click the  event broker, then click <b>Connect</b>.</p><p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/HyperV/HyperV-image13.png" alt="" MadCap:mediastyle="@media print { max-width: 420px; }" style="max-width: 100%;" class="img-border"/></p><MadCap:snippetBlock src="../../../Resources/Snippets/vm-setup-login-prompt.flsnp"/><p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/HyperV/HyperV-image14.png" alt="" MadCap:mediastyle="@media print { max-width: 450px; }" style="max-width: 100%;" class="img-border"/></p></li>
+      <li>Log in to the event broker. <br/><MadCap:snippetBlock src="../../../Resources/Snippets/vm-setup-event-broker-login.flsnp"/><p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/HyperV/HyperV-image15.png" alt="" MadCap:mediastyle="@media print { max-width: 450px; }" style="max-width: 100%;" class="img-border"/></p><MadCap:snippetBlock src="../../../Resources/Snippets/vm-setup-user-passwords.flsnp"/></li>
+    </ol>
+    <h2 class="with-rule"><a name="configure-hostname"/>Step 3: Configure the Host Name</h2>
+    <MadCap:snippetBlock src="../../../Resources/Snippets/vm-setup-hostname.flsnp"/>
+    <h2 class="with-rule"><a name="access-cli"/>Step 4: Access the Solace CLI</h2>
+    <MadCap:snippetBlock src="../../../Resources/Snippets/vm-setup-CLI-initial-access.flsnp"/>
+    <h2 class="with-rule"><a name="review-configuration"/>Step 5: Review Configuration Defaults</h2>
+    <MadCap:snippetBlock src="../../../Resources/Snippets/vm-setup-review-configuration-defaults.flsnp"/>
+    <h2 class="with-rule"><a name="next-steps"/>Next Steps</h2>
+    <MadCap:snippetBlock src="../../../Resources/Snippets/sw-broker-setup-next-steps.flsnp"/>
+  </body>
+</html>

@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+    <body>
+        <p>There are many options that you can set with the <code>docker create</code> command that is used to build the event broker container. In this example we will show one that sets up a simple configuration suitable for a test deployment that can be used to help you become familiar with Solace PubSub+.</p>
+        <p>In this example:</p>
+        <ul>
+            <li>the <code>admin</code> Solace CLI user and an associated password are defined at container creation through the <code>username_admin_globalaccesslevel</code> and <code>username_admin_password</code> configuration keys. By default, in an event broker container, no Solace CLI users are defined, so setting these configuration keys allows the container to be administered through the Solace SolAdmin management tool without first entering the Solace CLI to create an <code>admin</code> user.</li>
+            <li>the <code><a href="../../Software-Broker/Configuring-Storage.htm#understanding-storage-group" class="link-internal">storage-group</a></code> (mapped to <code>/var/lib/solace</code> in the container) is bind mounted to <code>/mnt/solace</code> on the host. You must create the <code>/mnt/solace</code> directory on the host before creating the container. The <code>storage-group</code> requires at least 5.1 GB of storage space. See <MadCap:xref href="../../Software-Broker/System-Resource-Requirements.htm">System Resource Requirements</MadCap:xref> and <MadCap:xref href="../../Software-Broker/Container-Tasks/Config-Container-Storage.htm">Managing Storage for Container Images</MadCap:xref> for more information.</li>
+            <li>the values of <code>&lt;repository&gt;</code> and <code>&lt;tag&gt;</code> are dependent on the event broker Docker image you previously loaded. For example, if you pulled the <code>latest</code> PubSub+ Standard image from Docker, the <code>&lt;repository&gt;</code> is <code>solace/solace-pubsub-standard</code> and the <code>&lt;tag&gt;</code> is <code>latest</code>. If you loaded version 9.13.0.6 of Solace PubSub+ Enterprise edition, the value of <code>&lt;repository&gt;</code> is <code>solace-pubsub-enterprise</code> and <code>&lt;tag&gt;</code> is <code>9.13.0.6</code>. </li>
+        </ul>
+        <ol>
+            <li>Create the <code>docker-create</code> script.
+        <pre class="Code" xml:space="preserve">&gt;sudo tee /root/docker-create &lt;&lt;-EOF
+#!/bin/bash
+sudo docker create \
+--network=host \
+--uts=host \
+--shm-size=1g \
+--ulimit core=-1 \
+--ulimit memlock=-1 \
+--ulimit nofile=2448:42192 \
+--env 'username_admin_globalaccesslevel=admin' \
+--env 'username_admin_password=admin' \
+--name=solace \
+--mount type=bind,source=/mnt/solace,destination=/var/lib/solace,ro=false
+&lt;repository&gt;:&lt;tag&gt;
+EOF</pre><p>For production deployments, there are use-case dependent factors that will impact the options and configuration key settings in the <code>docker create</code> command. For more information, see <MadCap:xref href="../../Software-Broker/System-Resource-Requirements.htm">System Resource Requirements</MadCap:xref> and the Docker documentation.</p></li>
+            <li>Make the <code>docker-create</code> script executable:
+                <pre class="Code">&gt;sudo chmod +x /root/docker-create</pre></li>
+        </ol>
+    </body>
+</html>

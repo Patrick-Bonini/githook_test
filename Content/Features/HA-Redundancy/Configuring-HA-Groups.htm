@@ -1,0 +1,423 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+    <meta name="description" content="Learn to configure Solace PubSub+ software event brokers in a high-availability (HA) redundancy group."/>
+    <meta name="keywords" content="HA, high-availability, redundancy, triplets, triplet redundant"/>
+    <meta name="author" content="Solace Corporation"/>
+    <title>Configuring High-availability (HA) Redundancy Groups</title>
+  </head>
+  <body>
+    <h1>HA Group Configuration</h1>
+    <p>In this section you'll learn how to set up a high-availability (HA) redundancy group of Solace PubSub+ software event brokers. </p>
+    <p>The steps shown in this topic are generally applicable to HA group configuration, but if you need to set up an HA group on a Windows or macOS platform, instructions tailored for doing just that can be found on these pages:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="HA-Docker-Windows.htm">HA Group Configuration in Windows</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="HA-Docker-macOS.htm">HA Group Configuration in macOS</MadCap:xref>
+      </li>
+    </ul>
+    <p>If you're interested in setting up an HA group in AWS, take a look at the following Quick Start in GitHub that will take you through the steps of HA configuration:</p>
+    <ul>
+      <li>
+        <a href="https://github.com/SolaceProducts/solace-aws-ha-quickstart" target="_blank" class="link-offsite">Install and Configure Solace PubSub+ Software Event Brokers in an HA Tuple using AWS Cloud Formation</a>
+      </li>
+    </ul>
+    <p>Although the example shown in this topic uses Solace CLI, the intent is to help you become familiar with HA configuration as a step towards using more advanced, production-oriented techniques. For instance, you can also get an HA group up-and-running using configuration keys, as described in <MadCap:xref href="Config-Keys-HA-Triplets.htm">Configuring HA Groups Using Configuration Keys</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Prerequisites"/>Step 1: Review Prerequisites &amp; Configuration Parameters</h2>
+    <p>Before configuring an HA redundancy group, you need to review the following:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Prerequi">Prerequisites</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Configure">Configuration Parameters</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Bridge-Net">Considerations When Using Bridge Networking</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="Prerequi"/>Prerequisites</h3>
+    <p>The configuration steps provided in this section assume that:</p>
+    <ul>
+      <li>You have obtained a Solace PubSub+ software event broker package. To download a copy of a software event broker package, visit <a href="https://solace.com/downloads/" target="_blank" class="link-internal">Solace PubSub+ software event broker downloads</a> page.</li>
+      <li>The software event brokers to be used in the HA redundancy group use:<ul><li> Configuration defaults.</li><li>Host networking and single tenant hosts.</li></ul></li>
+    </ul>
+    <p>With regard to the above assumptions, the only configuration changes required are the following:</p>
+    <ol>
+      <li>Each software event broker in the HA redundancy group is configured with a unique host and router name (see <MadCap:xref href="../../Admin/Configuring-Host-Names.htm">Configuring Hostnames</MadCap:xref>).</li>
+      <li>Each software event broker in the HA redundancy group is configured with a unique IP address associated with the Management VRF (see <MadCap:xref href="../../Admin/IP-Interfaces/Configuring-Sw-Msg-Broker-Hosts-Interfaces.htm">Software Event Broker Host Interface Configuration</MadCap:xref>).</li>
+      <li>All software event brokers in the HA redundancy group must have the same release version. </li>
+      <li>All messaging nodes within the HA group configured to use the same  maximum number of client connections. When upgrading a monitoring node of an HA group to Solace PubSub+ version 8.10 or higher, the database is transformed to use 100 as the  maximum number of client connections (see <MadCap:xref href="../../Software-Broker/System-Resource-Requirements.htm">System Resource Requirements</MadCap:xref>).</li>
+      <li>System clocks in both the primary and backup event brokers are synchronized with a Network Time Protocol (NTP) server (see the <MadCap:xref href="../../Admin/Synchronizing-Message-Broker-Clocks.htm#Solace2">Software Event Brokers</MadCap:xref> section of Synchronizing Clocks with NTP Servers).</li>
+      <li>Each software event broker in the HA redundancy group is deployed on a different physical host system.</li>
+      <li>The primary and backup software event brokers are run in identical virtual machines (with the same amount of virtual RAM and same number of virtual processor cores) and use the same size disks for their message spools.</li>
+      <li>If you are deploying the HA redundancy group in a cloud environment, you must ensure that security rules are created for ports 8300, 8301, 8302 (the three HA configuration synchronization ports), 8741 (the HA mate link port),  and 55555 (the SMF port). See the firewall rule tables, shown below, for details.</li>
+      <li>In the example discussed in this section, the default HA mate link port is used. If you need to use some other port in your deployment, you'll need to use the <code>configure/redundancy/mate-link/port &lt;port&gt;</code> Solace CLI command to set the value. For more information about the command, you can look it up in the <MadCap:xref href="../../Admin-Ref/CLI-Reference/VMR_CLI_Commands.html">Software Event Broker CLI Commands</MadCap:xref>. <p class="TblCaption">Inbound Firewall Rules for Solace PubSub+ software event broker 1</p><table style="width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0" cellpadding="0"><col class="TableStyle-Table_Num-Column-Column1" MadCap:conditions="" style="width: 20%;"/><col class="TableStyle-Table_Num-Column-Column1" MadCap:conditions="" style="width: 20%;"/><col class="TableStyle-Table_Num-Column-Column1" MadCap:conditions="" style="width: 20%;"/><col class="TableStyle-Table_Num-Column-Column1" MadCap:conditions="" style="width: 20%;"/><col class="TableStyle-Table_Num-Column-Column1" MadCap:conditions="" style="width: 20%;"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="font-weight: bold;">Permission</th><th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="font-weight: bold;">Protocol</th><th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="font-weight: bold;">Source</th><th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="font-weight: bold;">Destination</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1" style="font-weight: bold;">Port</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Allow</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">TCP</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Solace PubSub+ software event broker 2 IP
+                    Monitoring Node IP</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Solace PubSub+ software event broker 1 IP</td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">8300</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Allow</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">TCP and UDP</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Solace PubSub+ software event broker 2 IP
+                    Monitoring Node IP</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Solace PubSub+ software event broker 1 IP</td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">8301</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Allow</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">TCP and UDP</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Solace PubSub+ software event broker 2 IP
+                    Monitoring Node IP</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Solace PubSub+ software event broker 1 IP</td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">8302</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyE-Column1-Body1">Allow</td><td class="TableStyle-Table_Num-BodyE-Column1-Body1">TCP </td><td class="TableStyle-Table_Num-BodyE-Column1-Body1">Solace PubSub+ software event broker 2 IP</td><td class="TableStyle-Table_Num-BodyE-Column1-Body1">Solace PubSub+ software event broker 1 IP</td><td class="TableStyle-Table_Num-BodyD-Column1-Body1">8741</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1">Allow</td><td class="TableStyle-Table_Num-BodyB-Column1-Body1">TCP</td><td class="TableStyle-Table_Num-BodyB-Column1-Body1">Solace PubSub+ software event broker 2 IP</td><td class="TableStyle-Table_Num-BodyB-Column1-Body1">Solace PubSub+ software event broker 1 IP</td><td class="TableStyle-Table_Num-BodyA-Column1-Body1">55555</td></tr></tbody></table><p class="TblCaption">Inbound Firewall Rules for Solace PubSub+ software event broker 2</p><table style="width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0" cellpadding="0"><col class="TableStyle-Table_Num-Column-Column1" MadCap:conditions="" style="width: 20%;"/><col class="TableStyle-Table_Num-Column-Column1" MadCap:conditions="" style="width: 20%;"/><col class="TableStyle-Table_Num-Column-Column1" MadCap:conditions="" style="width: 140px;"/><col class="TableStyle-Table_Num-Column-Column1" MadCap:conditions="" style="width: 20%;"/><col class="TableStyle-Table_Num-Column-Column1" MadCap:conditions="" style="width: 20%;"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="font-weight: bold;">Permission</th><th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="font-weight: bold;">Protocol</th><th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="font-weight: bold;">Source</th><th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="font-weight: bold;">Destination</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1" style="font-weight: bold;">Port</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Allow</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">TCP</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Solace PubSub+ software event broker 1 IP
+                    Monitoring Node IP</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Solace PubSub+ software event broker 2 IP</td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">8300</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Allow</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">TCP and UDP</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Solace PubSub+ software event broker 1 IP
+                    Monitoring Node IP</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Solace PubSub+ software event broker 2 IP</td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">8301</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Allow</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">TCP and UDP</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Solace PubSub+ software event broker 1 IP
+                    Monitoring Node IP</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Solace PubSub+ software event broker 2 IP</td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">8302</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyE-Column1-Body1">Allow</td><td class="TableStyle-Table_Num-BodyE-Column1-Body1">TCP </td><td class="TableStyle-Table_Num-BodyE-Column1-Body1">Solace PubSub+ software event broker 1 IP</td><td class="TableStyle-Table_Num-BodyE-Column1-Body1">Solace PubSub+ software event broker 2 IP</td><td class="TableStyle-Table_Num-BodyD-Column1-Body1">8741</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1">Allow</td><td class="TableStyle-Table_Num-BodyB-Column1-Body1">TCP</td><td class="TableStyle-Table_Num-BodyB-Column1-Body1">Solace PubSub+ software event broker 1 IP</td><td class="TableStyle-Table_Num-BodyB-Column1-Body1">Solace PubSub+ software event broker 2 IP</td><td class="TableStyle-Table_Num-BodyA-Column1-Body1">55555</td></tr></tbody></table><p class="TblCaption">Inbound Firewall Rules for Monitoring Node</p><table style="width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0" cellpadding="0"><col class="TableStyle-Table_Num-Column-Column1" MadCap:conditions="" style="width: 20%;"/><col class="TableStyle-Table_Num-Column-Column1" MadCap:conditions="" style="width: 20%;"/><col class="TableStyle-Table_Num-Column-Column1" style="width: 20%;"/><col class="TableStyle-Table_Num-Column-Column1" MadCap:conditions="" style="width: 20%;"/><col class="TableStyle-Table_Num-Column-Column1" MadCap:conditions="" style="width: 20%;"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="font-weight: bold;">Permission</th><th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="font-weight: bold;">Protocol</th><th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="font-weight: bold;">Source</th><th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="font-weight: bold;">Destination</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1" style="font-weight: bold;">Port</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Allow</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">TCP</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Solace PubSub+ software event broker 1 IP
+                    Solace PubSub+ software event broker 2 IP</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Monitoring Node IP</td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">8300</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Allow</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">TCP and UDP</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Solace PubSub+ software event broker 1 IP
+                    Solace PubSub+ software event broker 2 IP</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Monitoring Node IP</td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">8301</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1">Allow</td><td class="TableStyle-Table_Num-BodyB-Column1-Body1">TCP and UDP</td><td class="TableStyle-Table_Num-BodyB-Column1-Body1">Solace PubSub+ software event broker 1 IP
+                    Solace PubSub+ software event broker 2 IP</td><td class="TableStyle-Table_Num-BodyB-Column1-Body1">Monitoring Node IP</td><td class="TableStyle-Table_Num-BodyA-Column1-Body1">8302</td></tr></tbody></table></li>
+    </ol>
+    <h3><a name="Configure"/>Configuration Parameters</h3>
+    <p>The following table lists parameter values that are required in the configuration procedure.</p>
+    <table style="width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 20%;"/>
+      <col style="width: 40%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <col style="width: 40%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">
+                        Parameter
+                    </th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">
+                        Description
+                    </th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">
+                        Example Values
+                    </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                    Interface Name                    </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                        The name of the interface the Management VRF uses.
+                    To determine the name, enter the <code>show ip vrf management</code> command—it is the name displayed in the <code>Interface </code>column without the “:&lt;#&gt;” suffix.                    </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <code>intf0</code>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                    IP Interface Name                    </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                    The IP interface name is the interface name concatenated with a “:1”.</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>intf0:1</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                    Pre-Shared Authentication Key                    </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">32 to 256 bytes of binary data encoded in base 64. Must be the same for all members of the HA group.</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEK</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+                    IP Address                    </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>A Solace PubSub+ software event broker's unique IP address/netmask.</p>
+            <p>To determine the IP address, enter the <code>show ip vrf management</code> command—it is the IP address displayed in the output for the <code>Static V Router</code>.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+                    Primary software event broker: <code>192.168.132.16/20</code>
+Backup software event broker: <code>192.168.132.39/20</code>
+Monitoring node: <code>192.168.132.3/20</code></td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" rowspan="2">HA redundancy group parameters</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>The Solace PubSub+ software event broker name, IP address or fully qualified domain name (FQDN), and the port number for each node.</p>
+            <ul>
+              <li>The node name must be the same as the router name.</li>
+              <li>Redundancy requires three ports, which must be accessible by all nodes in a redundancy group. Port 8300 is set by default, and the two subsequent ports are used as required.</li>
+            </ul>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>
+                        Primary event broker: <code>solace1</code>, <code>connect-via 192.168.132.16</code></p>
+            <p>Backup event broker: <code>solace2</code>, <code>connect-via 192.168.132.39</code></p>
+            <p>Monitoring node: <code>solace3</code>, <code>connect-via 192.168.132.3</code></p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+                    A node role assigned for each node.</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>Primary: <code>active-standby-role primary</code></p>
+            <p>Backup: <code>active-standby-role backup</code></p>
+            <p>Monitoring: Monitoring node doesn't have the <code>active-standby-role</code> assigned.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="Bridge-Net"/>Considerations When Using Bridge Networking</h3>
+    <p>If you configure a Solace PubSub+ software event broker container to use bridge networking, the three redundancy ports (which defaults to 8300, 8301, 8302) must be published. You should ensure the following ports are accessible:</p>
+    <ul>
+      <li>port 8300 must be published for TCP</li>
+      <li>ports 8301 and 8302 must be published for TCP and UDP</li>
+    </ul>
+    <p>For example, docker create API supports the <code>-p</code> flag or <code>--publish</code> flag to publish ports. A typical <code>docker create</code> command line would include: <code>-p 8300:8300 -p 8301:8301 -p 8302:8302 -p 8301:8301/udp -p 8302:8302/udp</code>.</p>
+    <p>For more information on the use of Bridge Networking in the configuration of HA groups, refer to <MadCap:xref href="../../Software-Broker/Container-Tasks/Config-Container-Networking.htm#Port-Mapping">Port Publishing in Multi-Tenant Scenarios</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Configur2"/>Step 2: Configure the Nodes</h2>
+    <p>To configure an HA redundancy group, you must configure the primary, backup, and monitoring nodes for Direct messaging. Once all the three nodes are configured, they are effectively enabled for Direct Messaging.</p>
+    <p> To configure the Solace PubSub+ software event broker redundancy nodes, perform the following steps in order:</p>
+    <ol>
+      <li>
+        <MadCap:xref href="#Config-Primary">Configure the Primary Event Broker</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Config-Backup">Configure the Backup Event Broker</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Config-Monitoring">Configure the Monitoring Node</MadCap:xref>
+      </li>
+    </ol>
+    <p class="Tip">Before configuring Solace PubSub+ software event broker redundancy, we recommend that you first shut down the message-spool.</p>
+    <h3><a name="Config-Primary"/>Configure the Primary Event Broker</h3>
+    <p>To configure the primary event broker for an HA redundancy group, perform the following steps:</p>
+    <ol>
+      <li>On the event broker that will act as the primary (<code>solace1</code> in the examples), shut down the message spool: <pre class="Code">solace1&gt; enable
+solace1# configure
+solace1(configure)# hardware message-spool shutdown
+All message spooling will be stopped.
+Do you want to continue (y/n)? y</pre></li>
+      <li>Configure the hostlist failover mechanism:<pre class="Code">solace1(configure)# redundancy
+solace1(configure/redundancy)# switchover-mechanism hostlist
+solace1(configure/redundancy)# exit
+</pre></li>
+      <li>Configure the HA redundancy group, assign an <code>active-standby-role</code> of <code>primary</code> to this event broker, and then enable redundancy:<pre class="Code">solace1(configure)# redundancy
+solace1(configure/redundancy)# group
+solace1(configure/redundancy/group)# create node solace1
+solace1(configure/redundancy/group/node)# connect-via 192.168.132.16
+solace1(configure/redundancy/group/node)# node-type message-routing-node
+solace1(configure/redundancy/group/node)# exit
+solace1(configure/redundancy/group)# create node solace2
+solace1(configure/redundancy/group/node)# connect-via 192.168.132.39
+solace1(configure/redundancy/group/node)# node-type message-routing-node
+solace1(configure/redundancy/group/node)# exit
+solace1(configure/redundancy/group)# create node solace3
+solace1(configure/redundancy/group/node)# connect-via 192.168.132.3
+solace1(configure/redundancy/group/node)# node-type monitor-node
+solace1(configure/redundancy/group/node)# exit
+solace1(configure/redundancy/group)# exit
+solace1(configure/redundancy)# authentication
+solace1(configure/redundancy/authentication)# pre-shared-key key &lt;pre-shared-key&gt;
+solace1(configure/redundancy/authentication)# exit
+solace1(configure/redundancy)# active-standby-role primary
+solace1(configure/redundancy)# no shutdown</pre><p><u>Where</u>:</p><p><code>&lt;pre-shared-key&gt;</code> is 44 to 344 characters (which translates into 32 to 256 bytes of binary data encoded in base 64). It's used to provide authentication between nodes in a HA Group, and must be the same on each node.</p><p class="Note">In release 9.1.0 and earlier, you must use the <code>redundancy group password &lt;password&gt;</code> command  to configure the group password  for authentication between the nodes. In these  releases,  group passwords must be between 1 and 128 characters and are required to be the same on each node.  </p></li>
+    </ol>
+    <h3><a name="Config-Backup"/>Configure the Backup Event Broker</h3>
+    <p>To configure the backup event broker for an HA redundancy group, perform the following steps:</p>
+    <ol>
+      <li>On the event broker that will act as the backup (<code>solace2</code> in the examples), shut down the message spool:</li>
+      <pre class="Code">solace2&gt; enable
+solace2# configure
+solace2(configure)# hardware message-spool shutdown
+All message spooling will be stopped
+Do you want to continue (y/n)? y</pre>
+      <li>Configure hostlist as the failover mechanism:<pre class="Code">solace2(configure)# redundancy
+solace2(configure/redundancy)# switchover-mechanism hostlist</pre></li>
+      <li>Configure the HA redundancy group, assign an <code>active-standby-role</code> of <code>backup</code> to this event broker, and then enable redundancy: <pre class="Code">solace2(configure)# redundancy
+solace2(configure/redundancy)#  group
+solace2(configure/redundancy/group)# create node solace1
+solace2(configure/redundancy/group/node)# connect-via 192.168.132.16
+solace2(configure/redundancy/group/node)# node-type message-routing-node
+solace2(configure/redundancy/group/node)# exit
+solace2(configure/redundancy/group)# create node solace2
+solace2(configure/redundancy/group/node)# connect-via 192.168.132.39
+solace2(configure/redundancy/group/node)# node-type message-routing-node
+solace2(configure/redundancy/group/node)# exit
+solace2(configure/redundancy/group)# create node solace3
+solace2(configure/redundancy/group/node)# connect-via 192.168.132.3
+solace2(configure/redundancy/group/node)# node-type monitor-node
+solace2(configure/redundancy/group/node)# exit
+solace2(configure/redundancy/group)# exit
+solace2(configure/redundancy)# authentication
+solace2(configure/redundancy/authentication)# pre-shared-key key &lt;pre-shared-key&gt;
+solace2(configure/redundancy/authentication)# exit
+solace2(configure/redundancy)# active-standby-role backup
+solace2(configure/redundancy)# no shutdown</pre><p><u>Where</u>:</p><p><code>&lt;pre-shared-key&gt;</code> is 44 to 344 characters (which translates into 32 to 256 bytes of binary data encoded in base 64). It's used to provide authentication between nodes in a HA Group, and must be the same on each node.</p><p class="Note">In release 9.1.0 and earlier, you must use the <code>redundancy group password &lt;password&gt;</code> command  to configure the group password  for authentication between the nodes. In these  releases,  group passwords must be between 1 and 128 characters and are required to be the same on each node.  </p></li>
+    </ol>
+    <h3><a name="Config-Monitoring"/>Configure the Monitoring Node</h3>
+    <p>To configure the monitoring node for an HA redundancy group, perform the following steps:</p>
+    <ol>
+      <li>On the event broker that will act as the monitoring node (<code>solace3</code> in the examples), reload the default configuration:<pre class="Code">solace3# reload default-config monitoring-node
+This command causes a reload of the system
+Do you want to continue (y/n)? y</pre><div class="Note"><p>For Solace PubSub+ software event brokers running as containers, after reloading the default configuration for the monitoring node, you must start the container manually.</p></div></li>
+      <li>Configure the hostlist failover mechanism:<pre class="Code">solace3(configure)# redundancy
+solace3(configure/redundancy)# switchover-mechanism hostlist</pre></li>
+      <li>Configure the HA redundancy group and enable redundancy.
+            <p>Notice that as a monitoring node, this event broker doesn't have the active-standby-role assigned.</p><pre class="Code">solace3(configure)# redundancy
+solace3(configure/redundancy)# group
+solace3(configure/redundancy/group)# create node solace1
+solace3(configure/redundancy/group/node)# connect-via 192.168.132.16
+solace3(configure/redundancy/group/node)# node-type message-routing-node
+solace3(configure/redundancy/group/node)# exit
+solace3(configure/redundancy/group)# create node solace2
+solace3(configure/redundancy/group/node)# connect-via 192.168.132.39
+solace3(configure/redundancy/group/node)# node-type message-routing-node
+solace3(configure/redundancy/group/node)# exit
+solace3(configure/redundancy/group)# create node solace3
+solace3(configure/redundancy/group/node)# connect-via 192.168.132.3
+solace3(configure/redundancy/group/node)# node-type monitor-node
+solace3(configure/redundancy/group/node)# exit
+solace3(configure/redundancy/group)# exit
+solace3(configure/redundancy)# authentication
+solace3(configure/redundancy/authentication)# pre-shared-key key &lt;pre-shared-key&gt;
+solace3(configure/redundancy/authentication)# exit
+solace3(configure/redundancy)# no shutdown</pre><p><u>Where</u>:</p><p><code>&lt;pre-shared-key&gt;</code> is 44 to 344 characters (which translates into 32 to 256 bytes of binary data encoded in base 64). It's used to provide authentication between nodes in a HA Group, and must be the same on each node.</p><p class="Note">In release 9.1.0 and earlier, you must use the <code>redundancy group password &lt;password&gt;</code> command  to configure the group password  for authentication between the nodes. In these  releases, group passwords must be between 1 and 128 characters and are required to be the same on each node.</p></li>
+    </ol>
+    <h2 class="with-rule"><a name="Configur3"/>Step 3: Enable Guaranteed Messaging</h2>
+    <p>By default, an HA group has Guaranteed messaging disabled. It can only be enabled after the primary, backup, and monitoring nodes have redundancy configured, and although the use of Guaranteed messaging is optional, it's recommended because it's required for the group to:</p>
+    <ul>
+      <li>Accept clients that send or receive Guaranteed messages.</li>
+      <li>Use Config-Sync.</li>
+    </ul>
+    <p>Prior to release 9.2.0, <code>mate-link connect-via [&lt;addr-port&gt;]</code> was used to start the mate-link connection. In release 9.2.0+,<code> mate-link connect via</code> command has been deprecated and instead the connect-via address from the group node is used by default. In the example below, the default HA mate link port is used, if you need to use some other port in your deployment, execute the <code>configure/redundancy/mate-link/port &lt;port&gt;</code> Solace CLI command to set the value.</p>
+    <p>To enable Guaranteed messaging for an HA group, perform the following steps on the primary and backup event brokers:</p>
+    <ol>
+      <li>Enable the message spool on both event brokers.
+            <p>On the primary, enter the following commands:</p><pre class="Code">solace1(configure)# hardware message-spool
+solace1(configure/hardware/message-spool)# no shutdown
+solace1(configure/hardware/message-spool)# exit
+solace1(configure/hardware)# exit
+</pre><p>On the backup, enter the following commands:</p><pre class="Code">solace2(configure)# hardware message-spool
+solace2(configure/hardware/message-spool)# no shutdown
+solace2(configure/hardware/message-spool)# exit
+solace2(configure/hardware)# exit</pre></li>
+      <li>Start the mate-link service on both event brokers.
+            <p>On the primary, enter the following commands:</p><pre class="Code">solace1(configure)# service mate-link
+solace1(configure/service/mate-link)# no shutdown
+solace1(configure/service/mate-link)# exit
+solace1(configure/service)# exit</pre><p>On the backup, enter the following commands:</p><pre class="Code">solace2(configure)# service mate-link
+solace2(configure/service/mate-link)# no shutdown
+solace2(configure/service/mate-link)# exit
+solace2(configure/service)# exit</pre></li>
+      <li><u>Optional</u>: You can enable encryption on the mate-link.</li>
+      <p>On the primary, enter the following commands:</p>
+      <pre class="Code">solace1(configure)# redundancy mate-link
+solace1(configure/redundancy/mate-link)# ssl
+solace1(configure/redundancy/mate-link)# exit
+solace1(configure/redundancy)# exit</pre>
+      <p>On the backup, enter the following commands:</p>
+      <pre class="Code">solace2(configure)# redundancy mate-link
+solace2(configure/redundancy/mate-link)# ssl
+solace2(configure/redundancy/mate-link)# exit
+solace2(configure/redundancy)# exit</pre>
+      <li>To verify that Guaranteed messaging for the group is enabled, use the <code>show redundancy</code> command. The values of <code>ADB Link To Mate</code>, <code>ADB Hello To Mate</code>, and <code>Message Spool Status</code> are what you need to look at.
+            <p>On the primary you should see <code>Up</code> and <code>AD-Active</code>:</p><pre class="Code">solace1(configure/redundancy)# show redundancy
+Configuration Status     : Enabled
+	
+. . . 
+	
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+	
+. . . 
+
+Message Spool Status           AD-Active</pre><p>Likewise, on the backup you should see <code>Up</code> and <code>AD-Standby</code>:</p><pre class="Code">solace2(configure/redundancy)# show redundancy
+Configuration Status     : Enabled
+
+. . . 
+
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+. . . 
+
+Message Spool Status           AD-Standby</pre></li>
+    </ol>
+    <h2 class="with-rule"><a name="Step"/>Step 4: Enable Config-Sync</h2>
+    <p>After a Solace PubSub+ software event broker HA redundancy group is configured to support Guaranteed messaging, use Config-Sync to synchronize configurations between primary and backup event brokers.</p>
+    <p class="Note">For Config-Sync to be enabled, make sure that the inbound TCP rule at port 55555 is allowed for the mate event broker to connect. See <MadCap:xref href="#Prerequi">Prerequisites</MadCap:xref> for more information.</p>
+    <h3><a name="Config-Config-Sync"/>Set up Config-Sync without TLS</h3>
+    <p>To enable Config-Sync for the HA group, perform the following steps:</p>
+    <ol>
+      <li>Enable Config-Sync.
+               <p>On the primary (<code>solace1</code>) event broker enter the following commands:</p><pre class="Code">solace1(configure)# config-sync
+solace1(configure/config-sync)# no shutdown
+solace1(configure/config-sync)# exit
+solace1(configure)# exit
+</pre><p>On the backup (<code>solace2</code>) event broker enter the following commands:</p><pre class="Code">solace2(configure)# config-sync
+solace2(configure/config-sync)# no shutdown
+solace2(configure/config-sync)# exit
+solace2(configure)# exit</pre></li>
+      <li>Assert the primary event broker's configuration.
+            <p>When enabling Config-Sync for the first time on an HA pair, you must assert the system-level configuration of the leader event broker (usually it's the primary event broker in the pair) over its mate.</p><p>As a result of this operation the <code>Oper Status</code> of Config-Sync should change from <code>Down</code> to <code>Up</code> on both primary and backup event brokers (check it with the <code>show config-sync</code> User EXEC command).</p><pre class="Code" xml:space="preserve">solace1# admin
+solace1(admin)# config-sync
+solace1(admin/config-sync)# assert-leader router
+Processed 1 config-sync tables.</pre></li>
+      <li>Assert one Message VPN's configuration.
+            <p>If the Message VPNs' configurations are out-of-sync, you must manually synchronize a Message VPN configuration between two event brokers. To do this, you must select one of the message VPNs as a leader (it doesn't have to be on the leader or primary event broker), and assert its configuration over the same Message VPN on the other event broker.</p><pre class="Code" xml:space="preserve">solace1(admin/config-sync)# assert-leader message-vpn myvpn
+WARNING: This command can temporarily disconnect clients on the AD-inactive appliance. As well in-flight messages may not be delivered
+to AD endpoints on the AD-active appliance if those endpoints are not currently configured the same as they are on this appliance.
+Do you want to continue (y/n)? y
+Processed 1 config-sync tables.</pre></li>
+    </ol>
+    <h3><a name="Enable"/>Set up Config-Sync over TLS</h3>
+    <p>To enable Config-Sync over TLS for the HA group, perform the following steps.</p>
+    <p class="Note">All event brokers in the HA group must be configured with the same pre-shared authentication key as shown in the previous steps to be able to enable Config-Sync over TLS.</p>
+    <ol>
+      <li>Enable Config-Sync. <p>On the primary (<code>solace1</code>) event broker enter the following commands:</p><pre class="Code">solace1(configure)# config-sync
+solace1(configure/config-sync)# ssl
+solace1(configure/config-sync)# no shutdown
+solace1(configure/config-sync)# exit
+solace1(configure)# exit
+</pre><p>On the backup (<code>solace2</code>) event broker enter the following commands:</p><pre class="Code">solace2(configure)# config-sync
+solace2(configure/config-sync)# ssl
+solace2(configure/config-sync)# no shutdown
+solace2(configure/config-sync)# exit
+solace2(configure)# exit</pre></li>
+      <li>Assert the primary event broker's configuration.
+            <p>When enabling Config-Sync for the first time on an HA pair, you must assert the system-level configuration of the leader event broker (usually it's the primary event broker in the pair) over its mate.</p><p>As a result of this operation the <code>Oper Status</code> of Config-Sync should change from <code>Down</code> to <code>Up</code> on both primary and backup event brokers (check it with the <code>show config-sync</code> User EXEC command).</p><pre class="Code" xml:space="preserve">solace1# admin
+solace1(admin)# config-sync
+solace1(admin/config-sync)# assert-leader router
+Processed 1 config-sync tables.</pre></li>
+      <li>Assert one Message VPN's configuration.
+            <p>If the Message VPNs' configurations are out-of-sync, you must manually synchronize a Message VPN configuration between two event brokers. To do this, you must select one of the message VPNs as a leader (it doesn't have to be on the leader or primary event broker), and assert its configuration over the same Message VPN on the other event broker.</p><pre class="Code" xml:space="preserve">solace1(admin/config-sync)# assert-leader message-vpn myvpn
+WARNING: This command can temporarily disconnect clients on the AD-inactive appliance. As well in-flight messages may not be delivered
+to AD endpoints on the AD-active appliance if those endpoints are not currently configured the same as they are on this appliance.
+Do you want to continue (y/n)? y
+Processed 1 config-sync tables.</pre></li>
+    </ol>
+    <h2 class="with-rule"><a name="Validate-Failover"/>Step 5: Validate Failover</h2>
+    <p>To validate the HA group's failover operation, perform the following steps:</p>
+    <ol>
+      <li>Manually release activity on the primary event broker (see <MadCap:xref href="Maintaining-Event-Broker-Redundancy-All-Broker.htm#Releasing-Activity">Releasing Router Activity</MadCap:xref>), and test that messages are being published and received by the backup event broker.  
+<pre class="Code">solace1&gt; enable
+solace1# configure
+solace1(configure)# redundancy
+solace1(configure/redundancy)# release-activity</pre><p>Note that after running the <code>release-activity</code> command, the backup node will be up, but the redundancy will be down. You must run the <code>no release-activity</code>, as shown in Step 3 below, to ensure the primary node rejoins the HA group, and the redundancy is back up.</p></li>
+      <li>Validate that all the clients successfully reconnect to the backup event broker after activity is released on the primary event broker, and test messages continue to be published and received as expected.
+            <p>Use the <code>show stats client</code> command to check the client connections on the backup event broker. The total number of connected clients on the back event broker must same as it was in the primary event broker.</p><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example :</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code">solace2# show stats client
+Total Clients:            4
+Total Clients Connected:  4
+. . .
+</pre></MadCap:dropDownBody></MadCap:dropDown></p></li>
+      <li>Manually take the activity back to the primary event broker.<pre class="Code">solace1(configure/redundancy)# no release-activity
+solace1(configure/redundancy)# home</pre></li>
+      <li>Force the backup event broker to give up activity (see <MadCap:xref href="Maintaining-Event-Broker-Redundancy-All-Broker.htm#Give-Up-Activity">Forcing Backups to Give Up Activity to Primaries</MadCap:xref>).<pre class="Code">solace2&gt; enable
+solace2# admin
+solace2(admin)# redundancy
+solace2(admin/redundancy)# revert-activity</pre></li>
+      <li>Validate that all the clients reconnect back to the primary event broker after the activity is released on the backup event broker, and test that messages continue to be published and received as expected.<p><p>Use the <code>show stats client</code> command to check the client connections on the primary event broker. </p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example :</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code">solace1# show stats client
+Total Clients:            4
+Total Clients Connected:  4
+. . .
+</pre></MadCap:dropDownBody></MadCap:dropDown></p></li>
+    </ol>
+    <h2 class="with-rule"><a name="Next-Steps"/>Next Steps</h2>
+    <p>You now have three Solace PubSub+ software event brokers configured in an HA group. You can now do things like use the SDKPerf tool to test messaging, configure an event broker's health check related settings, or configure the  maximum number of client connections.</p>
+    <ul>
+      <li><a href="https://solace.com/downloads" target="_blank" class="link-internal">Download SDKPerf</a>—To get started, see SDKPerf's <MadCap:xref href="../../API/SDKPerf/SDKPerf.htm#Quick">Quick Start</MadCap:xref> guide.</li>
+      <li><MadCap:xref href="../../Admin/Load-Balancer-Health-Check.htm">Load Balancer Health Checks</MadCap:xref>—If the Solace PubSub+ software event brokers are operating in conjunction with an environment provided load balancer, it is recommended to review the <MadCap:xref href="../../Admin/Load-Balancer-Health-Check.htm">Load Balancer Health Checks</MadCap:xref> feature page.</li>
+      <li><MadCap:xref href="../../Software-Broker/Set-Scaling-Params-HA.htm">Setting Scaling Parameters for an HA Group</MadCap:xref>—Configure system scaling parameters for  HA redundancy groups using the Solace CLI.</li>
+    </ul>
+  </body>
+</html>

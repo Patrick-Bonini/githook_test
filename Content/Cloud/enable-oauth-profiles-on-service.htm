@@ -1,0 +1,506 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Configuring OAuth Profiles for Management Access to <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</h1>
+    <p MadCap:conditions="Default.HideFromAllOutput"><b>**NOTE TO WRITERS:</b> This topic is heavily conditioned due to SAP not having access to the V2 REST APIs on readme.com. When making changes, if those changes reference the v2 REST API, unless SAP has received access to them, you must make sure links do not point to readme.com. And yes, that means you probably have to write the API out as a call for SAP, as well as link to readme for Solace.</p>
+    <p>You can configure management access to your <MadCap:variable name="Product-Names.broker_cloud_short"/>s using OAuth profiles. OAuth profiles allow users and machines (other computers and applications) to connect and authenticate using single sign-on (SSO) through an OAuth identity provider (IdP). An <MadCap:variable name="Product-Names.broker_cloud_short"/>  can have up to three OAuth profiles. Using OAuth profiles, you can map custom roles in your IdP to <a href="cloud-user-management.htm" target="_blank" class="link-internal">existing roles in <MadCap:variable name="Product-Names.cloud_product_short"/></a>. Users and machines connecting to your <MadCap:variable name="Product-Names.broker_cloud_short"/>s have permissions granted by the mapped roles.</p>
+    <p>Before configuring OAuth profiles using the <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">REST APIs for <MadCap:variable name="Product-Names.cloud_product_short"/></MadCap:conditionalText><a href="[%=Manifest-Products-Links.ReadmeReference%]/getresource" target="_blank" class="link-offsite" MadCap:conditions="SAP.SapHideFromOutput">SEMP Proxy v2 REST APIs</a> you must: 
+        <ul><li>review the <MadCap:xref href="#considerations">Considerations for Configuring OAuth Profiles for Authentication</MadCap:xref></li><li><a href="#config-provider" alt="link to configuring your OAUth provider" class="link-internal">configure your OAuth identity provider</a></li></ul></p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">If you want to configure management access to <MadCap:variable name="Product-Names.broker_cloud_short"/>s using the same SSO authentication as the <MadCap:variable name="Product-Names.console_ui_short"/>, see <MadCap:xref href="configure-oauth-for-broker-services.htm" target="_blank" alt="Link to configuring SSO for event broker services">Configuring Single Sign-On for [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref>.</p>
+    <p>Depending on whether you are configuring access for individual users or machines (<MadCap:variable name="Product-Names.broker_cloud_short"/> as resource server for other <MadCap:variable name="Product-Names.broker_cloud_short"/>s, computers, or applications) you must then:
+            <ul><li><a href="#config-multi-role-login" alt="Link to multi-role login" class="link-internal">configure an OAuth profile for user based authentication</a></li><li><a href="#machine-to-machine" alt="Link to machine to machine configuration" class="link-internal">configure an OAuth profile for machine-to-machine based authentication</a></li></ul></p>
+    <h2><a name="considerations"/>Considerations for Configuring OAuth Profiles for Authentication</h2>
+    <p>Here are some considerations when configuring OAuth profiles for your <MadCap:variable name="Product-Names.broker_cloud_short"/>s:
+        <ul><li><p>Configuring OAuth profiles on <MadCap:variable name="Product-Names.broker_cloud_short"/>s to enable sigle sign-on (SSO) through your identity provider (IdP) is only possible using the <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">REST API for <MadCap:variable name="Product-Names.cloud_product_short"/></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><a href="[%=Manifest-Products-Links.ReadmeReference%]/getresource" target="_blank" class="link-offsite">SEMP Proxy v2 REST APIs</a></MadCap:conditionalText>.</p></li><li><p>You can create a maximum of three OAuth profiles per <MadCap:variable name="Product-Names.broker_cloud_short"/>. </p></li><li><p>You must configure your OAuth identity provider  correctly. For more information, see <MadCap:xref href="#config-provider">Configuring Your OAuth Identity Provider</MadCap:xref>.</p></li><li MadCap:conditions="Default.HideFromAllOutput"><p>The <MadCap:variable name="Product-Names.broker_cloud_short"/> do not support multiple OAuth profiles using the same IdP. </p></li><li><p><MadCap:variable name="Product-Names.broker_cloud_short_intitalcap"/>s prior to 10.6.0 support only a single OAuth profile per IdP. </p></li><li><p><MadCap:variable name="Product-Names.broker_cloud_short_intitalcap"/>s 10.6.0 and later support two OAuth profiles per IdP. One OAuth profile must be for <a href="#config-multi-role-login" alt="link to setting up user authentication" class="link-internal">user authentication</a>. The other OAuth profile must be for <a href="#machine-to-machine" alt="link to configuring machine-to-machine authentication" class="link-internal">machine-to-machine authentication</a>. </p></li><li MadCap:conditions="SAP.SapOnlyOutput"><p>You can't map <MadCap:variable name="Product-Names.cloud_product_short"/> roles to SAP IAS custom claims.</p></li><li MadCap:conditions="SAP.SapOnlyOutput"><p>You can't configure <MadCap:variable name="Product-Names.broker_cloud_short"/>s to use claim arrays (for example, <code>{"claim":["claimOne","claimTwo"]}</code>) </p></li><li><p>You require an API token generated from the <MadCap:variable name="Product-Names.console_ui_short"/> by an account with the Administrator or <MadCap:variable name="Product-Names.cm_editor"/> roles. The API token must have the following permissions:</p><ul><li><p>Get My Services with Management Credentials</p></li><li><p>Create Services</p></li></ul><p>For more information see <MadCap:xref href="ght_api_tokens.htm#Create">Creating an API Token</MadCap:xref>.</p></li></ul></p>
+    <h2><a name="config-provider"/>Configuring Your OAuth Identity Provider</h2>
+    <p>Using OAuth profiles for authenticating management access to your <MadCap:variable name="Product-Names.broker_cloud_short"/> for users depends upon OAuth 2.0 and OpenID Connect (OIDC). OAuth profiles for machine-to-machine authentication depend upon OAuth client credential grants. Numerous identity providers (IdP) provide these tools, some more well know examples include:</p>
+    <ul>
+      <li>
+        <p>
+          <a href="https://www.okta.com/openid-connect/" target="_blank" alt="link to Okta open ID connect documentation" class="link-offsite">Okta</a>
+        </p>
+      </li>
+      <li>
+        <p>
+          <a href="https://auth0.com/docs/authenticate/protocols/openid-connect-protocol" alt="Link to Auth0 openID connect documentation" class="link-offsite">Auth0</a>
+        </p>
+      </li>
+      <li>
+        <p>
+          <a href="https://developers.google.com/identity/openid-connect/openid-connect" target="_blank" alt="link to Google Identity OpenID Connect documentation" class="link-offsite">Google Identity</a>
+        </p>
+      </li>
+      <li>
+        <p>
+          <a href="https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols-oidc" target="_blank" alt="link to Microsoft Identity Platform OpenID Connect documentation" class="link-offsite" title="link to Google Identity OpenID Connect documentation">Microsoft Identity Platform</a>
+        </p>
+      </li>
+      <li>
+        <p>
+          <a href="https://help.sap.com/docs/cloud-identity-services" target="_blank" alt="link to SAP Identity Authentication Service openID connect documentation" class="link-offsite" title="link to SAP Identity Authentication Service openID connect documentation">SAP Identity Authentication Service</a>
+        </p>
+      </li>
+    </ul>
+    <p>Using OAuth profiles requires that you configure your IdP correctly. There is a configuration process for each type of authorization, with each having similar requirements:</p>
+    <ul>
+      <li>
+        <p>User-based authentication</p>
+      </li>
+      <li>
+        <p>Machine-to-machine based authentication for connecting, where the <MadCap:variable name="Product-Names.broker_cloud_short"/> is a resource server for other connecting <MadCap:variable name="Product-Names.broker_cloud_short"/>s, computers, or applications.</p>
+      </li>
+    </ul>
+    <p>We outline the configuration process and requirements for each below. If you need help configuring your IdP, refer to their OpenID Connect documentation for authenticating users, and their client credential grants documentation for authenticating machines.</p>
+    <dl>
+      <dt>User-based authentication</dt>
+      <dd>For user-based authentication, the general IdP configuration process includes:
+            <ul><li><p>adding a login flow</p></li><li><p>adding roles and users, including verifying user email addresses, and assigning users to the created roles</p></li><li><p>creating an OAuth application</p></li><li><p>configuring the URLs</p></li></ul></dd>
+      <dd>When configured correctly, your IdP provides the following information at a minimum:            <ul><li><p>A client ID</p></li><li><p>A client secret</p></li><li><p>An OpenID Connect Discovery or Configuration endpoint where your IdP publishes metadata. This is typically an URL ending in <code>.well-known/openid-configuration</code>. </p></li></ul></dd>
+      <dd>Record the provided information, as it is required to set up authentication using the REST APIs in <MadCap:xref href="#config-multi-role-login">Configuring OAuth Profiles for Role-Based Authentication for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</dd>
+    </dl>
+    <dl>
+      <dt>Machine-to-Machine setup</dt>
+      <dd>To configure SSO authentication so connecting machines (other <MadCap:variable name="Product-Names.broker_cloud_short"/>s, computers, and applications) use the <MadCap:variable name="Product-Names.broker_cloud_short"/> as a resource server, you must complete the following general IdP configuration process:
+            <ul><li><p>Set up an API, including providing it with the <b>Hostname URL</b> (located under <b>DMR Cluster</b> in the <a href="cloud-configure-messaging-services.htm#service-details-information" target="_blank" class="link-internal">Detailed Service Information</a> page) and assign permissions to it.</p></li><li><p>Create a machine-to-machine OAuth application and assign an API and credential permissions to it.<MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"> See <a href="https://help.sap.com/docs/identity-authentication/identity-authentication/consume-apis-from-other-applications" target="_blank" class="link-offsite">Consume APIs from Other Applications</a> in the SAP documentation.</MadCap:conditionalText></p></li></ul></dd>
+      <dd>When configured correctly, your IdP may provide the following information:<![CDATA[           ]]><ul><li><p>A client ID (required for validation using an introspection endpoint) </p></li><li><p>A client secret  (required for validation using an introspection endpoint)</p></li><li><p>The discovery endpoint where your IdP publishes metadata. It is typically an URL ending in <code>.well-known/openid-configuration</code>. </p></li></ul></dd>
+      <dd>Record the information you require,  as it is required to set up authentication using the REST APIs in <MadCap:xref href="#machine-to-machine">Configuring OAuth Profiles for Machine-to-Machine Authentication for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>. You don't need the client ID and client secret if configuring validation of the token using JSON Web Key Sets (JWKS). </dd>
+    </dl>
+    <p> For more information about configuring your OAuth IdP<MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"> or SAP IAS</MadCap:conditionalText> correctly, see  your OAuth provider documentation <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">or the <a href="https://help.sap.com/docs/identity-authentication/identity-authentication/operation-guide" target="_blank" class="link-offsite">SAP Identity Authentication Operation Guide</a></MadCap:conditionalText>. </p>
+    <h2 class="with-rule"><a name="config-multi-role-login"/>Configuring OAuth Profiles for Role-Based Authentication for an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h2>
+    <p>You can configure <MadCap:variable name="Product-Names.broker_cloud_short"/>s to authenticate connecting users through your OAuth identity provider (IdP). You do this by creating OAuth profiles on the <MadCap:variable name="Product-Names.broker_cloud_short"/>. The OAuth profile contains information the <MadCap:variable name="Product-Names.broker_cloud_short"/> requires to enable single sign-on through your IdP. You can map <a href="cloud-user-management.htm#Roles" target="_blank" class="link-internal">existing roles in <MadCap:variable name="Product-Names.cloud_product_short"/></a> through the OAuth profiles to custom roles in your IdP, providing role-based permissions to authenticated users. Role-based mappings allow you to provide direct access to the <MadCap:variable name="Product-Names.broker_cloud_short"/> while restricting permissions to roles assigned through your (IdP) configuration.</p>
+    <p>In the procedures below, we create an OAuth profile, secure redirects from your IdP, and then map two roles: an editor and a viewer. We map these roles to <a href="cloud-user-management.htm#Roles" target="_blank" class="link-internal"> existing <MadCap:variable name="Product-Names.cluster_mgr"/> roles</a>, providing the editor with permissions to perform an array of tasks through <MadCap:variable name="Product-Names.pubsubmanager_short"/>, and restricting the viewer to logging in and viewing the <MadCap:variable name="Product-Names.broker_cloud_short"/> settings. </p>
+    <p>Before configuring your <MadCap:variable name="Product-Names.broker_cloud_short"/>s OAuth profiles for authenticating user log in, ensure you have <a href="#config-provider" class="link-internal">configured your OAuth identity provider correctly</a>. To configure the OAuth profile on your <MadCap:variable name="Product-Names.broker_cloud_short"/>, follow these steps:</p>
+    <ol>
+      <li>
+        <p>
+          <MadCap:xref href="#create-connection-to-idp">Creating an OAuth Profile on the [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#secure-idp-redirects">Securing the Redirects From Your Identity Provider</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#create-roles">Creating the Roles for Authentication </MadCap:xref>
+        </p>
+      </li>
+    </ol>
+    <h3><a name="create-connection-to-idp"/>Creating an OAuth Profile on the <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h3>
+    <p>You require the following information from your IdP to complete this procedure:</p>
+    <ul>
+      <li>
+        <p>A client ID</p>
+      </li>
+      <li>
+        <p>A client secret</p>
+      </li>
+      <li>
+        <p>(optional) Custom claims from your IdP if mapping roles</p>
+      </li>
+      <li>
+        <p>The OpenID Connect Discovery or Configuration endpoint where your IdP publishes metadata. This is an URL typically ending with <code>.well-known/openid-configuration</code>. </p>
+      </li>
+    </ul>
+    <p>Complete the following steps to create the OAuth profile on the <MadCap:variable name="Product-Names.broker_cloud_short"/>. 
+</p>
+    <ol>
+      <li>
+        <p MadCap:conditions="SAP.SapHideFromOutput"><a name="step1-get-service"/>Determine the unique identifier for the <MadCap:variable name="Product-Names.broker_cloud_short"/> you want to enable role-based authentication  using one of the following methods:</p>
+        <ul MadCap:conditions="SAP.SapHideFromOutput">
+          <li>
+            <p>In <MadCap:variable name="Product-Names.cluster_mgr"/>, select the <MadCap:variable name="Product-Names.broker_cloud_short"/> and get its unique identifier from the last segment in the URL. For example, <code>9c5vurtex4b</code> is the identifier from <code>https://console.solace.cloud/services/9c5vurtex4b</code>.</p>
+          </li>
+          <li>
+            <p>Use the <a href="[%=Manifest-Products-Links.ReadmeReference%]/getservices" target="_blank" class="link-offsite">Get list of services</a> REST endpoint to find the unique identifier (id) of the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+          </li>
+        </ul>
+        <p MadCap:conditions="SAP.SapHideFromOutput">For example, on the <a href="[%=Manifest-Products-Links.ReadmeReference%]/getservices" target="_blank" class="link-offsite">Get list of services</a> page, paste your API token into the <b>Bearer</b> field and then click <b>Try It!</b>. To find your <MadCap:variable name="Product-Names.broker_cloud_short"/> named <b>My-Primary-Service</b>, you can find that string in the name object and its corresponding id object is the unique identifier for the service, which is <code>9wbofn0wvwb</code> as shown:</p>
+        <p MadCap:conditions="SAP.SapHideFromOutput">
+          <div class="thumbnail-container">
+            <img class="solacethumbnail" src="../Resources/Images/Cloud/restapi/oauth_profile_get_service.png" alt=""/>
+          </div>
+        </p>
+      </li>
+      <li MadCap:conditions="SAP.SapHideFromOutput">Use the <a href="https://api.solace.dev/cloud/reference/createresource" target="_blank" class="link-offsite">Create a resource object for an <MadCap:variable name="Product-Names.broker_cloud_short"/> using a SEMP POST API</a> to create an OAuth profile on the <MadCap:variable name="Product-Names.broker_cloud_short"/>. </li>
+      <p MadCap:conditions="SAP.SapHideFromOutput">Specify the <b>Path Parameter</b> fields as follows:
+
+        <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Path Parameter</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><code>serviceId</code></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> where you want to create the roles. You can determine the unique identifier for an <MadCap:variable name="Product-Names.broker_cloud_short"/> using the <MadCap:variable name="Product-Names.console_ui_short"/> or by using a GET call. See <a href="[%=Manifest-Products-Links.ReadmeReference%]/getservices" target="_blank" class="link-offsite" MadCap:conditions="SAP.SapHideFromOutput">Get a list of event broker services</a>.</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1"><code>resourcePath</code></td><td class="TableStyle-Table_Num-BodyA-Column1-Body1">The resource path where you want to define the resource object. For example, <code>oauthProfiles/machineRole</code>. </td></tr></tbody></table></p>
+      <p MadCap:conditions="SAP.SapHideFromOutput">In the <b>Body Params</b> field, enter the following JSON object which contains the necessary details to create the profile and connect it to your IdP. See <a href="https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/software-broker/config/index.html#/oauthProfile/createOauthProfile" target="_blank" class="link-offsite">Create an OAuth Profile object in the SEMP reference documentation</a> for a list of all possible parameters for the JSON body.</p>
+      <li MadCap:conditions="SAP.SapOnlyOutput">Create the OAuth profile on the <MadCap:variable name="Product-Names.broker_cloud_short"/> by issuing a POST request to the following URL: <br/><pre>https://${ENDPOINT}/SEMP/v2/config/oauthProfiles/${PROFILE_NAME}</pre><p MadCap:conditions="SAP.SapOnlyOutput"><a name="endpoint_def"/>Replace the variables in the string above with the definitions listed in the table below:
+      <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Variable</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><code>ENDPOINT</code></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1"><p>The URL to the <MadCap:variable name="Product-Names.broker_cloud_short"/>: <code>${CLOUD_HOST}/api/v2/missionControl/eventBrokerServices/${SERVICE_ID}/broker</code> </p><p>Where:
+			<ul><li><p><code>CLOUD_HOST</code>—The URL for the <MadCap:variable name="Product-Names.console_ui_short"/>,  for example <code>&lt;region&gt;.console.pubsub.em.services.cloud.sap</code>. For more information, see <MadCap:xref href="cloud-login-urls.htm" target="_blank" alt="Link to logging into the cloud console">Logging into the [%=Product-Names.console_ui_long%]</MadCap:xref></p></li><li><p><code>SERVICE_ID</code>—The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> where you want to create the roles. You can find the ID either:</p><ul><li>at the end of the URL for your <MadCap:variable name="Product-Names.broker_cloud_short"/>, for example: <code><MadCap:variable name="Manifest-Products-Links.CloudConsoleOnly"/>/services/<b>k8vv6x131e1</b></code>, </li><li>using a GET call. See <MadCap:xref href="ght_use_rest_api_services.htm#getdetails-service">Getting the Connection Details for the [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref>.
+</li></ul></li></ul></p></td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1"><code>PROFILE_NAME</code></td><td class="TableStyle-Table_Num-BodyA-Column1-Body1">The name of the OAuth profile. The profile name can be anything, but should describe the function of the OAuth profile.</td></tr></tbody></table></p></li>
+      <p MadCap:conditions="SAP.SapOnlyOutput">Provide the following JSON objects in the body of the POST request:</p>
+      <pre xml:space="preserve">{
+  "accessLevelGroupsClaimName": "{CUSTOM_CLAIM}",
+  "clientId": "${CLIENT_ID}",
+  "clientRedirectUri": "",
+  "clientRequiredType": "JWT",
+  "clientScope": "openid email",
+  "clientSecret": "${CLIENT_SECRET}",
+  "clientValidateTypeEnabled": false,
+  "defaultGlobalAccessLevel": "none",
+  "defaultMsgVpnAccessLevel": "none",
+  "displayName": "",
+  "enabled": true,
+  "endpointAuthorization": "",
+  "endpointDiscovery": "${ENDPOINT_DISCOVERY}",
+  "endpointDiscoveryRefreshInterval": 86400,
+  "endpointIntrospection": "",
+  "endpointIntrospectionTimeout": 1,
+  "endpointJwks": "",
+  "endpointJwksRefreshInterval": 86400,
+  "endpointToken": "",
+  "endpointTokenTimeout": 1,
+  "endpointUserinfo": "",
+  "endpointUserinfoTimeout": 1,
+  "interactiveEnabled": true,
+  "interactivePromptForExpiredSession": "",
+  "interactivePromptForNewSession": "select_account",
+  "issuer": "",
+  "oauthProfileName": "${PROFILE_NAME}",
+  "oauthRole": "client",
+  "resourceServerParseAccessTokenEnabled": true,
+  "resourceServerRequiredAudience": "",
+  "resourceServerRequiredIssuer": "",
+  "resourceServerRequiredScope": "",
+  "resourceServerRequiredType": "at+jwt",
+  "resourceServerValidateAudienceEnabled": true,
+  "resourceServerValidateIssuerEnabled": true,
+  "resourceServerValidateScopeEnabled": true,
+  "resourceServerValidateTypeEnabled": true,
+  "sempEnabled": false,
+  "usernameClaimName": "sub"
+}		 </pre>
+      <p>Replace the variables in the JSON body above with the definitions listed in the table below </p>
+      <p>
+        <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+          <col class="TableStyle-Table_Num-Column-Column1"/>
+          <col class="TableStyle-Table_Num-Column-Column1"/>
+          <thead>
+            <tr class="TableStyle-Table_Num-Head-Header1">
+              <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Variable</th>
+              <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <code>CUSTOM_CLAIM</code>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">You define custom claims in your IdP. The JSON web token (ID Token) issued as part of the authorization process contains the custom claim. You can use the custom claim to map permissions.</td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <code>CLIENT_ID</code>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The client ID is a alphanumeric string that is unique to the application you created in your IdP. It is provided by your IdP when you create the OAuth application.</td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <code>CLIENT_SECRET</code>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The client secret is a string used to sign and validate ID tokens for authentication flows. This is provided by your IdP when you create the OAuth application.</td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+                <code>ENDPOINT_DISCOVERY</code>
+              </td>
+              <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+                <p>This is the OpenID Connect Discovery or Configuration endpoint where your IdP publishes metadata. It is typically an URL ending in <code>.well-known/openid-configuration</code>. Some examples include:
+                                <ul><li>Azure:<code> https://login.microsoftonline.com/organizations/v2.0/.well-known/openid-configuration</code></li><li>SAP IAS:<code> https://accounts.sap.com/.well-known/openid-configuration</code></li></ul></p>
+                <p>If you do not configure have an OpenID Connect Discovery endpoint, you must configure the other endpoints manually.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+                <code>PROFILE_NAME</code>
+              </td>
+              <td class="TableStyle-Table_Num-BodyA-Column1-Body1">Enter the same name you used for the <code>PROFILE_NAME</code> variable in URL when making this POST.</td>
+            </tr>
+          </tbody>
+        </table>
+      </p>
+      <p>A successful POST request returns code 200.</p>
+      <p MadCap:conditions="SAP.SapOnlyOutput">You can test that the OAuth profile was successfully created by issuing a GET request to the following url: <br/><pre>https://${ENDPOINT}/SEMP/v2/config/oauthProfiles</pre>Replace the <code>ENDPOINT</code> variable with the <code>${CLOUD_HOST}/api/v2/missionControl/eventBrokerServices/${SERVICE_ID}/broker</code> URL <a href="#endpoint_def" class="link-internal">outlined at the start of this procedure</a>. </p>
+      <p MadCap:conditions="SAP.SapHideFromOutput">You can test the successful creation of the profile by using the <a href="[%=Manifest-Products-Links.ReadmeReference%]/getresource" target="_blank" class="link-offsite">Get a specific resource object for an <MadCap:variable name="Product-Names.broker_cloud_short"/> by the object path using a SEMP GET</a> API REST endpoint, where:
+            <ul><li MadCap:conditions="SAP.SapHideFromOutput"><code>serviceId</code>—The unique identifier of the event broker service that you acquired in <a href="#step1-get-service" class="link-internal">Step 1</a>.</li><li MadCap:conditions="SAP.SapHideFromOutput"><code>resourcePath</code>—The resource path where you want to create the resource object, in this case <code>oauthProfiles</code>.</li></ul></p>
+      <p>The GET returns a list of OAuth roles if your POST call completed successfully .</p>
+      <p MadCap:conditions="SAP.SapOnlyOutput">A failed REST API call returns one of the following codes:<![CDATA[
+            ]]><ul><li><p>400—Something is wrong with the request. For example, there is a typo or the requested object cannot be found.</p></li><li><p>401—Something is wrong with the client authentication. For example, the password is incorrect or the user does not exist.</p></li><li><p>403—The necessary permissions are not enabled on the API token.</p></li></ul></p>
+    </ol>
+    <h3><a name="secure-idp-redirects"/>Securing the Redirects From Your Identity Provider</h3>
+    <p>After <a href="#create-connection-to-idp" class="link-internal">creating an OAuth profile on the <MadCap:variable name="Product-Names.broker_cloud_short"/></a>, it is important for security purposes to specify which hostnames can make token requests to the OAuth server. </p>
+    <p>
+      <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">To specify the allowed hostnames, issue a POST request to the following URL:<br/> <pre>https://${ENDPOINT}/SEMP/v2/config/oauthProfiles/${PROFILE_NAME}/clientAllowedHosts</pre></MadCap:conditionalText>
+    </p>
+    <p>
+      <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">To specify the allowed hostnames, use the <a href="[%=Manifest-Products-Links.ReadmeReference%]/createresource" target="_blank" class="link-offsite">Create a resource object for an <MadCap:variable name="Product-Names.broker_cloud_short"/> using a SEMP POST</a> API to create an Allowed Value object on the <MadCap:variable name="Product-Names.broker_cloud_short"/> that contains the hostname information.</MadCap:conditionalText>
+    </p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">Replace the variables in the string above with the definitions listed in the table below:
+<![CDATA[      ]]><p><table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Variable</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><code>ENDPOINT</code></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1"><p>The URL to the <MadCap:variable name="Product-Names.broker_cloud_short"/>: <code>${CLOUD_HOST}/api/v2/missionControl/eventBrokerServices/${SERVICE_ID}/broker</code> </p><p>Where:
+</p><ul><li><p><code>CLOUD_HOST</code>—The URL for the <MadCap:variable name="Product-Names.console_ui_short"/>,  for example <code>&lt;region&gt;.console.pubsub.em.services.cloud.sap</code>. For more information, see <MadCap:xref href="cloud-login-urls.htm" target="_blank" alt="Link to logging into the cloud console">Logging into the [%=Product-Names.console_ui_long%]</MadCap:xref></p></li><li><p><code>SERVICE_ID</code>—The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> where you want to create the roles. You can find the ID either:</p><ul><li>at the end of the URL for your <MadCap:variable name="Product-Names.broker_cloud_short"/>, for example: <code><MadCap:variable name="Manifest-Products-Links.CloudConsoleOnly"/>/services/<b>k8vv6x131e1</b></code>, </li><li>using a GET call. See <MadCap:xref href="ght_use_rest_api_services.htm#getdetails-service">Getting the Connection Details for the [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref>.
+</li></ul></li></ul></td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1"><code>PROFILE_NAME</code></td><td class="TableStyle-Table_Num-BodyA-Column1-Body1">The name of the OAuth profile you created in <MadCap:xref href="#create-connection-to-idp">Create an OAuth Profile on the [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</td></tr></tbody></table></p></p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Specify the <b>Path Parameter</b> fields as follows:
+
+        <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Path Parameter</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><code>serviceId</code></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> where you want to create the roles. You can determine the unique identifier for an <MadCap:variable name="Product-Names.broker_cloud_short"/> using the <MadCap:variable name="Product-Names.console_ui_short"/> or by using a GET call. See <a href="[%=Manifest-Products-Links.ReadmeReference%]/getservices" target="_blank" class="link-offsite" MadCap:conditions="SAP.SapHideFromOutput">Get a list of event broker services</a>.</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1"><code>resourcePath</code></td><td class="TableStyle-Table_Num-BodyA-Column1-Body1">The resource path where you want to define the resource object. For example, <code>oauthProfiles/machineRole</code>. </td></tr></tbody></table></p>
+    <p>Provide the following JSON objects <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">in the body of the POST request</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">into the <b>Body Params</b> field</MadCap:conditionalText>:</p>
+    <pre xml:space="preserve">{
+    "allowedHost": "${VMR_HOST}:{SEMP_PORT}",
+    "oauthProfileName": "${PROFILE_NAME}"
+}</pre>
+    <p>Replace the variables in the JSON body above with the definitions listed in the table below:       <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Variable</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><code>VMR_HOST</code></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1"><p>The <MadCap:variable name="Product-Names.broker_cloud_short"/>'s hostname. You can find the hostname under <b>DMR Cluster</b> in the <a href="cloud-configure-messaging-services.htm#service-details-information" target="_blank" class="link-internal">Detailed Service Information</a><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">.</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> or using the <a href="[%=Manifest-Products-Links.ReadmeReference%]/getservice" target="_blank" class="link-offsite">Get a specific event broker service by identifier</a> API and selecting <code>serviceConnectionEndpoints</code> in the <b>Query Params</b> field and looking for the <code>hostNames</code> value in the response body. </MadCap:conditionalText></p></td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><code>SEMP_PORT</code></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">The port number for Secured Broker Management Host (SEMP) communication on the <MadCap:variable name="Product-Names.broker_cloud_short"/>. You can find the SEMP port number by using the procedure to edit port configuration in the <MadCap:variable name="Product-Names.console_ui_short"/>. For more information, see <MadCap:xref href="edit-port-configuration.htm#edit-port-config" target="_blank" alt="link to editing port values">Editing the Existing Port Configuration for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref></td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1"><code>PROFILE_NAME</code></td><td class="TableStyle-Table_Num-BodyA-Column1-Body1">The name of the OAuth profile you created in <MadCap:xref href="#create-connection-to-idp">Create an OAuth Profile on the [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</td></tr></tbody></table></p>
+    <p>A successful POST request returns a code 200. </p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">A failed REST API request returns one of the following codes:
+            <ul><li><p>400—Something is wrong with the request. For example, there is a typo or the requested object cannot be found.</p></li><li><p>401—Something is wrong with the client authentication. For example, the password is incorrect or the user does not exist.</p></li><li><p>403—The necessary permissions are not enabled on the API token.</p></li></ul></p>
+    <h3><a name="create-roles"/>Mapping OAuth Profiles Roles for Authentication </h3>
+    <p>After <a href="#secure-idp-redirects" class="link-internal">securing redirects</a>, you can create roles for the OAuth profile and map them to roles in your identity provider (IdP). You can create up to three OAuth profiles per <MadCap:variable name="Product-Names.broker_cloud_short"/> and assign roles to the profiles as needed. Here, we are creating two roles for the OAuth profile we created earlier: an editor and a viewer. We will map these roles through the IdP to existing  <a href="cloud-user-management.htm#Roles" target="_blank" class="link-internal"><MadCap:variable name="Product-Names.cluster_mgr"/> roles in <MadCap:variable name="Product-Names.cloud_product_short"/></a>. The role mappings allow us to define the permissions users have on particular <MadCap:variable name="Product-Names.broker_cloud_short"/>s based on the role they authenticate with when accessing that service. For example, users logging in with the editor role can view, edit, and delete <MadCap:variable name="Product-Names.broker_cloud_short"/> properties. Meanwhile, users logging in with the viewer can only view <MadCap:variable name="Product-Names.broker_cloud_short"/> settings.</p>
+    <p>To create the two roles, see:
+        <ul><li><p><MadCap:xref href="#create-editor-role">Creating the Editor Role </MadCap:xref></p></li><li><p><MadCap:xref href="#create-viewer-role">Creating the Viewer Role</MadCap:xref></p></li></ul></p>
+    <h4><a name="create-editor-role"/>Creating the Editor Role</h4>
+    <p>To create the editor role <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">use the <a href="[%=Manifest-Products-Links.ReadmeReference%]/replaceresource" target="_blank" class="link-offsite">Replace a resource object on an <MadCap:variable name="Product-Names.broker_cloud_short"/> using a SEMP POST</a> API to create resource object on the broker containing the information about the editor role.</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">issue a PUT request to the following URL:</MadCap:conditionalText><br/><pre MadCap:conditions="SAP.SapOnlyOutput">https://${ENDPOINT}/SEMP/v2/config/oauthProfiles/${PROFILE_NAME}/accessLevelGroups/${ACCESS_LEVEL_EDITOR_GROUP_NAME}</pre></p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">Replace the variables in the string above with the definitions listed in the table below:
+<![CDATA[        ]]><table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Variable</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><code>ENDPOINT</code></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1"><p>The URL to the <MadCap:variable name="Product-Names.broker_cloud_short"/>: <code>${CLOUD_HOST}/api/v2/missionControl/eventBrokerServices/${SERVICE_ID}/broker</code></p><p>Where:
+			</p><ul><li><p><code>CLOUD_HOST</code>—The URL for the <MadCap:variable name="Product-Names.console_ui_short"/>,  for example <code>&lt;region&gt;.console.pubsub.em.services.cloud.sap</code>. For more information, see <MadCap:xref href="cloud-login-urls.htm" target="_blank" alt="Link to logging into the cloud console">Logging into the [%=Product-Names.console_ui_long%]</MadCap:xref></p></li><li><p><code>SERVICE_ID</code>—The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> where you want to create the roles. You can find the ID either:</p><ul><li>at the end of the URL for your <MadCap:variable name="Product-Names.broker_cloud_short"/>, for example: <code><MadCap:variable name="Manifest-Products-Links.CloudConsoleOnly"/>/services/<b>k8vv6x131e1</b></code>, </li><li>using a GET call. See <MadCap:xref href="ght_use_rest_api_services.htm#getdetails-service">Getting the Connection Details for the [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref>.
+</li></ul></li></ul></td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><code>PROFILE_NAME</code></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">The name of the OAuth profile you created when <MadCap:xref href="#create-connection-to-idp">Creating an OAuth Profile on the [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1"><code>ACCESS_LEVEL_EDITOR_GROUP_NAME</code></td><td class="TableStyle-Table_Num-BodyA-Column1-Body1">The claim value that is mapped to the editor level access for the group.</td></tr></tbody></table></p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Specify the <b>Path Parameter</b> fields as follows:
+
+        <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Path Parameter</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><code>serviceId</code></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> where you want to create the roles. You can determine the unique identifier for an <MadCap:variable name="Product-Names.broker_cloud_short"/> using the <MadCap:variable name="Product-Names.console_ui_short"/> or by using a GET call. See <a href="[%=Manifest-Products-Links.ReadmeReference%]/getservices" target="_blank" class="link-offsite" MadCap:conditions="SAP.SapHideFromOutput">Get a list of event broker services</a>.</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1"><code>resourcePath</code></td><td class="TableStyle-Table_Num-BodyA-Column1-Body1">The resource path where you want to define the resource object. For example, <code>oauthProfiles/machineRole</code>. </td></tr></tbody></table></p>
+    <p>Enter the following JSON object <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">in the body of the PUT request</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">into the <b>Body Params</b> field</MadCap:conditionalText>:</p>
+    <pre>{
+  "description": "SolaceAdmin Group",
+  "globalAccessLevel": "read-only",
+  "groupName": "${ACCESS_LEVEL_EDITOR_GROUP_NAME}",
+  "msgVpnAccessLevel": "read-write",
+  "oauthProfileName": "${PROFILE_NAME}"
+}</pre>
+    <p>Replace the variables in the JSON body above with the definitions listed in the table below:
+        <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Variable</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><code>ACCESS_LEVEL_EDITOR_GROUP_NAME</code></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">The claim value that is mapped to the editor level access for the group.</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1"><code>PROFILE_NAME</code></td><td class="TableStyle-Table_Num-BodyA-Column1-Body1">The name of the OAuth profile you created when <MadCap:xref href="#create-connection-to-idp">Creating an OAuth Profile on the [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</td></tr></tbody></table></p>
+    <p>A successful PUT request returns a code 200. </p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">A failed REST API call returns one of the following codes:<![CDATA[            ]]><ul><li><p>400—Something is wrong with the request. For example, there is a typo or the requested object cannot be found.</p></li><li><p>401—Something is wrong with the client authentication. For example, the password is incorrect or the user does not exist.</p></li><li><p>403—The necessary permissions are not enabled on the API token.</p></li></ul></p>
+    <h4><a name="create-viewer-role"/>Creating the Viewer Role</h4>
+    <p>To create the viewer role <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">issue a PUT request to the following URL:</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">use the <a href="[%=Manifest-Products-Links.ReadmeReference%]/replaceresource" target="_blank" class="link-offsite">Replace a resource object on an <MadCap:variable name="Product-Names.broker_cloud_short"/> using a SEMP POST</a> API to create resource object on the broker containing the information about the viewer role.</MadCap:conditionalText><br/><pre MadCap:conditions="SAP.SapOnlyOutput">https://${ENDPOINT}/SEMP/v2/config/oauthProfiles/${PROFILE_NAME}/accessLevelGroups/${ACCESS_LEVEL_READER_GROUP_NAME}</pre></p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">Replace the variables in the string above with the definitions listed in the table below:
+<![CDATA[        ]]><table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Variable</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><code>ENDPOINT</code></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1"><p>The URL to the <MadCap:variable name="Product-Names.broker_cloud_short"/>: <code>${CLOUD_HOST}/api/v2/missionControl/eventBrokerServices/${SERVICE_ID}/broker</code></p><p>Where:
+			<ul><li><p><code>CLOUD_HOST</code>—The URL for the <MadCap:variable name="Product-Names.console_ui_short"/>,  for example <code>&lt;region&gt;.console.pubsub.em.services.cloud.sap</code>. For more information, see <MadCap:xref href="cloud-login-urls.htm" target="_blank" alt="Link to logging into the cloud console">Logging into the [%=Product-Names.console_ui_long%]</MadCap:xref></p></li><li><p><code>SERVICE_ID</code>—The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> where you want to create the roles. You can find the ID either:</p><ul><li>at the end of the URL for your <MadCap:variable name="Product-Names.broker_cloud_short"/>, for example: <code><MadCap:variable name="Manifest-Products-Links.CloudConsoleOnly"/>/services/<b>k8vv6x131e1</b></code>, </li><li>using a GET call. See <MadCap:xref href="ght_use_rest_api_services.htm#getdetails-service">Getting the Connection Details for the [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref>.
+</li></ul></li></ul></p></td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><code>PROFILE_NAME</code></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">The name of the OAuth profile you created in <MadCap:xref href="#create-connection-to-idp">Create the OAuth Profile on the [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1"><code>ACCESS_LEVEL_READER_GROUP_NAME</code></td><td class="TableStyle-Table_Num-BodyA-Column1-Body1">The claim value that is mapped to the editor level access for the group</td></tr></tbody></table></p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Specify the <b>Path Params </b>fields as follows:
+
+        <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Path Parameter</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><code>serviceId</code></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> where you want to create the roles. You can determine the unique identifier for an <MadCap:variable name="Product-Names.broker_cloud_short"/> using the <MadCap:variable name="Product-Names.console_ui_short"/> or by using a GET call. See <a href="[%=Manifest-Products-Links.ReadmeReference%]/getservices" target="_blank" class="link-offsite" MadCap:conditions="SAP.SapHideFromOutput">Get a list of event broker services</a>.</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1"><code>resourcePath</code></td><td class="TableStyle-Table_Num-BodyA-Column1-Body1">The resource path where you want to define the resource object. For example, <code>oauthProfiles/machineRole</code>. </td></tr></tbody></table></p>
+    <p>Enter the following JSON object <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">in the body of the PUT request</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">into the <b>Body Params</b> field</MadCap:conditionalText>:</p>
+    <pre>{
+  "description": "SolaceAdmin Group",
+  "globalAccessLevel": "read-only",
+  "groupName": "${ACCESS_LEVEL_READER_GROUP_NAME}",
+  "msgVpnAccessLevel": "read-only",
+  "oauthProfileName": "${PROFILE_NAME}"
+}</pre>
+    <p>Replace the variables in the JSON body above with the definitions listed in the table below:
+        <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Variable</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><code>ACCESS_LEVEL_READER_GROUP_NAME</code></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1"><p>The claim value that is mapped to the viewer level access for the group.</p></td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1"><code>PROFILE_NAME</code></td><td class="TableStyle-Table_Num-BodyA-Column1-Body1">The name of the OAuth profile you created when <MadCap:xref href="#create-connection-to-idp">Create the OAuth Profile on the [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</td></tr></tbody></table></p>
+    <p>A successful PUT request returns a code 200. </p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">A failed REST API call returns one of the following codes:<![CDATA[            ]]><ul><li><p>400—Something is wrong with the request. For example, there is a typo or the requested object cannot be found.</p></li><li><p>401—Something is wrong with the client authentication. For example, the password is incorrect or the user does not exist.</p></li><li><p>403—The necessary permissions are not enabled on the API token.</p></li></ul></p>
+    <p>When configured successfully, users logging into an <MadCap:variable name="Product-Names.broker_cloud_short"/> see a log in screen with the option to log-in with a username and password, using single-sign on (SSO) through your OAuth IdP<MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">.</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">, as shown in the image below.</MadCap:conditionalText> After configuring and testing OAuth profile-based authentication, you can disable basic authentication, forcing users to authenticate through SSO. For more information, see <MadCap:xref href="#disable-pre-auth">Disabling Basic Authentication for [%=Product-Names.broker_cloud_short_title%] Management</MadCap:xref>. </p>
+    <p>If you no longer require a role you have created, you can delete it. See <MadCap:xref href="#delete-roles">Deleting a Role on an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.  </p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">
+      <img src="../Resources/Images/Cloud/login_with_cust_role.png" class="img-border" alt=""/>
+    </p>
+    <h2 class="with-rule"><a name="machine-to-machine"/>Configuring OAuth Profiles for Machine-to-Machine Authentication for an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h2>
+    <p>You can configure <MadCap:variable name="Product-Names.broker_cloud_short"/>s so that machines (other <MadCap:variable name="Product-Names.broker_cloud_short"/>s, computers, and applications) connecting to them authenticate with OAuth. You do this by creating an OAuth profile on the <MadCap:variable name="Product-Names.broker_cloud_short"/>, and configuring it so that the <MadCap:variable name="Product-Names.broker_cloud_short"/> acts as a resource server for the connecting applications. You can only create one OAuth profile on the <MadCap:variable name="Product-Names.broker_cloud_short"/> for machine-to-machine authentication. Machines connecting to your <MadCap:variable name="Product-Names.broker_cloud_short"/> receive authentication using an <a href="https://auth0.com/blog/using-m2m-authorization/" target="_blank" alt="link to Okta documents explaining machine to machine authentication" class="link-offsite" title="link to Okta documents explaining machine to machine authentication">OAuth client credentials grant</a>. </p>
+    <p>Before configuring your <MadCap:variable name="Product-Names.broker_cloud_short"/>s to use SSO for machine-to-machine authentication, ensure you have <a href="#config-provider" class="link-internal">configured your identity provider (IdP) correctly</a>. You also require an API token with the permissions outlined in <MadCap:xref href="#considerations">Considerations for Role Based Authentication</MadCap:xref>.</p>
+    <p>You require various information to complete this procedure depending on whether token validation will be performed by an introspection endpoint, or JWKS:</p>
+    <ul>
+      <li>
+        <p>A client ID  (required for validation using an introspection endpoint)</p>
+      </li>
+      <li>
+        <p>A client secret  (required for validation using an introspection endpoint)</p>
+      </li>
+      <li>
+        <p>The URL to your IdP</p>
+      </li>
+      <li>
+        <p>The discovery endpoint where your IdP publishes metadata. It is typically an URL ending in <code>.well-known/openid-configuration</code>. </p>
+      </li>
+    </ul>
+    <p>To configure OAuth authentication for machine-to-machine connections to your <MadCap:variable name="Product-Names.broker_cloud_short"/> services, follow these steps:</p>
+    <ol>
+      <li>
+        <p>Create the OAuth profile on the <MadCap:variable name="Product-Names.broker_cloud_short"/> <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">by issuing a POST request to the following URL:</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">using the <a href="[%=Manifest-Products-Links.ReadmeReference%]/createresource" target="_blank" class="link-offsite">Create a resource object on an event broker service using a SEMP POST</a> API to create an OAuth profile on the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</MadCap:conditionalText><br/><pre MadCap:conditions="SAP.SapOnlyOutput">https://${ENDPOINT}/SEMP/v2/config/oauthProfiles/${PROFILE_NAME}</pre></p>
+      </li>
+      <p MadCap:conditions="SAP.SapOnlyOutput">Replace the variables in the string above with values listed in the table below:
+            <![CDATA[  ]]><table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Variable</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><code>ENDPOINT</code></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1"><p>The URL to the <MadCap:variable name="Product-Names.broker_cloud_short"/>: <code>${CLOUD_HOST}/api/v2/missionControl/eventBrokerServices/${SERVICE_ID}/broker</code></p><p>Where:
+			<ul><li><p><code>CLOUD_HOST</code>—The URL for the <MadCap:variable name="Product-Names.console_ui_short"/>,  for example <code>&lt;region&gt;.console.pubsub.em.services.cloud.sap</code>. For more information, see <MadCap:xref href="cloud-login-urls.htm" target="_blank" alt="Link to logging into the cloud console">Logging into the [%=Product-Names.console_ui_long%]</MadCap:xref></p></li><li><p><code>SERVICE_ID</code>—The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> where you want to create the roles. You can find the ID either:</p><ul><li>at the end of the URL for your <MadCap:variable name="Product-Names.broker_cloud_short"/>, for example: <code><MadCap:variable name="Manifest-Products-Links.CloudConsoleOnly"/>/services/<b>k8vv6x131e1</b></code>, </li><li>using a GET call. See <MadCap:xref href="ght_use_rest_api_services.htm#getdetails-service">Getting the Connection Details for the [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref>.
+</li></ul></li></ul></p></td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1"><code>PROFILE_NAME</code></td><td class="TableStyle-Table_Num-BodyA-Column1-Body1">The name of the OAuth profile. This can be anything, but should describe the function of the OAuth profile.</td></tr></tbody></table></p>
+      <p MadCap:conditions="SAP.SapHideFromOutput">Specify the <b>Path Parameter </b>fields as follows:
+
+                <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Path Parameter</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><code>serviceId</code></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> where you want to create the roles. You can determine the unique identifier for an <MadCap:variable name="Product-Names.broker_cloud_short"/> using the <MadCap:variable name="Product-Names.console_ui_short"/> or by using a GET call. See <a href="[%=Manifest-Products-Links.ReadmeReference%]/getservices" target="_blank" class="link-offsite" MadCap:conditions="SAP.SapHideFromOutput">Get a list of event broker services</a>.</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1"><code>resourcePath</code></td><td class="TableStyle-Table_Num-BodyA-Column1-Body1">The resource path where you want to define the resource object. For example, <code>oauthProfiles/machineRole</code>. </td></tr></tbody></table></p>
+      <p>Enter the following JSON object <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">in the body of the PUT request</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">into the <b>Body Params</b> field</MadCap:conditionalText>:</p>
+      <pre xml:space="preserve">{
+  "clientId": "${CLIENT_ID}",
+  "clientRedirectUri": "",
+  "clientRequiredType": "JWT",
+  "clientScope": "openid email",
+  "clientSecret": "${CLIENT_SECRET}",
+  "clientValidateTypeEnabled": false,
+  "defaultGlobalAccessLevel": "read-only",
+  "defaultMsgVpnAccessLevel": "read-write",
+  "displayName": "",
+  "enabled": true,
+  "endpointAuthorization": "",
+  "endpointDiscovery": "${ENDPOINT_DISCOVERY}",
+  "endpointDiscoveryRefreshInterval"   : 86400,
+  "endpointIntrospection": "",
+  "endpointIntrospectionTimeout": 10,
+  "endpointJwks": "",
+  "endpointJwksRefreshInterval": 86400,
+  "endpointToken": "",
+  "endpointTokenTimeout": 10,
+  "endpointUserinfo": "",
+  "endpointUserinfoTimeout": 10,
+  "interactiveEnabled": false,
+  "interactivePromptForExpiredSession": "",
+  "interactivePromptForNewSession": "select_account",
+  "issuer": "${PROFILE_NAME}",
+  "oauthProfileName": "${PROFILE_NAME}",
+  "oauthRole": "resource-server",
+  "resourceServerParseAccessTokenEnabled": true,
+  "resourceServerRequiredAudience": "${CLIENT_ID}",
+  "resourceServerRequiredIssuer": "${AUDIENCE}",
+  "resourceServerRequiredScope": "SolaceAdmin",
+  "resourceServerRequiredType": "at+JWT",
+  "resourceServerValidateAudienceEnabled": true,
+  "resourceServerValidateIssuerEnabled": true,
+  "resourceServerValidateScopeEnabled": false,
+  "resourceServerValidateTypeEnabled": false,
+  "sempEnabled": true,
+  "usernameClaimName": "sub"
+}</pre>
+      <p>Replace the variables in the JSON body above with the definitions listed in the table below:
+</p>
+      <p>
+        <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+          <col class="TableStyle-Table_Num-Column-Column1"/>
+          <col class="TableStyle-Table_Num-Column-Column1"/>
+          <thead>
+            <tr class="TableStyle-Table_Num-Head-Header1">
+              <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Variable</th>
+              <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <code>CLIENT_ID</code>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Optional—The client ID is a alphanumeric string that is unique to the application you created in your IdP and is only required when validating a token by introspection endpoint. It is provided by your IdP when you create the OAuth application.</td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <code>CLIENT_SECRET</code>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Optional—The client secret is a string used to sign and validate ID tokens for authentication flows and is only required when validating a token by introspection endpoint. This is provided by your IdP when you create the OAuth application.</td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <code>ENDPOINT_DISCOVERY</code>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p>This is the OpenID Connect Discovery or Configuration endpoint where your IdP publishes metadata. It is typically an URL ending in <code>.well-known/openid-configuration</code>. Some examples include:
+                                <ul><li>Azure:<code> https://login.microsoftonline.com/organizations/v2.0/.well-known/openid-configuration</code></li><li>SAP IAS:<code> https://accounts.sap.com/.well-known/openid-configuration</code></li></ul></p>
+                <p>If you do not configure have an OpenID Connect Discovery endpoint, you must configure the other endpoints manually.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+                <code>PROFILE_NAME</code>
+              </td>
+              <td class="TableStyle-Table_Num-BodyD-Column1-Body1">Enter the same name you used for the <code>PROFILE_NAME</code> variable in URL when making this POST.</td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+                <code>AUDIENCE</code>
+              </td>
+              <td class="TableStyle-Table_Num-BodyA-Column1-Body1">This is the URL to your IdP.</td>
+            </tr>
+          </tbody>
+        </table>
+      </p>
+      <p>A successful POST request returns a code of <code>200</code>.</p>
+      <p>You can test the successful creation of the profile by <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">using the <a href="https://api.solace.dev/cloud/reference/getresource" target="_blank" class="link-offsite">Get a specific resource object for an <MadCap:variable name="Product-Names.broker_cloud_short"/> by the object path using a SEMP GET</a> API REST endpoint. </MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">issuing a GET request to the following URL</MadCap:conditionalText>:<br/><pre MadCap:conditions="SAP.SapOnlyOutput">https://${ENDPOINT}/SEMP/v2/config/oauthProfiles</pre></p>
+      <p>
+        <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">Replace the <code>ENDPOINT</code> variable with the <code>${CLOUD_HOST}/api/v2/missionControl/eventBrokerServices/${SERVICE_ID}/broker</code> URL <a href="#endpoint_def2" class="link-internal">outlined at the start of this procedure</a>.</MadCap:conditionalText>
+      </p>
+      <p MadCap:conditions="SAP.SapHideFromOutput">Specify the <b>Path Parameter </b>fields as follows:
+
+                <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Path Parameter</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><code>serviceId</code></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> where you want to create the roles. You can determine the unique identifier for an <MadCap:variable name="Product-Names.broker_cloud_short"/> using the <MadCap:variable name="Product-Names.console_ui_short"/> or by using a GET call. See <a href="[%=Manifest-Products-Links.ReadmeReference%]/getservices" target="_blank" class="link-offsite" MadCap:conditions="SAP.SapHideFromOutput">Get a list of event broker services</a>.</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1"><code>resourcePath</code></td><td class="TableStyle-Table_Num-BodyA-Column1-Body1">The resource path where you want to define the resource object. For example, <code>oauthProfiles/machineRole</code>. </td></tr></tbody></table></p>
+      <p>The GET request returns a list of profiles if your POST request created them successfully.</p>
+      <li>
+        <p>You can test the connection by getting a token from your IdP and adding it to the authentication header. See your  see  your OAuth provider documentation <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">or the <a href="https://help.sap.com/docs/identity-authentication/identity-authentication/operation-guide" target="_blank" class="link-offsite">SAP Identity Authentication Operation Guide</a></MadCap:conditionalText> for information on how to get a token. </p>
+        <p class="Note">If you're having trouble connecting, check that your introspection endpoint is returning token information. For more information, see <a href="https://www.oauth.com/oauth2-servers/token-introspection-endpoint/" target="_blank" class="link-offsite">Token Introspection Endpoint</a> in the OAuth documentation.</p>
+      </li>
+      <li>
+        <p>(Optional) After the configuration is successful, you can <a href="#disable-pre-auth" class="link-internal">disable basic authentication</a> for the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+      </li>
+      <li>
+        <p>(Optional) When you no longer need the machine-to-machine based OAuth profile, you can delete it. See <MadCap:xref href="#delete-roles">Deleting a Role on an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</p>
+      </li>
+    </ol>
+    <h2 class="with-rule"><a name="disable-pre-auth"/>Disabling Basic Authentication for <MadCap:variable name="Product-Names.broker_cloud_short_title"/> Management</h2>
+    <p>You can disable basic access to your <MadCap:variable name="Product-Names.broker_cloud_short"/> after creating and configuring OAuth profiles to better secure them. Disabling basic authentication includes:</p>
+    <ul>
+      <li>
+        <p>pre-authenticated log in when accessing the <MadCap:variable name="Product-Names.broker_cloud_short"/> manager quick settings or <MadCap:variable name="Product-Names.pubsubmanager_short"/>. See <MadCap:xref href="#disable-pre-auth">Disabling Basic Authentication for [%=Product-Names.broker_cloud_short_title%] Management</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>basic user authentication for logging into event broker services, requiring SSO to be used when logging into an <MadCap:variable name="Product-Names.broker_cloud_short"/>. See <MadCap:xref href="#disable-basic-auth">Disabling Basic User Access Using the REST API</MadCap:xref>.</p>
+      </li>
+    </ul>
+    <h3><a name="disable-basic-auth-console"/>Disabling Pre-Authentication Using the <MadCap:variable name="Product-Names.console_ui_short"/></h3>
+    <p>You can disable pre-authentication for <MadCap:variable name="Product-Names.broker_cloud_short"/>s. This is an organization wide change. Once disabled, users must authenticate when launching <MadCap:variable name="Product-Names.pubsubmanager_short"/> from the <MadCap:variable name="Product-Names.console_ui_short"/> and can do so using the OAuth profiles. For more information, see <MadCap:xref href="manage-cloud-authentication.htm">Pre-Authentication for [%=Product-Names.pubsubmanager_short%]</MadCap:xref></p>
+    <ol>
+      <li>
+        <p>
+          <MadCap:snippetText src="../Resources/Snippets/Cloud/Task_UI_Snippets/login_console.flsnp"/>
+        </p>
+      </li>
+      <li>
+        <p>Click <b>User &amp; Account</b>, select <b>Account Details</b>, and then click the <b>Account Settings</b>.</p>
+      </li>
+      <li>
+        <p>In the <b>Security Settings</b> section click the <MadCap:variable name="Product-Names.pubsub_brand_only" style="font-weight: bold;"/><b> Pre Authentication</b> slider to disable pre-authentication.</p>
+        <p>
+          <img src="../Resources/Images/Cloud/security-settings-pre-auth.png" class="img-border" alt=""/>
+        </p>
+      </li>
+    </ol>
+    <h3><a name="disable-basic-auth"/>Disabling Basic User Access Using the REST API</h3>
+    <div class="Caution">
+      <p>Disabling basic authentication without enabling OAuth profiles disables all access to the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+    </div>
+    <p>You can disable basic user authentication for <MadCap:variable name="Product-Names.broker_cloud_short"/>s. This forces connecting users or machines (computers and applications) to authenticate with single sign-on using the OAuth profiles you configured on the <MadCap:variable name="Product-Names.broker_cloud_short"/>. If you disable basic authentication, you should also consider <a href="#disable-pre-auth" class="link-internal">disabling pre-authentication</a>.</p>
+    <p>To disable basic authentication <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">issue a PUT request to:</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">use the <a href="[%=Manifest-Products-Links.ReadmeReference%]/disableorenable" target="_blank" class="link-offsite">Enable or disable basic authentication for users logging onto an event broker service</a> API  to delete the OAuth profile from the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</MadCap:conditionalText><br/><pre MadCap:conditions="SAP.SapOnlyOutput" xml:space="preserve">https://{CLOUD_HOST}/api/v2/missionControl/eventBrokerServices/{SERVICE_ID}/sempBasicAuth</pre></p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">Replace the variables in the string above with the definitions listed in the table below:
+        <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Variable</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><code>CLOUD_HOST</code></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1"><p>The URL for the <MadCap:variable name="Product-Names.console_ui_short"/>,  for example <code>&lt;region&gt;.console.pubsub.em.services.cloud.sap</code>. For more information, see <MadCap:xref href="cloud-login-urls.htm" target="_blank" alt="Link to logging into the cloud console">Logging into the [%=Product-Names.console_ui_long%]</MadCap:xref></p></td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1"><code>SERVICE_ID</code></td><td class="TableStyle-Table_Num-BodyA-Column1-Body1"><p>The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/>, for example, <code>k8vv6x131e1</code>. You can find this at the end of the URL for your <MadCap:variable name="Product-Names.broker_cloud_short"/>, for example: <code><MadCap:variable name="Manifest-Products-Links.CloudConsoleOnly"/>/services/<b>k8vv6x131e1</b></code>.</p></td></tr></tbody></table></p>
+    <p MadCap:conditions="SAP.SapOnlyOutput">Enter the following JSON object in the body of the PUT request:</p>
+    <pre xml:space="preserve" MadCap:conditions="SAP.SapOnlyOutput">{
+     "enabled": "false"
+}</pre>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Specify the <b>Path Parameter </b>fields as follows:
+
+        <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Path Parameter</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><code>serviceId</code></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> where you want to create the roles. You can determine the unique identifier for an <MadCap:variable name="Product-Names.broker_cloud_short"/> using the <MadCap:variable name="Product-Names.console_ui_short"/> or by using a GET call. See <a href="[%=Manifest-Products-Links.ReadmeReference%]/getservices" target="_blank" class="link-offsite" MadCap:conditions="SAP.SapHideFromOutput">Get a list of event broker services</a>.</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1"><code>enabled</code></td><td class="TableStyle-Table_Num-BodyA-Column1-Body1"><p>Select the value to indicate whether basic OAuth authentication should be enabled or disabled, either: </p><ul><li><p><code>true</code>—Basic authentication is enabled</p></li><li><p><code>false</code>—Basic authentication is enabled</p></li></ul></td></tr></tbody></table></p>
+    <h2 class="with-rule"><a name="delete-roles"/>Deleting an OAuth Profile on an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h2>
+    <p>You can delete OAuth profiles when you no longer need them.</p>
+    <p>To delete an  OAuth profile<MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">, issue a DELETE request to: </MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> use the <a href="[%=Manifest-Products-Links.ReadmeReference%]/deleteresource" target="_blank" class="link-offsite">Delete a resource object on an <MadCap:variable name="Product-Names.broker_cloud_short"/> by object path using a SEMP DELETE</a> API to delete the OAuth profile from the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</MadCap:conditionalText><br/><pre MadCap:conditions="SAP.SapOnlyOutput">https://${ENDPOINT}/SEMP/v2/config/oauthProfiles/${PROFILE_NAME}</pre></p>
+    <p MadCap:conditions="SAP.SapOnlyOutput"><a name="endpoint_def2"/>Replace the variables in the string above with the definitions listed in the table below:
+        <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Variable</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><code>ENDPOINT</code></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1"><p>The URL to the <MadCap:variable name="Product-Names.broker_cloud_short"/>: <code>${CLOUD_HOST}/api/v2/missionControl/eventBrokerServices/${SERVICE_ID}/broker</code></p><p>Where:
+			<ul><li><p><code>CLOUD_HOST</code>—The URL for the <MadCap:variable name="Product-Names.console_ui_short"/>,  for example <code>&lt;region&gt;.console.pubsub.em.services.cloud.sap</code>. For more information, see <MadCap:xref href="cloud-login-urls.htm" target="_blank" alt="Link to logging into the cloud console">Logging into the [%=Product-Names.console_ui_long%]</MadCap:xref></p></li><li><p><code>SERVICE_ID</code>—The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> where you want to create the roles. You can find the ID either:</p><ul><li>at the end of the URL for your <MadCap:variable name="Product-Names.broker_cloud_short"/>, for example: <code><MadCap:variable name="Manifest-Products-Links.CloudConsoleOnly"/>/services/<b>k8vv6x131e1</b></code>, </li><li>using a GET call. See <MadCap:xref href="ght_use_rest_api_services.htm#getdetails-service">Getting the Connection Details for the [%=Product-Names.broker_cloud_short_title%] Using the REST API</MadCap:xref>.
+</li></ul></li></ul></p></td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1"><code>PROFILE_NAME</code></td><td class="TableStyle-Table_Num-BodyA-Column1-Body1">The name of an OAuth profile you created in <MadCap:xref href="#create-connection-to-idp">Create the OAuth Profile on the [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</td></tr></tbody></table></p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Specify the <b>Path Parameter</b> fields as follows:
+        <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Path Parameter</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">Definition</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><code>serviceId</code></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">The unique identifier of the <MadCap:variable name="Product-Names.broker_cloud_short"/> where you want to create the roles. You can determine the unique identifier for an <MadCap:variable name="Product-Names.broker_cloud_short"/> using the <MadCap:variable name="Product-Names.console_ui_short"/> or by using a GET call. See <a href="[%=Manifest-Products-Links.ReadmeReference%]/getservices" target="_blank" class="link-offsite" MadCap:conditions="SAP.SapHideFromOutput">Get a list of event broker services</a>.</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1"><code>resourcePath</code></td><td class="TableStyle-Table_Num-BodyA-Column1-Body1">The resource path where you want to define the resource object. For example, <code>oauthProfiles/machineRole</code>. </td></tr></tbody></table></p>
+  </body>
+</html>

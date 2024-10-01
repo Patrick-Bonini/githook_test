@@ -1,0 +1,496 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>AMQP 1.0 Protocol Conformance</h1>
+    <p>This page is a statement of functionally-visible restrictions, limitations and non-conformances between OASIS AMQP Version 1.0 and Solaceʼs AMQP implementation. Each section noted on this page indicates an area of deviation between some aspect of the AMQP protocol and Solace's implementation. It should be noted that Solace PubSub+ event brokers support only the server-side role.</p>
+    <p>The section numbers in each heading refer to the corresponding section in this OASIS AMQP protocol specification:</p>
+    <p style="margin-left: 1in;">
+      <b>[amqp-core-complete-v1.0]</b>
+    </p>
+    <p style="margin-left: 1in;">OASIS AMQP Version 1.0. 24 July 2017. OASIS Working Draft.</p>
+    <p style="color: #00bfff;margin-left: 1in;">../../v1.0/wd/amqp-core-complete-v1.0-wd.pdf.</p>
+    <p>It should also be noted that the implementation follows <a href="https://www.oasis-open.org/committees/download.php/60251/amqp-bindmap-jms-v1.0-wd08.pdf">AMQP JMS mapping version 1.0 draft 8</a>.</p>
+    <h2 class="with-rule"><a name="Sec2-1-2"/>Section 2.1.2: Communication Endpoints</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>“The retained state at the termini can be used to reestablish the link on a new connection (and session) with precise control over delivery guarantees (e.g., ensuring “exactly once” delivery).”</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>The event broker does not retain any state with respect to AMQP links or sessions, which persists across AMQP connection failure and re-establishment.</p>
+    <h2 class="with-rule"><a name="Sec2-2"/>Section 2.2: Version Negotiation</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>“Two AMQP peers agree on a protocol version as follows (where the words “client” and “server” refer to the roles being played by the peers at the TCP connection level):”</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>The event brokers always act as TCP servers for AMQP connections.</p>
+    <p style="font-weight: bold;">
+      <span style="font-weight: bold;">2. Applicable specification text:</span>
+    </p>
+    <p>“Based on this behavior a client can discover which protocol versions a server supports by attempting to connect with its highest supported version and reconnecting with a version less than or equal to the version received back from the server.”</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>The event brokers support only AMQP major=1, minor=0, revision=0 in their received and send protocol headers.</p>
+    <p style="font-weight: bold;">3. Applicable specification text:</p>
+    <p>Entire section.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>On a newly-established TCP or TLS connection, an event broker first waits for the client to send the protocol header, which may be for protocol 0 (AMQP) or 3 (SASL). The event broker will then respond with the same protocol header.</p>
+    <p>However, a client sending a protocol header with protocol 0 (AMQP) will succeed in bringing the connection to the OPENED state (see subsection 2.4.6) only if the authentication for the VPN is configured as “none”.</p>
+    <h2 class="with-rule"><a name="Sec2-4-1"/>Section 2.4.1: Opening A Connection</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>Entire section.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker never initiates an AMQP connection.</p>
+    <p>An event broker considers that the client has been created, and performs follow-on actions such as generating CLIENT CLIENT CONNECT event logs, once the event broker processes the <code>open</code> frame received from the partner.</p>
+    <p>An event broker will not open any new AMQP connections from partners if the event broker has already reached its limit of connected enterprise clients.</p>
+    <h2 class="with-rule"><a name="Sec-2-4-3"/>Section 2.4.3: Closing a Connection</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>Entire section.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>The Solace PubSub+ event broker only sends AMQP close frames on a best effort basis; so, there is no guarantee that the event broker will always send the close frame.</p>
+    <h2 class="with-rule"><a name="Sec2-4-5"/>Section 2.4.5: Idle Timeout Of A Connection</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>“The use of idle timeouts is in addition to any network protocol level control. Implementations SHOULD make use of TCP keep-alive wherever possible in order to be good citizens.”</p>
+    <p style="font-weight: bold;">
+      <span style="font-weight: bold;">Solace implementation:</span>
+    </p>
+    <p>An event broker will not propose any AMQP idle timeout to its peer. That is, an event broker does not require that the peer sends it periodic AMQP frames in the absence of other traffic from the peer. However, an event broker will honor any idle timeout of at least 500 ms proposed by its peer. </p>
+    <p>An event broker does use TCP keep-alives on AMQP connections, in accordance with the client-profile associated with the connection’s client.</p>
+    <h2 class="with-rule"><a name="Sec2-5-1"/>Section 2.5.1: Establishing A Session</h2>
+    <p style="font-weight: bold;">
+      <span style="font-weight: bold;">1. Applicable specification text:</span>
+    </p>
+    <p>Entire section.</p>
+    <p style="font-weight: bold;">
+      <span style="font-weight: bold;">Solace implementation:</span>
+    </p>
+    <p>An event broker will never locally initiate an AMQP session. AMQP clients must remotely initiate any AMQP session to an event broker.</p>
+    <p>An event broker limits the number of concurrently opened AMQP sessions within an AMQP connection to 255.</p>
+    <p>An event broker will always assign its lowest available outgoing channel number to a newly remotely initiated session, except that it reserves outgoing channel number 0 for <code>open</code> and <code>close</code> frames, and for back-to-back <code>begin</code> and <code>end</code> frames necessary when the event broker encounters an error during session opening.</p>
+    <p>An event broker has a system-wide limit on the number of concurrently opened AMQP sessions, equal to the sum of the maximum number of AD ingress flows and AD egress flows allowed by the system.</p>
+    <h2 class="with-rule"><a name="Section-2-6"/>Section 2.6: Links</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>Entire section.</p>
+    <p style="font-weight: bold;">
+      <span style="font-weight: bold;">Solace implementation:</span>
+    </p>
+    <p>An event broker limits the number of concurrently attached AMQP links within an AMQP session to 575.</p>
+    <p>An event broker has a system-wide limit on the number of concurrently attached AMQP links, equal to the sum of the maximum number of AD ingress flows and AD egress flows allowed by the system.</p>
+    <h2 class="with-rule"><a name="Sec2-6-3"/>Section 2.6.3: Establishing Or Resuming A Link</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>Figure 2.33: Refusing a Link.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker reserves local link handle 0 for the purposes of refusing a link. That is, if an event broker refuses a link as illustrated above, the event broker will send its <code>attach</code> frame immediately followed by its <code>detach</code> frame using local link handle 0. An event broker will not use local link handle 0 for any other purpose.</p>
+    <p>
+      <b>2. Applicable specification text:</b>
+    </p>
+    <p>“If either end of the link is already associated with a terminus, the attach frame MUST include its unsettled delivery state.”</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker will never have any unsettled delivery state included in its sent <code>attach</code> frame.</p>
+    <h2 class="with-rule"><a name="Sec2-6-7"/>Section 2.6.7: Flow Control</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>"If the link-credit is less than or equal to zero, i.e., the delivery-count is the same as or greater than the delivery-limit, a sender MUST NOT send more messages. If the link-credit is reduced by the receiver when transfers are in-flight, the receiver MAY either handle the excess messages normally or detach the link with a transfer-limit-exceeded error code."</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker will never offer a link-credit greater than 255 on a link for which it is the receiver.</p>
+    <h2 class="with-rule"><a name="Sec2-6-12"/>Section 2.6.12: Transferring A Message</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>“This basic pattern can be modified in a variety of ways to achieve different guarantees. For example if the sending application settles the delivery before sending it, this results in an at-most-once guarantee. The sender has indicated up front with his initial transmission that he has forgotten everything about this delivery and will therefore make no further attempts to send it. If this delivery makes it to the receiver, the receiver clearly has no obligation to respond with updates of the receiver’s delivery state, as they would be meaningless and ignored by the sender.”</p>
+    <p>and</p>
+    <p> Figure 2.55: At-Most-Once.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker supports at-most-once deliveries of messages for which it is the receiver. An event broker does not support at-most-once deliveries of messages for which it is the sender.</p>
+    <p>
+      <b>2. Applicable specification text:</b>
+    </p>
+    <p>“Similarly, if the basic scenario is modified such that the receiving application chooses to settle immediately upon processing the message rather than waiting for the sender to settle first, that yields an at-least-once guarantee. If the disposition frame indicated below is lost, then upon link recovery the sender will not see the delivery-tag in the receiver’s unsettled map and will therefore assume the delivery was lost and resend it, resulting in duplicate processing of the message at the receiver.”</p>
+    <p>and </p>
+    <p>Figure 2.56: At-Least-Once.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker supports <i>at-least-once</i> deliveries of messages for which it is either the sender or the receiver.</p>
+    <p>
+      <b>3. Applicable specification text:</b>
+    </p>
+    <p>“As one might guess, the scenario presented initially where the sending application settles when the receiver reaches a terminal state, and the receiving application settles when the sender settles, results in an exactly-once guarantee. More generally if the receiver settles prior to the sender, it is possible for duplicate messages to occur, except in the case where the sender settles before the initial transmission. Similarly, if the sender settles before the receiver reaches a terminal state, it is possible for messages to be lost.”</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker does not support <i>exactly-once</i> deliveries of messages.</p>
+    <h2 class="with-rule"><a name="Sec2-6-13"/>Section 2.6.13: Resuming Deliveries</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>“Note that in the case where an endpoint indicates that the unsettled map is incomplete, the absence of an entry in the unsettled map is not an indication of settlement. In this case the two endpoints MUST reduce the levels of unsettled state as much as they can by the sender resuming and/or settling transfers that it observes that the receiver considers unsettled. Upon completion of this reduction of state, the two parties MUST suspend and re-attempt to resume the link. Only when both sides have complete unsettled maps can new unsettled state be created by the sending of non-resuming transfers.”</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker will never have any unsettled delivery state included in its sent <code>attach</code> frame.</p>
+    <h2 class="with-rule"><a name="Sec2-6-14"/>Section 2.6.14: Transferring Large Messages</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>Entire section.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker applies <i>ingress admission control</i> to received messages from clients of all protocols, including AMQP. <i>Ingress admission control</i> ensures that, if multiple clients are concurrently sending large messages to an event broker, that the event broker’s ingress buffering is not exhausted by a set of clients with partially-sent large messages. If the event broker were to all such ingress buffer exhaustion to occur, no client could make forward progress in completing its message transfer.</p>
+    <p>AMQP allows a sender to interleave multiple partially-transferred messages on different AMQP links within a single AMQP connection. No other protocol currently supported by the event broker allows this.</p>
+    <p>AMQP’s potential interleaving of multiple partially-transferred messages requires a change to the event broker’s <i>ingress admission control</i>. Specifically, if the sum of the sizes of all partially-transferred messages within a single AMQP connection exceeds about 64 MiB, the event broker will <code>close</code> the AMQP connection with an error of <code>resource-limit-exceeded</code>.</p>
+    <p>An event broker will not interleave multiple partially-transferred messages on AMQP links for which it is the sender.</p>
+    <h2 class="with-rule"><a name="Section-2-7-1"/>Section 2.7.1: Open</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p><code>channel-max</code> Field Details.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker has a <code>channel-max</code> of 255.</p>
+    <p>
+      <b>2. Applicable specification text:</b>
+    </p>
+    <p><code>idle-time-out</code> Field Details.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker does not send any <code>idle-time-out</code>.</p>
+    <p>
+      <b>3. Applicable specification text:</b>
+    </p>
+    <p><code>offered-capabilities</code> Field Details.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker always sends <code>offered-capabilities</code> of <i>ANONYMOUS-RELAY</i> and <i>sole-connection-for-container</i>.</p>
+    <p>
+      <b>4. Applicable specification text:</b>
+    </p>
+    <p><code>desired-capabilities</code> Field Details.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker always behaves as though the client’s <code>desired-capabilities</code> include <i>ANONYMOUS-RELAY</i>. This is because some clients use the event broker’s <code>offered-capabilities</code> of <i>ANONYMOUS-RELAY</i> even though the client does not specify it in its <code>desired-capabilities</code>.</p>
+    <p>
+      <b>5. Applicable specification text:</b>
+    </p>
+    <p><code>properties</code> Field Details.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker always sends <code>properties</code> with keys of <i>platform</i> and <i>version</i>, and string values describing the Solace PubSub+ product and version, respectively. It also sends keys of <code>topic-prefix</code> and <code>queue-prefix</code>, and string values of <code>topic://</code> and <code>queue://</code>, respectively, to be used by clients that support this functionality.</p>
+    <p>An event broker sends <code>properties</code> with key of <i>amqp:connection-establishment-failed</i> and value of boolean true if the AMQP connection establishment has failed while the event broker processed the <code>open</code> frame received from the client, and the event broker’s transmitted <code>open</code> frame will be followed immediately by a <code>close</code> frame. The client receiving an</p>
+    <p><code>open</code> frame with the <i>amqp:connection-establishment-failed</i> property may treat it as a hint that it should expect to receive a <code>close</code> frame immediately afterward.</p>
+    <h2 class="with-rule"><a name="Sec2-7-2"/>Section 2.7.2: Begin</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p><code>handle-max</code> Field Details.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker has a <code>handle-max</code> of 575.</p>
+    <h2 class="with-rule"><a name="Sec2-7-3"/>Section 2.7.3: Attach</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p><code>unsettled</code> Field Details.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker always sends a null unsettled map in any sent <code>attach</code> frame.</p>
+    <p>
+      <b>2. Applicable specification text:</b>
+    </p>
+    <p><code>max-message-size</code> Field Details.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>A software event broker with &lt; 12 GB RAM sends a <code>max-message-size</code> of 10000000 (10 MB). A software event brokers with &gt;= 12 GB RAM, as well as Solace PubsSub+ 3530s and 3560s, send a <code>max-message-size</code> of 30000000 (30 MB).</p>
+    <h2 class="with-rule"><a name="Sec2-7-4"/>Section 2.7.4: Flow</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p><code>link-credit</code> Field Details.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>On a link for which an event broker is the receiver, the event broker will never set <code>link-credit</code> to more than 255.</p>
+    <p>
+      <b>2. Applicable specification text:</b>
+    </p>
+    <p><code>available</code> Field Details.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>On a link for which an event broker has the sender role, the event broker will the <code>available</code> field to a value greater than zero if the event broker has messages to send on this link. However, the value in the <code>available</code> field may be lower than the actual number of messages the event broker has available to send.</p>
+    <h2 class="with-rule"><a name="Sec2-7-5"/>Section 2.7.5: Transfer</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p><code>batchable</code> Field Details.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker may take advantage of a received message whose <code>batchable</code> value is true to delay and aggregate multiple transfers’ delivery states into a single subsequent transmitted <code>disposition</code> frame. This may improve the performance of the event broker.</p>
+    <h2 class="with-rule"><a name="Sec2-8-14"/>Section 2.8.14: Error</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p><code>info</code> Field Details.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker may generate an <code>error</code> with an info map containing two entries. The map entry with key “solace.response_code” will have a uint value with the numeric Solace response code. The map entry with key “solace.response_text” will have a string value with the Solace response text. Both of these are taken from SMF responses internal to the event broker for the internal operation triggering the error.</p>
+    <h2 class="with-rule"><a name="Section-3-2"/>Section 3.2: Message Format</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>“The bare message is immutable within the AMQP network. That is, none of the sections can be changed by any node acting as an AMQP intermediary. If a section of the bare message is omitted, one MUST NOT be inserted by an intermediary. The exact encoding of sections of the bare message MUST NOT be modified. This preserves message hashes, HMACs and signatures based on the binary encoding of the bare message.”</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker does not guarantee that it will bit-for-bit preserve the bare message of an AMQP message passing through it.</p>
+    <p>
+      <b>2. Applicable specification text:</b>
+    </p>
+    <p>The exact structure of a message, together with its encoding, is defined by the message format. This document defines the structure and semantics of message format 0 (MESSAGE-FORMAT). Altogether a message consists of the following sections:</p>
+    <ul>
+      <li>Zero or one <code>header</code>.</li>
+      <li>Zero or one <code>delivery-annotations</code>.</li>
+      <li>Zero or one <code>message-annotations</code>.</li>
+      <li>Zero or one <code>properties</code>.</li>
+      <li>Zero or one <code>application-properties</code>.</li>
+      <li>The body consists of one of the following three choices: one or more <code>data</code> sections, one or more <code>amqp-sequence</code> sections, or a single <code>amqp-value</code> section.</li>
+      <li>Zero or one <code>footer</code>.</li>
+    </ul>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker will always send messages whose sections (if present) are in the above order. However, an event broker can receive messages whose sections are in any order.</p>
+    <p>An event broker does not support message bodies consisting of any number of <code>amqp-sequence</code> sections.</p>
+    <p>An event broker receiving a message consisting of more than one data sections will concatenate these into a single <code>data</code> section.</p>
+    <h2 class="with-rule"><a name="Sec3-2-1"/>Section 3.2.1: Header</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p><code>delivery-count</code> Field Details.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker may send a message with a <code>delivery-count</code> of one even though the message may have had more than one previous delivery attempt. That is, the <code>delivery-count</code> of message sent by an event broker should be interpreted more as a flag indicating that the message has had some number of previous delivery attempts, rather than a count of the number of such delivery attempts.</p>
+    <h2 class="with-rule"><a name="Sec3-2-2"/>Section 3.2.2: Delivery Annotations</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>"If the delivery-annotations section is omitted, it is equivalent to a delivery-annotations section containing an empty map of annotations."</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker does not support any delivery-annotations section. An event broker discards any received delivery-annotations section, and will never send any delivery-annotations section.</p>
+    <h2 class="with-rule"><a name="Sec3-2-3"/>Section 3.2.3: Message Annotations</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>Entire section.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker supports only <code>message-annotations</code> with the following symbol keys:</p>
+    <ul>
+      <li>
+        <code>x-opt-delivery-time</code>
+      </li>
+      <li>
+        <code>x-opt-jms-dest</code>
+      </li>
+      <li>
+        <code>x-opt-jms-reply-to</code>
+      </li>
+      <li>
+        <code>x-opt-jms-msg-type</code>
+      </li>
+    </ul>
+    <p>These are all described in <i><a href="https://www.oasis-open.org/committees/download.php/60251/amqp-bindmap-jms-v1.0-wd08.pdf">Advanced Message Queuing Protocol (AMQP) JMS Mapping Version 1.0 Working Draft 8</a>.</i></p>
+    <p>An event broker discards any other <code>message-annotations</code> in received messages.</p>
+    <h2 class="with-rule"><a name="Sec3-2-5"/>Section 3.2.5: Application Properties</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>Entire section.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker restricts the number of entries in the <code>application-properties</code> map to a maximum 96. </p>
+    <h2 class="with-rule"><a name="Sec3-2-7"/>Section 3.2.7: AMQP Sequence</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>Entire section.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker does not support <code>amqp-sequence</code> message sections.</p>
+    <h2 class="with-rule"><a name="Sec3-2-8"/>Section 3.2.8: AMQP Value</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>Entire section.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker supports <code>amqp-value</code> message sections containing values of types <code>null</code>, <code>string</code>, <code>binary</code>,or <code>symbol</code>.</p>
+    <h2 class="with-rule"><a name="Sec3-2-8"/>Section 3.2.9: Footer</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>Entire section.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker does not support any <code>footer</code> section. An event broker discards any received <code>footer</code> section, and will never send any <code>footer</code> section.</p>
+    <h2 class="with-rule"><a name="Sec3-2-15"/>Section 3.2.15: Address String</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>Entire section.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>The <code>address-string</code> used to identify a terminus within an event broker will be a queue name or a topic.</p>
+    <p MadCap:conditions="Default.HideFromAllOutput">There is no further ornamentation (i.e. no prefix of “/QUEUE/” or “/TOPIC/”, no embedded JMS destination type) within the <code>address-string</code> itself. Durable queues have their queue name, without any “#P2P/QUE/” prefix, in the <code>address-string</code>. However, temporary queues and temporary topic endpoints do have prefixes of “#P2P/QTMP/” and “#P2P/TTMP/”, respectively, at the start of their <code>address-string</code>.</p>
+    <p>JMS address types (durable queue, durable topic, temporary queue, temporary topic) are disambiguated using the <i>x-opt-jms-dest</i> and <i>x-opt-jms-reply-to</i> <code>message-annotations</code>.</p>
+    <p>For information regarding addressing for Non-JMS APIs, refer to <MadCap:xref href="Non-JMS-API-Addressing.htm">Addressing Support for AMQP Non-JMS APIs</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Sec3-4"/>Section 3.4: Delivery State</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>Entire text.
+        </p>
+    <p style="font-weight: bold;">Solace implementation:</p>
+    <p>An event broker supports only the <code>accepted</code>, <code>rejected</code> or <code>released</code> delivery states.</p>
+    <h2 class="with-rule"><a name="Sec3-5-3"/>Section 3.5.3: Source</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>Entire section.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker receiving an <code>attach</code> message with the role of receiver (i.e., the event broker will be the sender) uses one of the following capabilities in the received <code>attach source</code> to determine the messaging service desired by the link:</p>
+    <ul>
+      <li>
+        <i>queue</i>
+      </li>
+      <li>
+        <i>topic</i>
+      </li>
+      <li>
+        <i>temporary-queue</i>
+      </li>
+      <li>
+        <i>temporary-topic</i>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Sec3-5-4"/>Section 3.5.4: Target</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>Entire section.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker receiving an <code>attach</code> frame with the role of sender (i.e., the event broker will be the receiver) uses one of the following capabilities in the received <code>attach target</code> to determine the messaging service desired by the link:</p>
+    <ul>
+      <li>
+        <i>queue</i>
+      </li>
+      <li>
+        <i>topic</i>
+      </li>
+      <li>
+        <i>temporary-queue</i>
+      </li>
+      <li>
+        <i>temporary-topic</i>
+      </li>
+    </ul>
+    <p>An event broker in the receiver role supports the ANONYMOUS-RELAY capability.</p>
+    <h2 class="with-rule"><a name="Sec4-1"/>Section 4.1: Transactional Messaging</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>Entire section.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker does not support transactional messaging.</p>
+    <h2 class="with-rule"><a name="Section-5-2"/>Section 5.2: TLS</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>Entire section.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker does not support TLS session establishment as described in this section (using a protocol header to encapsulate a TLS handshake).</p>
+    <h2 class="with-rule"><a name="Sec5-2-1"/>Section 5.2.1: Alternative Establishment</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>Entire section.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker only supports TLS session establishment as described in this section (establishing a TLS connection on a separate TCP port, in which AMQP is encapsulated).</p>
+    <h2 class="with-rule"><a name="Sec5-3-3-1"/>Section 5.3.3.1: SASL Mechanisms</h2>
+    <p>
+      <b>1. Applicable specification text:</b>
+    </p>
+    <p>Entire section.</p>
+    <p>
+      <b>Solace implementation:</b>
+    </p>
+    <p>An event broker supports SASL mechanisms of:</p>
+    <ul>
+      <li>ANONYMOUS, when the Message VPN has no authentication enabled;</li>
+      <li>PLAIN, when the Message VPN has authentication enabled;</li>
+      <li>EXTERNAL, when the AMQP connection is over TLS and the Message VPN has client-certificate authentication enabled.</li>
+      <li>XOAUTH2, when the Message VPN has OAuth authentication enabled. </li>
+    </ul>
+  </body>
+</html>

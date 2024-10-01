@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Engineering Guidelines for Disk Arrays</h1>
+    <p>To attain maximum Guaranteed Messaging rates with Solace PubSub+ appliances, an appropriate external disk array that can support the expected messaging rates must be used. This section provides guidelines for measuring and configuring external disk arrays for use with Solace PubSub+ appliances so that maximum Guaranteed Messaging rates can be achieved.</p>
+    <p>This section provides engineering guidelines for disk arrays used for Solace PubSub+ appliances.</p>
+    <div class="Note">
+      <ul>
+        <li> For best performance and maximum data integrity, it is recommended you use an enterprise grade SSD which supports power loss data protection features.</li>
+        <li>
+          <p>As of Solace PubSub+ appliance release <MadCap:variable name="Variables.Appliance Release Version"/>, operations below that state they can only be performed by root, can now also be performed by a Sysadmin User. For information on configuring Sysadmin Users, refer to <MadCap:xref href="../../Admin/Configuring-Multiple-Shell-Users.htm">Configuring Multiple Linux Shell Users</MadCap:xref>.</p>
+        </li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="managing_guaranteed_messaging_1810020758_1004477"/>Understanding Guaranteed Messaging Performance</h2>
+    <p>The maximum performance of the Guaranteed Messaging feature of appliances depends on two major factors:</p>
+    <ul>
+      <li>The maximum Guaranteed Messaging ingress rates the appliance offers. These rates depend on the appliance type that is used and (if applicable) the model of Assured Deliver Blade (ADB) model it uses. </li>
+      <li>The rate at which the appliance can write received Guaranteed messages to the disk array.</li>
+    </ul>
+    <p>When clients are offline or slow, the Guaranteed messages for those clients need to be written to the external disk array. The external disk array must be able to sustain the rate of Guaranteed messages destined for offline or slow clients. Otherwise, the external disk array will constrain Guaranteed Messaging performance.</p>
+    <p>The absolute maximum performance is limited by the capabilities of the ADB and event broker pairing that is used. If clients never go offline or are not slow, and messages are never written to disk, then the ADB and event broker pairing alone define the Guaranteed Messaging performance of the system. However, in real deployments clients do go offline and are slow. When this happens messages are written to the disk array, and the write performance of the disk array will affect the overall Guaranteed Messaging performance.</p>
+    <p>For example, if the ADB and appliance combination can support a maximum ingress rate of 4.5 Gbps (563 MBps), and 50% of the clients are offline or slow, then the external disk array must be able to support at least 2.25 Gbps (281 MBps) to achieve the rate provided by the ADB and appliance combination. If not, the external disk array becomes a performance bottleneck and impacts the maximum performance of the Guaranteed Messaging feature.</p>
+    <p>Using the same ADB and event broker combination, if 100% of the clients are offline or slow, then the disk array must be able to support at least 4.5 Gbps to achieve maximum performance.</p>
+    <h2 class="with-rule"><a name="managing_guaranteed_messaging_1810020758_1004486"/>Converting Guaranteed Message and Disk Write Rates</h2>
+    <p>Disk write performance is measured in terms of bandwidth (bytes per second). However, the message rate performance is an often-used performance metric. To calculate the message rate with a known disk write rate, use the following formula:</p>
+    <ul>
+      <li>messages per second = disk write rate bytes per second / (average message size + overhead)</li>
+    </ul>
+    <p>The message overhead is typically 144 bytes per message. So, given a disk write rate of 100 MB per second (104,857,600 bytes per second) and a 1,024 average message size, the expected message rate when spooling to disk is the following:</p>
+    <ul>
+      <li>104,857,600 bytes / (144 bytes + 1,024 bytes) = 89,775 messages per second</li>
+    </ul>
+    <p>Conversely, given a message rate you want to achieve, you can use the following formula to calculate the required disk write performance:</p>
+    <ul>
+      <li>disk write rate = messages per second * (average message size + overhead)</li>
+    </ul>
+    <p>Therefore, if you want to spool 170,000 message per second to disk with an average size of 512 bytes, you need the following disk write rate:</p>
+    <ul>
+      <li>170,000 message per second * (512 bytes + 144 bytes) = 106 MB per second (111,520,000 bytes per second)</li>
+    </ul>
+    <h2 class="with-rule"><a name="Measuring"/>Measuring Disk Performance</h2>
+    <p>Solace provides a soldisktest tool so that you can measure the write performance of an external disk array and determine the available performance for spool to disk scenarios of Guaranteed Messaging. The soldisktest tool uses the same technique for writing messages to disk as the Guaranteed Messaging feature of Solace PubSub+. However, it only provides a simulation and should be regarded as an estimate of the maximum expected write performance. When engineering disk write performance, you should plan for performance at least 10% less than the value provided by soldisktest.</p>
+    <p>To measure the write performance to the disk array on a primary event broker do the following:</p>
+    <ol>
+      <li>To ensure that the disk array WWN is configured and the operational status is AD-Active, enter the <code>show message-spool</code> User EXEC command:</li>
+      <pre class="Code">solace1(admin-message-spool-vpn)# show message-spool
+ 
+Config Status:                        Enabled (Primary)
+Maximum Spool Usage:                    60000 MB
+Spool While Charging:                     No
+Spool Without Flash Card:                 No
+Using Internal Disk:                      No<span style="color: #ff0000;">
+Disk Array WWN:             60:06:01:60:4d:30:1c:00:e6:11:60:ec:d2:2e:e0:11
+ 
+Operational Status:                       AD-Active</span>
+
+. . .
+</pre>
+      <p>For information on configuring the message spool, see <MadCap:xref href="Configuring-External-Disk-Arrays.htm">Configuring External Disk Arrays for Guaranteed Messaging</MadCap:xref>.</p>
+      <li>To ensure that the primary disk partition has enough free space, enter the <code>show disk detail</code> User EXEC command. The <code>/dev/mapper</code> entry that ends with <code>p1</code> is the primary partition.</li>
+      <pre class="Code">solace1(admin-message-spool-vpn)# show disk detail 
+Filesystem           1K-blocks      Used Available Use% Mounted on
+/dev/md2              19236244   5966332  12292764  33% /
+/dev/md1                101018     16769     79033  18% /boot
+/dev/md6             199811600 170367716  19294028  90% /usr/sw
+none                   7825944        16   7825928   1% /dev/shm<span style="color: #ff0000;">
+/dev/mapper/3600601604d301c00e61160ecd22ee011p1
+                      17358176    597404  15879008   4% /usr/sw/externalSpool/p1</span>
+            
+/dev/mapper/3600601604d301c00e61160ecd22ee011p2
+                      17358176     77888  16398524   1% /usr/sw/externalSpool/p2
+</pre>
+      <li>At the shell prompt, as the root user, run the <code>soldisktest</code> utility, providing the average expected message size to the <code>--msgsize</code> parameter. (Do not account for overhead because it is automatically handled by soldisktest.)</li>
+    </ol>
+    <div class="Note">
+      <ul>
+        <li>Depending on the performance of the disk array, the command may take several minutes to complete.</li>
+        <li>The message spool must be configured and AD-Active for the test to run.</li>
+        <li>By default, soldisktest measures the write performance on the primary disk partition (<code>/usr/sw/externalSpool/p1</code>). To measure the performance of the backup partition, run soldisktest on the backup event broker while in the AD-Active state and set the option <code>--dir=/usr/sw/externalSpool/p2</code>.</li>
+        <li>By default, soldisktest writes 8 GB to the partition, so ensure that the partition has a sufficient amount of free space. To adjust the amount of data written, use the <code>--total-files</code> option. The test writes files with a size of 8 MB. The default number of files written is 1,000.</li>
+        <li>To provide accurate results, the event broker must be idle (that is, not actively passing messages).</li>
+      </ul>
+    </div>
+    <p>In the following example, the performance for an average message size of 1024 bytes is measured. For this message size, the maximum write rate is 46 Mbps or 41,864 messages per second.</p>
+    <pre class="Code">[root@lab-129-80 support]# soldisktest --msgsize=1024
+Using 7182 messages per file, file size = 8388592 bytes
+done!
+elapsed time = 171.553
+bytes written per second = 48897961 = 47751 KBps = 46 MBps
+Message rate: 41864 messages per second
+Deleting test spool files created
+All files deleted.</pre>
+    <h2 class="with-rule"><a name="managing_guaranteed_messaging_1810020758_1004542"/>Diagnosing External Disk Performance Issues</h2>
+    <p>There are two ways to diagnose if the external disk array is a performance bottleneck:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#monitor-IO">Monitoring IO Statistics</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Monitor-ADB">Monitoring ADB Usage</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="monitor-IO"/>Monitoring IO Statistics</h3>
+    <p>When the external disk array is a bottleneck, the IO utilization for the device mapped to the LUN will be near 100%. You can interactively monitor the IO utilization using the iostat utility.</p>
+    <p>To use the iostat utility, first determine the name of the device mapped to the LUN using the multipath command while in root shell:</p>
+    <pre class="Code">[root@solace1 support]# multipath -ll
+3600601604d301c00e61160ecd22ee011 dm-0 DGC,RAID 10
+size=34G features='1 queue_if_no_path' hwhandler='1 emc' wp=rw
+|-+- policy='round-robin 0' prio=1 status=active
+| `- 8:0:1:0 sde 8:64 active ready running
+`-+- policy='round-robin 0' prio=0 status=enabled
+  `- 8:0:2:0 sdf 8:80 active ready running</pre>
+    <p>This command shows each path to the LUN. On the line that describes the path status (for, example "active"), the device name, which starts with "sd", will also be listed. You want to use the device name listed for the first path. In the example above, the device is "sde".</p>
+    <p>To monitor the IO utilization, enter the following command in a root shell:</p>
+    <pre class="Code">iostat -d -x -k 1 &lt;device&gt;</pre>
+    <p><u>Where</u> : <code>&lt;device&gt;</code> is the value determined through the multipath command. Note that the first result of the command may not report an accurate utilization value and should be ignored.</p>
+    <p>The following example output displays a scenario where the disk is a bottleneck:</p>
+    <pre class="Code">[root@lab-129-80 support]#  iostat -d -x -k 1 sde
+
+Linux 3.4.67.solos86 (lab-129-80)       05/16/2014
+
+Device:    rrqm/s wrqm/s   r/s   w/s  rsec/s  wsec/s    rkB/s    wkB/s avgrq-sz avgqu-sz   await  svctm  %util
+sde          0.00   0.00  0.17  2.42  107.23 1522.71    53.61   761.36   629.16     0.17   66.91   6.27   1.63
+
+Device:    rrqm/s wrqm/s   r/s   w/s  rsec/s  wsec/s    rkB/s    wkB/s avgrq-sz avgqu-sz   await  svctm  %util
+sde          0.00   0.00  0.00 117.82    0.00 101631.68     0.00 50815.84   862.59    15.92  150.89   8.40  99.01
+
+Device:    rrqm/s wrqm/s   r/s   w/s  rsec/s  wsec/s    rkB/s    wkB/s avgrq-sz avgqu-sz   await  svctm  %util
+sde          0.00   0.00  0.00 115.15    0.00 94351.52     0.00 47175.76   819.37    27.81  160.92   8.11  93.33
+
+Device:    rrqm/s wrqm/s   r/s   w/s  rsec/s  wsec/s    rkB/s    wkB/s avgrq-sz avgqu-sz   await  svctm  %util
+sde          0.00   0.00  0.00 99.01    0.00 83778.22     0.00 41889.11   846.16    17.88  261.31   9.24  91.49
+
+Device:    rrqm/s wrqm/s   r/s   w/s  rsec/s  wsec/s    rkB/s    wkB/s avgrq-sz avgqu-sz   await  svctm  %util
+sde          0.00   0.00  0.00 107.00    0.00 92448.00     0.00 46224.00   864.00    14.54  153.07   8.71  93.20
+
+Device:    rrqm/s wrqm/s   r/s   w/s  rsec/s  wsec/s    rkB/s    wkB/s avgrq-sz avgqu-sz   await  svctm  %util
+sde          0.00   0.00  0.00 120.20    0.00 99539.39     0.00 49769.70   828.10    16.33  122.27   8.28  99.49</pre>
+    <h3><a name="Monitor-ADB"/>Monitoring ADB Usage</h3>
+    <p>The amount of messages on the ADB can indicate a disk performance bottleneck. If the ADB is always full, it indicates that messages cannot be written to disk as fast as they are being put into the ADB. In a busy system without a disk performance bottleneck, the ADB will be approximately 50% full.</p>
+    <p>To determine if the ADB is full, enter the <b>show message-spool </b>User EXEC command to view Guaranteed Messaging message status and usage. </p>
+    <pre class="Code">solace# show message-spool
+
+Config Status:                            Enabled (Primary)
+Maximum Spool Usage:                      60000 MB
+
+. . .
+<span style="color: #ff0000;">
+                                              ADB        Disk          Total
+Current Persistent Store Usage (MB)     1093.8263   2435.9131      3529.7394
+Number of Messages Currently Spooled        57348      127712         185060</span></pre>
+    <div class="Note">
+      <p>In the displayed output, examine the "Number of Messages Currently Spooled" and "Current Persistent Store Usage (MB)" entries in the ADB column (not the Disk column). When there is a disk-related bottleneck, one or both of these values will continuously be near their maximum values: </p>
+      <ul>
+        <li>Maximum number of messages is approximately 4,200,000. For smaller message sizes, when the disk is a bottleneck the number of messages on the ADB will approach the maximum.</li>
+        <li>Maximum persistent store usage is 3,300 MB for ADB-04210M and 1,100 MB for ADB-000000-01/ADB-000000-02. For larger message sizes, the current persistent store usage on the ADB will approach the maximum when the disk is a bottleneck.</li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="managing_guaranteed_messaging_1810020758_1004620"/>Considerations for Optimal Disk Array Performance</h2>
+    <p>When configuring a disk array to use with a Solace PubSub+ event broker using Guaranteed Messaging, consider the following items:</p>
+    <ul>
+      <li>Disk Array Write Caching—Disk arrays with built-in battery-backed write caches are able to perform at higher levels than disk arrays without write caches. </li>
+      <li>Disk RPMs—The use of 10,000 RPM or 15,000 RPM disks is recommended because hard disks that spin at higher RPMs are better able to sustain high rates of messaging activity. Faster hard disks are generally more important when trying to improve unspooling performance than spool-to-disk performance. </li>
+      <li>RAID Levels—The performance of LUNs using RAID 5/6 is significantly lower than RAID 1/10. Therefore, Solace strongly recommends using storage in RAID 10 mode to avoid performance degradation caused by partial writes to stripes in RAID 5/6 modes. </li>
+      <li>Number of Disks in the RAID Group—Some disk arrays will experience performance degradation with additional disks in the RAID group for LUNs. The number of disks that an array can support without experiencing performance degradation varies widely from vendor to vendor. Consult the performance recommendation documents for your disk array for determining maximum performance. </li>
+      <li>Disk Partition Sector Alignment—Misaligned disk partitions can significantly degrade performance with most disk arrays.
+        <p>This issue can be diagnosed by examining the start and end sectors of the partition table using the gdisk command. That is, run the gdisk utility on the external disk device, enter the "p" command to view the partition table in sector units. </p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example: </MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code">[root@solace ~]# gdisk /dev/mapper/36001405f6bd73860d76412eab3a4a006
+GPT fdisk (gdisk) version 0.8.9
+Partition table scan:
+  MBR: protective
+  BSD: not present
+  APM: not present
+  GPT: present
+
+Found valid GPT with protective MBR; using GPT.
+
+Command (? for help): p
+Disk /dev/mapper/36001405f6bd73860d76412eab3a4a006: 31251759104 sectors, 14.6 TiB
+Logical sector size: 512 bytes
+Disk identifier (GUID): A9717400-24DF-4D26-95FE-92F8BF4FBF7B
+Partition table holds up to 128 entries
+First usable sector is 34, last usable sector is 31251759070
+Partitions will be aligned on 2048-sector boundaries
+Total free space is 4061 sectors (2.0 MiB)
+
+Number  Start (sector)    End (sector)  Size       Code  Name
+   1            2048     15625879552   7.3 TiB     8300  Linux filesystem
+   2     15625881600     31251759070   7.3 TiB     8300  Linux filesystem
+
+Command (? for help): q
+[root@solace ~]#</pre></MadCap:dropDownBody></MadCap:dropDown><p>For information on how to partition a disk array with proper sector alignment, see <MadCap:xref href="Configuring-External-Disk-Arrays.htm">Configuring External Disk Arrays for Guaranteed Messaging</MadCap:xref>.</p></li>
+      <li>Host Bus Adapter Link Speed—In high-performance configurations, sustained spool to disk activity requires an 8 Gbps fiber channel link. Host Bus Adapters that support 8 Gbps fiber channel links are available on some event broker models. To accommodate peak messaging rates, it is strongly recommended that you deploy 8 Gbps fiber channel links throughout.</li>
+      <li>Thin provisioning of the LUN from the appliance is currently not supported.</li>
+    </ul>
+  </body>
+</html>

@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Configuring Cluster Links</h1>
+    <p>A cluster link connects nodes (either within a cluster or between two different clusters) and allows them to exchange topology information, subscriptions and data.</p>
+    <p>A cluster link is composed of:</p>
+    <ul>
+      <li>one control channel</li>
+      <li>one client profile</li>
+      <li>one data channel per Message VPN</li>
+    </ul>
+    <p>As shown here, a data channel is made up of a bridge and a queue:</p>
+    <p>
+      <img src="../../Resources/Images/DMR/DMR-Link-Objects.png" style="max-width: 50%;" alt=""/>
+    </p>
+    <p>For an external cluster link only, there is an additional bridge object, called a DMR bridge, that establishes the data channels between clusters (not shown).</p>
+    <p>To create a cluster link from the given node to a remote node, enter the following commands:</p>
+    <pre class="Code" xml:space="preserve">solace(configure)# routing
+solace(configure/routing)# dynamic-message-routing
+solace(...igure/routing/dynamic-message-routing)# cluster &lt;cluster-name&gt;
+solace(...uting/dynamic-message-routing/cluster)# create link &lt;node-name&gt;</pre>
+    <p>To configure an existing cluster link, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">
+solace(...uting/dynamic-message-routing/cluster)# link &lt;node-name&gt;</pre>
+    <p xml:space="preserve">To enable the cluster link, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">solace(.../dynamic-message-routing/cluster/link)# no shutdown</pre>
+    <p>Where:</p>
+    <p><code>&lt;node-name&gt;</code> is the name of the remote node. As a special case, <code>&lt;node-name&gt;</code> may be the  string <code>#ACTIVE</code>, which represents the link to the event broker currently active for the virtual router defined by this event broker’s active standby role. This special cluster link always exists, and cannot be removed.</p>
+    <p class="Note">If the remote node is an HA group,  use the <code>&lt;node-name&gt;</code> of the primary event broker. In addition, when you configure the remote node connection parameters, provide details for both the primary and the backup (refer to <MadCap:xref href="#Connection-Config">Remote Node Connection Configuration</MadCap:xref>).</p>
+    <p>The configuration tasks that you can perform for an existing link include:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Link-Span-Config">Setting the Link Span</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Link-Intiator-Config">Setting the Link Initiator</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Connection-Config">Setting the Connection Address for the Remote Node</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Link-Transport-Config">Setting the Link Transport Method</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Link-Auth-Config">Configuring Authentication on the Link</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#configure-retry">Configuring the Retry Connections for the Link</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Config-Link-TLS">Enabling TLS/SSL Encryption</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Message-Spool-Attr">Setting the Window Size for the DMR Message Spool</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Link-Client-Prof-Config">Configuring Client Profiles for the Cluster Link</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Link-Queue-Config">Configuring a Cluster Link Queue </MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Setting">Setting Cluster Link Attributes</MadCap:xref>
+      </li>
+    </ul>
+    <p class="Caution">If you are configuring DMR cluster links, and you have (or will have) replication enabled, ensure that your link settings follow the  guidelines listed in <MadCap:xref href="DMR-with-DR-Cluster-Link-Config.htm">Configuring Cluster Links with Replication</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Link-Span-Config"/>Setting the Link Span</h2>
+    <p>Links between nodes within the same cluster are called internal links, while links between nodes in different clusters are called external links. This quality of a link is called the link's span. Each end of the link must agree upon its span, or a topology error will occur. The default span of all links is external.</p>
+    <p>To configure the span of the cluster link, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">solace(.../dynamic-message-routing/cluster/link)# span {internal | external}</pre>
+    <p>Where:</p>
+    <p><code>internal</code> specifies to connect to a node within the same cluster.</p>
+    <p><code>external</code> specifies to connect to a node in a different cluster.</p>
+    <h2 class="with-rule"><a name="Link-Intiator-Config"/>Setting the Link Initiator</h2>
+    <p>While messages are exchanged in both directions over the link, the underlying TCP connection is only established by one side, depending on the value of initiator. Each end of the link must agree upon the initiator, or the link will be disabled. The default initiator is lexical.</p>
+    <p>To configure the initiator of the link's TCP connections, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">solace(.../dynamic-message-routing/cluster/link)# initiator {lexical | local | remote}</pre>
+    <p>Where:</p>
+    <p><code>lexical</code> specifies that the node with the higher <code>node-name</code> initiates the connection.</p>
+    <p><code>local</code> specifies that the local node initiates the connection. The other end of the link must specify <code>remote</code>.</p>
+    <p><code>remote</code> specifies that the remote node initiates the connection. The other end of the link must specify <code>local</code>.</p>
+    <p class="Note">
+      <MadCap:snippetText src="../../Resources/Snippets/DMR-link-initiator-no-lexical.flsnp"/>
+    </p>
+    <h2 class="with-rule"><a name="Connection-Config"/>Setting the Connection Address for the Remote Node</h2>
+    <p>You can provide up to four addresses or fully qualified domain names (FQDNs) for each link, and each will be tried on a round-robin basis. Multiple addresses are required when the remote node may be implemented by multiple  event brokers, for the purpose of redundancy and/or replication.</p>
+    <p>To configure the IP address and optional port that the remote node is reachable from, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">solace(.../dynamic-message-routing/cluster/link)# connect-via &lt;addr-port&gt;</pre>
+    <p>Where:</p>
+    <p><code>&lt;addr-port&gt;</code> is the IP address or FQDN, and optional TCP port that the remote node is reachable from. For connecting to an appliance, the &lt;addr-port&gt; must resolve to the remote appliance's <a href="../../Admin/IP-Interfaces/Configuring-Mgmt-and-MBackbone-Interfaces.htm#Configur2" target="_self" class="link-internal">msg-backbone VRF</a>. <MadCap:snippetText src="../../Resources/Snippets/ip-address-format.flsnp"/> If a port is unspecified, the defaults are 55555 for plain-text, 55003 for compressed, or 55443 for SSL. The FQDN can contain up to 253 characters.</p>
+    <p class="Note">Configuring a <code>connect-via</code> address is required only on the broker that initiates the connection.</p>
+    <h2 class="with-rule"><a name="Link-Transport-Config"/>Setting the Link Transport Method</h2>
+    <p>Link transport may be encrypted, compressed, or both. While the choice to use encryption and compression is independent for every link, the control and data channels of each individual link share the same encryption and compression settings. </p>
+    <h3><a name="Config-Compression"/>Enabling Compression</h3>
+    <p>You can enable or disable compression on the link. Each end of the link must agree upon the choice of compression, or the link will act as if disabled. Compression is disabled by default.</p>
+    <p>To enable compression, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">solace(.../dynamic-message-routing/cluster/link)# transport compressed</pre>
+    <h3><a name="Config-Link-TLS"/>Enabling TLS/SSL Encryption</h3>
+    <p>You can enable or disable encryption on the link.  Each end of the link must agree upon the choice of encryption, or the link will act as if disabled. Encryption is disabled by default. </p>
+    <p>The cipher suites offered by the link on outgoing connections to the remote node are the same as the <a href="../../Security/Configuring-Cipher-Suites-for-Inbound-Connections.htm" class="link-internal">cipher suites configured globally</a> that the sending node allows for incoming message backbone connections.</p>
+    <p>To enable TLS/SSL encryption, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">solace(.../dynamic-message-routing/cluster/link)# transport ssl</pre>
+    <h2 class="with-rule"><a name="Link-Auth-Config"/>Configuring Authentication on the Link</h2>
+    <p>Each individual node is configured as to which forms of authentication are acceptable to it for any of its links (basic, client-certificate, or both). Credentials to be presented to the remote end are configured for clustering at the global scope (refer to <MadCap:xref href="DMR-Mgmt-Cluster-Config.htm#Cluster-Auth">Cluster-Level Authentication Configuration</MadCap:xref>), but may also be overridden on a per-link basis.</p>
+    <h3><a name="Config-Link-Auth"/>Setting the Authentication Scheme</h3>
+    <p>You can configure the authentication scheme to be used by the link that initiates connections to the remote node. Links support basic and client-certificate authentication.</p>
+    <p>To configure the authentication scheme, enter the following commands:</p>
+    <pre class="Code" xml:space="preserve">solace(.../dynamic-message-routing/cluster/link)# authentication
+solace(...e-routing/cluster/link/authentication)# auth-scheme {basic | client-certificate}</pre>
+    <p>Where:</p>
+    <p><code>basic</code> specifies to use basic authentication.</p>
+    <p><code>client-certificate</code> specifies to use client-certificate authentication.</p>
+    <h3><a name="Config-Link-Password"/>Setting a Password for Basic Internal Authentication</h3>
+    <p>You can configure the password used to authenticate with the remote node. This password needs to be configured only on the side of the link which initiates the connection, and must match the expected password configured on the remote node. When this per-link password is not configured, the cluster’s password is used instead.</p>
+    <p>To configure a password to authenticate with the remote node, enter the following commands:</p>
+    <pre class="Code" xml:space="preserve">solace(.../dynamic-message-routing/cluster/link)# authentication
+solace(...e-routing/cluster/link/authentication)# basic 
+solace(...ing/cluster/link/authentication/basic)# password &lt;password&gt;</pre>
+    <p>Where:</p>
+    <p><code>&lt;password&gt;</code> specifies the password to authenticate with.</p>
+    <h2 class="with-rule"><a name="configure-retry"/>Configuring the Retry Connections for the Links</h2>
+    <p>For event brokers using 10.8.1 and later, you can configure the number of retry attempts and wait time between retries for establishing a connection to the Message VPN on the remote DMR node.</p>
+    <p class="Note">For event brokers using 10.8.0 or earlier, the retry attempts and wait time default to 0 and 3 seconds, respectively and cannot be configured.</p>
+    <p>Configuration of the retry attempts and wait time between attempts is necessary when more attempts or more time is required to establish the connection. For example, if there are potential latency issues between your DMR nodes (e.g., due to large geographic distances), you may want to increase the retry wait time to allow for more time to establish the connection for the cluster link. For more information, see <MadCap:xref href="#configure-max-retries">Configuring the Maximum Retry Attempts</MadCap:xref> and <MadCap:xref href="#configure-wait-time">Configuring the Wait Time to Before Retries</MadCap:xref></p>
+    <p> You also cannot configure the retry attempts or delay on the <code>#ACTIVE</code> link.</p>
+    <h3><a name="configure-max-retries"/>Configuring the Maximum Retry Attempts</h3>
+    <p> You can enter the following CONFIG command to configure  the maximum number of retries to the remote  Message VPN on another DMR node before the next alternate remote destination is attempted. For example, if the retry count is set to 1, a total of two connection attempts is made for each alternate remote destination where you have the initial attempt and one retry.</p>
+    <p>To configure the number of retries, run the following CONFIG commands in the <MadCap:variable name="Product-Names.solace_cli"/>:</p>
+    <pre xml:space="preserve">solace(configure/routing/dynamic-message-routing)# cluster &lt;link-name&gt; link &lt;remote-node-name&gt;
+solace(configure/routing/dynamic-message-routing/cluster/link)# retry count &lt;count&gt;</pre>
+    <p>Where:</p>
+    <p><code>&lt;count&gt;</code> is an integer from 0 to 255 for the number of times to retry a connection. The default value is 0.</p>
+    <p>The no version of this command (no remote retry count) resets the number of retries attempted  back to the default value.</p>
+    <h3><a name="configure-wait-time"/>Configuring the Wait Time to Before Retries</h3>
+    <p>You can enter the following CONFIG command to configure the number of seconds to wait for the connection to be established before attempting a new connection using <code>retry delay</code>:</p>
+    <pre xml:space="preserve">solace(configure/routing/dynamic-message-routing)# cluster &lt;cluster-name&gt; link &lt;remote-node-name&gt; 
+solace(configure/routing/dynamic-message-routing/cluster/link)# retry delay &lt;seconds&gt;</pre>
+    <p>Where:</p>
+    <p><code>&lt;seconds&gt;</code> is an integer from 0 to 255 for the number of seconds to wait before retrying a connection. The default value is 3.</p>
+    <p>The no version of this command,  resets the number of seconds to wait to the default value.</p>
+    <h2 class="with-rule"><a name="Message-Spool-Attr"/>Setting the Window Size for the DMR Message Spool</h2>
+    <p> To configure the window size of Guaranteed messages which can be outstanding to the remote node before acknowledgment is received by the local node, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">solace(.../dynamic-message-routing/cluster/link)# message-spool
+solace(...ge-routing/cluster/link/message-spool)# window-size &lt;number&gt;</pre>
+    <p>Where:</p>
+    <p><code>&lt;number&gt;</code> specifies the transport window size for Guaranteed messaging in number of messages. </p>
+    <h2 class="with-rule"><a name="Link-Client-Prof-Config"/>Configuring Client Profiles for the Cluster Link</h2>
+    <p>Cluster link client profiles are used  to assign a common set of configuration properties for  link connections that have been successfully authorized.</p>
+    <p>You can configure various attributes of the client profile used by each  cluster link, including: </p>
+    <ul>
+      <li>
+        <MadCap:xref href="../../Security/Configuring-Client-Profiles.htm#Config-Egress-Queues">Configuring Egress Priority Queues</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="../../Security/Configuring-Client-Profiles.htm#Config-Client-TCP">Configuring Client TCP Settings</MadCap:xref>
+      </li>
+    </ul>
+    <p>For more information about provisioning client profiles on PubSub+ event brokers, refer to <MadCap:xref href="../../Security/Configuring-Client-Profiles.htm">Client Profile Configuration</MadCap:xref>.</p>
+    <p>Although cluster link client profiles share  attributes with normal client profiles, they are different objects. </p>
+    <p>To configure cluster link client profile attributes enter the following command:</p>
+    <pre class="Code" xml:space="preserve">solace(.../dynamic-message-routing/cluster/link)# client-profile</pre>
+    <h2 class="with-rule"><a name="Link-Queue-Config"/>Configuring a Cluster Link Queue </h2>
+    <p>Cluster link queues are used to enqueue messages before they are sent over the data connection to neighbor nodes. These TCP transmit queues are used to manage the flow of data that is transmitted from the node over the links to its neighbors.</p>
+    <p>You can configure various attributes of cluster link queues, including:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="../../Messaging/Guaranteed-Msg/Setting-Dead-Msg-Queues.htm">Setting Dead Message Queues</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-Queues.htm#Configur13">Configuring Queue Event Thresholds</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-Queues.htm#managing_guaranteed_messaging_1810020758_455709">Configuring Max Permitted Number of Delivered Unacked Messages</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-Queues.htm#Configur15">Configuring Max Redelivery Attempts</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-Queues.htm#Configur16">Configuring Max Spool Usage Values</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-Queues.htm#Configur21">Configuring Max Message TTLs</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-Queues.htm#Message-Discard-Handling">Configuring Message Discard Handling</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-Queues.htm#Enforcin">Enforcing Whether to Respect TTLs</MadCap:xref>
+      </li>
+    </ul>
+    <p>For more information about provisioning queues on Solace PubSub+ event brokers, refer to <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-Queues.htm">Configuring Queues</MadCap:xref>. </p>
+    <p>Although cluster link queues  share  attributes with  normal queues, they are different objects. </p>
+    <p>To configure cluster link queue attributes enter the following command:</p>
+    <pre class="Code" xml:space="preserve">solace(.../dynamic-message-routing/cluster/link)# queue</pre>
+    <p class="Note">The initial values set for various cluster link queue attributes may differ from the default settings of normal queues.</p>
+    <h2 class="with-rule"><a name="Setting"/>Setting Cluster Link Attributes</h2>
+    <p>A cluster link attribute is a key-value pair that can be used to locate a DMR cluster link, for example when using client certificate matching rules. For more information, see <MadCap:xref href="DMR-Mgmt-Cluster-Config.htm#Configur">Configuring Client Certificate Matching Rules</MadCap:xref>.</p>
+    <p>To create a cluster link attribute enter the following command:</p>
+    <pre class="Code" xml:space="preserve">solace(.../dynamic-message-routing/cluster/link)# create attribute &lt;name&gt; &lt;value&gt;</pre>
+    <p>Where:</p>
+    <p><code>&lt;name&gt;</code> is the name of the attribute (of up to 64 characters).</p>
+    <p><code>&lt;value&gt;</code> is the value of the attribute (of up to 256 characters).</p>
+    <p>the no version of this command, <code>no attribute &lt;name&gt; &lt;value&gt;</code>, removes the attribute.</p>
+    <p>The following example sets a cluster link  attribute named <code>span</code> with a value of <code>internal</code> for the link. If an appropriate client certificate attribute filter is configured on the cluster, the event broker will apply any corresponding certificate matching conditions when this link attempts to authenticate with the remote node.</p>
+    <pre xml:space="preserve">solace(.../dynamic-message-routing/cluster/link)# create attribute span internal</pre>
+  </body>
+</html>

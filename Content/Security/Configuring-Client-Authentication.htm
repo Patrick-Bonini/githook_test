@@ -1,0 +1,748 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <title/>
+    <link href="../Resources/Stylesheets/MainStylesForReview.css" rel="stylesheet" type="text/css"/>
+  </head>
+  <body>
+    <h1>Configuring Client Authentication</h1>
+    <p>Client authentication schemes that are configured for a Message VPN specify what credentials that a connecting client can provide for the event broker to authenticate that client. For the client to be successfully authenticated and then permitted to establish a connection to the Message VPN, the client must provide the expected credentials to fulfill the requirements of a configured and enabled authentication scheme.</p>
+    <p>One or more of the following types of client authentication schemes can be configured for a Message VPN:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Basic">Basic Authentication</MadCap:xref>
+      </li>
+      <p>The default client authentication scheme for a Message VPN; it allows a client to authenticate with an event broker using a valid client name, client username, and optional password.</p>
+      <li>
+        <MadCap:xref href="#Client-Cert">Client Certificate Authentication</MadCap:xref>
+      </li>
+      <p>Also referred to as mutual TLS (mTLS) authentication. This   authentication scheme allows a client to prove its identity to a Solace PubSub+ event broker through an X509v3 client certificate from a recognized Certification Authority (CA).</p>
+      <li>
+        <MadCap:xref href="#Config-Kerberos">Kerberos Authentication</MadCap:xref>
+      </li>
+      <p>This authentication scheme allows a client to use the Kerberos mechanism within the GSSAPI (Generic Security Service API) to authenticate its connection with the event broker. To authenticate with the  Solace PubSub+ event broker, the client must provide a Service Ticket obtained from the key distribution center (KDC) ticket granting service (TGS). KDC services are hosted on an external server.</p>
+      <li>
+        <MadCap:xref href="#OAuth">OAuth Authentication Configuration</MadCap:xref>
+        <p>This authentication scheme allows a client to use the OAuth mechanism to authenticate its connection with the event broker. To authenticate with the Solace PubSub+ event broker, the client must provide a valid access token obtained from an OAuth authorization server.</p>
+      </li>
+      <li MadCap:conditions="Default.HideFromAllOutput">
+        <MadCap:xref href="#OAuth3">OAuth for Management Access</MadCap:xref>
+        <p>This authentication scheme allows a client to use OAuth to authenticate its connection to provide users with management access to the event broker. Users can then log in to to <MadCap:variable name="Product-Names.pubsubmanager_short"/> using OAuth authentication. To authenticate with the Solace PubSub+ event broker, the client must provide a valid ID token and/or access token.</p>
+      </li>
+    </ul>
+    <p>A connecting client indicates through its session properties which authentication scheme it wants to use and has the proper authentication credentials for. If the requested authentication scheme is enabled for the Message VPN on the event broker, the event broker will attempt to authenticate the client using that scheme. If the requested authentication scheme is not enabled for the Message VPN, the event broker will not attempt to authenticate the client, and a connect error indicating that the authentication scheme is not enabled is returned to the client.</p>
+    <h2 class="with-rule"><a name="Basic"/>Basic Authentication</h2>
+    <p>Basic authentication is the default client authentication scheme used for by Solace PubSub+. This authentication scheme allows a client to connect to a Message VPN over a non‑Transport Layer Security (TLS)/Secure Sockets Layer (SSL) connection and authenticate with that event broker using a valid client name, client username, and optional password.</p>
+    <p>To configure basic authentication for client connections to the given Message VPN, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# authentication<br/>solace(...message-vpn/authentication)# basic</p>
+    <p>The CLI is now at a level from which you can perform the following configuration tasks for the  basic authentication scheme used for the given Message VPN:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#RADIUS-Domain">Assigning RADIUS Domain Strings</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Config-Auth-Types">Configuring Authentication Types</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Enable-Basic">Enabling/Disabling Basic Authentication for Clients</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="RADIUS-Domain"/>Assigning RADIUS Domain Strings</h3>
+    <p>When you are using a RADIUS authentication type, you can assign a RADIUS domain string to the given Message VPN so that outgoing RADIUS access requests will have the string appended to the client name.</p>
+    <p>To assign a RADIUS domain string for the given Message VPN, enter the following CONFIG command:</p>
+    <p class="Code">solace(...message-vpn/authentication)# basic<br/>solace(...e-vpn/authentication/basic)# radius-domain &lt;auth-domain&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;auth-domain&gt;</code> is an authentication domain string to append to usernames in outgoing RADIUS Access-Requests.</p>
+    <p>The no version of this command, <code>no radius-domain</code>, removes a configured RADIUS domain string.</p>
+    <h3><a name="Config-Auth-Types"/>Configuring Authentication Types</h3>
+    <p>To configure the authentication type to use for basic authentication of clients, enter the following CONFIG command:</p>
+    <p class="Code">solace(...message-vpn/authentication)# basic<br/>solace(...e-vpn/authentication/basic)# auth-type {radius &lt;radius-profile&gt; | ldap &lt;ldap-profile&gt; | internal | none}</p>
+    <p>The no version of this command, <code>no authentication</code>, resets the authentication parameters back to the default RADIUS authentication type.</p>
+    <p><code>auth-type</code> is the authentication type to be configured. It can be one of the following:</p>
+    <ul>
+      <li><code>none</code> indicates users are automatically authenticated. This is not recommended by Solace.</li>
+      <li><code>radius</code> indicates users are authenticated using provisioned Remote Authentication Dial-in User Service (RADIUS) servers through the specified RADIUS profile name. This is the default authentication type.        <p>To use a RADIUS authentication type, an external RADIUS server must be configured and provisioned for use by the event broker. (Refer to your third‑party RADIUS server documentation for information on choosing a host machine and installing the server software.) If no RADIUS server is available to the event broker, and this default authentication type is used, then no users will be allowed to connect to the event broker.</p></li>
+      <li><code>ldap</code> indicates users are authenticated using provisioned Lightweight Directory Access Protocol (LDAP) servers through the specified LDAP profile name. <p>To use a LDAP authentication type, an external LDAP server must be configured and provisioned for use by the event broker. (Refer to your third‑party LDAP server documentation for information on choosing a host machine and installing the server software.)</p></li>
+      <li><code>internal</code> indicates users are authenticated using locally-stored account information.
+			<p class="Note">There is a single client username named <code>default</code> that exists in each Message VPN, and it is assigned to all clients. A password must be assigned to the client username named <code>default</code> before enabling internal authentication for client users. Otherwise, clients cannot successfully authenticate with the event broker.</p></li>
+    </ul>
+    <h3><a name="Enable-Basic"/>Enabling/Disabling Basic Authentication for Clients</h3>
+    <p>To enable basic authentication for clients connecting to the Message VPN, enter the following CONFIG commands:               <p class="Code">solace(...message-vpn/authentication)# basic<br/>solace(...e-vpn/authentication/basic)# no shutdown</p></p>
+    <p>To disable basic authentication for clients connecting to the Message VPN, enter the following CONFIG commands:
+			<p class="Code">solace(...message-vpn/authentication)# basic<br/>solace(...e-vpn/authentication/basic)# shutdown</p></p>
+    <h3><a name="Auth-example"/>Basic Authentication Examples</h3>
+    <p>The following example shows a sample command sequence that sets a basic authentication type for a Message VPN, and then sets the authentication type for client users to RADIUS.</p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <p class="Code">solace(configure)# message-vpn test<br/>solace(configure/message-vpn)# authentication  basic<br/>solace(...e-vpn/authentication/basic)# auth-type radius test-rad-profile<br/>solace(...e-vpn/authentication/basic)# auth-type radius-domain test-rad-1<br/>solace(...e-vpn/authentication/basic)# exit<br/>solace(configure/message-vpn)#</p>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <p>The following example shows how to show the currently configured authentication type.</p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <p class="Code">solace(configure/message-vpn)# show message-vpn test detail<br/>Message VPN: test<br/>Configuration Status:                Enabled<br/>Local Status:                        Up<br/>Distributed Cache Management:        Enabled<br/>Total Local Unique Subscriptions:    5<br/>Total Remote Unique Subscriptions:   0<br/>Total Unique Subscriptions:          5<br/>Maximum Subscriptions:               5000000<br/>Export Subscriptions:                Yes (100% complete)<br/>Local Connections:                   1<br/>Active Incoming Connections:         4<br/>  Service SMF:                       4<br/>  Service Web-Transport:             0<br/>  Service REST:                      0<br/>  Service MQTT:                      0<br/>Active Outgoing Connections:<br/>  Service REST:                      0<br/>Max Incoming Connections:            9000<br/>  Service SMF:                       9000<br/>  Service Web-Transport:             200000<br/>  Service REST:                      9000<br/>  Service MQTT:                      9000<br/>Max Outgoing Connections:<br/>  Service REST:                      6000<br/>Basic Authentication:                Enabled<br/>    Auth Type:                       RADIUS authentication<br/>    Auth Profile:                    test-rad-profile<br/>    Radius Domain:                   test-rad-1<br/>Client Certificate Authentication :  Disabled<br/>    Maximum Chain Depth:             3<br/>    Validate Certificate Dates:      Enabled<br/>    Allow API Provided Username:     Disabled<br/>    Username Source:                              common-name<br/>             Revocation Check Mode:              allow-valid<br/>    Certificate Matching Rules:          Disabled
+<br/>Kerberos Authentication :            Disabled<br/>  Allow API Provided Username:       Disabled<br/>OAuth Authentication Enabled :       No<br/>  Default Provider Name:<br/><br/>SEMP over Message Bus:               Enabled<br/>  Admin commands:                    Disabled<br/>    Client commands:                 Disabled<br/>    Distributed Cache commands:      Disabled<br/>  Show commands:                     Disabled<br/>  Legacy Show Clear commands:        Enabled<br/>Large Message Threshold:             1024 (KB)<br/>Event Log Tag:                       <br/>Publish Client Event Messages:       Disabled<br/>Publish Message VPN Event Messages:  Disabled<br/>Publish Subscription Event Messages: Disabled<br/>  No unsubscribes on disconnect:     Disabled<br/>  Event topic format:                N/A<br/>Event Threshold                           Set Value      Clear Value<br/>---------------------------------- ---------------- ----------------<br/>Connections (#conn)                       80%(7200)        60%(5400)<br/>  Service SMF                             80%(7200)        60%(5400)<br/>  Service Web-Transport                   80%(7200)        60%(5400)<br/>  Service REST                            80%(7200)        60%(5400)<br/>  Service MQTT                            80%(7200)        60%(5400)<br/>Ingress Message Rate (msg/sec)              4000000          3000000<br/>Egress Message Rate (msg/sec)               4000000          3000000<br/>Subscriptions (#subs)                  80%(4000000)     60%(3000000)</p>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <h2 class="with-rule"><a name="Client-Cert"/>Client Certificate Authentication</h2>
+    <p>To implement client certificate or mutual TLS (mTLS) authentication for connecting clients, the following configurations are required on the Solace PubSub+ event broker:</p>
+    <ul>
+      <li>Client certificate authentication must be configured and enabled for any Message VPNs that the clients will connect to. See <MadCap:xref href="#Client-CERT-VPNs">Configuring Client Certificate Parameters for Message VPNs</MadCap:xref>.</li>
+      <li>TLS/SSL service must be configured and enabled. See <MadCap:xref href="TLS-SSL-Service-Connections.htm#managing_tls_ssl_service_1762742558_317045">Configuring TLS/SSL Encryption for Publishing/Receiving Messages</MadCap:xref>.</li>
+    </ul>
+    <p> To configure your event broker to enable client certificate revocation checking, see <MadCap:xref href="Managing-Certificate-Authorities.htm">Managing Certificate Revocation Checking</MadCap:xref>.</p>
+    <p class="Note">The client-side requirements for using client certificate authentication include setting specific session properties and creating a secure client session. When using Solace messaging APIs, see <MadCap:xref href="../API/API-Developer-Guide/Creating-Client-Sessions.htm">Creating Client Sessions</MadCap:xref>. When using the Solace JMS messaging API, see <MadCap:xref MadCap:unresolvedLink="import-link:establishing_connections_2505829065_65295" href="../API/Solace-JMS-API/Establishing-Connections.htm">Establishing Connections</MadCap:xref>.</p>
+    <h3><a name="Client-CERT-VPNs"/>Configuring Client Certificate Parameters for Message VPNs</h3>
+    <p>You can configure the following client certificate authentication parameters for the given Message VPN:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Allow-API">Allowing API-Provided Usernames</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Max-Chain">Configuring Max Certificate Chain Depths</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Validate-Cert-Dates">Configuring Validate Certificate Dates</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Username-Source">Configuring Client Username Sources</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Configur">Configuring Client Certificate to Message VPN Matching</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#managing_client_authentication_and_authorization_21734666_340052">Enabling Client Certificate Authentication For Clients </MadCap:xref>
+      </li>
+    </ul>
+    <h4><a name="Allow-API"/>Allowing API-Provided Usernames</h4>
+    <p>To authenticate with a Solace PubSub+ event broker and connect to a Message VPN, a connecting client must provide the Solace event broker with a valid client username. By default, when using client certificates, the common name (CN) in a client certificate’s subject is used as the client username. Alternatively, you can configure a Message VPN  to use a client username that the client provides through a session property. In that case, the client certificate is still used for the initial authentication, but the API-provided username is used for the subsequent authorization (that is, to determine the client profile, ACL profile, and queue ownership for the client).</p>
+    <div class="Note">
+      <ul>
+        <li>The client username must be configured on the Message VPN. If the client username does not exist, the client username named <code>default</code> is used. For more information, see <MadCap:xref href="Configuring-Client-Usernames.htm">Configuring Client Usernames</MadCap:xref>.</li>
+        <li>For MQTT and REST clients using client certificate authentication, the use of the <code>allow-api-provided-username</code> option is not supported.</li>
+      </ul>
+    </div>
+    <div class="Caution">
+      <p class="Tbl_Body">The use of this option is generally not recommended. Allowing client‑provided usernames provides less security than using the CN in the certificate because it permits an authenticated user to assume any client username rather than restricting that authenticated user to a particular client username.</p>
+    </div>
+    <p>To use an API-provided username, instead of the common name in the client certificate’s subject, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# authentication<br/>solace(...message-vpn/authentication)# client-certificate<br/>solace(...ication/client-certificate)# allow-api-provided-username</p>
+    <p class="Note">The no version of this command <b>(no allow-api-provided-username)</b> uses the common name in the client certificate's subject.</p>
+    <h4><a name="Max-Chain"/>Configuring Max Certificate Chain Depths</h4>
+    <p>The depth of a client certificate chain is the number of signing CA certificates that are present in the chain back to a trusted root CA.</p>
+    <p>To set the maximum depth for a client certificate chain that can be accepted, enter the following command:</p>
+    <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# authentication<br/>solace(...message-vpn/authentication)# client-certificate<br/>solace(...ication/client-certificate)# max-certificate-chain-depth &lt;max-depth&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>max-depth</code> is the maximum depth that will be accepted for a client certificate chain. The valid range is 0 to 8. The default value is 3.</p>
+    <p>The no version of this command, <code>no max-certificate-chain-depth</code>, resets the maximum depth to the default value.</p>
+    <h4><a name="Validate-Cert-Dates"/>Configuring Validate Certificate Dates</h4>
+    <p>To enable the validation of the “Not Before” and “Not After” validity dates in a client certificate, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# authentication<br/>solace(...message-vpn/authentication)# client-certificate<br/>solace(...ication/client-certificate)# validate-certificate-date</p>
+    <p class="Note">The no version of this command, <code>no validate-certificate-date</code>, disables the validation of the “Not Before” and “Not After” validity dates in a client certificate. When disabled, a certificate is accepted even if the certificate is not valid according to the “Not Before” and “Not After” validity dates in the certificate.</p>
+    <h4><a name="Username-Source"/>Configuring Client Username Sources</h4>
+    <p>To authenticate with a Solace PubSub+ event broker and connect to a Message VPN, a connecting client must provide the event broker with a valid client username. By default, when using client certificates, the event broker extracts the first CN from the Subject Name field of the certificate and uses it as the client username. Alternatively,  you can configure a Message VPN to use one of the following as a source for the client username:</p>
+    <ul>
+      <li>The msUPN from the subject alternative name (SAN) extension in the certificate.</li>
+      <li>The user identifier (UID) attribute in the Subject Name field of the certificate.</li>
+      <li>The SHA-1 thumbprint of the certificate.</li>
+    </ul>
+    <p>If you configure the CN, SAN, or UID as the username source: </p>
+    <ul>
+      <li>All of the current client username character restrictions apply. For example, if the SAN or UID in a client certificate contains more than 189 characters it is considered invalid and authentication fails. For more information, see <MadCap:xref href="Configuring-Client-Usernames.htm">Configuring Client Usernames</MadCap:xref>.</li>
+      <li>If the <code>allow-api-provided-username</code> option is enabled, the username provided by the API supersedes the SAN or UID.</li>
+      <li>If the <code>allow-api-provided-username</code> option is not enabled, when a client attempts to connect to the Message VPN and no SAN or UID is found in the certificate, the authentication fails.</li>
+      <li>The SAN extension in the client certificate must carry a Microsoft Universal Principal Name (msUPN) through the use of the otherName field. No other identity, for example email address, DNS name, or IP address is supported.</li>
+      <li>If there are multiple SAN extensions with msUPN, the first is taken.</li>
+    </ul>
+    <p>To configure the client username source, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# authentication<br/>solace(...message-vpn/authentication)# client-certificate<br/>solace(...ication/client-certificate)# username-source {certificate-thumbprint | common-name | common-name-last | subject-alternative-name-msupn | uid | uid-last}</p>
+    <p><u>Where</u>:</p>
+    <p><code>certificate-thumbprint</code> specifies to use the certificate thumbprint as the client username when clients authenticate against the given Message VPN. The certificate thumbprint is a SHA-1 hash of the entire DER-encoded certificate calculated by the broker after it receives the client certificate.</p>
+    <p><code>common-name</code> specifies to   use the first instance of the CN  in the client certificate as the client username when clients authenticate against the  given Message VPN. This is the default setting.</p>
+    <p><code>common-name-last</code> specifies to use the last instance of the CN in the client certificate as the client username when clients authenticate against the given Message VPN. </p>
+    <p><code>subject-alternative-name-msupn</code> specifies to use the  msUPN   (in the otherName field) in the SAN extension of the client certificate as the client username when clients authenticate against the given Message VPN.</p>
+    <p><code>uid</code> specifies to use the first instance of the user identifier (UID) attribute in the client certificate as the client username when clients authenticate against the given Message VPN. </p>
+    <p><code>uid-last</code> specifies to use the last instance of the UID attribute in the client certificate as the client username when clients authenticate against the given Message VPN.</p>
+    <p>The no version of this command, <code>no user-name source</code>, resets the event broker to the default setting.</p>
+    <h4><a name="Configur"/>Configuring Client Certificate to Message VPN Matching</h4>
+    <p>By default when a client attempts to login to a Message VPN using a client certificate, the username for the client is extracted from the certificate (CN, UID, msUPN or certificate thumbprint) which can be used for subsequent client authorization.</p>
+    <p>If your deployment cannot guarantee that the username extracted from the certificate is unique across certificates issued by all of the CAs configured on the broker, you may want to configure client certificate to Message VPN matching to restrict the types of certificates that can be used as credentials in a Message VPN.</p>
+    <p>Some use cases for client certificate to Message VPN matching include:</p>
+    <ul>
+      <li>
+        <p>Segregating Message VPNs by Certificate Authorities</p>
+      </li>
+      <li>
+        <p>Validating the Organization Unit Subject Attribute</p>
+      </li>
+      <li>
+        <p>Linking a Client Username to a Particular Certificate</p>
+      </li>
+    </ul>
+    <p>When you configure client certificate matching, you create a set of matching rules per Message VPN. For a client certificate to be accepted as a valid credential, the certificate must match at least one rule. Each rule contains  a set of one or more conditions, all of which must be satisfied for a certificate to match the rule. Each condition compares a certificate field with an attribute associated with the client username (extracted from the certificate based on the username source) or a fixed glob expression. The attributes are store in the internal user database if you are using internal authorization or looked up in an external LDAP database if you are using LDAP authorization. If you use an expression, it is compared directly to the certificate field (and may contain wildcards). </p>
+    <p>You can also create attribute filters to  ensure that the matching rule applies only  to client usernames with certain attribute values. For example, if you want to allow legacy users to log in without other requirements, you could mark existing client usernames as <code>legacy</code> (by creating username attributes) and then create a rule that contains  an attribute filter which checks that the value of the <code>legacy</code> attribute is set to <code>true</code> without any conditions. Once configured, you could then add custom conditions to the rule for new users.</p>
+    <p>To create a  certificate matching rule, enter the following CONFIG commands:</p>
+    <pre xml:space="preserve">
+solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# authentication<br/>solace(...message-vpn/authentication)# client-certificate<br/>solace(...ication/client-certificate)# matching-rules
+solace(...certificate/matching-rules)# create rule &lt;name&gt;
+</pre>
+    <p>To create a  certificate matching rule condition, enter the following CONFIG commands:</p>
+    <pre xml:space="preserve">solace(...certificate/matching-rules/rule)# create condition {certificate-thumbprint | common-name | common-name-last | subject-alternate-name-msupn | uid | uid-last | org-unit | org-unit-last | issuer | subject | serial-number | dns-name | ip-address} {{matches-attribute &lt;attribute&gt;} | {matches-expression &lt;expression&gt;}}</pre>
+    <p>To create a certificate matching rule attribute filter, enter the following CONFIG commands:</p>
+    <pre xml:space="preserve">solace(...certificate/matching-rules/rule)# create attribute-filter &lt;name&gt; 
+solace(...certificate/matching-rules/rule/attribute-filter)# attribute &lt;value&gt;
+solace(...certificate/matching-rules/rule/attribute-filter)# value &lt;value&gt;	</pre>
+    <p class="Note">Modifying client certificate matching rules does not have any effect on existing connections. Only new connections are affected. </p>
+    <p>To enable a certificate matching rule, enter the following CONFIG commands:</p>
+    <pre xml:space="preserve">solace(...certificate/matching-rules/rule)# no shutdown</pre>
+    <p>By default, client certificate matching is disabled and any otherwise valid certificate is accepted. To enable client certificate matching, enter the following CONFIG commands:</p>
+    <pre>solace(...certificate/matching-rules)# no shutdown</pre>
+    <MadCap:snippetBlock src="../Resources/Snippets/certificate_matching_cli_desc.flsnp"/>
+    <p class="Note">Username attributes are stored in the internal user database when using internal authorization or converted to an LDAP search filter when using LDAP authorization.  Attributes must match exactly and wild card characters are treated as literals.</p>
+    <p><u>Examples</u>:</p>
+    <p>
+      <b>Segregating Message VPNs by Certificate Authorities</b>
+    </p>
+    <p>The list of CAs is currently a global event broker setting. Because a particular subject CN might not be unique across all CAs, limiting a Message VPN to a certain CA can help ensure only the appropriate CA is trusted and the subject CN is unique.</p>
+    <p>You can achieve this by creating a matching rule with one condition that compares the certificate issuer to a glob expression.</p>
+    <pre xml:space="preserve">solace(configure/message-vpn/authentication/client-certificate/matching-rules)# create rule issuer
+solace(configure/message-vpn/authentication/client-certificate/matching-rules/rule)# create condition issuer matches-expression "C = CA, ST = Ontario, L = Kanata, O = Solace Systems, OU = IT, CN = *.messaging.solace"
+solace(configure/message-vpn/authentication/client-certificate/matching-rules/rule)# no shutdown
+solace(configure/message-vpn/authentication/client-certificate/matching-rules/rule)# exit
+solace(configure/message-vpn/authentication/client-certificate/matching-rules)# no shutdown</pre>
+    <p>In this example, a rule called <code>issuer</code> is created.  The event broker will attempt to match a client certificate to this rule by comparing the issuer of the certificate to the expression <code>C = CA, ST = Ontario, L = Kanata, O = Solace Systems, OU = IT, CN = *.messaging.solace</code> (this rule contains a single condition).  If the issuer of the certificate matches the expression, then the rule is considered a match.</p>
+    <p>
+      <b>Validating the Organization Unit Subject Attribute</b>
+    </p>
+    <p>Some organizations require administrators to sign off on any certificate with their respective OU field in the certificate subject.</p>
+    <p>You can achieve this  by creating a matching rule with one condition that compares the certificate subject OU with an <code>ou</code> client username attribute.</p>
+    <pre xml:space="preserve">solace(configure/message-vpn/authentication/client-certificate/matching-rules)# create rule org-unit
+solace(configure/message-vpn/authentication/client-certificate/matching-rules/rule)# create condition org-unit matches-attribute ou
+solace(configure/message-vpn/authentication/client-certificate/matching-rules/rule)# no shutdown
+solace(configure/message-vpn/authentication/client-certificate/matching-rules/rule)# exit
+solace(configure/message-vpn/authentication/client-certificate/matching-rules)# no shutdown</pre>
+    <p>This requires that you also create the appropriate attribute on the client username, for more  information, see <MadCap:xref href="Configuring-Client-Usernames.htm#Setting">Setting Client Username Attributes</MadCap:xref>. </p>
+    <pre xml:space="preserve">solace(configure)# client-username App1 message-vpn vpn1
+solace(configure/client-username)# create attribute ou Unit1</pre>
+    <p>Once configured, a matching certificate can have a subject like this: <code>CN=App1, OU=Unit1, O=Org, C=US</code>.</p>
+    <p>In this example, a rule called <code>org-unit</code> is created.  The event broker will attempt to match a client certificate to this rule by comparing the organizational unit (OU) of the certificate to an attribute configured against the username.  The username extracted from the certificate (App1) has an attribute called <code>ou</code> configured with a value of <code>Unit1</code>.  To satisfy the condition (and match the rule since there is only one condition), the OU extracted from the certificate must match exactly the value of the <code>ou</code> attribute looked up against the username.</p>
+    <p>
+      <b>Linking a Client Username to a Particular Certificate</b>
+    </p>
+    <p>One of the most secure options is only allowing a particular certificate (or two to facilitate certificate rotation) to be used to authenticate a given user.</p>
+    <p>You can achieve this  by creating a matching rule with one condition that compares the certificate thumbprint with a <code>certificateThumbprint</code> client username attribute.</p>
+    <pre xml:space="preserve">solace(configure/message-vpn/authentication/client-certificate/matching-rules)# create rule thumbprint
+solace(configure/message-vpn/authentication/client-certificate/matching-rules/rule)# create condition certificate-thumbprint matches-attribute certificateThumbprint
+solace(configure/message-vpn/authentication/client-certificate/matching-rules/rule)# no shutdown
+solace(configure/message-vpn/authentication/client-certificate/matching-rules/rule)# exit
+solace(configure/message-vpn/authentication/client-certificate/matching-rules)# no shutdown</pre>
+    <p>This requires that you also create the appropriate attributes on the client username, for more  information, see <MadCap:xref href="Configuring-Client-Usernames.htm#Setting">Setting Client Username Attributes</MadCap:xref>. </p>
+    <pre xml:space="preserve">solace(configure/client-username)# create attribute certificateThumbprint ea:13:85:ca:a9:d0:91:a6:e4:b3:4b:80:4c:08:bb:cb:34:88:8b:dc
+solace(configure/client-username)# create attribute certificateThumbprint 06:d7:82:da:12:6a:11:8b:e7:29:84:8d:60:4c:40:27:a4:54:44:3c</pre>
+    <p>In this example, a rule called <code>thumbprint</code> is created.  The event broker will attempt to match a client certificate to this rule by comparing the thumbprint calculated from the certificate to attribute(s) configured against the username.  In this case, the client username has two <code>certificateThumbprint</code> attributes configured against it to facilitate certificate rotation. To satisfy the condition, the thumbprint calculated from the certificate must match exactly the value of one of the <code>certificateThumbprint</code> attributes  against the username.</p>
+    <p>Alternatively, you can create a rule with two conditions, one for checking the certificate issuer is correct (see Segregating Message VPNs by Certificate Authorities), and another for comparing the certificate serial number with a <code>certificateSerialNumber</code> client username attribute. This pair of values uniquely identifies a certificate.</p>
+    <p>Because client username attributes can have multiple values, this allows for smooth transition when a certificate is reissued. You can add a new thumbprint or serial number and remove an old one  after that, so the client will be able to reconnect at any time using an old or new certificate.</p>
+    <h4><a name="managing_client_authentication_and_authorization_21734666_340052"/>Enabling/Disabling Client Certificate Authentication For Clients </h4>
+    <p>To enable client certificate authentication for clients connecting to the given Message VPN, enter the following CONFIG command:</p>
+    <p class="Code">solace(...ication/client-certificate)# no shutdown</p>
+    <p>To disable client certificate authentication for clients connecting to the given Message VPN, enter the following CONFIG command:</p>
+    <p class="Code">solace(...ication/client-certificate)# shutdown</p>
+    <h2 class="with-rule"><a name="Config-Kerberos"/>Kerberos Authentication</h2>
+    <p>To implement Kerberos authentication for clients connecting to a Solace PubSub+ event broker, the following configurations are required on an event broker:</p>
+    <ol>
+      <li>A Kerberos Keytab must be loaded on the event broker. See <MadCap:xref href="../Admin/Managing-Event-Broker-Files.htm">Event Broker File Management</MadCap:xref>.</li>
+      <li>Kerberos authentication must be configured and enabled for any Message VPNs that Kerberos-authenticated clients will connect to. See <MadCap:xref href="#Enable-Kerberos">Enabling Kerberos Client Authentication</MadCap:xref>.</li>
+      <li><u>Optional</u>: On an appliance, a Kerberos Service Principal Name (SPN) can be assigned to the IP address for the message backbone VRF Kerberos‑authenticated clients will use. See <MadCap:xref href="../Admin/IP-Interfaces/Configuring-Mgmt-and-MBackbone-Interfaces.htm#cfg_mgmt_and_mbbone_interfaces_K_spn">Configuring Kerberos Service Principal Names</MadCap:xref> configuration option in <MadCap:xref href="../Admin/IP-Interfaces/Configuring-Mgmt-and-MBackbone-Interfaces.htm">Configuring Management and Message Backbone Interfaces</MadCap:xref>.</li>
+    </ol>
+    <div class="Note">
+      <ul>
+        <li>The client-side API requirements for a client to use Kerberos authentication include using the appropriate Java distribution or installed Kerberos libraries for the messaging API that is used (see <MadCap:xref MadCap:unresolvedLink="import-link:quick_start_100985136_21638" href="../API/API-Developer-Guide/Quick-Start.htm">Quick Start</MadCap:xref> for Solace enterprise APIs or <MadCap:xref MadCap:unresolvedLink="import-link:quick_start_100985136_21638" href="../API/Solace-JMS-API/Quick-Start.htm">Quick Start</MadCap:xref> for Solace JMS API). A client application must also set the authentication scheme to Kerberos for the respective session (see <MadCap:xref MadCap:unresolvedLink="import-link:creating_client_sessions_1483641185_58151" href="../API/API-Developer-Guide/Creating-Client-Sessions.htm">Creating Client Sessions</MadCap:xref> for the Solace messaging APIs or <MadCap:xref MadCap:unresolvedLink="import-link:establishing_connections_2505829065_65295" href="../API/Solace-JMS-API/Establishing-Connections.htm">Establishing Connections</MadCap:xref> for the Solace JMS API). Kerberos authentication is not available for Solace Web messaging APIs.</li>
+        <li>Kerberos authentication is not supported for MQTT clients.</li>
+      </ul>
+    </div>
+    <MadCap:snippetBlock src="../Resources/Snippets/Not-Config-Synced-For-all-objects-in-section.flsnp"/>
+    <h3><a name="Managing"/>Managing Kerberos Keytabs</h3>
+    <p>To facilitate Kerberos authentication, the appropriate keytab entries must be added to the event broker’s <br/><code>/keytab</code> directory. A typical deployment would use at least three keytab entries—one for each virtual IP address of the event broker and one for the physical IP address of the event broker (for example, keys for <code>solace/primary-virtual-router-dnsname@REALM</code>, <code>solace/backup-virtual-router-dnsname@REALM</code>, and <code>solace/physical-router-dnsname@REALM</code>). For some deployments, additional keytab entries will be required (for example, for a deployment where Ethernet interfaces have not been grouped into a LAG, and each interface has its own set of IP addresses and DNS names).</p>
+    <h4><a name="Add-Keytab"/>Adding Keytab Entries</h4>
+    <p>To add a key from a .keytab file in the event broker’s <code>/keytab</code> directory to the event broker’s registered keys, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure)# authentication kerberos keytab<br/>solace(configure/authentication/kerberos/keytab)# add-keytab &lt;keytab-filename&gt; &lt;index&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;keytab-filename&gt;</code> is the filename of the keytab file. This keytab file must be located in the event broker’s <code>/keytab</code> directory, and it must have a group permission of at least read. Note that if the keytab file was transferred to the event broker using a Solace file transfer user account, then the file should have the correct permissions.</p>
+    <p><code>&lt;index&gt;</code> is the index of the key in the keytab file to be installed. If no index is specified, the event broker takes the first key.</p>
+    <div class="Note">
+      <ul>
+        <li>On an appliance, a VRF interface can be configured with a specific Service Principal Name (SPN) value. When an SPN value is assigned to an interface, clients connecting on that interface must supply a service key that matches a key in the Solace PubSub+ event broker key table and have a matching SPN and Key Version Number (KVNO).</li>
+        <li>When no SPN value is assigned to an interface, clients may connect on that interface using any SPN value as long as the client’s service key matches a key on the Solace PubSub+ event broker key table.</li>
+        <li>It is recommended that you use unique passwords to generate service keys for multiple Solace PubSub+ event brokers.</li>
+        <li>If you use RC4 encryption, the password used to generate the key is not salted with the provided SPN value. If you use the same password to generate service keys for multiple Solace PubSub+ event brokers, then a client may be able to connect to any of the event brokers on which the same password was used to generate a service key, even if those event brokers have different SPNs. </li>
+        <li>If you use AES encryption to generate service keys, the password used to generate the service key is salted with the provided SPN value. As a result, using the same password with different SPN values results in unique keys being generated.</li>
+      </ul>
+    </div>
+    <h3><a name="Delete-Key"/>Deleting Keytab Entries</h3>
+    <p>To delete a Kerberos key from the event broker’s key table, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure)# authentication kerberos keytab<br/>solace(configure/authentication/kerberos/keytab)# delete-keytab-entry &lt;index&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;index&gt;</code> is the index of the key in the event broker’s keytab store.</p>
+    <h3><a name="Displayi"/>Displaying Kerberos Keytab Information</h3>
+    <p>To display the Kerberos keys installed on the Solace PubSub+ event broker, including the total number of keys in the key table, and any SPN value mapped to a message backbone VRF, enter the following User EXEC command:</p>
+    <p class="Code">show&gt; kerberos [{keytab | keytab-file &lt;file-name&gt;} [detail]]</p>
+    <p><u>Where</u>:</p>
+    <p><code>keytab</code> specifies to display the Kerberos keys installed on the event broker’s internal keytab store.</p>
+    <p><code>keytab-file &lt;file-name&gt;</code> specifies to display the Kerberos keys contained within the specified keytab file in the event broker’s <code>/keytab</code> directory. Wildcards are allowed for the file name to specify multiple filenames.</p>
+    <p><code>detail</code> specifies to display detailed information about each keytab entry.</p>
+    <h3><a name="Allow-API-Username"/>Allowing API-Provided Usernames</h3>
+    <p>An authenticating client must provide the Solace PubSub+ event broker with a valid client username. By default, when using Kerberos authentication, the Kerberos User Principal name in a Kerberos token is used as the client username. Alternatively, a Message VPN may be configured to use a client username that the client provides through the session properties used to establish the client connection. In that case, the client Kerberos token is still used for the initial authentication, but the API‑provided username is used for the subsequent authorization (that is, to determine the client’s client username).</p>
+    <div class="Caution">
+      <p class="Tbl_Body">When the <code>allow-api-provided-username</code> option is not enabled, if the client’s Kerberos user principal name does not match a client username provisioned on the Message VPN, the <code>default</code> username is used. Therefore, when the <code>allow-api-provided-username</code> option is not enabled, ensure that you provision client usernames that match the Kerberos user principals in use and that the <code>default</code> username is shutdown.</p>
+    </div>
+    <p>To enable API-provided usernames to be used instead of the Kerberos Principal name in a Kerberos token, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# authentication<br/>solace(...message-vpn/authentication)# kerberos<br/>solace(...pn/authentication/kerberos)# allow-api-provided-username</p>
+    <p>The no version of this command, <code>no allow-api-provided-username</code>, disables this option so that the Kerberos User Principal name from the client token is used as the "username" for authorization. </p>
+    <p class="Note">If the <code>allow-api-provided-username</code> option is used, and no client username is provided in the session properties, the <code>default</code> client user name for the Message VPN will be used for authorization.
+        </p>
+    <h3><a name="Creating"/>Managing Kerberos Realms</h3>
+    <p>A Kerberos realm is a domain, or group of systems over which Kerberos has the authority to authenticate a client to a service. Within a  realm are user principals (clients), service principals (resources provided to a client) and a KDC, which supplies tickets and grants temporary sessions keys that allow a client to authenticate to a service. </p>
+    <p>When you create a Kerberos realm object on an event broker, you provide the means to configure realm to KDC address mapping. This mapping is required before you can enable Kafka receivers and senders to authenticate to remote Kafka brokers using Kerberos (refer to <MadCap:xref href="../Features/Kafka-Bridging/Kafka-Bridging-Setup-Overview.htm#Configur">Configuring  Authentication Schemes for Kafka Receivers</MadCap:xref> or <MadCap:xref href="../Features/Kafka-Bridging/Kafka-Bridging-Setup-Overview.htm#Configur7">Configuring Authentication Schemes for Kafka Senders</MadCap:xref>). </p>
+    <p>To create a Kerberos realm, enter the following CONFIG command:</p>
+    <pre xml:space="preserve">solace(...e/message-vpn/authentication/kerberos)# create realm &lt;name&gt;</pre>
+    <p>To edit the properties of an existing realm, enter the following CONFIG command:</p>
+    <pre xml:space="preserve">solace(...e/message-vpn/authentication/kerberos)# realm &lt;name&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the Kerberos realm name. This name must start with <code>@</code> and is typically written using all uppercase letters.</p>
+    <p>The no version of this command, <code>no realm</code>, deletes the  realm. </p>
+    <p>You can perform the following tasks for a configured Kerberos realm:</p>
+    <ul>
+      <li>
+        <p>
+          <MadCap:xref href="#Config-KDC-Addr">Configuring the Kerberos Distribution Center Address</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Enable-Kerberos-Realm">Enabling/Disabling a Kerberos Realm</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Displayi2">Displaying Kerberos Realm Information </MadCap:xref>
+        </p>
+      </li>
+    </ul>
+    <h4><a name="Config-KDC-Addr"/>Configuring the Key Distribution Center Address</h4>
+    <p>To configure the IP address or hostname of the KDC for principals in this realm, enter the following CONFIG command:</p>
+    <pre xml:space="preserve">solace(...e/message-vpn/authentication/kerberos)# realm &lt;name&gt;
+solace(...age-vpn/authentication/kerberos/realm)# kdc-address &lt;value&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the IP address or FQDN and optional port of the KDC.</p>
+    <p>The no version of this command, <code>no kdc-address</code>, removes the configuration. </p>
+    <h4><a name="Enable-Kerberos-Realm"/>Enabling/Disabling a Kerberos Realm</h4>
+    <p>To enable a Kerberos realm, enter the following CONFIG command:</p>
+    <pre xml:space="preserve">solace(...e/message-vpn/authentication/kerberos)# realm &lt;name&gt;
+solace(...age-vpn/authentication/kerberos/realm)# no shutdown</pre>
+    <p>The  disable a realm, enter the following CONFIG command.</p>
+    <pre xml:space="preserve">
+solace(...age-vpn/authentication/kerberos/realm)# shutdown</pre>
+    <h4><a name="Displayi2"/>Displaying Kerberos Realm Information </h4>
+    <p>To display information about a Kerberos realm, enter the following User EXEC command:</p>
+    <p class="Code">show message-vpn &lt;vpn-name&gt; kerberos realm &lt;realm&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;vpn-name&gt;</code> is the name of the Message VPN where the realm is configured.</p>
+    <p><code>&lt;realm&gt;</code> is the name of the Kerberos realm. </p>
+    <h3><a name="Enable-Kerberos"/>Enabling/Disabling Kerberos Client Authentication</h3>
+    <p>To enable Kerberos authentication for clients connecting to the given Message VPN, enter the following CONFIG commands:                <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# authentication <br/>solace(...message-vpn/authentication)# kerberos<br/>solace(...pn/authentication/kerberos)# no shutdown</p></p>
+    <p>To disable Kerberos authentication for clients connecting to the given Message VPN, enter the following CONFIG commands:                <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# authentication<br/>solace(...message-vpn/authentication)# kerberos<br/>solace(...pn/authentication/kerberos)# shutdown</p></p>
+    <h2 class="with-rule"><a name="OAuth"/>OAuth Authentication</h2>
+    <p>To implement OAuth authentication for clients connecting to a PubSub+ event broker at the Message VPN level,  the following configurations are required:</p>
+    <ul>
+      <li>PubSub+ 9.12.1 or greater must be used. Although OAuth authentication for MQTT clients  was introduced in version 9.2, the existing OAuth provider configuration  is deprecated (see <MadCap:xref href="#Compatib">Compatibility with Older Versions</MadCap:xref>). If your deployment uses OAuth providers to authenticate  MQTT clients you must manually migrate to the new Message VPN scoped OAuth profiles. <a href="../get-support.htm" class="link-internal">Contact Solace</a> for assistance.</li>
+      <li>The event broker must be configured to use TLS by setting a server certificate. For more information, see <MadCap:xref href="Managing-Server-Certs.htm">Managing Server Certificates</MadCap:xref>.</li>
+      <li>An OAuth profile must be created on the event broker with the following additional configuration (see <MadCap:xref href="#Managing-OAuth-Profiles">Managing Message VPN OAuth Profiles</MadCap:xref>):<ul><li><code><a href="#Client-ID" class="link-internal">client-id</a></code>: Client ID configured on the event broker must match with the OAuth Client ID.</li><li><code><a href="#Client-Secret" class="link-internal">client-secret</a></code>: Client secret configured on the event broker must match with the OAuth Client Secret.</li><li><a href="#Endpoints" class="link-internal">endpoints</a>: <MadCap:snippetText src="../Resources/Snippets/oauth-endpoints.flsnp"/></li></ul></li>
+      <li>OAuth authentication must be  enabled for any Message VPNs that OAuth-authenticated clients will connect to. See <MadCap:xref href="#Enabling">Enabling OAuth Client Authentication</MadCap:xref>.</li>
+    </ul>
+    <p>You will need to perform additional configurations depending on what token you want to get your claims from (<code>id-token</code> or <code>access-token</code>), and claims you expect to receive from the token. The additional configuration will depend on your specific setup. Detailed configuration information is provided  below.</p>
+    <p>
+      <u>Differences between Message VPN OAuth Profiles and Global OAuth Profiles</u>
+    </p>
+    <ul>
+      <li>Global profiles have SEMPv2 access level configuration, Message VPN OAuth profiles have <code>username-claim-name</code> and <code>authorization-groups-claim-name</code> for client ACLs.</li>
+      <li>With SEMPv2 the OAuth token is provided with each request; client connections are authenticated when they are established but not with each message.  The <code>disconnect-on-token-expiration</code> setting is provided to allow control over whether disconnection happens when the token expires.</li>
+      <li>The settings related to interactive OAuth in global profiles are not present in Message VPN profiles.</li>
+      <li>OAuth for MQTT has the username validate setting.  The username is always determined from OAuth, but this setting, when enabled, fails authentication if the name discovered via OAuth doesn't match the username specified during connection establishment.  This setting is brought forward to Message VPN OAuth profiles in the form of the <code>mqtt-username-validate</code> configuration option (see <MadCap:xref href="#MQTT Use">MQTT Username Validation</MadCap:xref>).</li>
+    </ul>
+    <h3><a name="Managing-OAuth-Profiles"/>Managing Message VPN OAuth Profiles</h3>
+    <p>To implement OAuth authentication  for clients connecting to a PubSub+ event broker at the Message VPN level, you must first create a Message VPN OAuth profile. The number of Message VPN OAuth profiles you can create is limited by the number of  Message VPNs on the event broker, or 500, whichever is lower.</p>
+    <p>To create a profile, enter the following commands:</p>
+    <pre class="Code" xml:space="preserve">
+solace(...gure/message-vpn/authentication/oauth)# create profile &lt;profile&gt;
+solace(...sage-vpn/authentication/oauth/profile)# 
+</pre>
+    <p>To configure an existing profile, enter the following command:</p>
+    <pre>solace(...gure/message-vpn/authentication/oauth)# profile &lt;profile&gt;</pre>
+    <p>To enable the profile, enter the following command:</p>
+    <p class="Code">solace(...sage-vpn/authentication/oauth/profile)# no shutdown</p>
+    <p>To specify a default profile, enter the following command:</p>
+    <p class="Code">solace(...gure/message-vpn/authentication/oauth)# default-profile &lt;profile&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;profile&gt;</code> is the name of the Message VPN OAuth profile.</p>
+    <p>The settings you can configure  for the profile include:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#OAuth-Role">OAuth Role</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Endpoints">Endpoints</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Client">Client</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Resource-Server">Resource Server</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Client-ID">Client ID</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Client-Secret">Client Secret</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Issuer-Identifier">Issuer Identifier</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Disconnect-Token-Expiry">Disconnect on Token Expiration</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Authorization-Groups-Claim">Authorization Groups Claim Name</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Username-Claim">Username Claim Name</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Forward-Proxy">Forward Proxy</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="OAuth-Role"/>OAuth Role</h3>
+    <p>You can configure the event broker to act as an OAuth client or resource server. If you configure the client role for a profile, this means the profile is using OpenID Connect, and once enabled, the event broker expects to receive ID tokens when clients attempt to authenticate. If you configure the resource server role for a profile, this means the profile is using OAuth2, and if enabled, the broker expects to receive access-tokens when clients authenticate.</p>
+    <p>By default, the event broker role is set to <code>client</code>. If <code>oauth-role</code> is set to <code>resource-server</code> and <code>client scope</code> does not contain <code>openid scope</code>, the <code>oauth-role</code> cannot be changed to <code>client</code>. The change will be rejected and <code>oauth-role</code> will remain as <code>resource-server</code>. The <code>client scope</code> configuration must contain the <code>openid scope</code> before switching from  <code>resource-server</code> to <code>client</code> role. If <code>oauth-role</code> is client, the introspection endpoint is not used and need not be configured, and similarly, the <code>userinfo</code> endpoint will not be used if <code>oauth-role</code> is <code>resource-server</code>.</p>
+    <p>To set the event broker as an OAuth client or resource server, enter the following command: </p>
+    <p class="Code">solace(...sage-vpn/authentication/oauth/profile)# oauth-role [client|resource-server]<br/></p>
+    <p>The no version of the command, <code>no oauth-role</code>, sets the event broker role to the default <code>client</code> role.</p>
+    <h3><a name="Endpoints"/>Endpoints</h3>
+    <p>OAuth endpoints are the URLs that you use to make authentication requests. All endpoints must be TLS. Any endpoint that does not start with <code>https://</code> (case insensitive) will be rejected at configuration. Endpoints that are determined through discovery will be rejected at runtime if they are not TLS. </p>
+    <p>To configure OAuth endpoints, enter the following command:</p>
+    <p class="Code">solace(...sage-vpn/authentication/oauth/profile)# 
+ endpoints<br/></p>
+    <p>From this level, you can configure the following endpoint settings:</p>
+    <p class="Code">solace(...uthentication/oauth/profile/endpoints)# 
+[discovery | discovery-refresh-interval | introspection | introspection-timeout | jwks | jwks-refresh-interval  | userinfo | userinfo-timeout]</p>
+    <h4>Discovery Endpoint</h4>
+    <p>The discovery endpoint is the OpenID Connect Discovery endpoint or the OAuth 2.0 Authorization Server Metadata endpoint. Generally, this is the only endpoint that you will need to configure, as this endpoint provides information about the OAuth issuer and all the other endpoints. <MadCap:snippetText src="../Resources/Snippets/oauth-endpoints.flsnp"/></p>
+    <p>To configure a discovery endpoint, enter the following command:</p>
+    <p class="Code">solace(...uthentication/oauth/profile/endpoints)# discovery &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the discovery URL.</p>
+    <p>The no version of the command, <code>no discovery &lt;value&gt;</code>,  returns the endpoint value to none.</p>
+    <h4>Discovery Refresh Interval</h4>
+    <p>The discovery refresh interval  is used to configure the number of seconds between <code>discovery</code> endpoint requests.</p>
+    <p>To configure the discovery refresh interval, enter the following command:</p>
+    <p class="Code">solace(...uthentication/oauth/profile/endpoints)# discovery-refresh-interval &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is number of seconds between <code>discovery</code> endpoint requests. </p>
+    <p>The no version of the command, <code>discovery-refresh-interval</code>, returns its value to the default of 86400 seconds (1 day).</p>
+    <h4><a name="Introspection-Endpoint"/>Introspection Endpoint</h4>
+    <p>The token introspection endpoint returns claims associated with the user identified by the access token. </p>
+    <p>To configure an introspection endpoint, enter the following command:</p>
+    <p class="Code">solace(...uthentication/oauth/profile/endpoints)# 
+introspection &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the URI of the OAuth introspection endpoint. Only HTTPS is supported. If you specify an HTTPS address, certificates and certificate authorities must be configured on the event broker. See <MadCap:xref href="Managing-Server-Certs.htm">Managing Server Certificates</MadCap:xref>.</p>
+    <p>The no version of the command, <code>no introspection</code>, returns the endpoint value to none.</p>
+    <h4>Introspection Timeout</h4>
+    <p>The configure introspection timeout  is the maximum time in seconds a token introspection request is allowed to occur.</p>
+    <p>To configure the introspection timeout, enter the following command:</p>
+    <p class="Code">solace(...uthentication/oauth/profile/endpoints)# 
+introspection-timeout &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the value to set in seconds.</p>
+    <p>The no version of the command, <code>no introspection-timeout</code>, returns its value to 1 second.</p>
+    <h4> JWKS Endpoint</h4>
+    <p>To verify the ID and access tokens, the event broker needs access to the public keys. These keys are available from the OAuth provider's JSON Web Key Set (JWKS) endpoint. This endpoint can be explicitly configured or determined from the discovery document. The<code>jwks</code> endpoint returns the keys that was used to verify JSON Web Tokens (JWTs) from the OAuth provider. The event broker retrieves these keys from that URL to validate token signatures and caches </p>
+    <p>To configure a JWKS endpoint, enter the following command:</p>
+    <p class="Code">solace(...uthentication/oauth/profile/endpoints)# 
+jwks &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the URI of the <code>jwks</code> endpoint. Only HTTPS is supported. If you specify an HTTPS address, certificates and certificate authorities must be configured on the event broker. See <MadCap:xref href="Managing-Server-Certs.htm">Managing Server Certificates</MadCap:xref>.</p>
+    <p>The no version of the command, <code>no jwks</code>, returns the endpoint value to none.</p>
+    <h4> JWKS Refresh Interval</h4>
+    <p>By default, PubSub+ event brokers refresh any JWKS public keys obtained from an OAuth authorization server once every twenty four hours. </p>
+    <p>Keys are also refreshed any time the following occurs:</p>
+    <ul>
+      <li>The refresh interval is changed.</li>
+      <li>The JWKS endpoint is changed.</li>
+      <li>The issuer is changed.</li>
+      <li>The OAuth profile is enabled.</li>
+      <li>The Message VPN is enabled, or OAuth authentication is enabled for the Message VPN.</li>
+      <li>The broker is restarted.</li>
+    </ul>
+    <p>Once every <code>jwks-refresh-interval</code>, the event broker will refresh the set of keys. If the event broker attempts to refresh the key and the request fails, the following retries are performed:</p>
+    <ul>
+      <li>retry every 60s indefinitely if valid data is missing</li>
+      <li>retry three times every 60s if valid data exists. The event broker will then stop and wait for the next scheduled refresh or data expiry</li>
+    </ul>
+    <p>In addition, JWKS keys expire when they are older than three times the <code>jwks-refresh-interval</code>.</p>
+    <p>To configure the JWKS refresh interval, enter the following command:</p>
+    <p class="Code">solace(...uthentication/oauth/profile/endpoints)# 
+jwks-refresh-interval &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the number of seconds between forced public key refreshes. </p>
+    <p>The no version of the command, <code>no jwks-refresh-interval</code>, returns its value to the default of 86400 seconds (1 day).</p>
+    <h4>Userinfo Endpoint</h4>
+    <p>The UserInfo endpoint is part of the <a href="https://openid.net/specs/openid-connect-core-1_0.html#UserInfo" target="_blank" class="link-offsite">OpenID Connect standard (OIDC)</a>, designed to return claims about the authentication user. The endpoints is used in situations where ID token may not contain all the required claims, in which case the access token is used to retrieve the userinfo.</p>
+    <p>To configure a userinfo endpoint, enter the following command:</p>
+    <p class="Code">solace(...uthentication/oauth/profile/endpoints)# 
+userinfo &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the URL of the userinfo endpoint. </p>
+    <p>The no version of the command, <code>no userinfo</code>, returns the endpoint value to none.</p>
+    <h4>Userinfo Timeout Endpoint</h4>
+    <p>Using the userinfo timeout endpoint, you can set the maximum time a userinfo request is allowed to take.</p>
+    <p>To configure a userinfotimeout endpoint, enter the following command:</p>
+    <p class="Code">solace(...uthentication/oauth/profile/endpoints)# 
+userinfo-timeout &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the number of seconds is the number of seconds that a userinfo request is allowed to take.</p>
+    <p>The no version of the command, <code>no userinfo-timeout</code>, returns its value to the default value of 1 second.</p>
+    <h3><a name="Client"/>Client</h3>
+    <p>A client is the application that wants to access the resource server data. It is the application that requests the access token or ID token from the authorization server and then passes it to the token server to get access to the data.</p>
+    <p>To configure OAuth client settings on the event broker, enter the following command:</p>
+    <p class="Code">solace(...sage-vpn/authentication/oauth/profile)# client<br/>solace(...n/authentication/oauth/profile/client)# </p>
+    <p>From this level, you can configure the following settings:</p>
+    <p class="Code">solace(...n/authentication/oauth/profile/client)# [required-claim ... | required-type ... |  validate-type]</p>
+    <h4>Required Claim</h4>
+    <p>You can configure required claims in the event broker to verify the ID token. All claims specified under <code>required-claim</code> must match exactly. The <code>required-claim</code> values are specified as JSON, and may be strings, numbers, or arbitrary JSON objects. A maximum of four required claims can be configured per OAuth profile. </p>
+    <p>To create a required claim, enter the following command:</p>
+    <p class="Code">solace(...n/authentication/oauth/profile/client)# create required-claim &lt;name&gt; &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is name of the ID token claim to verify. The claim names must be unique and are case-sensitive. </p>
+    <p><code>&lt;value&gt;</code> is the required claim value, which must be a string containing a valid JSON value.</p>
+    <p>The no version of the command, <code>no required-claim &lt;value&gt;</code>, deletes the configured claim.</p>
+    <h4>Required Type</h4>
+    <p>The content type required for the ID token header. The default value is JWT.</p>
+    <p>To configure required type value, enter the following command:</p>
+    <p class="Code">solace(...n/authentication/oauth/profile/client)# required-type &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the value to set for the <code>required-type</code>.</p>
+    <p>The no version of the command, <code>no required-type &lt;value&gt;</code>, returns its value to JWT.</p>
+    <h4>Validate Type</h4>
+    <p>The <code>validate-type</code> parameter verifies the token ID type. By default, it is set to true. If <code>validate-type</code> is true, tokens that don't have the <code>typ</code> header field will fail to validate. Generally, most OAuth providers set <code>typ</code> to JWT. Also, if validate-type is enabled (default), the <code>typ</code> field in the JWT header must match the value configured in <code>required-type</code>.</p>
+    <p>To configure the validate type parameter, enter the following command:</p>
+    <p class="Code">solace(...n/authentication/oauth/profile/client)# validate-type<br/></p>
+    <p>The no version of the command, <code>no validate</code>, changes the default value (<code>true</code>) to <code>false</code>.</p>
+    <h3><a name="Resource-Server"/>Resource Server</h3>
+    <p>In the OAuth flow, the resource server accepts the access token and verifies that it's valid. The configurations under <code>resource-server</code> only has effect if <code>oauth-role</code> is resource-server.</p>
+    <p>To configure OAuth resource server settings, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# resource-server<br/>solace(...e/authentication/oauth-profile/resource-server)# </p>
+    <p>From this level, you can configure the following settings:</p>
+    <p class="Code">solace(...e/authentication/oauth-profile/resource-server)# [parse-access-token | required-audience | required-claim | required-issuer | required-scope | required-type | validate-audience | validate-issuer | validate-scope | validate-type]</p>
+    <h4>Parse Access Token</h4>
+    <p>You can enable or disable parsing of the access token as a JWT. It is enabled by default. When <code>parse-access-token</code> is enabled, the access token is examined to determine whether it contains the claims specified for the username and groups. If it contains both claims, no further processing is required, and values of the appropriate claims are used. However, if an introspection endpoint is provided (either directly or via discovery), every access token is checked even if the token contains the username and groups. If <code>parse-access-token</code> is disabled, the <code>introspection-endpoint</code> must be specified.</p>
+    <p>To disable the default <code>parse-access-token</code>, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/resource-server)# no parse-access-token<br/></p>
+    <h4>Required Type</h4>
+    <p>The content type required for the access token header. The default value is <code>at+jwt</code>.</p>
+    <p>To configure required type value, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/client)# required-type &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the value to set for the <code>required-type</code>.</p>
+    <p>The no version of the command, <code>no required-type &lt;value&gt;</code>, returns its value to <code>at+jwt</code>.</p>
+    <h4>Required Audience</h4>
+    <p>You can configure the event broker to validate the required audience parameter provided by the client. The <code>required-audience</code> value must match the <code>aud</code> claim if the <code>aud</code> claim is a string and if it is an array of strings, it must match one of the values of the <code>aud</code> claims. If the <code>required-audience</code> value is incorrect, the event broker rejects the connection attempt.</p>
+    <p>To configure OAuth required audience value, enter the following command:</p>
+    <p class="Code">solace(...e/authentication/oauth-profile/resource-server)# required-audience &lt;value&gt;</p>
+    <p>The no version of the command, <code>no required-audience &lt;value&gt;</code>,  returns the value to none.</p>
+    <h4>Required Claim</h4>
+    <p>You can configure required claims in the event broker to verify the access token or introspection response. All claims specified under <code>required-claim</code> must match exactly. The <code>required-claim</code> values are specified as JSON, and may be strings, numbers, or arbitrary JSON objects. A maximum of 8 required claims can be configured per OAuth profile.</p>
+    <p>To create a required claim, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/resource-server)# create required-claim &lt;name&gt; &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is name of the <code>id-token</code> claim to verify. The claim names must be unique and are case-sensitive. </p>
+    <p><code>&lt;value&gt;</code> is the required claim value, which must be a string containing a valid JSON value.</p>
+    <p>The no version of the command, <code>no required-claim &lt;value&gt;</code>, deletes the configured claim.</p>
+    <h4><a name="Required"/>Required Issuer</h4>
+    <p>You can configure the required issuer claim value in the event broker as part verifying the access token or introspection response. The configured <code>required-issuer</code> value must match the <code>iss</code> claim. If the <code>required-issuer</code> is not specified, the <code>issuer</code> from the <code>discovery</code> endpoint is used to verify the <code>iss</code> claim.</p>
+    <p>To configure a required issuer claim, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/resource-server)# required-issuer &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the value to configure for the required issuer claim.</p>
+    <p>The no version of the command, <code>no required-claim &lt;value&gt;</code>,   returns the value to none.</p>
+    <h4>Required Scope</h4>
+    <p>The required scopes are space-separated list of scopes that must be present in the <code>scope</code> claim The <code>scope</code> claim must contain all of the values in <code>required-scope</code>, but may contain other scopes, and the scopes may be in a different order. If the <code>required-scope</code> is empty or not set, no <code>scope</code> verification is performed.</p>
+    <p>To configure the required scope on the event broker, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/resource-server)# required-scope &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the value to configure for the required issuer claim.</p>
+    <p>The no version of the command, <code>no required-scope &lt;value&gt;</code>, returns the value to none.</p>
+    <h4>Validate Audience</h4>
+    <p>You can configure the event broker to validate the audience parameter to verify the <code>aud</code> claim in the access token or introspection response. By default this feature is enabled. If <code>validate-audience</code> is disabled, <code>required-audience</code> validation is not performed. If it is enabled, the validation described at <code>required-audience</code> will be performed.</p>
+    <p>To configure the event broker to validate the audience claim, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/resource-server)# validate-audience<br/></p>
+    <p>The no version of the command, <code>no validate-audience</code>, disables it.</p>
+    <h4>Validate Issuer</h4>
+    <p>You can configure the event broker to validate issuer parameter to verify the <code>iss</code> claim in the access token or introspection response. By default this feature is enabled. If <code>validate-issuer</code> is disabled,  <code>required-issuer</code> validation is not performed.  If it is enabled, the validation described at <code>required-issuer</code> will be performed.</p>
+    <p>To configure the event broker to validate the issuer claim, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/resource-server)# validate-issuer<br/></p>
+    <p>The no version of the command, <code>no validate-issuer</code>, disables it.</p>
+    <h4>Validate Scope</h4>
+    <p>You can configure the event broker to validate the scope parameter to verify the <code>scope</code> claims in the access token or introspection response. By default this feature is enabled. If <code>validate-scope</code> is disabled, <code>required-scope</code> validation is not performed.  If it is enabled, the validation described at <code>required-scope</code> will be performed.</p>
+    <p>To configure the event broker to validate scope claims, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/resource-server)# validate-scope<br/></p>
+    <p>The no version of the command, <code>no validate-scope</code>, disables it.</p>
+    <h4>Validate Type</h4>
+    <p>You can configure the event broker to validate the scope parameter to verify the  <code>typ</code> field in the access token header. By default this feature is enabled. If <code>validate-type</code> is disabled, <code>required-type</code> validation is not performed.  If it is enabled, the validation described at <code>required-type</code> will be performed.</p>
+    <p>To configure the event broker to validate the <code>typ</code> field, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile/resource-server)# validate-type<br/></p>
+    <p>The no version of the command, <code>no validate-type</code>, disables it.</p>
+    <h3><a name="Client-ID"/>Client ID</h3>
+    <p>When a client registers with an OAuth provider they receive a client ID along with a client secret. These are essentially equivalent to username and password, which the authorization server uses to authenticate the application. The <code>client-id</code> identifies the client responsible for the OAuth request. </p>
+    <p>If you set the OAuth role on event broker  to client, the <code>client-id</code> is checked against the <code>aud</code> claim in received ID tokens. If you set the OAuth role  to resource server, this verification depends on the <code>validate-audience</code> setting. If <code>validate-audience</code> is enabled, the <code>client-id</code> is checked against the claim indicated in the <code>required-audience</code> configuration. In either case if the value is incorrect, the event broker rejects the connection attempt.</p>
+    <p>To configure a client ID on your event broker, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# client-id &lt;value&gt;<br/></p>
+    <p><code>&lt;value&gt;</code> is the OAuth provided Client ID.</p>
+    <p>The no version of the command, <code>no client-id</code>,   returns the value to none.</p>
+    <h3><a name="secret"/>Client Secret</h3>
+    <p>When a client registers with an OAuth provider they receive a client ID and client secret. These are essentially equivalent to username and password, which the authorization server uses to authenticate the application. Client secrets are only necessary if you are using an introspection endpoint (see <MadCap:xref href="#Introspection-Endpoint">Introspection Endpoint</MadCap:xref>).</p>
+    <p>To configure a client secret on your event broker, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# client-secret &lt;value&gt;<br/></p>
+    <p><code>&lt;value&gt;</code> is the OAuth provided Client Secret.</p>
+    <p>The no version of the command, <code>no client-secret</code>,  returns the value to none.</p>
+    <h3><a name="MQTT-Username-Validation"/>MQTT Username Validation</h3>
+    <p>You can configure the event broker to validate the username provided by MQTT clients against the username extracted from the token. If they are different, the event broker rejects the connection attempt.</p>
+    <div class="Caution">
+      <p>This setting is included for backwards compatibility to allow OAuth providers to be converted to Message VPN OAuth profiles. Because it provides no security benefit, it shouldn’t be used in production environments.</p>
+    </div>
+    <p>To enable MQTT username validation, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# mqtt-username-validate<br/></p>
+    <p>The no version of the command, <code>no mqtt-username-validate</code>, disables MQTT username validation.</p>
+    <h3><a name="Issuer-Identifier"/>Issuer Identifier</h3>
+    <p>To configure the issuer identifier for the OAuth provider, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# issuer &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the  authorization server's issuer identifier URL.</p>
+    <p>The no version of the command, <code>no issuer &lt;value&gt;</code>, returns its value to none.</p>
+    <h3><a name="Disconnect-Token-Expiry"/>Disconnect on Token Expiration</h3>
+    <p>By default, PubSub+ event brokers disconnect clients when their tokens expire. You can change this default to suit your deployment. Changing this value does not affect existing clients, only new client connections.</p>
+    <p>To configure the event broker to disconnect clients when their tokens expire, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# disconnect-on-token-expiration<br/></p>
+    <p>The no version of the command, <code>no disconnect-on-token-expiration</code>, stops the event broker from disconnecting clients when their tokens expire.</p>
+    <h3><a name="Authorization-Groups-Claim"/>Authorization Groups Claim</h3>
+    <p>By default, PubSub+ event brokers use the <code>groups</code> field in OAuth tokens to determine the client authorization group. You can change this default to suit your deployment. For more information about authorization groups, see <MadCap:xref href="Configuring-LDAP-Groups.htm#Configuring-LDAP-Auth-Groups">Configuring Authorization Groups</MadCap:xref>. </p>
+    <p>To configure the authorization groups claim name, enter the following command:</p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# authorization-groups-claim-name &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the field in the token used  to determine the client authorization group. If no value is provided, <code>groups</code> is used as the default. When using JWTs, claim names must be at the top level of the JWT. In other words, they cannot be embedded. In addition, the value of any claim that you want to use as a client authorization group must be a  string or an array of strings.</p>
+    <p>In this example the <code>"authGroupClaim"</code> field is used to determine the authorization group, and its value is the  string <code>"abcdefghi"</code>:</p>
+    <pre xml:space="preserve">{
+...
+   "authGroupClaim": "abcdefghi",
+...
+}</pre>
+    <p>In this example the <code>"authGroup"</code> field is used to determine the authorization group, and its value is the string array <code>["a b c", "def", "ghi"]</code>. The event broker interprets this array as three authorization groups, <code>"a b c"</code> (including the spaces), <code>"def"</code>, and <code>"ghi"</code>. In this case, the client will be assigned to the highest priority authorization group which matches one of the supplied names.</p>
+    <pre xml:space="preserve">{
+...
+   "authGroup": ["a b c", "def", "ghi"],
+...
+}</pre>
+    <p>The no version of the command, <code>no authorization-groups-claim-name &lt;value&gt;</code>, returns its value to the default <code>groups</code>.</p>
+    <p>For compatibility, you can configure the event broker  to interpret a string value for the claim as a space-delimited set of groups, similar to the <code>scope</code> claim. For example, a claim value of <code>"a b c"</code> would be interpreted as three groups: <code>"a"</code>, <code>"b"</code>,  and <code>"c"</code>.</p>
+    <p>To configure this behaviour, enter the following command:</p>
+    <pre>solace(configure/authentication/oauth-profile)# authorization-groups-claim-string-format space-delimited</pre>
+    <p>The no version of the command, <code>no authorization-groups-claim-string-format</code>, returns its value to the default <code>single</code>.</p>
+    <h3><a name="Username-Claim"/>Username Claim Name</h3>
+    <p>By default, PubSub+ event brokers use the <code>sub</code> field in OAuth tokens to determine the client username.  You can configure a custom <code>username-claim-name</code>, which must be a string; for example, <code>email</code>. Claims of other types such as number, boolean, object, array, etc., are not supported.</p>
+    <p>To configure the username claim name, enter the following command: </p>
+    <p class="Code">solace(configure/authentication/oauth-profile)# username-claim-name &lt;value&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the field in the token used  to determine the client username. If no value is provided, <code>sub</code> is used as the default.</p>
+    <p>The no version of the command, <code>no username-claim-name &lt;value&gt;</code>, returns its value to the default <code>sub</code>.</p>
+    <h3><a name="Forward-Proxy"/>Forward Proxy</h3>
+    <p>Depending on your deployment, you may require that communication between the event broker and authorization servers  goes through a forward proxy. This is often the case if your event broker sits behind a firewall and egress traffic needs to connect to a proxy server to go outside the firewall.</p>
+    <p>To configure a forward proxy for a Message VPN OAuth profile, enter the following command:</p>
+    <pre xml:space="preserve">solace(...sage-vpn/authentication/oauth/profile)# proxy &lt;proxy-name&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;proxy-name&gt;</code> is the name of the forward proxy configured on the event broker to use for discovery, user info, and introspection requests. For more information, see <MadCap:xref href="../Features/VPN/Configuring-VPNs.htm#Configur4">Configuring a Forward Proxy</MadCap:xref>. </p>
+    <p>The no version of this command, <code>no proxy</code>, removes any configured forward proxy. </p>
+    <h3><a name="VPN-OAuth-Profiles"/>Enabling Message VPN OAuth Profiles</h3>
+    <p>To enable a Message VPN OAuth profile, enter the following  commands:</p>
+    <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# authentication<br/>solace(configure/message-vpn/authentication)# oauth<br/>solace(...gure/message-vpn/authentication/oauth)# profile &lt;profile&gt;<br/>solace(...sage-vpn/authentication/oauth/profile)# no shutdown</p>
+    <p>To disable  a Message VPN OAuth profile authentication for clients connecting to the given Message VPN, enter the following command: </p>
+    <p class="Code">solace(...sage-vpn/authentication/oauth/profile)# shutdown</p>
+    <h3><a name="Display-VPN-OAuth-Profile-Info"/>Displaying Message VPN OAuth Profile Information</h3>
+    <p>To display information about an OAuth provider,  enter the following command:</p>
+    <p class="Code">show message-vpn &lt;vpn-name&gt; oauth profile &lt;profile&gt; [client required-claim &lt;required-claim-name-pattern&gt; | resource-server required-claim &lt;required-claim-name-pattern&gt;] | [detail [stats]]
+</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;vpn name&gt;</code> is the name of the Message VPN where the profile is configured.</p>
+    <p><code>&lt;profile&gt;</code> is the name of the  OAuth profile you want to monitor.</p>
+    <p><code>client required claim</code> displays claim values required to be present in the ID token. </p>
+    <p><code>resource server required-claim</code> displays claim values required to be present in the access token.</p>
+    <p><code>&lt;required-claim-name-pattern&gt;</code> is the  required claim name filter to apply to the  command; may contain wildcard characters * or ?.</p>
+    <p><code>detail</code> displays detailed information about the OAuth profile.</p>
+    <p><code>stats</code> displays statistics about the OAuth profile.</p>
+    <h3><a name="Enabling"/>Enabling OAuth Client Authentication</h3>
+    <p>To enable OAuth authentication for clients connecting to the given Message VPN, enter the following  commands:</p>
+    <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# authentication<br/>solace(configure/message-vpn/authentication)# oauth<br/>solace(...gure/message-vpn/authentication/oauth)# no shutdown</p>
+    <p>To disable  OAuth authentication for clients connecting to the given Message VPN, enter the following command: </p>
+    <p class="Code">solace(...gure/message-vpn/authentication/oauth)# shutdown</p>
+    <h3><a name="OAuth2"/>OAuth Client Authentication Example Configuration</h3>
+    <p>The following example shows how to create and set up an OAuth profile on a new Message VPN which is used for OAuth authentication. </p>
+    <p>In this example: </p>
+    <ul>
+      <li>The OAuth discovery endpoint is located at <code>https://oauthdiscovery.com</code> and requires credentials of <code>oauthServerUsername/oauthServerPassword</code> through HTTPS.</li>
+      <li>The OAuth issuer is located at <code>https://oauthissuer.com</code>. </li>
+      <li>The OAuth role is set to <code>resource-server</code>, which means the event broker is configured to expect clients to present access tokens when they attempt to authenticate. </li>
+    </ul>
+    <pre class="Code" xml:space="preserve">
+solace(configure)# create message-vpn oauthExample
+solace(configure/message-vpn)# authentication oauth
+solace(...gure/message-vpn/authentication/oauth)# no shutdown
+solace(...gure/message-vpn/authentication/oauth)# default-profile myOauthProvider
+solace(...gure/message-vpn/authentication/oauth)# create profile myOauthProvider
+solace(...sage-vpn/authentication/oauth/profile)# no shutdown
+solace(...sage-vpn/authentication/oauth/profile)# oauth-role resource-server
+solace(...sage-vpn/authentication/oauth/profile)# issuer https://oauthissuer.com
+solace(...sage-vpn/authentication/oauth/profile)# client-id oauthServerUsername
+solace(...sage-vpn/authentication/oauth/profile)# client-secret oauthServerPassword
+solace(...uthentication/oauth/profile/endpoints)# discovery https://oauthdiscovery.com</pre>
+    <h3><a name="Compatib"/>Compatibility with Older Versions</h3>
+    <p>For compatibility with versions prior to 9.12.1, the OAuth provider for MQTT client commands have been deprecated but will continue to work until September 15, 2024. After September 15, 2024, these commands will be removed.</p>
+    <p>If you have an existing OAuth MQTT deployment you must migrate your  OAuth provider configuration to a Message VPN OAuth profile configuration before the deprecation period ends.</p>
+    <p>
+      <u>Differences between OAuth Providers and OAuth Profiles in Message VPNs</u>
+    </p>
+    <ul>
+      <li>The OAuth Issuer Identifier is used to identify the appropriate OAuth provider configuration.  In most cases this allows identification of the appropriate provider from the token alone.  Note that MQTT clients that explicitly specify a provider must still specify the broker configuration name, for API compatibility.</li>
+      <li>The OpenID Connect Userinfo endpoint (similar to the OAuth introspection endpoint) is supported.</li>
+      <li>The username and groups claim are searched in multiple places, supporting deployments where both thick tokens (tokens with extra information such as groups) and thin tokens (tokens that only have the bare minimum information for authentication) are present for the same provider.</li>
+      <li>Configuration is fetched from the discovery URL, meaning you aren't required to configure other endpoints and the issuer identifier.</li>
+      <li>Issuer identity is verified, plus a number of other security checks.</li>
+      <li>The allowed OAuth type (OpenID Connect or plain OAuth) is determined by the OAuth role  in the configuration (see <MadCap:xref href="#OAuth-Role">OAuth Role</MadCap:xref>), instead of being dynamically determined on a per-connection basis from connection information.</li>
+      <li>There is no configuration flag to ignore time limits specified in the token.</li>
+    </ul>
+    <h2 class="with-rule"><a name="Dup-Connect-Behav"/>Configuring the Connection Behavior for Duplicate Clients </h2>
+    <p>When a new client connects to an event broker, and that client uses the same client name as an existing connected client, you can configure the event broker to either:</p>
+    <ul>
+      <li>Reject the new duplicate client’s connection attempt (that is, not replace the existing client)</li>
+      <li>Disconnect the existing client and connect the new duplicate client</li>
+    </ul>
+    <p class="Note">By default, they replacement of duplicate client connections during authentication is enabled on the event broker.</p>
+    <p>To enable the replacement of duplicate client connections during authentication, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure)# authentication<br/>solace(configure/authentication)# replace-duplicate-client-connections</p>
+    <p>The no version of this command, <code>no replace-duplicate-client-connections</code>, disables the replacement of duplicate client connections during authentication.</p>
+    <p class="Note"> When used with Web messaging clients, disabling the replacement of duplicate client connections during authentication by the <code>no replace-duplicate-client-connections</code> Authentication CONFIG command could cause a temporary service outage when experiencing momentary network congestion. This is due to the time that the event broker takes to expire the old Web client session before accepting the replacement.</p>
+  </body>
+</html>

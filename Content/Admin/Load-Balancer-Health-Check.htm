@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+    <meta name="description" content="This topic discusses the Solace PubSub+ event brokers response to load balancer HTTP health checks, and how to configure an event broker's health check related settings. "/>
+    <meta name="keywords" content="load balancer, health checks, HTTP health checks"/>
+    <meta name="author" content="Solace Corporation"/>
+    <title>Load Balancer Health Checks</title>
+  </head>
+  <body>
+    <h1>Load Balancer Health Checks</h1>
+    <p>This topic discusses the Solace PubSub+ event brokers response to load balancer HTTP health checks, and how to configure an event broker's health check related settings.</p>
+    <p>In many operational environments, such as clouds and PaaS, you will need to operate the Solace PubSub+ event brokers in conjunction with an environment provided load balancer. For a load balancer to operate properly with an event broker and send it appropriate traffic, the event broker interacts with the load balancer’s health monitoring feature to keep the load balancer up-to-date on the event broker’s operational status. The HTTP health check probe is one of the most common types of health checks supported by load balancers and is the one responded to by the event broker.</p>
+    <p>On a fresh installation or a reload of a default configuration, the feature is enabled at start-up on the software event broker and disabled on the appliance. When upgrading from an earlier version, the feature is disabled on both the software event broker and appliance.</p>
+    <h2 class="with-rule"><a name="Health-Check-Respons"/>Software Event Broker Response to Health Checks</h2>
+    <p> A Solace PubSub+ software event broker responds to load balancer HTTP health-check GETs on both <code>/health-check/guaranteed-active</code> and <code>/health-check/direct-active</code> in accordance with the following table.</p>
+    <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Solace PubSub+ Software Event Broker State</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Redundancy Configured</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Redundancy Not Configured</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Solace PubSub+ software event broker Active</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>for <code>/health-check/guaranteed-active</code>:</p>
+            <p>    200: if the message spool is up</p>
+            <p>    503: if the message spool is down</p>
+            <p>for<code>/health-check/direct-active</code>:</p>
+            <p>    200</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>for <code>/health-check/guaranteed-active</code>:</p>
+            <p>    200: if the message spool is up</p>
+            <p>    503: if the message spool is down</p>
+            <p>for <code>/health-check/direct-active</code>:</p>
+            <p>    200</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Solace PubSub+ software event broker Standby</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>for either <code>/health-check/guaranteed-active</code> or <code>/health-check/direct-active</code>:</p>
+            <p>    503</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>for either <code>/health-check/guaranteed-active</code> or <code>/health-check/direct-active</code>:</p>
+            <p>    N/A</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">Solace PubSub+ software event broker Monitoring</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>for either <code>/health-check/guaranteed-active</code> or <code>/health-check/direct-active</code>:</p>
+            <p>    503</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>for either <code>/health-check/guaranteed-active</code> or <code>/health-check/direct-active</code>:</p>
+            <p>    N/A</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="Listen-Port-CLI"/>Software Event Broker's Health-Check Listen-Port </h2>
+    <p>New installations of the Solace PubSub+ software event broker by default actively listen on port 5550 and 5553 (if using TLS/SSL) for load balancer health checks, but it is possible to change the listen-port setting to some other value using either Solace CLI or a configuration key.</p>
+    <h3><a name="Config-CLI"/>Setting with CLI</h3>
+    <p>To change the port setting, execute the <code>health-check listen-port</code> command:</p>
+    <p class="Code">solace(configure/service/health-check) # listen-port &lt;port&gt; [ssl]</p>
+    <p>To restore the listen-port to its default value, execute the <code>no</code> version of the previous command:</p>
+    <p class="Code">solace(configure/service/health-check) # no listen-port [ssl]</p>
+    <p>
+      <u>Where:</u>
+    </p>
+    <p><code>ssl</code> specifies the TLS/SSL health-check listen-port.  </p>
+    <h3><a name="Config-Config-Key"/>Setting with a Configuration Key</h3>
+    <p>At creation and start-up of a  software event broker, the <code>service/healthcheck/port</code> or <code>service/healthcheck/tlsport</code> configuration key can be used to set a specific port to use as the load balancer listen-port. </p>
+    <p>For information on using Cloud-Init and configuration keys to initialize a software event broker  instance, refer to <MadCap:xref href="../Software-Broker/Cloud-And-Machine-Tasks/Initializing-Machine-Image-With-Cloud-Init.htm">Initializing a Machine Image using cloud-init</MadCap:xref>. </p>
+    <p>For information on initializing  software event broker  containers with configuration keys, refer to <MadCap:xref href="../Software-Broker/Container-Tasks/Config-SW-Broker-Container-Cfg-Keys.htm">Initializing a Software Event Broker Container</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Applianc"/>Appliance Response to HTTP Health Checks</h2>
+    <p>A Solace PubSub+ appliance responds to load balancer HTTP health-check GETs on both <code>/health-check/guaranteed-active</code> and <code>/health-check/direct-active</code> in accordance with the table below.</p>
+    <p>The appliance does not support hostlist high-availability (HA) failover, so the <code>/health-check/guaranteed-active</code> health check is only useful across multiple HA appliance pairs. The <code>/health-check/guaranteed-active</code>  could be used with the appliance in cases where the clients are using MQTT QoS1 clean sessions with a load balancer distributing incoming HTTP requests across multiple appliances not running HA. </p>
+    <table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Appliance State
+						
+					</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" colspan="2" style="text-align: center;">Redundancy Configured</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1" colspan="2" style="text-align: center;">Redundancy Not Configured</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p> </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="font-weight: bold;">Static IP</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="font-weight: bold;">Primary/Backup IP</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="font-weight: bold;">Static IP</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1" style="font-weight: bold;">Primary/Backup Ip</td>
+        </tr>
+      </tbody>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Solace PubSub+ Appliance Active</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>for <code>/health-check/guaranteed-active</code>:</p>
+            <p>    503</p>
+            <p>for<code>/health-check/direct-active</code>:</p>
+            <p>    200</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>for <code>/health-check/guaranteed-active</code>:</p>
+            <p>    200: if the message spool is up</p>
+            <p>    503: if the message spool is down</p>
+            <p>for <code>/health-check/direct-active</code>:</p>
+            <p>    *200</p>
+            <p><![CDATA[				]]></p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>for either <code>/health-check/guaranteed-active</code> or <code>/health-check/direct-active</code>:</p>
+            <p>    200 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1"><p>for either <code>/health-check/guaranteed-active</code> or <code>/health-check/direct-active</code>:</p><p>    200</p><![CDATA[					]]></td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Solace PubSub+ Appliance</p>
+            <p>Standby</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>for <code>/health-check/guaranteed-active</code>:</p>
+            <p>    503</p>
+            <p>for <code>/health-check/direct-active</code>:</p>
+            <p>    200</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1"><p>for <code>/health-check/guaranteed-active:</code></p><p>    N/A</p><p>for <code>/health-check/direct-active</code>:</p><p>    *200</p><![CDATA[					]]></td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>for either <code>/health-check/guaranteed-active</code> or <code>/health-check/direct-active</code>:</p>
+            <p>    N/A</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1"><p>
+						for either <code>/health-check/guaranteed-active</code> or <code>/health-check/direct-active</code>:</p><p>    N/A</p><![CDATA[					]]></td>
+        </tr>
+      </tbody>
+    </table>
+    <p> * When using <code>/health-check/direct-active</code>, with redundancy configured, the primary and back IP addresses are transferred to the active event broker.</p>
+    <p class="Note">The guaranteed health-check API is only supported for an Active/Standby redundancy configuration.</p>
+    <h2 class="with-rule"><a name="How-listen-port"/>Appliance's Health-Check Listen-Port</h2>
+    <p>On a fresh installation or when reloading the default configuration, the load balancer health checking is disabled on the Solace PubSub+ appliance and must be manually enabled. </p>
+    <p>By default, the Solace PubSub+ appliance listens on 5550 and 5553 (if using TLS/SSL) for load balancer health checks, but it is possible to change the listen-port setting to some other value using Solace CLI.</p>
+    <h3><a name="Config-CLI"/>Setting with CLI</h3>
+    <p>Enable the <code>health-check</code> and execute the <code>health-check listen-port</code> command to change the port setting:</p>
+    <p class="Code">solace(configure/service/health-check) # no shutdown<br/>solace(configure/service/health-check) # listen-port &lt;port&gt; [ssl]</p>
+    <p>To restore the listen-port to its default value, execute the <code>no</code> version of the previous command:</p>
+    <p class="Code">solace(configure/service/health-check) # no listen-port [ssl]</p>
+    <p>
+      <u>Where:</u>
+    </p>
+    <p><code>ssl</code> specifies the TLS/SSL health-check listen-port. </p>
+    <h2 class="with-rule"><a name="How-stop-listen"/>How to Stop Listening to a Health Check</h2>
+    <p>To stop listening to a load balancer's health-check, execute the <code>health-check shutdown</code> command:</p>
+    <p class="Code">solace(configure/service/health-check) # shutdown [plain-text] [ssl]</p>
+    <p>To restore heath-check listening, execute the <code>no shutdown</code> command:</p>
+    <p class="Code">solace(configure/service/health-check) # no shutdown [plain-text] [ssl]</p>
+    <p>
+      <u>Where:</u>
+    </p>
+    <p><code>plain-text</code> specifies  the plain-text health-check listen-port. </p>
+    <p><code>ssl</code> specifies the TLS/SSL health-check listen-port.</p>
+    <p class="Note">If you execute the <code>shutdown</code> or <code>no shutdown</code> command with no keywords, the event broker disables or enables both ports.</p>
+  </body>
+</html>

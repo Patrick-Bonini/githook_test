@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><![CDATA[
+            ]]>Client Application Sessions</h1>
+    <p>Communications between applications on a single host can occur through shared memory or a shared TCP channel. Communicating through shared memory offers lower overhead and lower latency than communicating through a TCP channel. It is also possible for applications on the same host to use both shared memory and a shared TCP channel at the same time to communicate with each other.</p>
+    <p>Another use case for IPC is to allow applications residing on separate hosts to establish a direct communication channel and bypass Solace PubSub+. For example, two applications could establish a direct channel to exchange large data sets which no other application in the platform is interested in. Such direct communication preserves capacity in Solace PubSub+, but it also requires a tight coupling between the communicating applications.</p>
+    <p>Applications on separate hosts can communicate with each other through a TCP channel; communicating through shared memory is not possible.</p>
+    <h2 class="with-rule"><a name="Session-"/>Session-Based Communications Without IPC</h2>
+    <p>Typically, a session represents a single TCP connection to an event broker. A session is established from an application to the event broker, and it allows for messages to be transmitted and received. The figure below shows a scenario where communication between applications is through the event broker.</p>
+    <p>In this scenario, a single application does not directly communicate with other applications. Although multiple applications can be connected to the event broker through sessions, a single application is not directly aware of the presence or absence of other applications. Therefore, applications send messages without regard to whether other applications may be interested in receiving them.</p>
+    <p class="GraphicCaption">Typical Session-Based Interaction with a Solace PubSub+ Event Broker</p>
+    <p class="GraphicCaption">
+      <img src="Images/multipoint1.jpg" alt="Typical Session-Based Interaction with a Solace Router" MadCap:mediastyle="@media print { max-width: 290px; }" style="max-width: 290px;"/>
+    </p>
+    <h2 class="with-rule"><a name="IPC"/>IPC Session-Based Communications</h2>
+    <p>The IPC capability introduces the concept of a multi-point session for an application. Although a multi-point session attempts to maintain the same messaging behavior that occurs when an application connects to an event broker through a session (that is, the semantics of sending and receiving messages between applications remains the same), a multi-point session does not rely on a session connection with the event broker. Instead it allows an application to establish a session to one or more peer IPC applications and directly communicate with them. It can have a mixture of outgoing connections made to other peer applications and incoming connections that originate from peer applications. The application still uses a single session, but there are “hidden” sub-sessions managed within the API for each peer application to which direct communications are occurring.</p>
+    <p>The following figure shows an IPC multi-point session where there is a communication channel between Application A and B, A and C, and A and D. Applications B, C, and D can be on the same host or a different host from application A. If they are on the same host as Application A, the communication channels can be over TCP or shared memory. If they are on a different host than Application A, the communication channels must be over TCP.</p>
+    <p class="GraphicCaption"><a name="Applicat"/>Applications Communicating Through an IPC Multi-point Session</p>
+    <p class="GraphicCaption">
+      <img src="Images/multipoint2.jpg" alt="Applications Communicating Through an IPC Multi-point Session" MadCap:mediastyle="@media print { max-width: 365px; }" style="max-width: 365px;"/>
+    </p>
+    <p>IPC depends on a “client/server” model, where one application actively establishes the IPC connection to another application that accepts incoming connections.</p>
+    <p>Application A is not directly aware when peer applications join or leave the multi-point session. This is consistent with communications through an event broker, where a given application is not directly aware of when other applications connect or disconnect from the event broker.</p>
+    <p>A multi-point session includes the concept of a “routing table” that is populated with subscription requests from the peer applications. When an application sends a message to a multi-point application, the message is sent to each peer application which has subscribed to that message. The publishing application is only required to send the message once; the API looks up the topic, and then sends the message to any matching sub-sessions.</p>
+    <p>IPC is not multicast in nature; for example, a message published by Application A is sent separately to each peer application (B, C, and D), but only if they have subscribed to the topic of the message.</p>
+    <p>When an application subscribes to a topic, the subscription is sent to each peer application for which it has a sub-session established.</p>
+    <p>When a Direct message is received from a peer application, it is delivered to the message receive callback of the multi-point session. There is no differentiation based on which peer application sent the Direct message (which is consistent with how applications interact when a connection is established with an event broker).</p>
+    <p>When there are multiple child sessions, and there are slow consumers, the following occurs:</p>
+    <ul>
+      <li>If all consumers cannot receive the message, the publisherʼs send function returns <code>WOULD_BLOCK</code>.</li>
+      <li> If at least one child session can accept the Direct message, the publisherʼs send function returns OK. The message is discarded for the other child sessions. The child sessions that did not receive the message are provided with a discard indication flag on the next message they receive.</li>
+    </ul>
+    <p>The API caller would not know that the message was not delivered to some child sessions. This is consistent with the behavior that occurs when sending Direct messages to an event broker that may have some slow consumers.</p>
+    <h2 class="with-rule"><a name="Non-Mult"/>Non-Multi-Point Sessions</h2>
+    <p>Although, by default, IPC sessions are multi-point, IPC can also be used with a non-multi-point session, where there is only one IPC peer for the session. A non‑multi-point session allows an application to accept only one incoming connection, as opposed to accepting an arbitrary number of incoming connections.</p>
+    <h2 class="with-rule"><a name="Connecti"/>Connection Model</h2>
+    <p>Applications communicating through IPC must first establish a TCP channel between themselves, with one application actively establishing the connection and the other application accepting the incoming connection. Thus, a TCP listening port is the mechanism applications use to find each other (on the same host or on different hosts).</p>
+    <p>Once the TCP connection is established, the application that initiates the connection indicates to the peer application whether to use a TCP channel or shared memory for the connection. If TCP is specified, the established TCP connection continues to be used for communications. If shared memory is specified, then the applications switch to a shared memory channel and then tear down the TCP connection. However, the TCP channel enables the connecting application to indicate to the listening application the details of the shared memory channel to be used for further communications.</p>
+    <p>When shared memory communications are used, the application that initiates the connection is responsible for creating the shared memory channel and controls the size of the channel (that is, the amount of memory allocated for communications in each direction). The listening application simply accepts this channel and then uses it.</p>
+  </body>
+</html>

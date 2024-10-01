@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" xml:lang="en-us" MadCap:conditions="Default.ConnectorSpecific">
+  <head>
+    <title/>
+  </head>
+  <body>
+    <h1><a name="_bookmark8"/>Configuring Connection Details </h1>
+    <h2><MadCap:variable name="Variables.CompanyName"/><MadCap:variable name="Product-Names.pubsub_brand_only"/> Connection Details</h2>
+    <MadCap:snippetBlock src="../../../../Resources/Snippets/API/Connectors/common/configure-connection-details-part1.flsnp"/>
+    <h2 MadCap:conditions="Default.ConnectorSpecific"><MadCap:variable name="Manifest-Products-Connectors.connector-tibco-product-name"/> Connection Details</h2>
+    <h3 MadCap:conditions="Default.ConnectorSpecific">Manual Configuration</h3>
+    <p>To manually configure <MadCap:conditionalText MadCap:conditions="Default.ConnectorSpecific"><MadCap:variable name="Manifest-Products-Connectors.connector-tibco-product-name"/></MadCap:conditionalText> connection details, set the following in <code>application.yml</code>:</p>
+    <pre xml:space="preserve">solace: 
+  tibco-ems:
+    server-url: tcp://localhost:7222 
+    username: username
+    password: password 
+    properties: 
+      &lt;key&gt;:&lt;value&gt;     
+</pre>
+    <p>Properties are key/value pairs where <code>key</code> starts with the <code>com.tibco.tibjms.*</code> prefix. These properties are passed without validation as a <code>Map</code>to the <MadCap:variable name="Manifest-Products-Connectors.connector-tibco-product-name"/> JMS Connection Factory. Accepted properties can be found in <a href="https://docs.tibco.com/pub/ems/latest/doc/html/api/javadoc/com/tibco/tibjms/Tibjms.html" target="_blank" class="link-offsite">Tibjms</a> and in <a href="https://docs.tibco.com/pub/ems/latest/doc/html/api/javadoc/com/tibco/tibjms/TibjmsSSL.html" target="_blank" class="link-offsite">TibjmsSSL</a>.</p>
+    <h3><a name="JNDI2"/>JNDI</h3>
+    <p>The JMS binder provides a generic way of configuring and using JNDI.</p>
+    <h4><a name="JNDI"/>JNDI Context</h4>
+    <p>The first step in using JNDI is to configure the JNDI context. The JMS binder expects standard JNDI properties to be specified under <code>jms-binder.jndi.context</code> in a key/value pair format. The key is the name of the property (e.g. "java.naming.provider.url") and the value is a string in the format defined for that property.</p>
+    <p>For instance, using the <MadCap:variable name="Manifest-Products-Connectors.connector-tibco-product-name"/> server as the JNDI provider could look like:</p>
+    <pre xml:space="preserve">
+jms-binder: 
+  jndi: 
+    context:
+      java.naming.factory.initial: com.tibco.tibjms.naming.TibjmsInitialContextFactory 
+      java.naming.provider.url: tibjmsnaming://localhost:7222        
+</pre>
+    <p>Note that classes required by the chosen JNDI service provider need to be added to the classpath.</p>
+    <p>Once a JNDI context is successfully configured, <a href="#_bookmark15" class="link-internal">connection factories</a> and/or <a href="TibcoEMS-JMS-Destination-Types.htm#_bookmark24" target="_blank" class="link-internal">destinations</a> can be looked up.</p>
+    <h4><a name="_bookmark15"/>Connection Factory Lookup</h4>
+    <p>To look up a connection factory, configure <code>jms-binder.jndi.connection-factory</code>.</p>
+    <pre xml:space="preserve">
+jms-binder: 
+  jndi:
+    connection-factory:
+      name: &lt;jndiConnectionFactoryName&gt;
+      user: &lt;someUser&gt;
+      password: &lt;somePassword&gt;</pre>
+    <p>Where:</p>
+    <ul>
+      <li>
+        <p><code>&lt;jndiConnectionFactoryName&gt;</code> is the JNDI object name of the connection factory.</p>
+      </li>
+      <li>
+        <p><code>&lt;someUser&gt;</code> is the user to authenticate with the JMS broker.</p>
+      </li>
+      <li>
+        <p><code>&lt;somePassword&gt;</code> is the password to authenticate with the JMS broker.</p>
+      </li>
+    </ul>
+    <p class="Note">The JNDI connection factories must not specify a clientID as this prevents producer bindings from connecting.</p>
+    <h2>Connecting to Multiple Systems</h2>
+    <p>To connect to multiple systems of a same type, use the <a href="https://docs.spring.io/spring-cloud-stream/docs/current/reference/html/spring-cloud-stream.html#multiple-systems" target="_blank" class="link-offsite">multiple binder syntax</a>.    </p>
+    <p>For example:</p>
+    <pre xml:space="preserve">spring: 
+  cloud:
+    stream: 
+      binders:
+        
+        # 1st solace binder in this example 
+	 solace1:
+          type: solace 
+	   environment: 
+	     solace: 
+	       java:
+        	 host: tcp://localhost:55555
+         
+	 # 2nd solace binder in this example 
+	 solace2:
+          type: solace 
+          environment: 
+            solace: 
+	       java:
+        	 host: tcp://other-host:55555
+        
+	 # The only jms binder 
+	 jms1:
+          type: jms
+	   # Add `environment` property map here if you need to customize this binder. 
+	   # But for this example, we'll assume that defaults are used.
+          
+	 # Required for internal use 
+	 undefined:
+          type: undefined 
+	 bindings:
+          input-0:
+            destination: &lt;input-destination&gt; 
+	     binder: jms1
+          output-0:
+            destination: &lt;output-destination&gt;
+            binder: solace1 # Reference 1st solace binder 
+	   input-1:
+            destination: &lt;input-destination&gt; 
+	     binder: jms1
+          output-1:
+            destination: &lt;output-destination&gt;
+            binder: solace2 # Reference 2nd solace binder</pre>
+    <p>The configuration above defines two binders of type <code>solace</code> and one binder of type <code>jms</code>, which are then referenced within the bindings. </p>
+    <p>Each binder above is configured independently under <code>spring.cloud.stream.binders.&lt;bindername&gt;.environment.</code>.</p>
+    <p class="Note">When connecting to multiple systems, all binder configuration must be specified using the multiple binder syntax for all binders. For example, under the <code>spring.cloud.stream.binders.&lt;binder-name&gt;.environment</code>.</p>
+    <p class="Note">Do not use single-binder configuration (for example, <code> solace.java.*</code> at the root of your <code>application.yml</code>) while using the multiple binder syntax.</p>
+  </body>
+</html>

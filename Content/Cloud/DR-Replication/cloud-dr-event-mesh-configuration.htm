@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="Default.OnlyForPDF">
+  <head>
+    <style>
+			th p, td p, td, th {
+			 font-size: smaller;
+			}
+		</style>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Configuring Replication in an Event Mesh</h1>
+    <p>In <MadCap:variable name="Product-Names.cloud_product_short"/>, if your Primary site is part of an event mesh and you want to configure replication, it requires that you have a more in-depth understanding of Dynamic Messaging Routing (DMR), which is the underlying technology for an event mesh. For more information about DMR, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../../Features/DMR/DMR-Overview.htm">Dynamic Message Routing</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Features/DMR/DMR-Overview.htm" target="_blank" class="link-offsite">Dynamic Message Routing</a></MadCap:conditionalText>. </p>
+    <p>During the procedure, it is expected that the state of the DMR cluster will be reported as <code>Down</code> and topology errors will be raised while links are being established between nodes. In spite of these errors, traffic will continue to flow through the network and no message loss is expected. The examples in this section are based on the examples from the rest of this guide.</p>
+    <p> At this time, you cannot use <MadCap:variable name="Product-Names.mesh_manager"/> to configure or manage an <MadCap:variable name="Product-Names.broker_cloud_short"/> that has replication configured. Instead, you must manually configure the links using a combination of <MadCap:variable name="Product-Names.solace_cli"/>  and <MadCap:variable name="Product-Names.pubsubmanager_long"/>.</p>
+    <p>If you want to configure replication on an <MadCap:variable name="Product-Names.broker_cloud_short"/> that also needs to be part of an event mesh, perform the steps in the following order: </p>
+    <ol>
+      <li>
+        <p>Use <MadCap:variable name="Product-Names.mesh_manager"/> to add the Primary site into an existing event mesh or create a new event mesh using the Primary site as one of the services.</p>
+        <p>For more information about adding the Active site (<MadCap:variable name="Product-Names.broker_cloud_short"/>) to an event mesh, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../Event-Mesh/ght_event_mesh.htm">Creating an Event Mesh</MadCap:xref> or <MadCap:xref href="../Event-Mesh/modify_mesh.htm#modify-add-service">Adding an [%=Product-Names.broker_cloud_short_title%] to an Existing Event Mesh</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/Event-Mesh/ght_event_mesh.htm" class="link-offsite">Creating an Event Mesh</a> or <a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/Event-Mesh/modify_mesh.htm#modify-add-service" class="link-offsite">Adding an [%=Product-Names.broker_cloud_short_title%] to an Existing Event Mesh</a></MadCap:conditionalText>.</p>
+        <p class="Note">You can only use <MadCap:variable name="Product-Names.mesh_manager"/> if there are no  <MadCap:variable name="Product-Names.broker_cloud_short"/>s that have replication configured; otherwise you must manually configure the DMR links between the services in the event mesh. </p>
+        <p>For example, your event mesh might be simply two <MadCap:variable name="Product-Names.broker_cloud_short"/>s that are connected via an external DMR link. We use this example as a basis for the steps that precede.</p>
+        <p>
+          <img src="../../Resources/Images/Cloud-DR-Replication/dmr-dr-before-replication-just-mesh.png" alt=""/>
+        </p>
+      </li>
+      <li>
+        <p>Create the <MadCap:variable name="Product-Names.broker_cloud_short"/> for the Backup site. The Primary site is presumed have a Custom Hostname configured. For more information, see <MadCap:xref href="cloud-dr-configure-event-brokers.htm#replication-hostnames">Create a Custom Hostname for the Replication Pair</MadCap:xref>.</p>
+        <p>After you create the Backup site and disable Dynamic Message Routing (DMR) (removed it from the DMR cluster) on only the Backup site, your topology looks like the following diagram where <code>backup-myfirstservice</code> (the Backup site) is separate from the Cluster <code>my-first-cluster</code>. For more information about removing the Backup site (<MadCap:variable name="Product-Names.broker_cloud_short"/>) from the DMR cluster and disabling DMR, see <MadCap:xref href="cloud-dr-configure-replication-solace-cli.htm#delete-cluster-name">Disable Dynamic Message Routing</MadCap:xref>.<img src="../../Resources/Images/Cloud-DR-Replication/dmr-dr-before-starting-actual-steps.png" alt=""/></p>
+        <p>After you have configured replication, your service topology shows the replication mates (services <code>primary-myfirstservice</code> and <code>backup-myfirstservice</code>) connected via a replication link.</p>
+        <p>
+          <img src="../../Resources/Images/Cloud-DR-Replication/dmr-dr-after-replication.png" alt=""/>
+        </p>
+      </li>
+      <li>
+        <p>Add the  <MadCap:variable name="Product-Names.broker_cloud_short"/> for the Backup site to the same cluster as the Primary site. For more information, see <MadCap:xref href="#set-cluster-name">Adding the  Backup Site to the DMR cluster of the Primary Site</MadCap:xref>. After this step, your service topology shows services <code>primary-myfirstservice</code> and <code>backup-myfirstservice</code> in cluster <code>my-first-cluster</code> (the cluster name of service <code>primary-myfirstservice</code> ):</p>
+        <p>
+          <img src="../../Resources/Images/Cloud-DR-Replication/dmr-dr-after-cluster-name-update.png" alt=""/>
+        </p>
+      </li>
+      <li>
+        <p>In the <MadCap:variable name="Product-Names.solace_cli"/>, configure the internal DMR links. For more information, see  <MadCap:xref href="#create-internal-dmr-links">Creating the DMR Internal Links Within the DMR Cluster</MadCap:xref>. You must add internal DMR links:</p>
+        <ul>
+          <li>
+            <p>between the Backup site and Primary site</p>
+          </li>
+          <li>
+            <p>between the Backup site and other <MadCap:variable name="Product-Names.broker_cloud_short"/>s in your DMR cluster (if they exist)</p>
+            <p class="Note">Internal DMR links between your Primary site and other services in the same DMR cluster may have been configured for you previously by <MadCap:variable name="Variables.CompanyName"/>. If not, those links must be configured as well.</p>
+          </li>
+        </ul>
+        <p>After configuring the internal DMR link, the following topology shows an internal DMR link between <code>primary-myfirstservice</code> and <code>backup-myfirstservice</code> in addition to the pre-existing replication link.</p>
+        <p>
+          <img src="../../Resources/Images/Cloud-DR-Replication/dmr-dr-after-internal-dmr-link.png" alt=""/>
+        </p>
+      </li>
+      <li>
+        <p>If in the DMR cluster the Primary site is the DMR gateway node (or the only service in the DMR cluster prior to configuring the replication mate), you must add the external DMR links between your Backup site and other <MadCap:variable name="Product-Names.broker_cloud_short"/>s in that cluster. </p>
+        <p>To add the external DMR links you must use  <MadCap:variable name="Product-Names.pubsubmanager_long"/>. For more information, see <MadCap:xref href="#create-external-dmr-links">Creating DMR External Links in the Event Mesh</MadCap:xref>. After you completed the configuration for the external DMR link, both <code>primary-myfirstservice</code> and <code>backup-myfirstservice</code> now have an external DMR link to Service <code>A</code> and the full-mesh topology is complete with replication configured on one of the nodes:</p>
+        <p>
+          <img src="../../Resources/Images/Cloud-DR-Replication/dmr-dr-after-external-dmr-link.png" alt=""/>
+        </p>
+      </li>
+    </ol>
+    <h2><a name="dmr-dr-considerations"/>Considerations When Using Replication and DMR for an Event Mesh</h2>
+    <p>These are the considerations when you want to configure replication when your <MadCap:variable name="Product-Names.broker_cloud_short"/> (Primary site) is part of an event mesh. Event meshes in <MadCap:variable name="Product-Names.cloud_product_short"/> use the Dynamic Message Routing feature.</p>
+    <ul>
+      <li>We recommend that you configure your event mesh using <MadCap:variable name="Product-Names.mesh_manager"/> <b>before</b> you configure replication. <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput"> WRITER"S NOTE BEFORE WE STATE THIS, WE HAVE ONE MORE USE CASE TO DOCUMENT.If you configure replication on the <MadCap:variable name="Product-Names.broker_cloud_short"/> prior to adding it to the event mesh, you must manually configure the external DMR links to create your event mesh between the Primary site and Backup site and the other services in your event mesh.</MadCap:conditionalText></li>
+      <li>If an event mesh has at least one <MadCap:variable name="Product-Names.broker_cloud_short"/> configured with replication, you can no longer use <MadCap:variable name="Product-Names.mesh_manager"/> to manage or configure the event mesh. In addition, Health Checks will report errors in <MadCap:variable name="Product-Names.mesh_manager"/>. Lastly, you must use <MadCap:variable name="Product-Names.pubsubmanager_long"/> to add or remove external DMR links between the DMR nodes in your event mesh.</li>
+      <li>Though the event mesh is a full-mesh, the same configuration rules apply which you must manually manage using <MadCap:variable name="Product-Names.pubsubmanager_long"/>. These rules are as follows:<ul><li>If you have more than one <MadCap:variable name="Product-Names.broker_cloud_short"/> in a DMR cluster, internal DMR links must connect all <MadCap:variable name="Product-Names.broker_cloud_short"/>s in the DMR cluster.</li><li>If you have multiple services (DMR nodes) in the DMR cluster (not including the one configured as the replication mate), either:<ul><li><p>only one of the <MadCap:variable name="Product-Names.broker_cloud_short"/>s can function as a DMR gateway and must have external DMR links to other <MadCap:variable name="Product-Names.broker_cloud_short"/>s in the event mesh</p></li><li><p>if there are multiple services and the <MadCap:variable name="Product-Names.broker_cloud_short"/> (Primary site) is the DMR gateway, you must configure external DMR links from both the DMR Primary site and the Backup site to other services in your event mesh</p></li></ul></li></ul></li>
+    </ul>
+    <h2><a name="set-cluster-name"/>Add the Backup Site to the DMR Cluster of the Primary Site</h2>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDRReplication/add-backup-to-primary-cluster.flsnp"/>
+    <h2><a name="create-internal-dmr-links"/>Create the DMR Internal Links Within the DMR Cluster</h2>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDRReplication/dmr-configure-internal-link-bt-replication-mates.flsnp"/>
+    <p class="Note">If there are other existing <MadCap:variable name="Product-Names.broker_cloud_short"/>s (nodes) in the cluster, you must also configure internal DMR links from the Backup site to those nodes. Repeat steps 3-4 to create internal links between the Backup site and the other nodes in the DMR cluster that your Primary site is connected to in the DMR cluster.<MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">WRITER NOTE: More of a FYI as its prerequisite. This section presumes the internal DMR links are already configured from the Primary site to the other nodes in your cluster. If not, you must also complete that configuration between the Primary site's <MadCap:variable name="Product-Names.broker_cloud_short"/> and other nodes before you configure the links for the Backup site.</MadCap:conditionalText></p>
+    <h2><a name="create-external-dmr-links"/>Create DMR External Links in the Event Mesh</h2>
+    <p><MadCap:variable name="Product-Names.broker_cloud_short_intitalcap"/>s in an event mesh are connected using external DMR links. Each <MadCap:variable name="Product-Names.broker_cloud_short"/> must be connected to all other <MadCap:variable name="Product-Names.broker_cloud_short"/>s in the event mesh to create a full mesh.  </p>
+    <p>If you had used <MadCap:variable name="Product-Names.mesh_manager"/>, external DMR links are created between the Primary site and all the other services in your event mesh. To complete the configuration, you must create external DMR links between the Backup site and the same services that the Primary site has connections to. You do not create an external DMR link between your Primary site and Backup site.</p>
+    <p class="Note">You only need to create an external DMR links from the Backup site to other nodes in the event mesh if your Primary site is a gateway node for your DMR cluster.</p>
+    <p class="Note"> Prior to creating the external DMR links between services, we recommend that create an API token in <MadCap:variable name="Product-Names.console_ui_long"/>. For more information, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../ght_api_tokens.htm#create-token-clicktoconnect">Creating an API Token for Click-to-Connect</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/ght_api_tokens.htm#create-token-clicktoconnect" target="_blank" class="link-offsite">Creating an API Token for Click-to-Connect</a></MadCap:conditionalText>.</p>
+    <p>To create external links in <MadCap:variable name="Product-Names.pubsubmanager_long"/> on the Backup site (or any other <MadCap:variable name="Product-Names.broker_cloud_short"/>), perform the following steps:</p>
+    <ol>
+      <li>
+        <MadCap:snippetBlock src="../../Resources/Snippets/Cloud/Task_UI_Snippets/login_console.flsnp"/>
+      </li>
+      <li>
+        <p>On the navigation bar, select <MadCap:variable name="Product-Names.cluster_mgr"/><img src="../../Resources/Images/Cloud/reusable-icons/navbar_cluster_manager.png" alt="Cluster manager icon"/>.</p>
+      </li>
+      <li>
+        <p>On the <b>Services</b> page, click on the card for the <MadCap:variable name="Product-Names.broker_cloud_short"/> and then click <b>Open </b><MadCap:variable name="Product-Names.pubsubmanager_long" style="font-weight: bold;"/>.<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> For event brokers in a private network, the connection must be initiated locally. </MadCap:conditionalText></p>
+      </li>
+      <li>
+        <p>In <MadCap:variable name="Product-Names.pubsubmanager_short"/>, select Message VPN. For example, select <b>myfirstservice</b>. <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">Note that the Message VPN <b>must be</b> the same as the one in the existing event mesh.</MadCap:conditionalText></p>
+      </li>
+      <li>
+        <p>In   <MadCap:variable name="Product-Names.pubsubmanager_short"/>, select  <b>Clustering</b> on the navigation bar. </p>
+      </li>
+      <li>
+        <p>On the <b>Clustering</b> page for your service, select the <b>External Links</b> tab, and then click <b>Click to Connect</b>.
+			</p>
+      </li>
+      <li>
+        <p>On the <b>New External Link</b> page, in the <b>Select Link Destination</b> step, beneath <b>Where to connect to</b>, select <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><b><MadCap:variable name="Variables.CompanyName"/></b></MadCap:conditionalText><b>Cloud</b>.</p>
+      </li>
+      <li>
+        <p> In the <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><b><MadCap:variable name="Variables.CompanyName"/></b></MadCap:conditionalText><b>Cloud Credentials</b> section, enter the  account credentials for <MadCap:variable name="Product-Names.cloud_product_short"/> in one of following ways:</p>
+        <ul>
+          <li>
+            <p>(Recommended) Select <b>Token</b> and paste the API token in the <b>Token</b> field. For information about creating an API token, see<MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../ght_api_tokens.htm">Managing API Tokens</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/ght_api_tokens.htm#create-token-clicktoconnect" target="_blank" class="link-offsite">Managing API Tokens</a></MadCap:conditionalText>.</p>
+          </li>
+          <li>
+            <p>Select <b>Username &amp; Password</b> and then your <MadCap:variable name="Product-Names.console_ui_short"/> credentials in the  <b>Username</b> and <b>Password</b> fields. </p>
+          </li>
+        </ul>
+      </li>
+      <li>
+        <p> Click <b>Configure DMR Bridge</b> at the bottom. Depending on the broker version and if this is the first DMR external link you're creating, the button might be <b>Select Workspace</b> and then for subsequent links it is  <b>Configure DMR Bridge</b>.</p>
+      </li>
+      <li>
+        <p>In the <b>Configure DMR Bridge</b> step, select the name of your Message VPN for the service from the <b>Local Message VPN</b> list. For example, <b>myfirstservice</b>.</p>
+      </li>
+      <li>
+        <p>In the <b>Remote Message Service</b> list, multiple service names are available (including the service name your connected to). </p>
+        <p>Choose the name of one of the services in your event mesh.</p>
+      </li>
+      <li>
+        <p>In the <b>Remote Message Service Connection</b> pane, select  <b>Local</b>, set the <b>Authentication Scheme</b> to <b>Basic</b>. The other <b>Remote</b> and <b>Local</b> Cluster fields are pre-filled for you with the cluster passwords.
+			</p>
+      </li>
+      <li>
+        <p>In the <b>Transport</b> section, enable the  <b>TLS enabled</b> toggle.</p>
+      </li>
+      <li>Click <b>Apply</b> or <b>Create Link and Test Connection</b>.
+                </li>
+      <li>
+        <p>After the link is configured (this normally takes a few minutes), you'll see the result. Click <b>Exit</b></p>
+        <p>
+          <div class="thumbnail-container">
+            <img src="../../Resources/Images/Cloud/ggs_eventmesh_dmrconfig10.png" class="solacethumbnail" alt=""/>
+          </div>
+        </p>
+      </li>
+      <li>
+        <p>Repeat steps 5-15 in this section to configure more external DMR links between any other <MadCap:variable name="Product-Names.broker_cloud_short"/>s and the Backup site. You must have the same external links from the Backup site as the Primary site.
+               </p>
+      </li>
+    </ol>
+  </body>
+</html>

@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><MadCap:concept term="Software"/>Monitoring the Health of the Software Event Broker</h1>
+    <p>The performance and stability of the Solace PubSub+ software event broker  is affected by the performance and stability of the underlying system resources. The software event broker's health monitoring feature provides on-going and on-demand health monitoring tools to assess infrastructure issues that may impact event broker stability. System administrators can use the health monitoring feature to characterize the infrastructure and monitor at runtime the system resources assigned to the event broker. This information can be used to correlate event broker performance and stability issues with other infrastructure events, and assess the suitability of the infrastructure for event broker deployments.</p>
+    <p>You can monitor the software event broker's health in the following ways:</p>
+    <ul>
+      <li><MadCap:xref href="#Startup">Assessing System Resources at Start-up</MadCap:xref>—Using the POST (power-on self-test) utility to obtain detailed characterization and reporting of system resources at when the container starts up. </li>
+      <li><MadCap:xref href="#Direct">Configuring Thresholds for Direct Runtime Metrics</MadCap:xref>—Runtime monitoring of critical application functionality with early notification for degraded performance or stability.</li>
+    </ul>
+    <h2 class="with-rule"><a name="Startup"/>Assessing System Resources using POST</h2>
+    <p>The POST service automatically runs at start-up to characterize the available system resources. The diagnostic information provided in the POST result can be used to assess the performance and suitability of the infrastructure for event broker deployment. </p>
+    <p>You can view POST results after boot-up by running either:</p>
+    <ul>
+      <li> the <code>show system post</code> Solace CLI command</li>
+      <li>the <code>docker exec -t &lt;container_name&gt; post</code> command</li>
+    </ul>
+    <p>You can also run the POST utility on-demand, before starting the container, by running the following command:
+		<pre class="Code">$ docker run -it --rm --env 'system_scaling_maxconnectioncount=100' &lt;container_image_id&gt; post</pre><p>The output of the POST utility looks similar to the following (different items might appear depending on the type of image you are using; portions of this example have been omitted for brevity):</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example POST Output</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre xml:space="preserve" class="Code">
+----------------------------------------------------------------------
+POST Results
+----------------------------------------------------------------------
+
+Version : Solace PubSub+ Enterprise (9.7.0.X)
+Time    : Wed, 07 Oct 2020 14:59:08+0000
+Status  : PASSED
+
+Violations :
+
+----------------------------------------------------------------------
+Configuration
+----------------------------------------------------------------------
+
+System Max Connections    : 200000
+System Max Queue Messages : 240
+
+----------------------------------------------------------------------
+CPU
+----------------------------------------------------------------------
+
+CPUs           : 0, 1, 10, 11, 2, 3, 4, 5, 6, 7, 8, 9 (Host CPUs 0, 1,
+2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+Count          : 12 (Minimum 12)
+Core Frequency :
+   Core 0  : 3193.5 MHz
+   Core 1  : 3193.4 MHz
+ 
+. . .
+						
+   Core 9  : 3193.6 MHz
+
+----------------------------------------------------------------------
+Memory
+----------------------------------------------------------------------
+
+Host RAM            : 64.0 GiB
+Host Swap Memory    : 2.0 GiB
+Host Virtual Memory : 64.8 GiB (Minimum 51.3 GiB)
+
+. . .						
+
+----------------------------------------------------------------------
+Storage
+----------------------------------------------------------------------
+
+Device /dev/dm-0 :
+   Size                   : 31.1 GB (Minimum 5.0 GB)
+   Available              : 23139.0 MB
+   Write Throughput       : 729.5 MB/s (Minimum 20.0 MB/s)
+   Buffered Write Latency : 0.630 ms
+   Direct Write Latency   : 0.290 ms
+
+. . .
+
+----------------------------------------------------------------------
+Timing
+----------------------------------------------------------------------
+
+Clock Source     : tsc
+TSC Synchronized : Yes
+CPU TSC Flags    :
+   constant_tsc : Yes
+   nonstop_tsc  : Yes
+   tsc_reliable : Yes
+
+
+</pre></MadCap:dropDownBody></MadCap:dropDown></p>
+    <p> </p>
+    <p class="Note">To ensure appropriate system resources have been allocated, refer to <MadCap:xref href="../Software-Broker/System-Resource-Requirements.htm">System Resource Requirements</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Direct"/>Monitoring System Resources with Direct Runtime Metrics</h2>
+    <p>Direct runtime metrics are in-service measurements of critical application functionality. These measurements can help to determine whether the availability, performance, or stability of the underlying system resources is sufficient to provide the desire system performance. </p>
+    <p>Direct runtime metrics have corresponding events with configurable thresholds; you can view these thresholds with the <code>show system health</code> CLI command. The broker raises <code>SYSTEM_SYSTEM_HEALTH_NONCRITICAL_NOTIFICATION</code> events whenever system measurements are beyond the acceptable thresholds for the direct runtime metrics. These events are throttled at one event per minute to avoid cluttering the event log. </p>
+    <h3><a name="Configur"/>Configuring Maximum Thresholds</h3>
+    <p>You can set thresholds for the following direct runtime metrics:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Disk">Disk I/O Latency</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Compute">Compute latency</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Network">Network latency</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Mate-lin">Mate-link latency</MadCap:xref>
+      </li>
+    </ul>
+    <h4><a name="Disk"/>Disk I/O Latency</h4>
+    <p>Disk I/O latency statistics are collected wherever latency may affect performance and the monitoring does not significantly impact performance or stability. The software event broker raises an asynchronous event when measured disk I/O latency exceeds the configured threshold value. A high latency may indicate that the disk, or access to the disk, is oversubscribed. </p>
+    <p>To configure the maximum threshold for disk I/O latency, enter the following:</p>
+    <pre class="Code">
+solace&gt; enable
+solace# configure
+solace(configure)# system health
+solace(configure/system/health)# disk-latency-high-threshold &lt;value&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the maximum threshold for the disk I/O latency metric.</p>
+    <p>The <code>no disk-latency-high-threshold</code> command restores the default value.</p>
+    <h4><a name="Compute"/>Compute Latency</h4>
+    <p>This metric compares the execution time of well-known functions (for example, epoll timers) against invariant timers (for example, CPU TSC).  A high latency may indicate that the CPU is oversubscribed, the CPU is being blocked by another application, or access to virtual memory is somehow degraded. The software event broker raises an asynchronous event when measured latency for CPU instructions exceeds the configured threshold value.</p>
+    <p> To configure the maximum threshold for the compute latency metric, enter the following:</p>
+    <pre class="Code">
+solace&gt; enable
+solace# configure
+solace(configure)# system health
+solace(configure/system/health)# compute-latency-high-threshold &lt;value&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the maximum threshold for the compute latency metric.</p>
+    <p>The <code>no compute-latency-high-threshold</code> command restores the default value.</p>
+    <p class="Note">In some environments, it may be possible for erroneous or misleading events to occur due to an unreliable Time Stamp Counter (TSC), in which case, this metric may need to be disabled by setting to a very large threshold value.</p>
+    <h4><a name="Network"/>Network Latency</h4>
+    <p>This metric measures the round trip network transaction latency (for example, for a ping operation) between the instance and members of its high-availability (HA) group. A high latency may indicate a faulty or misconfigured physical network interface, inadequate or faulty network cabling, a network storm/loop, or an over utilized network. The software event broker raises an asynchronous event when the measured network latency exceeds the configured threshold value.</p>
+    <p> To configure the maximum network latency threshold, enter the following:</p>
+    <pre class="Code">solace&gt; enable
+solace# configure
+solace(configure)# system health
+solace(configure/system/health)# network-latency-high-threshold &lt;value&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the maximum threshold for the network latency metric.</p>
+    <p>The <code>no network-latency-high-threshold</code>  command restores the default value.</p>
+    <h4><a name="Mate-lin"/>Mate-link Latency</h4>
+    <p>This metric measures the completion time of a transaction over the mate-link, and is an aggregate metric as the mate-link transaction combines compute, disk, and network latencies. This is a direct metric with significant impact on the overall stability of a high-availability (HA) group. The software event broker raises an asynchronous event when the measured mate-link latency exceeds the configured threshold.</p>
+    <p>To configure the maximum mate-link latency threshold, enter the following:</p>
+    <pre class="Code">
+solace&gt; enable
+solace# configure
+solace(configure)# system health
+solace(configure/system/health)# mate-link-latency-high-threshold &lt;value&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the maximum threshold for the mate-link latency metric.</p>
+    <p>The <code>no mate-link-latency-high-threshold</code> command restores the default value.</p>
+    <h3><a name="Viewing2"/>Viewing Direct Runtime Metrics </h3>
+    <p>You can view the direct runtime application metrics  using the <code>show system health</code> Solace CLI command. In the example shown below, minimum, maximum, average, and current values are displayed. </p>
+    <pre class="Code">solace(configure/system/health)# show system health
+
+Statistics since:       Oct 07 2020  09:38:45  EDT
+
+                        Units    Min       Max       Avg      Curr     Thresh    Events
+                        ------   ------    ------    ------   ------   -------   -------
+Disk Latency            us       0         24054     0        0        10000000   0
+Compute Latency         us       937       14502     1127     1078     500000     0
+Network Latency         us       0         0         0        0        2000000    0
+Mate-Link Latency       us       0         0         0        0        2000000    0</pre>
+    <p class="Tip">The <code>clear system health stats</code> command resets all stats to 0.</p>
+  </body>
+</html>

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>System-level Message Spool Administration</h1>
+    <p>This section discusses a number of system-level message spool administration tasks.</p>
+    <h2 class="with-rule"><a name="Assertin"/>Asserting Disk Ownership</h2>
+    <p class="Note" MadCap:autonum="&lt;b&gt;:  &lt;/b&gt;">The procedure discussed in this section is only applicable to Solace PubSub+ appliances.</p>
+    <p>In some cases, it's possible for an appliance to develop a disk ownership conflict with  an external disk storage array. A disk ownership conflict can occur because of the following conditions:</p>
+    <ul>
+      <li>Configuring two non-redundancy appliances with the same WWN through the <code>disk-array</code> Message Spool CONFIG command. In this case, the appliance detects a disk ownership conflict and fails to mount the external disk storage array.</li>
+      <li>
+        <p>Reconfiguring an appliance with a new IP address or CVRID. The appliance detects the spooled files created by the old IP address or CVRID, but can't distinguish between an address change or conflict with another event broker.</p>
+      </li>
+    </ul>
+    <p>Use the following admin command to override a disk ownership conflict (as observed by the display of <code>Disk Contents Invalid</code> in the detailed status and usage item summary screen output by the <code>show message-spool detail</code> User EXEC command) and assert ownership on a configured external disk storage array:</p>
+    <p class="Code">solace# admin<br/>solace(admin)# system message-spool<br/>solace(admin/system/message-spool)# assert-disk-ownership</p>
+    <h2 class="with-rule"><a name="Backing"/>Backing Up ADB To Disk</h2>
+    <p>You can back up the ADB configuration and any spooled messages before replacing an ADB. To perform an ADB backup, you must first shut down the system message spool and msg-backbone service. When a backup is performed, it will automatically restart the appliance to restore the message spool contents and ADB configuration onto the new ADB hardware.</p>
+    <p>To backup the ADB configuration, enter the following Admin EXEC command:</p>
+    <p class="Code">solace# admin<br/>solace(admin)# system message-spool<br/>solace(admin/system/message-spool)# backup-adb-to-disk </p>
+    <p>For detailed information on how to back up ADB information and then install a new ADB, refer to <MadCap:xref MadCap:unresolvedLink="import-link:hardware_maintenance_tasks_for_3260s_1984850757_67005" href="../../Appliance/Hardware-Maintenance-Tasks/Replacing-ADBs.htm">Replacing ADBs</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Troubles"/>Troubleshooting Flash Card Failures</h2>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">The procedure discussed in this section is only applicable to Solace PubSub+ appliances.</p>
+    <p>If an appliance's ADB fails to restore its data from the flash card after the appliance is powered up, the event log “ADB failed to restore image from flash” is generated, and the flash card will also have a state of “Restore Failed”. (You can enter the <code>show hardware detail</code> User EXEC command to confirm the ADB’s Flash Card state.)</p>
+    <p>This "Restore Failed" state typically indicates that the flash card experienced a fatal failure, and it is no longer operational. In this case, the ADB should be replaced as soon as possible. For more information, <a href="../../get-support.htm" class="link-internal">contact Solace</a>.</p>
+    <p>If you want to temporarily use the ADB without an operational flash card until an replacement ADB can be installed, you can override the flash failure. However, if you use an ADB without an operational flash card, you risk of losing Guaranteed Messages in the event of another power failure.</p>
+    <p>To override a flash card failure and use the ADB without an operating flash card, enter the following Admin EXEC command:</p>
+    <p class="Code">solace# admin<br/>solace(admin)# system message-spool<br/>solace(admin/system/message-spool)# override-flash-failure</p>
+    <p>There are a few scenarios that can cause a Restore Failed state, where the flash card is still functional, but it is not operating and needs to be reinitialized. These include:<ul><li>A new ADB and / or flash card was installed in the appliance and the flash card was uninitialized.</li><li>The ADB and / or flash card was removed from the appliance during a save to flash operation.</li><li>The power module on the ADB did not have enough charge to complete the save to flash operation.</li></ul></p>
+    <p>For these scenarios the <code>override-flash-failure</code> System Message Spool Admin EXEC command will override the flash card failure and reinitialize the flash card. Although the flash card will not be immediately operational after running the command, reboot the appliance, and then enter the <code>show hardware detail</code> User EXEC command to determine if the Restore Failed state has cleared (that is, the flash card has a state of “Ready”). If the Restore Failed state still persists, the ADB should be replaced as soon as possible.</p>
+    <div class="Caution">
+      <p class="Tbl_Body"> The loss of any configured endpoints may occur if the <code>override‑flash‑failure</code> Message Spool System Admin EXEC command is executed when HA redundancy is enabled and the HA mate is not active for Guaranteed Messaging.</p>
+    </div>
+    <h2 class="with-rule"><a name="Resettin"/>Resetting the Guaranteed Message Spool</h2>
+    <p>You can reset an event broker's system-level Guaranteed Messaging message spool without affecting the rest of the event broker configuration. A message spool reset will delete all spooled messages for all endpoints and reset the system-level message spool back to its default configuration.</p>
+    <p>Resetting will disrupt your Guaranteed Messaging service, and it is best to clear an event broker's message spool when a service disruption is of minimal impact to clients on the messaging network. Before resetting you must stop Guaranteed Messaging and message spooling on the event broker. To do this, execute the <code>shutdown</code> Message Spool CONFIG command (if event broker redundancy is configured, enter the <code>shutdown</code> Redundancy CONFIG command).</p>
+    <p class="Code">solace(configure)# hardware message-spool<br/>solace(configure/hardware/message-spool)# shutdown<br/>solace(configure/hardware/message-spool)# exit<br/>solace(configure/hardware)# exit<br/>solace(configure)# exit</p>
+    <p>Once Guaranteed Messaging is shutdown, clear the Guaranteed Messaging message spooling facility for the event broker by entering the following  commands:</p>
+    <p class="Code">solace# admin<br/>solace(admin)# system message-spool<br/>solace(admin/system/message-spool)# reset [full]</p>
+    <p><u>Where</u>:</p>
+    <p><code>full</code> resets the ID that will be assigned to the next spooled message and the ID that will be assigned to the next message spool file back to 1. It also resets the maximum number of messages that may be spooled (<code>max-message-count</code>) to the system default. If the <code>full</code> parameter is not included for this command, the current running message ID and message spool ID sequence will be continued (that is, the next assigned IDs will be one greater than the last IDs) and the <code>max‑message‑count</code> will not change.</p>
+    <p class="Tbl_Body">After executing the <code>reset</code> command, enter the <code>no shutdown</code> Message Spool CONFIG command to restart Guaranteed Messaging and message spooling on the event broker ( if event broker redundancy is configured, execute the <code>no shutdown</code> Redundancy CONFIG command to restart event broker redundancy). </p>
+    <p class="Tbl_Body">At this point the event broker's message spool is cleared, and, for an appliance, the ADB is reset to its default configuration state without affecting the rest of the event broker configuration.</p>
+    <p class="Tbl_Body"> </p>
+    <div class="Caution">
+      <p>Resetting the message spool with the <code>full</code> option from the remote event broker of a Message VPN bridge will stop Guaranteed messages from being delivered across that VPN bridge. If this occurs, remove the durable message queue configured on that VPN bridge, then add it back again. For example, for a VPN bridge configured with a queue named <code>q/market/orders</code>:
+                    <p class="Code">solace(configure/bridge/remote/message-vpn# message-spool no queue <br/>solace(configure/bridge/remote/message-vpn)# message-spool queue q/market/orders</p></p>
+      <p><b>Don't shut down the bridge before reconfiguring the queue on the VPN bridge</b>.</p>
+    </div>
+    <h2 class="with-rule"><a name="Specifyi"/>Specifying  Next Message IDs</h2>
+    <p>To set a message ID to be assigned to the next message to be spooled, enter the following  commands:</p>
+    <p class="Code">solace# admin<br/>solace(admin)# system message-spool<br/>solace(admin/system/message-spool)# next-message-id &lt;message-id&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;message-id&gt;</code> is the message ID to be assigned to the next message spooled after the message spool is enabled</p>
+  </body>
+</html>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Changing Active/Active Pair to Active/Standby</h1>
+    <p>This section discusses the steps to change the redundancy mode of a high-availability (HA) Solace PubSub+ appliance pair from active/active to active/standby. Solace recommends deploying appliances in the active/standby model, see <MadCap:xref href="Appliance-Redundancy-and-Fault-Tolerance.htm#redundancy_and_fault_tolerance_344917737_312907">Recommended Redundancy Model</MadCap:xref> for more information.</p>
+    <h2 class="with-rule"><a name="Consider"/>Before you begin</h2>
+    <p>Changing an active/active redundant pair to active/standby will disconnect all clients connected to the backup appliance; clients connected to the primary appliance will not be affected. During the duration of the procedure, redundancy will be shutdown, and failover to the backup appliance will not be possible. Once the configuration is complete, redundancy status will be up, and it's recommended that you test controlled replication failover. To perform a controlled replication failover, see <MadCap:xref href="../DR-Replication/Perf-Con-Fail-Over.htm">Performing a Controlled Failover</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="managing_router_redundancy_2753819523_414341"/>Steps</h2>
+    <p>To convert an active/active redundant appliance pair to active/standby, complete the following tasks for the primary and backup appliances.</p>
+    <h3><a name="Configur"/>Primary Appliance</h3>
+    <ol>
+      <li>Remove redundancy from the primary appliance:
+            <p class="Code">solace1# configure<br/>solace1(configure)# redundancy<br/>solace1(configure/redundancy)# shutdown<br/>solace1(configure/redundancy)# no vrrp-vrid backup</p></li>
+      <li>Remove the backup message backbone interface :
+            <p class="Code">solace1(configure)# ip vrf msg-backbone<br/>solace1(configure/ip/vrf)# interface &lt;backup-interface&gt;<br/>solace1(configure/ip/vrf/interface)# shutdown<br/>solace1(configure/ip/vrf/interface)# exit<br/>solace1(configure/ip/vrf)# no interface &lt;backup-interface&gt;</p></li>
+      <li>Set the appliance's redundancy role to primary and enable redundancy:
+             <p class="Code">solace1(configure)# redundancy<br/>solace1(configure/redundancy)# active-standby-role primary<br/>solace1(configure/redundancy)# no shutdown</p></li>
+    </ol>
+    <h3><a name="Configur2"/>Backup Appliance</h3>
+    <ol>
+      <li>Remove redundancy configuration from the backup appliance:
+            <p class="Code">solace2# configure<br/>solace2(configure)# redundancy<br/>solace2(configure/redundancy)# shutdown<br/>solace2(configure/redundancy)# no vrrp-vrid primary</p></li>
+      <li>Remove the primary message backbone interface:
+			<p class="Code">solace2(configure)# ip vrf msg-backbone<br/>solace2(configure/ip/vrf)# interface &lt;primary-interface&gt;<br/>solace2(configure/ip/vrf/interface)# shutdown<br/>solace2(configure/ip/vrf/interface)# exit<br/>solace2(configure/ip/vrf)# no interface &lt;primary-interface&gt;</p></li>
+      <li>Set the appliance's redundancy role to backup and enable redundancy:
+			<p class="Code">solace2(configure)# redundancy<br/>solace2(configure/redundancy)# active-standby-role backup<br/>solace2(configure/redundancy)# no shutdown</p></li>
+    </ol>
+  </body>
+</html>

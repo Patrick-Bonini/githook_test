@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Using MQTT</h1>
+    <p>The Message Queuing Telemetry Transport (MQTT) protocol is a lightweight, open protocol that can be used for Machine to Machine (M2M) and Internet of Things (IoT) use cases.</p>
+    <p>Solace PubSub+ event brokers support OASIS Standard MQTT v3.1.1 and MQTT v5.0. This allows client applications to inter-operate with PubSub+ event brokers without relying on Solace-specific APIs or custom software development.</p>
+    <div class="Note">
+      <ul>
+        <li>Solace's implementation of MQTT complies with OASIS Standards MQTT v3.1.1 and MQTT v5.0. </li>
+        <li>There are annotated versions of the specifications (<MadCap:xref href="../MQTT-311-Prtl-Conformance-Spec/MQTT_311_Prtl_Conformance_Spec.htm">Solace MQTT Version 3.1.1 Protocol Conformance Specification</MadCap:xref> and <MadCap:xref href="../MQTT-v50-Prtl-Conformance-Spec/mqtt-v50-abstract-notices.htm">Solace MQTT Version 5.0 Protocol Conformance Specification</MadCap:xref>) that highlight any deviations, limitations, or choices that have been made in the "SHOULD" and "MAY" clauses of the protocol specifications for the Solace implementation. It is strongly recommended that network architects and programmers review this document.</li>
+      </ul>
+    </div>
+    <h4><a name="mqtt-concept"/>MQTT Concepts</h4>
+    <p>If you haven't used MQTT and Solace PubSub+ together before, you might want to look at the <MadCap:xref href="../Component-Maps.htm#MQTT">MQTT</MadCap:xref> section of the <MadCap:xref href="../Component-Maps.htm">Overview: How Apps Interact with PubSub+ Messaging Components</MadCap:xref> page. It'll take you on a tour of the PubSub+ event broker's messaging components, and explain at a high level how they make data move from producers to the broker, and from the broker to consumers, with MQTT.</p>
+    <h2 class="with-rule"><a name="mqtt-sessions"/>MQTT Sessions</h2>
+    <p>An MQTT client connects to a specific Message VPN on an event broker, using a dedicated MQTT port configured for that Message VPN. The MQTT client connection also requires an MQTT session on the server.</p>
+    <p>An MQTT session object is a virtual representation of an MQTT client connection that exists as a managed object on an event broker. An MQTT session holds the state of an MQTT client (that is, it contains a client’s QoS 0 and QoS 1 topic filter sets and any undelivered QoS 1 messages).</p>
+    <p>An MQTT session can be created:</p>
+    <ul>
+      <li>Automatically when a client successfully connects to the event broker.</li>
+      <li>By an administrator using the <MadCap:variable name="Product-Names.pubsubmanager_short"/>, Solace CLI, SEMP, or SolAdmin. Although the MQTT specification does not require administrator-provisioned MQTT sessions to be supported, they are allowed, and they provide more flexibility for application development. For more information about administrator-provisioned MQTT sessions, see <MadCap:xref href="../../Services/Managing-MQTT-Sessions.htm">Managing MQTT Sessions</MadCap:xref>.</li>
+    </ul>
+    <h3><a name="mqtt-session-persistence"/>MQTT Session Durability</h3>
+    <p>Depending on the flags a client provides when it connects to the broker, the corresponding MQTT session may or may not persist after its client becomes disconnected. A session that survives a client disconnect is referred to as durable. Durable sessions are restored after a restart and survive HA failovers, preserving the  client ID, topic filters, and undelivered QoS1 messages of the client. </p>
+    <p>The behavior of sessions differs depending on the whether the client uses MQTT v3.1.1 or MQTT v5.0:</p>
+    <ul>
+      <li><b>MQTT v3.1.1</b>: When a connecting v3.1.1 client provides a <code>CleanSession=1</code> flag for the MQTT session, the client's existing MQTT session is discarded (if it exists) and any related information (subscription sets and undelivered messages) are not persisted after the client disconnects. That is, the flag ensures that the session "starts clean", that it "cleans up" after itself, and that no information is stored on the event broker after the client disconnects. This is true even if the session was administratively provisioned (through CLI or SEMP). <p>If the client provides a <code>CleanSession=0</code> flag, the MQTT session is persisted on the event broker (that is, it is a durable session). The client can reconnect to this durable session later.</p></li>
+      <li><b>MQTT v5.0</b>: When a connecting v5.0 client provides a <code>CleanStart=1</code> flag for the MQTT session, the client's existing MQTT session is discarded (if it exists). That is, the flag ensures that the session "starts clean." <p>Independent of this, the client may provide a Session Expiry Interval to control how long the session survives after its client becomes disconnected. Until the session expires, it is persisted (i.e., durable) on the event broker, and the client can reconnect to it.</p></li>
+    </ul>
+    <p>An MQTT session can always be deleted by an administrator through the Solace CLI, SEMP, SolAdmin, or using <MadCap:variable name="Product-Names.pubsubmanager_short"/>.</p>
+    <h2 class="with-rule"><a name="mqtt-qos-levels"/>Quality of Service Levels</h2>
+    <p>MQTT publish messages and topic filters are assigned separate quality of service (QoS) levels, which determine the level of guarantee applied to message delivery. The MQTT QoS levels are: </p>
+    <ul>
+      <li><b>QoS 0—At most once delivery</b>. No response is required by the receiver (whether it is an event broker or a subscriber), and no retry attempts are made if the message is not delivered.<p>The Solace equivalent to QoS 0 is a message delivery mode of Direct.</p></li>
+      <li><b>QoS 1—At least once delivery</b>. This level ensures that the message is delivered at least once. In a QoS 1 exchange, the receiver (whether it is an event broker or a subscriber) is required to send an acknowledgment of the message to indicate that it has been received.<p>The Solace equivalent to QoS 1 is a message delivery mode of Guaranteed. For more information, see <MadCap:xref href="../../Messaging/Guaranteed-Msg/Guaranteed-Messages.htm">Working With Guaranteed Messages</MadCap:xref>.</p><p>An event broker requires a Guaranteed messaging configuration to provide QoS 1 service. If an event broker is not configured for Guaranteed messaging, all QoS 1 and QoS 2 MQTT topic filters are downgraded to QoS 0. Additionally, QoS 1 and QoS 2 messages are accepted by the event broker, but they are delivered as QoS 0 messages. For more information on how to configure an event broker for Guaranteed Messaging, see <MadCap:xref href="../../Messaging/Guaranteed-Msg/Managing-Guaranteed-Messaging.htm">Managing Guaranteed Messaging</MadCap:xref>.</p></li>
+      <li><b>QoS 2—Exactly once delivery</b>. Solace converts published QoS 2 messages to QoS 1.</li>
+    </ul>
+    <p>The following figure shows how different QoS levels may be applied to the same message. From a publisher to an event broker, an MQTT publish message uses the QoS level assigned by the message publisher. From the event broker to the message subscriber, an MQTT publish message uses the minimum of the QoS of the matching subscription (filter) and the QoS with which the message was originally published.</p>
+    <p class="GraphicCaption">QoS Levels Applied During Message Delivery<br/><img src="../../Resources/Images/MQTT/MQTT_QoS_Levels.png" style="margin-left: 6.07176px;margin-top: 3.75264px;margin-right: 30.75047px;margin-bottom: 5.453278px;max-width: 75%;" alt="QoS Levels Applied During Message Delivery"/></p>
+    <h2 class="with-rule"><a name="payload-conversion"/>Payload Handling When Message Types Change</h2>
+    <p>This section discusses how the payloads of MQTT publish messages received by the event broker (that is, ingress messages) are handled when they are subsequently delivered as different message types (either as SMF or REST messages) to non‑MQTT clients that have matching topic subscriptions. It also discusses how the message payloads of received SMF or REST message are handled when they are subsequently delivered as MQTT publish messages to consuming MQTT clients with matching topic filters.</p>
+    <p style="font-weight: bold;">MQTT Ingress, SMF Egress</p>
+    <p>When an event broker receives an MQTT publish message from a client, the received message's payload, which is a sequence of bytes, is encapsulated in the resulting egress SMF message as a binary attachment.</p>
+    <p style="font-weight: bold;">MQTT Ingress, REST Egress</p>
+    <p>For MQTT v3.1.1, when an event broker receives an MQTT publish message from a client, the received message's payload is delivered with an HTTP Content-Type of "application/octet‑stream".</p>
+    <p>MQTT v5.0 can have its own content type and payload format indicator properties. If the received MQTT v5.0 message has a content type property, the delivered HTTP message will have a Content-Type matching that. If the received MQTT v5.0 message has no content type property, but does have a payload format indicator property of 1, the delivered HTTP message will have a Content-Type of "text/plain".</p>
+    <p style="font-weight: bold;">SMF Ingress, MQTT Egress</p>
+    <p>An SMF message contains the following:</p>
+    <ul>
+      <li>SMF Header (mandatory) and parameters (optional)</li>
+      <li>XML message payload (optional)</li>
+      <li>binary attachment (optional)</li>
+      <li>binary-encoded Metadata (optional)</li>
+    </ul>
+    <p>Either the SMF message's XML message payload or binary attachment, but not both, can be used for the payload for the MQTT publish message. In addition:</p>
+    <ul>
+      <li>If the SMF message contains only a binary attachment, the following occurs:<ul style="list-style-type: circle;"><li>If there is no binary metadata, then the binary attachment is copied into the payload field of the MQTT publish message.</li><li>If there is binary metadata that describes the format of the binary attachment, the data of the specified type is copied into the payload field of the MQTT publish message.<p class="Note">Solace enterprise messaging APIs support the ability to carry structured data types (SDTs), such as maps and streams, in the binary attachment of the message or as user-defined message header fields. However, these SDTs cannot be used by MQTT clients. Therefore, they are not included in the MQTT publish message.</p></li></ul></li>
+      <li>If the SMF message contains only an XML message payload, it is copied into the payload field of the MQTT publish message.<p>For MQTT v5.0, if the SMF message doesn't have a Content-Type, the MQTT message will have a Content-Type of "text/xml" and a payload format indicator of 1.</p></li>
+      <li>If the SMF message contains both a binary attachment and an XML message payload, neither is sent—regardless of their content.</li>
+      <li>For MQTT v3.1.1, custom user properties and userdata properties are not copied to MQTT publish message.<p>For MQTT v5.0, SMF user properties are converted to text if possible, then put in the user properties of the MQTT publish message. If an SMF user property cannot be converted to text, the entire message is discarded as <code>unformattable</code>.</p></li>
+    </ul>
+    <p class="Note">If the original SMF message contained a payload, but the process described above results in an MQTT publish message with no payload, the MQTT publish message is still delivered to the MQTT client even though it contains no payload. In this case, the message is noted as <code>unformattable</code> in the MQTT Session statistics.</p>
+    <p style="font-weight: bold;">REST Ingress, MQTT Egress</p>
+    <p>For MQTT v3.1.1, when an event broker receives a REST message, its payload, which consists of the data transmitted after the message's HTTP headers, is delivered in its entirety in an MQTT publish message to an MQTT client. The particular Content-Type of the published message is not significant.</p>
+    <p>For MQTT v5.0, the HTTP Content-Type is converted to the MQTT content type. Certain HTTP Content-Type values also result in an MQTT v5.0 payload format indicator of 1.</p>
+    <h2 class="with-rule"><a name="mqtt-will-messages"/>Will Messages</h2>
+    <p>When connecting to an event broker, MQTT clients may specify a "last will and testament" (or simply "will") message. A will message is stored with the MQTT session information that is allocated for the client, and is sent if an MQTT client is disconnected from the event broker unexpectedly.</p>
+    <p>An MQTT v3.1.1 will message consists of a topic, QoS level, and message body. An MQTT v5.0 will message may additionally contain a payload format, message expiry, content type, response topic, correlation data, and user properties. Will messages allow other interested MQTT clients to detect  unexpected connection loss.</p>
+    <p class="Note">An event broker does not broadcast will messages when an MQTT session is terminated due to an event broker restart, high availability (HA) event broker failover, Message VPN shutdown, or Guaranteed messaging shutdown.</p>
+    <h2 class="with-rule"><a name="mqtt-retained-messages"/>Retained Messages</h2>
+    <p>Retained messages are used when publishers send state messages on an irregular and/or infrequent basis. Published messages which have their retain bit set are stored by the Solace messaging network and delivered to subscribing clients when they subscribe to a topic that matches the retained message’s published topic. This allows subscribers to be notified immediately of the most recent state upon subscribing.</p>
+    <p>For more information about configuring Solace PubSub+ event brokers to support retained messages, see <MadCap:xref href="../../Services/Managing-MQTT-Retained-Messages.htm">Managing MQTT Retained Messages</MadCap:xref>.</p>
+    <p class="Caution">Support for MQTT Retained Messages is a Controlled Availability (CA) feature. Please <a href="../../get-support.htm" class="link-internal">contact Solace</a> to find out if this feature is supported for your use case.</p>
+    <h4><a name="mqtt-retain-caches"/>MQTT Retain Caches</h4>
+    <p>In Solace PubSub+ event brokers, retained messages are preserved in special <MadCap:xref href="../../Additional-Products/Solace-PubSub-Cache/PubSub-Cache-Components.htm#Cache-Clusters">Cache Clusters</MadCap:xref>  called MQTT retain caches. In other words, <MadCap:xref href="../../Additional-Products/Solace-PubSub-Cache/PubSub-Cache-Overview.htm">PubSub+ Cache</MadCap:xref>  is  the underlying mechanism used to  store, manage, and select which retained messages to publish as clients add topic filters. </p>
+    <h4><a name="mqtt-retain-cache-ancillary-objects"/>MQTT Retain Cache Ancillary Objects</h4>
+    <p>When you create an MQTT retain cache, the event broker creates the following  ancillary PubSub+ Cache objects. </p>
+    <table style="width: 100%;margin-left: 0;margin-right: auto;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Object Type</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Name</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Distributed Cache</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>#retain-cache-&lt;router-name&gt;</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Each event broker (or pair, in HA deployments) constitutes its own distributed cache. For more information about distributed caches, refer to <MadCap:xref href="../../Additional-Products/Solace-PubSub-Cache/PubSub-Cache-Components.htm#Dist-Caches">Distributed Caches</MadCap:xref>. </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Cache Cluster</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>#retain-cache-cluster</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Every cache cluster deployed as a retain cache shares the same name. For more information about cache clusters, refer to <MadCap:xref href="../../Additional-Products/Solace-PubSub-Cache/PubSub-Cache-Components.htm#Cache-Clusters">Cache Clusters</MadCap:xref>.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Cache Instance (Primary)</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>#retain-cache-instance-&lt;router-name&gt;-primary</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Every event broker with a retain cache  runs a retain cache instance.  The primary instance runs on the primary router in an HA pair. For more information about cache instances, refer to <MadCap:xref href="../../Additional-Products/Solace-PubSub-Cache/PubSub-Cache-Components.htm#Instances">PubSub+ Cache Instances</MadCap:xref>.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">Cache Instance (Backup)</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <code>#retain-cache-instance-&lt;router-name&gt;-backup</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">The backup cache instance is like the primary cache instance, except it runs on the backup router if redundancy is enabled. </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="Shared_Subscriptions"/>Shared Subscriptions</h2>
+    <p>Solace PubSub+ event brokers support OASIS Standard MQTT v5.0 shared subscriptions for both v3.1.1 and v5.0 clients.  You can use shared subscriptions to load balance large volumes of client data across multiple instances of back end data center applications.  Each instance of the data center application joins the shared subscription, and the volume of data matching the shared subscription is randomly distributed between the application instances.</p>
+    <p>Consider the following when implementing shared subscriptions: </p>
+    <ul>
+      <li>
+        <p>Only QoS 0 shared subscriptions are supported.  If a shared subscription with a higher QoS is requested, it is downgraded to QoS 0.</p>
+      </li>
+      <li>Shared subscriptions are supported only on non-durable sessions (corresponding to v3.1.1 clients that connect with <code>CleanSession=1</code> or v5.0 clients that connect with <code>SessionExpiry=0</code>). A request to add a shared subscription to a durable MQTT session is rejected by the event broker.</li>
+      <li>In the OASIS Standard MQTT v5.0, a CONNACK property indicates whether an event broker supports shared subscriptions. Because CONNACK properties are not present in MQTT v3.1.1,  the event broker cannot transmit this information to v3.1.1 clients. Solace PubSub+ event brokers support shared subscriptions as of release 9.1.</li>
+      <li>Because allowing indiscriminate access to shared subscriptions is a potential security issue,  you can  specify which clients are able to use shared subscriptions. For more information, see <MadCap:xref href="../../Security/Configuring-Client-Profiles.htm#Allowing-Shared-Subs">Allowing Shared Subscriptions</MadCap:xref>.</li>
+      <li>If the broker is configured to use an ACL to control what clients can subscribe to, it validates only the <code>{filter}</code> portion of a shared subscription.</li>
+      <li>In MNR or DMR deployments with subscription exporting enabled, shared subscriptions are exported by default. In these cases, the event broker treats each exported subscription as a separate entity. In other words, clients connected to different nodes are not load balanced as a single group. To prevent the event broker from exporting subscriptions, start the subscription (topic filter) with <code>$noexport</code>. For example, <code>$noexport/$share/{ShareName}/{filter}</code>.</li>
+    </ul>
+    <h3><a name="mqtt-shared-subscriptions-video"/>Video: Shared Subscriptions  Using MQTT </h3>
+    <p>In this video, Leah Robert talks about Shared Subscriptions and demonstrates how to set them up using MQTT.</p>
+    <div class="vid-wrapper">
+      <div class="vid-container" style="padding:200px;">
+        <iframe width="560" height="315" src="https://www.youtube.com/embed/Q_I8Um7HKMo" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen="allowfullscreen"/>
+      </div>
+    </div>
+  </body>
+</html>

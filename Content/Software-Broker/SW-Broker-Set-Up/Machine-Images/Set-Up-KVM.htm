@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:searchable="False">
+  <head>
+    <title/>
+    <meta name="robots" content="noindex, nofollow"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Software"/>KVM</h1>
+    <p>This tutorial walks you through the steps to set up a single Pubsub+ <MadCap:variable name="Product-Names.broker_sw_short"/> machine image instance  in KVM in a Centos or Ubuntu environment.</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#before-you-begin">Before You Begin</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#get-broker">Step 1: Get a Software Event Broker</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#import-broker">Step 2: Import the Software Event Broker</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#configure-hostname">Step 3: Configure the Host Name</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#access-cli">Step 4: Access the Solace CLI</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#review-configuration">Step 5: Review Configuration Defaults</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#next-steps">Next Steps</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="before-you-begin"/>Before You Begin</h2>
+    <p>It's assumed that you have Linux Kernel-based Virtual Machine (KVM) (with the Virtual Machine Manager GUI for simplicity).</p>
+    <h3><a name="system-requirements"/>System Requirements</h3>
+    <MadCap:snippetBlock src="../../../Resources/Snippets/vm-setup-system-requirements-machine-images.flsnp"/>
+    <p>The software event broker requires storage with medium to high bandwidth/IOPS and low latency. The virtual machine image uses settings for the widest compatibility; these settings are not tuned for performance. For information about getting the best storage performance for your system, consult the <a href="https://www.linux-kvm.org/page/Documents" target="_blank" class="link-offsite">KVM documentation</a>.</p>
+    <h3><a name="ha"/>High Availability Considerations</h3>
+    <MadCap:snippetBlock src="../../../Resources/Snippets/vm-setup-HA-considerations.flsnp"/>
+    <h2 class="with-rule"><a name="get-broker"/>Step 1: Get a Software Event Broker</h2>
+    <p>The first step is to download an edition of PubSub+ <MadCap:variable name="Product-Names.broker_sw_short"/>. For KVM on Linux platforms, the event broker is distributed as a compressed QCOW2 file.</p>
+    <ol>
+      <li>Go to the <a href="https://solace.com/downloads/" class="link-internal">Solace PubSub+ Event Broker downloads page.</a></li>
+      <li>Scroll to the QCOW2  section, and then select the required edition of the software event broker.</li>
+      <li>Fill in your details, and then click <b>Get The Downloads</b>.</li>
+      <li>Click <b>Download</b> under the PubSub+ edition.</li>
+    </ol>
+    <p> A file called <code>solace-pubsub-&lt;edition&gt;-&lt;version&gt;.qcow2.xz</code> is downloaded.</p>
+    <p>You can use the <code>xz</code> command to extract the QCOW2 file, . When completed, you'll get a file called <code>solace-pubsub-&lt;edition&gt;-&lt;version&gt;.qcow2</code>. This is the file that you'll use with Virtual Machine Manager.</p>
+    <h2 class="with-rule" style="margin-top: 35px;"><a name="import-broker"/>Step 2: Import the Software Event Broker</h2>
+    <p>To create a new VM image for the event broker, you must import the OVA file into the VMware ESXi host. Once it is imported, you can start the event broker instance.</p>
+    <ol>
+      <li>Launch the Virtual Machine Manager. 
+            </li>
+      <li>Select the creation icon on the left of the control bar. This opens the <b>New VM</b> wizard. Then, select <b>Import Existing Disk Image</b> and click <b>Forward</b>.<p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/KVM/kvm-image1.png" class="img-border" alt=""/></p></li>
+      <li>Select the QCOW2 file that you extracted. Then, select "Generic" for the operating system and click <b>Forward</b>.<br/><p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/KVM/kvm-image2.png" class="img-border" alt=""/></p></li>
+      <li>Configure the  VM and then click <b>Forward</b>.<p>The amount of memory and number of CPUs determines the number of client connections  to the event broker (as is noted in <MadCap:xref href="#Sys-Reqs">System Requirements</MadCap:xref>). This example uses 4 GiB of RAM and 2 CPUs.</p><p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/KVM/kvm-image3.png" class="img-border" alt=""/></p></li>
+      <li>Provide a name for your event broker VM image.<p>Make sure to check the <b>Customize configuration before install</b> option and select the right network option for your scenario (NAT is a good option for testing. For production environments, use the Bridge or Macvtap network). Then, click <b>Finish</b>.</p><p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/KVM/kvm-image4.png" class="img-border" alt=""/></p><p>The  VM properties dialog opens.</p></li>
+      <li>In <b>VirtIO Disk 1</b>, make sure the <b>Disk bus</b> is set to VirtIO. Then, click <b>Begin Installation</b>.<br/><p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/KVM/kvm-image5.png" class="img-border" alt=""/></p><MadCap:snippetBlock src="../../../Resources/Snippets/vm-setup-login-prompt.flsnp"/><p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/KVM/kvm-image6.png" class="img-border" alt=""/></p></li>
+      <li>Login to the event broker.
+                <MadCap:snippetBlock src="../../../Resources/Snippets/vm-setup-event-broker-login.flsnp"/><p><img src="../../../Resources/Images/SW-Broker-Setup/Machine/KVM/kvm-image7.png" class="img-border" alt=""/></p><MadCap:snippetBlock src="../../../Resources/Snippets/vm-setup-user-passwords.flsnp"/></li>
+    </ol>
+    <h2 class="with-rule"><a name="configure-hostname"/>Step 3: Configure the Host Name</h2>
+    <MadCap:snippetBlock src="../../../Resources/Snippets/vm-setup-hostname.flsnp"/>
+    <h2 class="with-rule"><a name="access-cli"/>Step 4: Access the Solace CLI</h2>
+    <MadCap:snippetBlock src="../../../Resources/Snippets/vm-setup-CLI-initial-access.flsnp"/>
+    <h2 class="with-rule"><a name="review-configuration"/>Step 5: Review Configuration Defaults</h2>
+    <MadCap:snippetBlock src="../../../Resources/Snippets/vm-setup-review-configuration-defaults.flsnp"/>
+    <h2 class="with-rule"><a name="next-steps"/>Next Steps</h2>
+    <MadCap:snippetBlock src="../../../Resources/Snippets/sw-broker-setup-next-steps.flsnp"/>
+  </body>
+</html>

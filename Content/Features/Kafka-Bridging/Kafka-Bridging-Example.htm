@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Kafka Bridging Example</h1>
+    <p>The following sections provide an example of how you can use Kafka bridging to exchange messages between a Solace event broker and a Kafka cluster.</p>
+    <div class="Warning">Any Kafka bridging configuration made in BETA versions (earlier than 10.6.1) used in standalone deployments will be discarded upon upgrade to version 10.6.1 and later. In addition, you must remove any BETA Kafka bridging configuration used in a redundant (HA) deployment before attempting to upgrade to 10.6.1 or later.</div>
+    <h2>Before You Begin</h2>
+    <p>Before you start this example, you must have:</p>
+    <ul>
+      <li>a Kafka cluster with basic username and password authentication configured.</li>
+      <li>a configured Message VPN.</li>
+      <li>a queue (<code>q2</code> in this example) with appropriate topic subscriptions configured in the Message VPN.</li>
+      <li>the appropriate system and Message VPN scaling parameters configured to enable Kafka bridging.</li>
+    </ul>
+    <h2>Step 1: Configure a Kafka Receiver </h2>
+    <p>In this example, the first step is to configure a Kafka receiver on the event broker so it can consume events from the remote Kafka cluster.</p>
+    <p>To configure a Kafka receiver:</p>
+    <ol>
+      <li>
+        <p>Create a Kafka receiver. In this example, the Kafka receiver named <code>receiver1</code> is configured on the <code>kafka-bridging-vpn</code> Message VPN.</p>
+        <pre xml:space="preserve">solace&gt; enable
+solace# configure
+solace(configure)# message-vpn kafka-bridging-vpn
+solace(configure/message-vpn)# kafka
+solace(configure/message-vpn/kafka)# create kafka-receiver receiver1</pre>
+      </li>
+      <li>
+        <p>Configure the bootstrap address list. In this example, at least one Kafka broker in the remote Kafka cluster can be found at <code>kafka.example.com</code>.</p>
+        <pre xml:space="preserve">solace(...gure/message-vpn/kafka/kafka-receiver)# bootstrap-addresses kafka.example.com</pre>
+      </li>
+      <li>
+        <p>Select an authentication scheme. This example uses a basic username and password combination to authenticate with the remote Kafka cluster.</p>
+        <pre>solace(...gure/message-vpn/kafka/kafka-receiver)# authentication auth-scheme basic</pre>
+      </li>
+      <li>
+        <p>Configure the authentication scheme.</p>
+        <pre xml:space="preserve">solace(...gure/message-vpn/kafka/kafka-receiver)# authentication basic username example-user1 password example-password1</pre>
+      </li>
+      <li>
+        <p>Optional. Configure the consumer group. This example sets the consumer group ID for the Kafka receiver to <code>cg1</code>. </p>
+        <pre>solace(...gure/message-vpn/kafka/kafka-receiver)# group id cg1</pre>
+      </li>
+      <li>
+        <p>Create a topic binding. In this example, the Kafka receiver consumes events from a topic named <code>topic1</code> configured on the remote Kafka cluster.</p>
+        <pre xml:space="preserve">solace(...gure/message-vpn/kafka/kafka-receiver)# create topic-binding topic1</pre>
+      </li>
+      <li>
+        <p>Configure the topic binding. In this example, all events the Kafka receiver consumes from the remote Kafka cluster will be published to a topic named <code>rectopic1</code> on the event broker. </p>
+        <pre>solace(...pn/kafka/kafka-receiver/topic-binding)# local topic rectopic1</pre>
+      </li>
+      <li>
+        <p>Enable the topic binding. </p>
+        <pre>solace(...pn/kafka/kafka-receiver/topic-binding)# no shutdown</pre>
+      </li>
+      <li>
+        <p>Enable the Kafka receiver. </p>
+        <pre>solace(...pn/kafka/kafka-receiver/topic-binding)# exit
+solace(...gure/message-vpn/kafka/kafka-receiver)# no shutdown</pre>
+      </li>
+    </ol>
+    <h2>Step 2: Configure a Kafka Sender </h2>
+    <p>Next, we will configure a Kafka sender on the event broker so that it can send messages to the remote Kafka cluster.</p>
+    <p>To configure a Kafka sender:</p>
+    <ol>
+      <li>
+        <p>Create the Kafka sender. In this example, the Kafka sender named <code>sender1</code> is configured on the <code>kafka-bridging-vpn</code> Message VPN.</p>
+        <pre>solace&gt; enable
+solace# configure
+solace(configure)# message-vpn kafka-bridging-vpn
+solace(configure/message-vpn)# kafka
+solace(configure/message-vpn/kafka)# create kafka-sender sender1</pre>
+      </li>
+      <li>
+        <p>Configure the bootstrap address list. </p>
+        <pre xml:space="preserve">solace(...gure/message-vpn/kafka/kafka-sender)# bootstrap-addresses kafka.example.com</pre>
+      </li>
+      <li>
+        <p>Select an authentication scheme.</p>
+        <pre xml:space="preserve">solace(...gure/message-vpn/kafka/kafka-sender)# authentication auth-scheme basic</pre>
+      </li>
+      <li>
+        <p>Configure the authentication scheme. </p>
+        <pre xml:space="preserve">solace(...gure/message-vpn/kafka/kafka-sender)# authentication basic username example-user1 password example-password1</pre>
+      </li>
+      <li>
+        <p>Optional. Configure idempotence. </p>
+        <pre xml:space="preserve">solace(configure/message-vpn/kafka/kafka-sender)# idempotence</pre>
+      </li>
+      <li>
+        <p>Create a queue binding. In this example,  the Kafka sender is bound to a queue named <code>q2</code> configured on the event broker.</p>
+        <pre>solace(configure/message-vpn/kafka/kafka-sender)# create queue-binding q2</pre>
+      </li>
+      <li>
+        <p>Configure the queue binding. In this example the Kafka sender expects acknowledgements from all replicas on the Kafka cluster, contains a consistent partition scheme that selects a Kafka partition based on a CRC hash of the partition key generated by the binding (in this case <code>key0</code>). In addition, all messages are sent to a topic named <code>topic2</code> on the remote Kafka cluster.</p>
+        <pre>solace(...-vpn/kafka/kafka-sender/queue-binding)# ack-mode all
+solace(...-vpn/kafka/kafka-sender/queue-binding)# partition scheme consistent
+solace(...-vpn/kafka/kafka-sender/queue-binding)# partition consistent hash crc
+solace(...-vpn/kafka/kafka-sender/queue-binding)# remote key key0
+solace(...-vpn/kafka/kafka-sender/queue-binding)# remote topic topic2</pre>
+      </li>
+      <li>
+        <p>Enable the queue binding. </p>
+        <pre>solace(...-vpn/kafka/kafka-sender/queue-binding)# no shutdown</pre>
+      </li>
+      <li>
+        <p>Enable the Kafka sender. </p>
+        <pre>solace(...-vpn/kafka/kafka-sender/queue-binding)# exit
+solace(configure/message-vpn/kafka/kafka-sender)# no shutdown</pre>
+      </li>
+    </ol>
+    <p>With this configuration, you can now send messages to and receive events from your Kafka cluster.</p>
+  </body>
+</html>

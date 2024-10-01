@@ -1,0 +1,577 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Managing REST Delivery Points</h1>
+    <p>A REST delivery point (RDP) is a provisioned object on a Message VPN that  facilitates message delivery to REST consumers. An RDP is associated with a client profile on the Message VPN that provides it with some configuration parameters. The RDP can be bound to message queues to deliver messages from those queues to REST consumers. The RDP maintains a list of REST consumers, which are identified by their remote connection information.</p>
+    <p>You can perform the following configuration tasks for RDPs:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#configuring-REST-delivery-points">Configuring REST Delivery Points</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#associating-client-profiles-with-REST-delivery-points">Associating Client Profiles with REST Delivery Points</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#managing-REST-delivery-point-queue-bindings">Managing REST Delivery Point Queue Bindings</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#configuring-REST-consumers">Configuring REST Consumers</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#enabling-REST-delivery-points">Enabling REST Delivery Points</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="configuring-REST-delivery-points"/>Configuring REST Delivery Points</h2>
+    <ul>
+      <li>To create an RDP for the given Message VPN, enter the following CONFIG commands:
+                <pre>solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# rest<br/>solace(configure/message-vpn/rest)# create rest-delivery-point &lt;name&gt;</pre></li>
+      <li>To edit the properties of an existing RDP, enter the following CONFIG commands:
+                <pre>solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# rest<br/>solace(configure/message-vpn/rest)# rest-delivery-point &lt;name&gt;</pre></li>
+    </ul>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>&lt;name&gt;</code> is the name of the RDP. RDP names can be up to 100 characters and must be unique within the given Message VPN.</p>
+      </li>
+    </ul>
+    <p>The no version of this command, <code>no rest-delivery-point</code>, deletes the specified RDP and all of its associated configuration.</p>
+    <p class="Note"> You can create a maximum of 200 RDPs in total across all Message VPNs on the event broker (for 100-connection software event brokers, you can create a maximum of 20 RDPs).</p>
+    <p>Entering the <code>rest-delivery-point</code> REST VPN CONFIG command moves the CLI to an RDP configuration mode from which you can perform the following tasks:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#associating-client-profiles-with-REST-delivery-points">Associating Client Profiles with REST Delivery Points</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#managing-REST-delivery-point-queue-bindings">Managing REST Delivery Point Queue Bindings</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#configuring-REST-consumers">Configuring REST Consumers</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#enabling-REST-delivery-points">Enabling REST Delivery Points</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="associating-client-profiles-with-REST-delivery-points"/>Associating Client Profiles with REST Delivery Points</h2>
+    <p>When an RDP is associated with an existing client profile, the RDP inherits that client profile’s TCP parameters and queue properties (<code>max-depth</code> and <code>min-msg-burst</code>). The TCP parameters inherited from the client profile will be used for all REST consumers on the delivery point.</p>
+    <p class="Note">You cannot enable an RDP unless <code>allow-guaranteed-message-receive</code> is enabled on the associated client profile.</p>
+    <p>To associate a client profile with the given RDP, enter the following CONFIG command:</p>
+    <pre>solace(.../message-vpn/rest/rest-delivery-point)# client-profile &lt;name&gt;</pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>&lt;name&gt;</code> is the name of a client profile that already exists in the local Message VPN. By default, if no client profile is associated with an RDP, it will use the client profile named <code>default</code> for the current Message VPN.</p>
+      </li>
+    </ul>
+    <p>The no version of this command, <code>no client-profile</code>, removes the client profile association from the RDP and assigns the <code>default</code> client profile for the current Message VPN.</p>
+    <h2 class="with-rule"><a name="managing-REST-delivery-point-queue-bindings"/>Managing REST Delivery Point Queue Bindings</h2>
+    <p>An RDP must be bound to one or more durable queues to attract messages from the queues and deliver them to REST consumers.</p>
+    <ul>
+      <li>To bind the given RDP to a queue, enter the following CONFIG command:
+                <pre>solace(.../message-vpn/rest/rest-delivery-point)# create queue-binding &lt;queue-name&gt;</pre></li>
+      <li>To edit the properties of an existing queue binding, enter the following CONFIG command:
+                <pre>solace(.../message-vpn/rest/rest-delivery-point)# queue-binding &lt;queue‑name&gt;</pre></li>
+    </ul>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>&lt;queue-name&gt;</code> is the name of a queue in the given Message VPN to bind to the current RDP. Queue names can contain up to 200 characters (the only invalid characters are '&lt;&gt;*?&amp;;).</p>
+      </li>
+    </ul>
+    <p>The no version of this command, <code>no queue-binding</code>, deletes the specified queue binding for the current RDP. However, it does not delete the queue.</p>
+    <div class="Note">
+      <ul>
+        <li>You can specify a binding to a queue that does not exist, but before the RDP can be brought into service, the referenced queue must be created. That is, a queue must exist with the same name as the queue binding in the same Message VPN as the RDP. The RDP must also have permission to consume messages from the queue—to achieve this, the queue’s owner must be set to <code>#rdp/&lt;rdp-name&gt;</code> or the queue’s permissions for non-owner clients must be set to at least consume level access.  For more information on configuring queues, refer to <MadCap:xref href="../Messaging/Guaranteed-Msg/Configuring-Queues.htm">Configuring Queues</MadCap:xref>.</li>
+        <li>The maximum number of queue bindings that can be created is the same as the maximum number of queues supported by an event broker.</li>
+      </ul>
+    </div>
+    <p>The <code>queue-binding</code> REST VPN CONFIG command moves the CLI to the REST delivery point queue binding level:</p>
+    <pre>solace(...est/rest-delivery-point/queue-binding)#</pre>
+    <p>From this level, you can configure a POST request target for the given queue binding.</p>
+    <h3><a name="configuring-POST-request-targets"/>Configuring POST Request Targets</h3>
+    <p>The POST request target that is associated with a queue binding is used in HTTP POST requests that are sent to REST consumers and identifies the target resource for message delivery on the remote REST consumer. Message delivery from a queue to a REST consumer cannot occur until a POST request target has been configured for the queue binding. For more information about request targets, see RFC 7230 §5.3.</p>
+    <p>To configure a POST request target for a queue binding, enter the following CONFIG command:</p>
+    <pre>solace(...est/rest-delivery-point/queue-binding)# post-request-target &lt;post-request-target&gt;</pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>&lt;post-request-target&gt;</code> is a string containing the POST request target to associate with the current queue binding.</p>
+      </li>
+    </ul>
+    <p>The no version of this command, <code>no post-request-target</code>, removes the POST request target from the current queue binding.</p>
+    <p class="Note">If the Message VPN containing the RDP is configured to act as a Microgateway, the POST request target is ignored.</p>
+    <h3><a name="configuring-the-type-of-evaluation-to-perform-on-POST-request-targets"/>Configuring the Type of Evaluation to Perform on POST Request Targets</h3>
+    <p>When forwarding messages to external systems via an RDP, it is often useful to have access to the message topic and other metadata on that external system.  For example, you may want to use RDPs to send messages into storage services such as Azure Storage, Amazon S3, or Google Cloud Storage.  This requires sending each message to a unique target, preferably with that uniqueness coming from the message topic, metadata, or the current time.  To enable this, you can include substitution expressions in the POST request target and configure the event broker to evaluate these expressions. For more information about substitution expressions, refer to <MadCap:xref href="../Messaging/Substitution-Expressions-Overview.htm">Substitution Expressions</MadCap:xref>. </p>
+    <p>To configure the type of evaluation to perform on the request target, enter the following CONFIG commands:</p>
+    <pre>solace(...est/rest-delivery-point/queue-binding)# post-request-target &lt;post-request-target&gt;<br/>solace(...int/queue-binding/post-request-target)# request-target-evaluation {none | substitution-expressions}</pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>&lt;post-request-target&gt;</code> is a string containing the POST request target to associate with the current queue binding.</p>
+      </li>
+      <li>
+        <p><code>none</code> configures the event broker to not evaluate substitution expressions on the request target. This is the default. </p>
+      </li>
+      <li>
+        <p><code>substitution-expressions</code> configures the event broker to evaluate substitution expressions on the request target.</p>
+      </li>
+    </ul>
+    <p>The no version of this command, <code>no request-target-evaluation</code>, resets the value to the default.</p>
+    <h3><a name="configuring-request-headers"/>Configuring Request Headers</h3>
+    <p>When forwarding messages to external systems via an RDP, it is often useful to have access to the message topic and other metadata on that external system.    By configuring  request headers for a queue binding, you can put  metadata (such as SAP Object IDs for ASAPIO) into request headers. In addition, you can configure the event broker to  send specific headers that are required for cloud services such as Azure Storage and AWS EventBridge.</p>
+    <p>To create a request header for a queue binding, enter the following CONFIG command:</p>
+    <pre>solace(...est/rest-delivery-point/queue-binding)# create request-header &lt;header-name&gt;<br/></pre>
+    <p>To configure the value for the request header, enter the following CONFIG command:</p>
+    <pre>solace(...ry-point/queue-binding/request-header)# header-value &lt;header-value&gt;<br/></pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>&lt;header-name&gt;</code> is a string containing the name of an HTTP request header to associate with the current queue binding. Header names must comply with the token production in RFC 7230 §3.2.6.    The following headers are not allowed: <code>Authorization</code>, <code>Connection</code>, <code>Content-Length</code>, <code>Expect</code>, <code>Transfer-Encoding</code> and <code>Upgrade</code>. Request header names can contain up to 50 characters. You can configure a maximum of 600 request headers on each event broker, with a maximum of 50 on each queue binding.</p>
+      </li>
+      <li>
+        <p><code>&lt;header-value&gt;</code> is a string containing a substitution expression for the value of the HTTP request header. The default value is an empty string. Request header values can contain up to 2000 characters. For more information about substitution expressions, refer to <MadCap:xref href="../Messaging/Substitution-Expressions-Overview.htm">Substitution Expressions</MadCap:xref>. </p>
+      </li>
+    </ul>
+    <p class="Note">Headers specified on the queue binding replace all headers of the same name (case-insensitive) from SMF user properties or generated from other metadata. These headers also take precedence over the headers described in <MadCap:xref href="#HTTP-header-authentication">HTTP Header Authentication</MadCap:xref>.</p>
+    <p>For example, to configure the queue binding to send two additional headers required by a particular cloud service, you can enter the following commands:</p>
+    <pre>solace(...est/rest-delivery-point/queue-binding)# create request-header X-ORDER-ID<br/>solace(...ry-point/queue-binding/request-header)# header-value ${topic(-1)}<br/>solace(...ry-point/queue-binding/request-header)# exit<br/>solace(...est/rest-delivery-point/queue-binding)# create request-header x-api-version<br/>solace(...ry-point/queue-binding/request-header)# header-value 2021-02-03<br/></pre>
+    <p>In this case, for a message with the topic <code>orders/hw/update/v2/can/C-1234/P-E7Y1/O-6789</code>, the following headers would be added to the request: <code>X-ORDER-ID: O-6789</code> and <code>x-api-version: 2021-02-03</code>.</p>
+    <h3><a name="configuring-protected-request-headers"/>Configuring Protected Request Headers</h3>
+    <p>When the value of a request header is sensitive, a protected request header should be used instead. Like regular request headers, each protected request header consists of a header name and a header value. Once set, protected request header values are masked from viewing on management interfaces and in logs, similar to passwords.</p>
+    <p>Protected and regular request headers share a common limit on the total number of request headers that can be configured, and it is not possible to create a protected request header and a regular request header with the same name.</p>
+    <p>Protected request headers do not support substitution expressions (for more information about substitution expressions, refer to <MadCap:xref href="../Messaging/Substitution-Expressions-Overview.htm">Substitution Expressions</MadCap:xref>).</p>
+    <p>To create a protected request header for a queue binding, enter the following CONFIG command:</p>
+    <pre>solace(...est/rest-delivery-point/queue-binding)# create protected-request-header &lt;header-name&gt;</pre>
+    <p>To configure the value for the protected request header, enter the following CONFIG command:</p>
+    <pre>solace(...ueue-binding/protected-request-header)# header-value &lt;header-value&gt;</pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>&lt;header-name&gt;</code> and <code>&lt;header-value&gt;</code> have the same meaning as for regular request headers.</p>
+      </li>
+    </ul>
+    <p>For example, to configure the queue binding to send an API key header required by a particular cloud service, you can enter the following commands:</p>
+    <pre xml:space="preserve">solace(...est/rest-delivery-point/queue-binding)# create protected-request-header X-API-KEY
+solace(...ueue-binding/protected-request-header)# header-value 0aa99f00-b752-4bb9-b549-c168ad250e76
+solace(...ueue-binding/protected-request-header)# exit</pre>
+    <p>In this case, the following header would be added to the request: <code>X-API-KEY: 0aa99f00-b752-4bb9-b549-c168ad250e76</code>.</p>
+    <h3><a name="replacing-the-authority-value-in-outbound-URIs"/>Replacing the Authority Value in Outbound URIs</h3>
+    <p>When a Message VPN is configured to act as a Microgateway, the event broker propagates HTTP requests in absolute form and retrieves the request-target's authority from the REST consumer's remote host and port configuration. You can optionally disable this functionality, and configure the event broker to use the authority configured in the original request.</p>
+    <p>To  configure the event broker to use the authority value in the original request, enter the following CONFIG commands: </p>
+    <pre>solace(...est/rest-delivery-point/queue-binding)# gateway<br/>solace(...-delivery-point/queue-binding/gateway)# no replace-target-authority</pre>
+    <p>To configure the event broker to replace the authority with the value configured for the REST consumer, enter the following CONFIG commands:</p>
+    <pre>solace(...est/rest-delivery-point/queue-binding)# gateway<br/>solace(...-delivery-point/queue-binding/gateway)# replace-target-authority</pre>
+    <div class="Note">Replacing the authority value in outbound URIs is available only when the corresponding Message VPN is configured to act as a Microgateway.</div>
+    <h2 class="with-rule"><a name="configuring-REST-consumers"/>Configuring REST Consumers</h2>
+    <p>A REST consumer is a virtual representation of a client or endpoint. An RDP maintains a list of REST consumers that messages can be delivered to. You can create a maximum of 600 REST consumers in total across all RDPs and Message VPNs on an event broker.</p>
+    <ul>
+      <li>To create REST consumer within the current RDP, enter the following CONFIG command:
+                <pre>solace(.../message-vpn/rest/rest-delivery-point)# create rest-consumer &lt;name&gt;</pre></li>
+      <li>To edit an existing REST consumer, enter the following CONFIG command:
+                <pre>solace(.../message-vpn/rest/rest-delivery-point)# rest-consumer &lt;name&gt;</pre></li>
+    </ul>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>&lt;name&gt;</code> is the name of the specified REST consumer. The REST consumer name can contain up to 32 characters.</p>
+      </li>
+    </ul>
+    <p>The no version of this command, <code>no rest-consumer &lt;name&gt;</code>, deletes the specified REST consumer and all of its configuration.</p>
+    <p>Entering the rest-consumer REST VPN CONFIG command moves the CLI to a configuration mode for REST consumers, from which you can perform the following tasks:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#configuring-remote-connection-info-for-REST-consumers">Configuring Remote Connection Info for REST Consumers</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#configuring-a-specific-IP-interface-for-REST-consumers">Configuring a Specific IP Interface for REST Consumers</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#configuring-REST-consumer-authentication-schemes">Configuring REST Consumer Authentication Schemes</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#configuring-REST-consumer-TLS/SSL-parameters">Configuring REST Consumer TLS/SSL Parameters</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#enabling-REST-consumers">Enabling REST Consumers</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="configuring-remote-connection-info-for-REST-consumers"/>Configuring Remote Connection Info for REST Consumers</h3>
+    <p>To configure remote connection information for the given REST consumer, enter the following REST VPN CONFIG command:</p>
+    <pre>solace(...est/rest-delivery-point/rest-consumer)# remote</pre>
+    <p>The CLI enters the Message VPN remote REST consumer level, from which you can configure the following remote connection properties for the current REST consumer:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#host">Host</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#port">Port</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Proxy">Proxy</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#SSL">SSL</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#HTTP-method">HTTP Method</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#outgoing-connection-count">Outgoing Connection Count</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#maximum-wait-time">Maximum POST Wait Time</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#retry">Retry</MadCap:xref>
+      </li>
+    </ul>
+    <p class="Note">Remote connection parameters for a REST consumer can only be configured while the REST consumer is shut down.</p>
+    <h4><a name="host"/>Host</h4>
+    <p>To configure or reset either the IP address or DNS Name that the event broker will connect to so that it can deliver messages for the given REST consumer, enter the following CONFIG command:</p>
+    <pre>solace(...t-delivery-point/rest-consumer/remote)# host &lt;dest-ip-addr-or-host&gt;</pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>&lt;dest-ip-addr-or-host&gt;</code> is the IP address or DNS name to which the event broker will connect to deliver messages for the current REST consumer, and it can contain up to 253 characters. </p>
+      </li>
+    </ul>
+    <p>In addition to an IPv4 address or DNS name, you can specify an IPv6 address if the event broker's message backbone is configured with an IPv6 global unicast or unique local address. For more information, refer to <MadCap:xref href="../Admin/IP-Interfaces/Configuring-Appliance-IP-Interfaces.htm">Configuring Appliance IP Interfaces</MadCap:xref>, or <MadCap:xref href="../Admin/IP-Interfaces/Managing-Sw-Msg-Broker-Interfaces.htm">IP Interface Configuration for Software Event Brokers </MadCap:xref>. </p>
+    <p>If you specify a DNS name and both an IPv4 and IPv6 address are returned during the lookup, the event broker chooses the IP address based on the priority specified by the configured DNS server(s). See <MadCap:xref href="../Admin/Configuring-DNS.htm#DNS_name_lookup">DNS Name Lookup</MadCap:xref> for more information.</p>
+    <p>The no version of this command, <code>no host</code>, resets the host setting to its default value (empty). If a REST consumer is enabled but has no host value configured, it will be in an operational Down state until a valid host value is set.</p>
+    <p class="Note">The host value can only be configured while the REST consumer is shutdown.</p>
+    <h4><a name="port"/>Port</h4>
+    <p>To configure a port to be used with the host of the current REST consumer, enter the following CONFIG command:</p>
+    <pre>solace(...t-delivery-point/rest-consumer/remote)# port &lt;port&gt;</pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>&lt;port&gt;</code> is the desired port number. Acceptable values are numerals from 1 to 65535.</p>
+      </li>
+    </ul>
+    <p>The no version of this command, <code>no port</code>, resets the port value to a default value. Default values are 8080 for plain-text connections and 8443 for SSL connections.</p>
+    <h4><a name="Proxy"/>Proxy</h4>
+    <p>Depending on your deployment, you may require that communication between REST consumers and endpoint servers (such as external websites) goes through a forward proxy. This is often the case if your event broker sits behind a firewall and egress traffic needs to connect to a proxy server to go outside the firewall.</p>
+    <p>To configure a forward proxy for the current REST consumer, enter the following command:</p>
+    <pre xml:space="preserve">solace(...t-delivery-point/rest-consumer/remote)# proxy &lt;proxy-name&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;proxy-name&gt;</code> is the name of a forward proxy configured on the Message VPN. For more information, see <MadCap:xref href="../Features/VPN/Configuring-VPNs.htm#Configur4">Configuring a Forward Proxy</MadCap:xref>. </p>
+    <p>The no version of this command, <code>no proxy</code>, removes any configured proxy.</p>
+    <h4><a name="SSL"/>SSL</h4>
+    <p>To enable or disable SSL connections for the current REST consumer, enter the following CONFIG command:</p>
+    <pre>solace(...t-delivery-point/rest-consumer/remote)# ssl</pre>
+    <p>The no version of this command, <code>no ssl</code>, disables SSL connections for the current REST consumer.</p>
+    <h4><a name="HTTP-method"/>HTTP Method</h4>
+    <p>By default, PubSub+ event brokers use the POST HTTP method when delivering messages to remote endpoints. You can instead specify that outgoing messages should use the PUT method. Changing the HTTP method allows you to connect the event broker to endpoints that do not support the POST method (for example, certain cloud native data lake products).</p>
+    <p>To configure the HTTP method used for the outgoing connection, enter the following CONFIG command:</p>
+    <pre>solace(...t-delivery-point/rest-consumer/remote)# http-method {post | put}</pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>post</code> specifies to use the POST HTTP method when delivering messages to the remote endpoint.</p>
+      </li>
+      <li>
+        <p><code>put</code> specifies to use the PUT HTTP method when delivering messages to the remote endpoint.</p>
+      </li>
+      <li>
+        <p>The no version of this command, <code>no http-method</code>, returns the setting to the default value (POST). </p>
+      </li>
+    </ul>
+    <p>If the corresponding Message VPN is in gateway mode,  the specified HTTP method is ignored since the incoming method (GET, PUT, POST, DELETE, PATCH, HEAD, OPTIONS) is passed through the broker. For more information about the REST VPN mode, see <MadCap:xref href="Managing-Microgateway.htm#Configure_VPN_Mode">Configuring the REST Message VPN Mode</MadCap:xref>. </p>
+    <h4><a name="outgoing-connection-count"/>Outgoing Connection Count</h4>
+    <p>To set the total number of concurrent TCP connections initiated by the event broker that are open to the given REST consumer, enter the following CONFIG command:</p>
+    <pre>solace(...t-delivery-point/rest-consumer/remote)# outgoing-connection-count &lt;count&gt;</pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>&lt;count&gt;</code> is the total number of outgoing connections (and thus HTTP POST operations) to this REST consumer that the appliance may initiate. Valid values are between 1 and 50 (inclusive).</p>
+      </li>
+    </ul>
+    <p>The no version of this command, <code>no outgoing-connection-count</code>, resets the outgoing connection count parameter to the default value of 3.</p>
+    <h4><a name="maximum-wait-time"/>Maximum POST Wait Time</h4>
+    <p>There is a maximum amount of time that the event broker will wait for a  response from the REST consumer.</p>
+    <p>If an operation has been outstanding for more than the configured maximum wait time, the TCP connection is reset. If the request is for a non-persistent message, the message is discarded. If the request is for a persistent message, message delivery is re-attempted through another available outgoing connection for the RDP, up to the max delivery count on the queue. If the max delivery count is exceeded, and the message is eligible for the Dead Message Queue (DMQ), then the message is moved to the DMQ, otherwise it is discarded.</p>
+    <p>To set the max  wait time, enter the following  CONFIG command:</p>
+    <pre>solace(...t-delivery-point/rest-consumer/remote)# max‑post-wait-time &lt;seconds&gt;</pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>&lt;seconds&gt;</code> is the amount of time in seconds to wait for a response from an outstanding  operation. The valid range is from 1 to 300.</p>
+      </li>
+    </ul>
+    <p>The no version of this command, <code>no max-post-wait-time</code>, resets the maximum  wait time parameter to the default value of 30.</p>
+    <h4><a name="retry"/>Retry</h4>
+    <p>To configure the retry delay (that is, the amount of time that should pass before a connection attempt is retried) enter the following CONFIG command:</p>
+    <pre>solace(...t-delivery-point/rest-consumer/remote)# retry delay &lt;seconds&gt;</pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>&lt;seconds&gt;</code> is the amount of time (in seconds) that must pass before a connection attempt is retried. The valid range is from 1 to 300.</p>
+      </li>
+    </ul>
+    <p>The no version of this command, <code>no delay</code>, resets the retry delay to the default value of 3.</p>
+    <p class="Note">If the Message VPN containing the RDP is configured to act as a Microgateway, the retry delay is ignored.</p>
+    <h3><a name="configuring-a-specific-IP-interface-for-REST-consumers"/>Configuring a Specific IP Interface for REST Consumers</h3>
+    <p>By default, an event broker automatically chooses the IP interface through which outgoing connections from a REST consumer are made.</p>
+    <p>However, if your environment requires a fixed IP interface, it is also possible to configure a specific interface for the REST consumer. When a specific IP interface is configured, the source IP address specified in all outgoing packets will be the same for all connections associated with the REST consumer. A fixed IP interface may be required, for example, if a firewall is used between a client application and the event broker. In this case, the firewall must be configured to permit the event broker’s source IP address through, so an automatically-selected IP interface can be problematic. </p>
+    <p class="Note">If a local IP interface for a REST consumer is configured, that configuration will be propagated if the Config-Sync and/or Replication facilities are used. Therefore, you must either ensure that the specified interface is available on all Message VPNs that will be synchronized and/or replicated, or you should use the default behavior where the event brokers automatically select an IP interface.</p>
+    <p>To configure a specific local IP interface to use for all outgoing connections associated with the given REST consumer, enter the following CONFIG command:</p>
+    <pre>solace(...est/rest-delivery-point/rest-consumer)# local<br/>solace(...st-delivery-point/rest-consumer/local)# interface &lt;phys-intf&gt;</pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>&lt;phys-intf&gt;</code> is an ASCII string specifying the physical Ethernet interface port or LAG of the local appliance to use for all outgoing connections associated with the given REST consumer. Valid values are eth&lt;port&gt; (for example, eth1); chassis/lag1; &lt;cartridge&gt;/&lt;slot&gt;/&lt;port&gt; (for example, 1/1/8); &lt;cartridge&gt;/&lt;slot&gt;/lag&lt;N&gt; (for example, 1/1/lag1). Only a single LAG numbered 1 is supported. </p>
+      </li>
+    </ul>
+    <p>The no version of this command, <code>no interface</code>, removes any configured local IP interface and resumes the default behavior where the event broker automatically chooses the IP interface through which the REST consumer is reachable.</p>
+    <p class="Note">A local IP interface for a REST consumer may be changed while the consumer is operationally up, but the new IP interface will only be used for new consumer connections—existing consumer connections will be unaffected.</p>
+    <h3><a name="configuring-REST-consumer-authentication-schemes"/>Configuring REST Consumer Authentication Schemes</h3>
+    <p>To configure an authentication scheme that the given REST consumer will use to establish a connection to the REST host, enter the following CONFIG command:</p>
+    <pre>solace(...ry-point/rest-consumer/authentication)# auth-scheme {none | http-basic | client-certificate | http-header | oauth-client | oauth-jwt | transparent | aws}</pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>none</code> specifies to login with no authentication. For more information,  see <MadCap:xref href="#None">None</MadCap:xref>. </p>
+      </li>
+      <li>
+        <p><code>http-basic</code> specifies to login with a username and optional password. For more information, see <MadCap:xref href="#HTTP-basic-authentication">HTTP Basic Authentication</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p><code>client-certificate</code> specifies to login  with a client TLS certificate. For more information, see <MadCap:xref href="#client-certificate-authentication">Client Certificate Authentication</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p><code>http-header</code> specifies to login with a specified HTTP header. For more information, see <MadCap:xref href="#HTTP-header-authentication">HTTP Header Authentication</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p><code>oauth-client</code> specifies to login with OAuth 2.0 client credentials. For more information, see <MadCap:xref href="#OAuth-client-authentication">OAuth Client Authentication</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p><code>oauth-jwt</code> specifies to login with an OAuth JWT profile. For more information, see <MadCap:xref href="#OAuth-JWT-authentication">OAuth JWT Authentication</MadCap:xref>. </p>
+      </li>
+      <li>
+        <p><code>transparent</code> specifies to login using the Authorization header from the message properties, if present. For more information, see <MadCap:xref href="#transparent-authentication">Transparent Authentication</MadCap:xref>. </p>
+      </li>
+      <li>
+        <p><code>aws</code> specifies to login with AWS Signature Version 4 authentication (AWS4-HMAC-SHA256). For more information, see <MadCap:xref href="#AWS-authentication">AWS Authentication</MadCap:xref>. </p>
+      </li>
+    </ul>
+    <p>The no version of the <code>auth-scheme</code> command, <code>no auth-scheme</code>, resets the authentication scheme setting to its default value of none.</p>
+    <h4><a name="none"/>None</h4>
+    <p>If no authentication scheme for a REST consumer is configured, the REST consumer will not use an authentication scheme. This may be useful for anonymous connections or when a REST consumer does not require authentication.</p>
+    <h4><a name="HTTP-basic-authentication"/>HTTP Basic Authentication</h4>
+    <p>Using the HTTP basic authentication scheme, REST consumers can authenticate with a username and password combination carried over HTTP. Credentials can either be transmitted using plain-text or encrypted with SSL.</p>
+    <p>To configure settings for an http-basic authentication scheme, enter the following CONFIG commands:</p>
+    <pre>solace(...ry-point/rest-consumer/authentication)# http‑basic<br/>solace(...st-consumer/authentication/http-basic)# username &lt;name&gt; [password &lt;password&gt;]</pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>&lt;name&gt;</code> is the client username to use for authentication with the REST host.</p>
+      </li>
+      <li>
+        <p><code>&lt;password&gt;</code> is the optional password to be used with the specified username.</p>
+      </li>
+    </ul>
+    <p>The no version of the username command, <code>no username</code>, removes any configured REST consumer authentication username and associated password.</p>
+    <h4><a name="client-certificate-authentication"/>Client Certificate Authentication</h4>
+    <p>When using client certificate authentication, a REST consumer provides a certificate file to validate its identity. Client certificate authentication is only available to connections that use TLS/SSL.</p>
+    <p>To configure settings for a client certificate authentication scheme, enter the following CONFIG commands:</p>
+    <pre>solace(...ry-point/rest-consumer/authentication)# client-certificate<br/>solace(...mer/authentication/client-certificate)# certificate-file &lt;filename&gt;</pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>&lt;filename&gt;</code> is the filename of the certificate file. The certificate file must be located in the <code>certs</code> folder of the event broker. Once a certificate is configured, a copy of it is saved internally. The file in the <code>certs</code> directory is no longer required.</p>
+      </li>
+    </ul>
+    <p>The no version of this command, <code>no certificate-file</code>, removes the certificate association for the current REST consumer.</p>
+    <div class="Note">
+      <ul>
+        <li>The REST consumer certificate file can be changed at any time, but if the REST consumer is connected using client certificate authentication, changing the certificate will cause an interruption in service.</li>
+        <li>If no certificate is specified for a REST consumer using a client certificate authentication scheme, then the server certificate of the event broker is used instead.</li>
+      </ul>
+    </div>
+    <h4><a name="HTTP-header-authentication"/>HTTP Header Authentication</h4>
+    <p>When using HTTP header authentication, a REST consumer uses a specified HTTP header to login to the REST host. </p>
+    <p>If the corresponding Message VPN is in gateway mode,  the specified HTTP header will override all headers of the same name passed through with the message, resulting in a single header of that name on the outgoing request. For more information about the REST VPN mode, see <MadCap:xref href="Managing-Microgateway.htm#Configure_VPN_Mode">Configuring the REST Message VPN Mode</MadCap:xref>.</p>
+    <p>To configure the name of the authentication header, enter the following commands:</p>
+    <pre>solace(...ry-point/rest-consumer/authentication)# http-header<br/>solace(...t-consumer/authentication/http-header)# name &lt;name&gt;</pre>
+    <p>To configure the value of the authentication header, enter the following commands:</p>
+    <pre>solace(...ry-point/rest-consumer/authentication)# http-header<br/>solace(...t-consumer/authentication/http-header)# value &lt;http-header-value&gt;</pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>&lt;name&gt;</code> is the authentication header name (of up to 50 characters) that the REST Consumer uses to login to the REST host. Authentication header names must be validated as per RFC 7230, which specifies that the header name must be a valid token.  If the authentication header name is not configured, no header is sent. </p>
+      </li>
+      <li>
+        <p><code>&lt;http-header-value&gt;</code> is the authentication header value (of up to 2100 characters) that the REST Consumer uses to login to the REST host. The value of the authentication header must consist of visible ASCII characters or ASCII whitespace, in other words ASCII values 9 and 32 to 126.  If the authentication header value is not configured, the named header is sent with an empty value. </p>
+      </li>
+    </ul>
+    <p>For an example, see how HTTP Header Authentication is used to <MadCap:xref href="OAuth-Authentication-Azure-Event-Hub.htm">Connect to Azure Event Hubs/Service Bus Using REST</MadCap:xref>.</p>
+    <h4><a name="OAuth-client-authentication"/>OAuth Client Authentication</h4>
+    <p>When using OAuth client authentication, a REST consumer obtains access tokens from an authorization server using the Client Credentials Grant flow (RFC 6749 §4.4), also known as two-legged OAuth. In this flow, a simple HTTP request with basic authentication is sent to the authorization server to get an access token. The REST consumer can then use the returned access token to make authenticated requests to the REST host until it expires (tokens are usually valid for an hour). When the token is near expiry, the REST consumer will automatically request another. </p>
+    <p class="Tip">There are no redirects or refresh tokens using this method, however, before configuring OAuth client authentication you must obtain primary credentials for the REST consumer (a client ID and client secret) that it will use with HTTP basic authentication to the authorization server when requesting an access token. In most cases, this is accomplished by creating a special account called a service account in the OAuth provider.</p>
+    <p>To enable OAuth client authentication, you must configure the client ID, client secret, and token endpoint that the REST consumer will use to request access tokens. Optionally, you can also configure the scope and default expiry time for tokens.</p>
+    <p>To configure these settings, enter the following commands:</p>
+    <pre>solace(...ry-point/rest-consumer/authentication)# oauth-client<br/>solace(...-consumer/authentication/oauth-client)# client-id &lt;client-id&gt;<br/>solace(...-consumer/authentication/oauth-client)# client-secret &lt;client-secret&gt;<br/>solace(...-consumer/authentication/oauth-client)# token-endpoint &lt;token-endpoint&gt;<br/>solace(...-consumer/authentication/oauth-client)# scope &lt;scope&gt;<br/>solace(...-consumer/authentication/oauth-client)# token-expiry-default &lt;value&gt;</pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>client-id &lt;client-id&gt;</code> is the OAuth client ID the REST consumer uses  to login to the authorization server when requesting access tokens. The OAuth client ID may contain up to 200 characters. </p>
+      </li>
+      <li>
+        <p><code>client-secret &lt;client-secret&gt;</code> is the OAuth client secret the REST consumer uses  to login to the authorization server when requesting access tokens. The OAuth client secret may contain up to 200 characters. </p>
+      </li>
+      <li>
+        <p><code>token-endpoint &lt;token-endpoint&gt;</code> is the OAuth token endpoint URL that the REST consumer uses to request a token for login to the REST host. The OAuth token endpoint may contain up to 2048 characters. In addition, the token endpoint parameter must use TLS, that is, it must start with <code>https://</code> (case insensitive).</p>
+      </li>
+      <li>
+        <p>(Optional) <code>scope &lt;scope&gt;</code> is the OAuth scope. The OAuth scope may contain up to 200 characters.</p>
+      </li>
+      <li>
+        <p>(Optional) <code>token-expiry-default &lt;value&gt;</code> is the default expiry time for  tokens, in seconds. The valid range is from 60 to 86400, the default  is 900. This value is used only when the token endpoint does not return an expiry time.</p>
+      </li>
+    </ul>
+    <p class="Note">OAuth client authentication settings can only be can only be configured while the REST consumer is shutdown.</p>
+    <p>For example, to configure the REST consumer to send a request to the <code>https://login.microsoftonline.com/solace.com/oauth2/v2.0/token</code> token endpoint  using the client id of <code>3d69f5d8-77c9-4f25-9d22-aad25c737aa0</code> with the client secret of <code>vkYDeFI[gUml-tX=7=5ybBGP22fF/@5O</code> and specifying a scope of <code>https://eventhubs.azure.net/.default</code>, enter the following commands:</p>
+    <pre>solace(...ry-point/rest-consumer/authentication)# oauth-client<br/>solace(...-consumer/authentication/oauth-client)# client-id 3d69f5d8-77c9-4f25-9d22-aad25c737aa0<br/>solace(...-consumer/authentication/oauth-client)# client-secret vkYDeFI[gUml-tX=7=5ybBGP22fF/@5O<br/>solace(...-consumer/authentication/oauth-client)# token-endpoint https://login.microsoftonline.com/solace.com/oauth2/v2.0/token<br/>solace(...-consumer/authentication/oauth-client)# scope https://eventhubs.azure.net/.default</pre>
+    <p>The resulting request to the authorization server would then look like this:</p>
+    <pre class="Code">POST /solace.com/oauth2/v2.0/token HTTP/1.1
+Host: login.microsoftonline.com
+Authorization: Basic M2Q2OWY1ZDgtNzdjOS00ZjI1LTlkMjItYWFkMjVjNzM3YWEwOnZrWURlRklbZ1VtbC10WD03PTV5YkJHUDIyZkYvQDVP
+Content-Length: 80
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials&amp;scope=https%3A%2F%2Feventhubs.azure.net%2F.default</pre>
+    <h4><a name="OAuth-JWT-authentication"/>OAuth JWT Authentication</h4>
+    <p>When using OAuth JWT authentication, instead of authenticating to the token endpoint with HTTP basic authentication using a client ID and client secret (as with OAuth client authentication), the REST consumer creates an appropriate signed JWT with a secret key, and then requests a token from the token endpoint using the JWT.  The REST consumer can then use the returned  access token (or ID token if that is returned) to make authenticated requests to the REST host until it expires (tokens are usually valid for an hour). When the token is near expiry, the REST consumer will automatically request another. For more information, see RFC 7523. </p>
+    <p class="Tip">There are no redirects or refresh tokens using this method, however, before configuring OAuth JWT authentication you must obtain a secret key for the REST consumer  that it will use to create the signed JWT. In most cases, you can obtain a secret key by creating a special account called a service account in the OAuth provider.</p>
+    <p>To enable OAuth JWT authentication, configure a JWT secret key,  token endpoint, and any optional additional claims that the REST consumer will use to request access tokens. In addition, you can also configure the default expiry time for  tokens.</p>
+    <p>To configure these settings, enter the following commands:</p>
+    <pre>solace(...ry-point/rest-consumer/authentication)# oauth-jwt<br/>solace(...est-consumer/authentication/oauth-jwt)# secret-key &lt;value&gt;<br/>solace(...est-consumer/authentication/oauth-jwt)# token-endpoint &lt;value&gt;<br/>solace(...est-consumer/authentication/oauth-jwt)# create claim &lt;name&gt; &lt;value&gt;<br/>solace(...est-consumer/authentication/oauth-jwt)# token-expiry-default &lt;value&gt;<br/></pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>secret key &lt;value&gt;</code> is a PEM-encoded PKCS #8 private key  that is used to sign the JWT for the OAuth token request. The  secret key must be a multiline base64 encoded private key with embedded line feeds and  be quoted in  the form <code>"-----BEGIN PRIVATE KEY-----\n&lt;base64 data&gt;\n-----END PRIVATE KEY-----\n"</code>.The secret key may contain up to 4096 characters. </p>
+      </li>
+      <li>
+        <p><code>token-endpoint &lt;value&gt;</code> is the OAuth token endpoint URL that the REST consumer uses to request a token for login to the REST host. The OAuth token endpoint may contain up to 2048 characters. In addition, the token endpoint parameter must use TLS, that is, it must start with <code>https://</code> (case insensitive).</p>
+      </li>
+      <li>
+        <p><code>claim &lt;name&gt;</code> is the name of the  additional claim. The claim name may contain up to 100 characters, however it cannot be <code>exp</code>, <code>iat</code>, or <code>jti</code>. These claims, referring to <code>expires</code>, <code>issued-at-time</code>, and <code>jwt-ID</code> are already included by default. You can configure up to 4 additional claims per RDP. The total number of claims you can configure for the event broker as a whole depends on the broker's scale: for a 100-connection software event broker, you can configure up to 80 claims; for any other scale (including the appliance), you can configure a maximum of  800 total claims. </p>
+      </li>
+      <li>
+        <p><code>claim &lt;value&gt;</code> is the value of the  additional claim. The claim value must be valid JSON and may contain up to 200 characters. If you want to enter a string for the claim value, you must use the following format <code>\"myClaimValue\"</code> (see the example below).</p>
+      </li>
+      <li>
+        <p><code>token-expiry-default &lt;value&gt;</code> is the default expiry time for  tokens, in seconds. The valid range is from 60 to 86400, the default  is 900. This value is used only when the token endpoint does not return an expiry time.</p>
+      </li>
+    </ul>
+    <p class="Note">OAuth JWT authentication settings can only be  configured while the REST consumer is shutdown.</p>
+    <p>For example, to configure the REST consumer to send a request to the <code>https://oauth2.googleapis.com/token</code> token endpoint, specifying claims of <code>iss=111400995554822290197</code>, <code>sub=111400995554822290197</code>, <code>scope=https://www.googleapis.com/auth/pubsub</code>, and <code>aud=https://oauth2.googleapis.com/token</code> enter the following commands:</p>
+    <pre>solace(...ry-point/rest-consumer/authentication)# oauth-jwt<br/>solace(...est-consumer/authentication/oauth-jwt)# secret-key "-----BEGIN PRIVATE KEY-----\n&lt;base64 data&gt;\n-----END PRIVATE KEY-----\n"<br/>solace(...est-consumer/authentication/oauth-jwt)# token-endpoint https://oauth2.googleapis.com/token<br/>solace(...est-consumer/authentication/oauth-jwt)# create claim scope "\"https://www.googleapis.com/auth/pubsub\""<br/>solace(...est-consumer/authentication/oauth-jwt)# create claim iss "\"111400995554822290197\""<br/>solace(...est-consumer/authentication/oauth-jwt)# create claim sub "\"111400995554822290197\""<br/>solace(...est-consumer/authentication/oauth-jwt)# create claim aud "\"https://oauth2.googleapis.com/token\""<br/></pre>
+    <p>The resulting request to the authorization server would then look like this:</p>
+    <pre>POST /token HTTP/1.1
+Host: oauth2.googleapis.com
+Authorization: Basic ...
+
+grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&amp;assertion=...</pre>
+    <h4><a name="transparent-authentication"/>Transparent Authentication</h4>
+    <p>When using transparent authentication, a REST consumer uses the Authorization header from the message properties to login to the REST host. In other words, the REST consumer passes along existing Authorization header metadata instead of discarding it. </p>
+    <p>If the message is coming from a REST producer, the REST service must be configured to forward the Authorization header. For more information, refer to <MadCap:xref href="Managing-REST-Service.htm#Auth-Header-Handling">Configuring Authorization Header Handling</MadCap:xref>. </p>
+    <p class="Caution">Transparent authentication should only be used in specific deployment scenarios. We recommend that you <a href="../get-support.htm" class="link-internal">contact Solace</a> before enabling this authentication scheme.</p>
+    <h4><a name="AWS-authentication"/>AWS Authentication</h4>
+    <p>When using AWS authentication, a REST consumer uses AWS Signature Version 4 authentication (AWS4-HMAC-SHA256) to login to the REST host. You can use this authentication mechanism to enable RDPs to communicate with most AWS services.</p>
+    <p>To enable AWS  authentication, you must configure the AWS access key ID, secret access key, region, and service that the REST consumer will use to login to the host.</p>
+    <p class="Note">The AWS access key ID and secret access key are the API credentials for the AWS user.</p>
+    <p>To configure these settings, enter the following commands:</p>
+    <pre>solace(...ry-point/rest-consumer/authentication)# aws<br/>solace(...oint/rest-consumer/authentication/aws)# access-key-id &lt;access-key-id&gt;<br/>solace(...oint/rest-consumer/authentication/aws)# secret-access-key &lt;secret-access-key&gt;<br/>solace(...oint/rest-consumer/authentication/aws)# region &lt;region&gt;<br/>solace(...oint/rest-consumer/authentication/aws)# service &lt;service&gt;</pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>&lt;access-key-id&gt;</code> is the AWS access key ID. </p>
+      </li>
+      <li>
+        <p><code>&lt;secret-access-key&gt;</code> is the AWS secret access key. </p>
+      </li>
+      <li>
+        <p><code>&lt;region&gt;</code> is the AWS region, such as <code>us-east-1</code>, <code>ca-central-1</code>, or <code>ap-southeast-1</code>.</p>
+      </li>
+      <li>
+        <p><code>&lt;service&gt;</code> is the service to be invoked, such as <code>s3</code>.</p>
+      </li>
+    </ul>
+    <p>For example, to configure the REST consumer to login to the AWS Simple Storage Service (<code>s3</code>) in the <code>us-east-1</code> region using <code>AKIAIOSFODNN7EXAMPLE AWS</code> as the access key ID and <code>wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY</code> as the secret access key, enter the following commands:</p>
+    <pre>solace(...ry-point/rest-consumer/authentication)# aws<br/>solace(...oint/rest-consumer/authentication/aws)# access-key-id AKIAIOSFODNN7EXAMPLE<br/>solace(...oint/rest-consumer/authentication/aws)# secret-access-key wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY<br/>solace(...oint/rest-consumer/authentication/aws)# region us-east-1<br/>solace(...oint/rest-consumer/authentication/aws)# service s3</pre>
+    <h3><a name="configuring-REST-consumer-TLS/SSL-parameters"/>Configuring REST Consumer TLS/SSL Parameters</h3>
+    <p>To configure TLS/SSL parameters for the current REST consumer, enter the following CONFIG command:</p>
+    <pre>solace(...est/rest-delivery-point/rest-consumer)# ssl</pre>
+    <p>The CLI enters the REST consumer SSL configuration level, from which you may configure the following parameters:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#cipher-suite">Cipher Suite</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#trusted-common-name">Trusted Common Name</MadCap:xref>
+      </li>
+    </ul>
+    <h4><a name="cipher-suite"/>Cipher Suite</h4>
+    <p>You can configure the list of cipher suites that are used to encrypt connections from the event broker to a host. By default, all cipher suites are included in the list, ordered from most to least secure.</p>
+    <p>To use the default list of cipher suites, enter the following CONFIG command:</p>
+    <pre>solace(...rest-delivery-point/rest-consumer/ssl)# cipher‑suite default</pre>
+    <p>To modify the cipher suite list, do the following:</p>
+    <ul>
+      <li>To empty the cipher suite list, enter the following REST VPN CONFIG command:
+                <pre>solace(...rest-delivery-point/rest-consumer/ssl)# cipher‑suite empty</pre></li>
+      <li>To  add a cipher suite to the list, enter the following REST VPN CONFIG command:
+                <pre>solace(...rest-delivery-point/rest-consumer/ssl)# cipher‑suite name &lt;suite-name&gt;</pre></li>
+      <li>To add a cipher suite at a specific point in the list, use the following REST VPN CONFIG command:
+                <pre>solace(...rest-delivery-point/rest-consumer/ssl)# cipher‑suite name &lt;suite-name&gt; [before|after &lt;existing‑suite‑name&gt;]</pre></li>
+    </ul>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>&lt;suite-name&gt;</code> is a string identifying the cipher suite to be added to the list. If no ‘before’ or ‘after’ keyword is specified, the cipher suite is added at the end of the list.</p>
+      </li>
+      <li>
+        <p><code>before</code> specifies that the cipher suite should be added before the cipher suite indicated by <code>&lt;existing-suite-name&gt;</code>.</p>
+      </li>
+      <li>
+        <p><code>after</code> specifies that the cipher suite should be added after the cipher suite indicated by <code>&lt;existing-suite-name&gt;</code>.</p>
+      </li>
+      <li>
+        <p><code>&lt;existing-suite-name&gt;</code> is the name of a cipher suite that is already on the list. The cipher suite being entered will be positioned before or after the existing suite name, depending on whether the <code>before</code> or <code>after</code> keyword was specified.</p>
+      </li>
+    </ul>
+    <p>The no version of this command, <code>cipher-suite name &lt;suite-name&gt;</code>, removes the specified cipher suite from the configured list.</p>
+    <p class="Note">The cipher suite list can only be configured while the REST consumer is shutdown.</p>
+    <h4><a name="trusted-common-name"/>Trusted Common Name</h4>
+    <p>In version 9.8.0+ REST consumers use the standard domain validation list to validate server certificates. For more information, refer to <MadCap:xref href="../Security/TLS-SSL-Message-Encryption-Overview.htm#Certific">Certificate Authorities</MadCap:xref>.</p>
+    <p>In releases prior to 9.8.0  REST consumers use a list of trusted common names to determine which remote security certificates they accept based on their common names. By default, the list of trusted common names is empty, meaning that the REST consumer does not trust any common names.</p>
+    <p>To add a common name to the list of trusted common names used, enter the following CONFIG command:</p>
+    <pre>solace(...rest-delivery-point/rest-consumer/ssl)# trusted‑common-name name {empty | name &lt;common-name&gt;}</pre>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li>
+        <p><code>empty</code> removes all trusted common names from the list.</p>
+      </li>
+      <li>
+        <p><code>&lt;common-name&gt;</code> is a trusted common name of a remote certificate.</p>
+      </li>
+    </ul>
+    <p>The no version of this command, <code>no trusted-common-name name &lt;common-name&gt;</code>, removes the given trusted common name from the list.</p>
+    <p class="Note">For information on configuring CA certificates, refer to <MadCap:xref href="../Security/Managing-Certificate-Authorities.htm">Configuring Certificate Authorities</MadCap:xref>.</p>
+    <h3><a name="enabling-REST-consumers"/>Enabling REST Consumers</h3>
+    <ul>
+      <li>To enable the given REST consumer, enter the following CONFIG command:
+                <pre>solace(...est/rest-delivery-point/rest-consumer)# no shutdown</pre></li>
+      <li>To disable the given REST consumer, enter the following CONFIG command:
+                <pre>solace(...est/rest-delivery-point/rest-consumer)# shutdown</pre><p>When a REST consumer is disabled, no connections can be initiated and no messages can be delivered to it.</p></li>
+    </ul>
+    <h2 class="with-rule"><a name="enabling-REST-delivery-points"/>Enabling REST Delivery Points</h2>
+    <ul>
+      <li>To enable the given RDP, enter the following  CONFIG command:
+                <pre>solace(.../message-vpn/rest/rest-delivery-point)# no shutdown</pre></li>
+      <li>To disable the given RDP, enter the following CONFIG command:
+                <pre>solace(.../message-vpn/rest/rest-delivery-point)# shutdown</pre><p>When disabled, no connections will be initiated and the RDP will not deliver messages to any of the contained REST consumers.</p></li>
+    </ul>
+  </body>
+</html>

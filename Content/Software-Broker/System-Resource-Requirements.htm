@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Software"/>System Resource Requirements</h1>
+    <p>To achieve desired stability and performance, the infrastructure hosting the PubSub+ Software Event Broker must provide a minimum set of system resources. System resources can be broadly categorized into requirements related to processors, memory, and storage. </p>
+    <p>You can increase certain system limits using System Scaling Parameters. Increasing these system limits also increases the system resources that are required. For more information, see <MadCap:xref href="System-Scaling-Parameters.htm">Using System Scaling Parameters</MadCap:xref> and <MadCap:xref href="System-Resource-Calculator.htm">System Resource Calculator</MadCap:xref>.</p>
+    <p>The following sections describe the minimum resources needed for the default installation of the software event broker.</p>
+    <h2 class="with-rule"><a name="res-req-container"/>Resource Requirements for Container Images</h2>
+    <p>The container host provides the system resources for the container instance. Specifically, the Linux kernel manages processor and memory resources using control groups, or <code>cgroups</code>. The container runtime creates and configures the <code>cgroups</code> when it creates the container instance.</p>
+    <p>  In addition to the resources managed by <code>cgroups</code>, the software broker also requires storage for three types information:</p>
+    <ul>
+      <li>image files</li>
+      <li>temporary data</li>
+      <li>instance state</li>
+    </ul>
+    <p>Typically, image files and temporary data are written to the container runtime's backing store. Instance state is written to a <a href="Configuring-Storage.htm#understanding-storage-group" class="link-internal">storage-group</a>, which may optionally be mapped to the container runtime's backing store or, more commonly, mapped to host/external storage through the use of bind-mounts or volumes.</p>
+    <p>For more information mapping the <code>storage-group</code> to external storage, see <MadCap:xref href="Container-Tasks/Config-Container-Storage.htm">Managing Storage for Container Images</MadCap:xref></p>
+    <h3><a name="min-req-containers"/>Minimum Resource Requirements for Container Images</h3>
+    <p>If the software event broker is part of a high-availability (HA) group, its resource requirements are partially determined by its <code>node-type</code>:</p>
+    <ul>
+      <li><code>messaging-routing-node</code>—the  software event broker is participating in message routing. In messaging mode, the broker takes either the primary or backup role.</li>
+      <li><code>monitor-node</code>—the software event broker is in monitoring mode and is not participating in message routing. It therefore does not require storage for the <code>spool</code>, <code>spool-cache</code>, and <code>spool-cache-backup</code> storage-elements.</li>
+    </ul>
+    <p>For more information about HA node types, see <MadCap:xref href="../Features/HA-Redundancy/SW-Broker-Redundancy-and-Fault-Tolerance.htm">HA for Software Event Brokers</MadCap:xref>.</p>
+    <p>The software event broker requires the following resources at a minimum:</p>
+    <table style="width: 100%;margin-left: 0;margin-right: auto;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col style="width: 25%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <col style="width: 25%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <col style="width: 25%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <col style="width: 25%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th colspan="2" class="TableStyle-Table_Num-HeadE-Column1-Header1">System Resource</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Minimum Requirement<br/>(Messaging)</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Minimum Requirement (Monitoring)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td colspan="2" class="TableStyle-Table_Num-BodyH-Column1-Body1">CPUs</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">2</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">1</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td colspan="2" class="TableStyle-Table_Num-BodyH-Column1-Body1">Host Virtual Memory</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">3.4 GiB</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">2.0 GiB</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td colspan="2" class="TableStyle-Table_Num-BodyH-Column1-Body1">Memory Cgroup Limit</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">2.5 GiB</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">1.6 GiB</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td colspan="2" class="TableStyle-Table_Num-BodyE-Column1-Body1">Posix Shared Memory (/dev/shm)</td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">1.0 GB</td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">1.0 GB</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td colspan="2" class="TableStyle-Table_Num-BodyH-Column1-Body1">Disk Space for Container Runtime Backing Store</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">1.5 GB</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">1.5 GB</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" colspan="2">Disk Space for the <code>storage-group</code> as a whole</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">5.1 GB</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">2.3 GB</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td rowspan="6" style="vertical-align: middle;padding-left: 4pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;border-right-style: solid;border-right-width: 2px;border-right-color: #e1e1e1;border-bottom-style: solid;border-bottom-width: 2px;border-bottom-color: #e1e1e1;" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p rowspan="6">Disk Space for <code>storage-elements</code></p>
+            <p rowspan="6" class="Note">The space required for the <code>storage-group</code> is more than required for the included <code>storage-elements</code>.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>jail</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">1 GB</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">1 GB</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <code>var</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">0.2 GB</td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">0.2 GB</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>diagnostics</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">1 GB</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">1 GB</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>spool</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">1 GB</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">N/A</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>spool-cache</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">1.2 GB</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">N/A</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <code>spool-cache-backup</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">0.6 GB</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">N/A</td>
+        </tr>
+      </tbody>
+    </table>
+    <h3>Storage Considerations</h3>
+    <p>In the container image, container-specific files and temporary data are written to the container runtime's backing store. Instance state is written to the <code>storage-group</code>, which by default is mapped to the container runtime's backing store. This is not suitable for production usage—we recommend mapping the <code>storage-group</code> to an external volume. For more information regarding storage organization in the PubSub+ Software Event Broker and how to increase performance or capacity by adding additional storage, see <MadCap:xref href="Configuring-Storage.htm#understanding-storage-group">Understanding the Storage-Group</MadCap:xref> and <MadCap:xref href="Container-Tasks/Config-Container-Storage.htm">Managing Storage for Container Images</MadCap:xref>.</p>
+    <p>Regardless of whether the container is configured to write to the backing store or external volumes, your storage system must have a write performance greater than 20 MBps. Using a storage system with a write performance less than 20 MBps will result in a POST failure. In addition to having adequate write performance, the storage system must also exhibit well behaved latency (as reported by the <code>show system health</code> command). To best meet the minimum storage performance requirements, Solace recommends that you use an enterprise-grade SSD as the host device for the event broker's <code>storage-group</code>.</p>
+  </body>
+</html>

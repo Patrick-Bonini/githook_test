@@ -1,0 +1,400 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Solace Implementation Considerations</h1>
+    <p>This section provides some Solace-specific implementation details to assist developers when implementing OpenMAMA messaging applications.</p>
+    <h2 class="with-rule"><a name="Topic-Struct"/>Topic Structure</h2>
+    <p>When a client application subscribes to a topic or publishes a message to a topic, the root, source, and symbol string values presented to the Solace Middleware Bridge are used for the topic. (Note that subscriptions do not provide the root variable but may have the root value incorporated in the source.)</p>
+    <p>OpenMAMA uses the dot (“.”) character to separate topic levels. However, Solace PubSub+ uses the forward slash (“/”) character to separate these three topic levels.</p>
+    <p>Therefore, to generate topics from the three variables provided by OpenMAMA clients that complies with the topic syntax used by Solace, the Solace Middleware Bridge replaces any “/’”characters in the root, source, and symbol variables in a received subscription with “^” characters. The root, source, and symbol are then joined in a string and a “/” character is used to separate the variables that are not NULL. Topic subscriptions are saved to the event broker with the converted topic syntax.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">Special Character Translation By Solace Middleware Bridge</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col width="10%" class="TableStyle-Table_Num-Column-Column1"/>
+      <col width="10%" class="TableStyle-Table_Num-Column-Column1"/>
+      <col style="width: 10%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <col style="width: 10%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Language</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1" colspan="4">Call</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Original Character</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">/</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">^</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">\</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Solace Middleware Bridge Use</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">^</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">\</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">\\</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">/</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="Topic-Wild-Cards"/>Topic Wildcards</h3>
+    <p>When an OpenMAMA wildcard basic subscription create function is used, the Solace Middleware Bridge will treat the “*” and “&gt;” characters as wildcards when they are used for the root, source, symbol variables. The “*” and “&gt;”wildcard characters are only supported as wildcards when used for special wildcard basic subscription create functions.</p>
+    <h3><a name="Handling"/>Handling of Dictionary Prefixes and Suffixes</h3>
+    <p>Subscription requests for OpenMAMA dictionaries add an identifying prefix “_MDDD.” to the topic (for example, “<code>_MDDD.TEST.DATA_DICT</code>”, where <code>TEST</code> is the source).</p>
+    <p>Publishing OpenMAMA dictionaries add an identifying “.DATA_DICT” suffix to the topic (for example, “<code>TEST.DATA_DICT</code>”, where <code>TEST</code> is the source).</p>
+    <p>The Solace Middleware Bridge handles these dictionary prefixes and suffixes in the following manner, and changes the OpenMAMA Topic separator of “.” to the Solace topic separator “/”:</p>
+    <p>Messages published to topics ending with “.DATA_DICT” and not starting with “_MDDD.” are prefixed with “#MDDD/”.</p>
+    <p>Examples:</p>
+    <ul>
+      <li>a published OpenMAMA data dictionary topic of <code>TEST.DATA_DICT</code> is translated to <code>#MDDD/TEST/DATA_DICT</code></li>
+      <li>a published OpenMAMA data dictionary topic of <code>_MDDD.TEST.DATA_DICT</code> is translated to <code>_MDDD/TEST/DATA_DICT</code></li>
+    </ul>
+    <p>When PubSub+ Cache is enabled, Dictionary snapshot subscriptions (<code>MAMA_SUBSC_DDICT_SNAPSHOT</code>) are redirected to PubSub+ Cache Instances, and have their topic changed from <code>_MDDD/TEST/DATA_DICT</code> to<code> #MDDD/TEST/DATA_DICT</code></p>
+    <p>Example:</p>
+    <p>an OpenMAMA dictionary snapshot topic subscription of <code>_MDDD.TEST.DATA_DICT</code> is translated a Solace topic of <code>#MDDD/TEST/DATA_DICT</code></p>
+    <h3><a name="Solace"/>Solace Special Prefixes</h3>
+    <p>Solace PubSub+ uses some special topics to facilitate specific message exchange patterns. These special topics always begin with the “#” character. For example, a Solace API can create a unique topic subscription for a client that begins with “<code>#P2P</code>”, which enables messages to be sent directly to the client in request/reply scenarios. The Solace Middleware Bridge does not forcibly restrict OpenMAMA topic subscriptions that begin with “#”, however, it is recommended that you avoid using them.</p>
+    <h2 class="with-rule"><a name="Payload"/>Payload Field Types</h2>
+    <p>The Solace Payload Bridge supports all payload types supported by OpenMAMA version 2.3.1. In addition, the Solace Payload Bridge also provides support for Boolean vector and character vector payload types.</p>
+    <p>Currently these payload types are only supported by the Solace Payload Bridge when using OpenMAMA version 2.3.1. However, they have been accepted by the OpenMAMA project, and it is anticipated they will be supported in OpenMAMA version 2.3.3.</p>
+    <ul>
+      <li>To set a Boolean vector payload, call <code>mamaMsg_addVectorBool(...)</code>.</li>
+      <li>To set a character vector payload, call <code>mamaMsg_addVectorChar(...)</code></li>
+    </ul>
+    <h2 class="with-rule"><a name="Async-Pub-Fail-Notifies"/>Async Publish Failure Notifications</h2>
+    <p MadCap:conditions="Default.HideFromAllOutput">To receive publish failure notifications, a client application can create a basic OpenMAMA subscription (<code>MAMA_SUBSC_TYPE_BASIC</code>) to a special well‑known topic (<code>_SOLACE.TOPIC_TRANSPORT_CB_EX</code>) for a given transport. This topic is registered on the Solace Middleware Bridge, and it attracts any publish reject OpenMAMA messages that the event broker returns for that particular transport. These publish failure messages are returned through the onMsg callback of the subscription.</p>
+    <p MadCap:conditions="Default.HideFromAllOutput">A _<code>SOLACE.TOPIC_TRANSPORT_CB_EX</code> subscription is maintained on the Solace Middleware Bridge rather than the event broker. As a result:</p>
+    <ul MadCap:conditions="Default.HideFromAllOutput">
+      <li MadCap:conditions="Default.HideFromAllOutput">It will not appear on the event broker, and it will not increment event broker statistics.</li>
+      <li MadCap:conditions="Default.HideFromAllOutput">For the convenience of the application, the application does not have to deactivate the subscription during its shutdown—the bridge can clean up the subscription when the transport is destroyed. However, an application should deallocate the subscription when it shuts down.</li>
+    </ul>
+    <p MadCap:conditions="Default.HideFromAllOutput">The client application can treat this subscription for publish failure notifications the same way as other basic subscriptions (for example, the client application may destroy the subscription when it is no longer needed).</p>
+    <p MadCap:conditions="Default.HideFromAllOutput">After the subscription is activated, the Solace Middleware Bridge automatically reapplies the topic subscription to the transport if a transport reconnect occurs (that is, the application to re-add the subscription after a disconnect).</p>
+    <p MadCap:conditions="Default.HideFromAllOutput">The following table lists the fields used by publish reject OpenMAMA messages and the information that they contain.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" cellspacing="0" MadCap:conditions="Default.HideFromAllOutput">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">Publish Reject Message Fields</p>
+      </caption>
+      <col width="25%" class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 75%;"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <td class="TableStyle-Table_Num-HeadE-Column1-Header1">
+            <p class="Tbl_Heading">Field ID</p>
+          </td>
+          <td class="TableStyle-Table_Num-HeadE-Column1-Header1" colspan="4">
+            <p class="Tbl_Heading">Field Name and Description</p>
+          </td>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">1</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">This OpenMAMA message type field uses a message type of MAMA_MSG_TYPE_SEC_STATUS for a publish failure message.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">9</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">This event type field indicates the type of event generated by the Middleware Bridge. A value of 1 indicates publish failure (currently the only possible value).</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">12</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">This topic field provides the topic the message was published to. That is, the concatenated values of root, source, and topic when the publisher create function was called.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">13</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body">This status text field may provide event information that the application may use suitable for logging purposes. For example, this field may provide a publish failure reason.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">14</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">This MAMA status field provides an OpenMAMA status value. The value is MAMA_STATUS_PLATFORM unless there is a more specific status. For example, for publisher ACL denied case, the value is MAMA_STATUS_NOT_ENTITLED.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">15</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">This platform status field may provide additional Solace-specific event information, such as the C API subcode.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>For a Solace Middleware Bridge, transport topic events are used to notify an application of an async publisher failure.</p>
+    <p>An OpenMAMA publisher transport topic event is raised when a Solace session receives the SOLCLIENT_SESSION_EVENT_REJECTED_MSG_ERROR session event in the session event callback. The last error subcode is checked and mapped to an OpenMAMA transport topic event in accordance with the following table.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">Mapping SOLCLIENT Subcodes to OpenMAMA Transport Topic Events</p>
+      </caption>
+      <col width="517px" class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 75%;"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">SOLCLIENT Subcode</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1" colspan="4">OpenMAMA Transport Topic Event</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>SOLCLIENT_SUBCODE_PUBLISH_ACL_DENIED</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>MAMA_TRANSPORT_TOPIC_PUBLISH_ERROR_NOT_ENTITLED</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>SOLCLIENT_SUBCODE_TOPIC_MISSING</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>MAMA_TRANSPORT_TOPIC_PUBLISH_ERROR_BAD_SYMBOL</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>SOLCLIENT_SUBCODE_TOPIC_TOO_LARGE</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>MAMA_TRANSPORT_TOPIC_PUBLISH_ERROR_BAD_SYMBOL</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>SOLCLIENT_SUBCODE_INVALID_TOPIC_SYNTAX</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>MAMA_TRANSPORT_TOPIC_PUBLISH_ERROR_BAD_SYMBOL</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>SOLCLIENT_SUBCODE_TIMEOUT</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>MAMA_TRANSPORT_TOPIC_PUBLISH_ERROR</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>All other subcodes</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>MAMA_TRANSPORT_TOPIC_PUBLISH_ERROR</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="Logging"/>Logging</h2>
+    <p> The following table shows how generated OpenMAMA logs map to C API logs.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">Mapping OpenMAMA Log Levels to C API Log Levels</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 50%;"/>
+      <col style="width: 50%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">OpenMAMA-Generated Log Level</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" colspan="4">Corresponds with C API Log Level...</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">MAMA_LOG_LEVEL_SEVERE</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">SOLCLIENT_LOG_EMERGENCY</p>
+            <p class="Tbl_Body">SOLCLIENT_LOG_CRITICAL</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">MAMA_LOG_LEVEL_ERROR</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">SOLCLIENT_LOG_ERROR</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">MAMA_LOG_LEVEL_WARN</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">SOLCLIENT_LOG_WARNING</p>
+            <p class="Tbl_Body">SOLCLIENT_LOG_NOTICE</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">MAMA_LOG_LEVEL_NORMAL</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body">SOLCLIENT_LOG_NOTICE</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">MAMA_LOG_LEVEL_FINE</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">SOLCLIENT_LOG_INFO</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">MAMA_LOG_LEVEL_FINER</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">SOLCLIENT_LOG_INFO</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">MAMA_LOG_LEVEL_FINEST</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">SOLCLIENT_LOG_DEBUG</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">MAMA_LOG_LEVEL_OFF</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">SOLCLIENT_LOG_EMERGENCY</p>
+            <p class="Tbl_Body">This C API log level, as the most stringent log level, is the best match because very few, if any, logs are generated.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>The following table shows how generated C API logs map to OpenMAMA logs.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">Mapping C API Log Levels to OpenMAMA Log Levels</p>
+      </caption>
+      <col style="width: 50%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 50%;"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">C API-Generated Log Level</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" colspan="4">Corresponds with Mama Log Level...</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">SOLCLIENT_LOG_EMERGENCY</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">MAMA_LOG_LEVEL_SEVERE</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">SOLCLIENT_LOG_CRITICAL</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">MAMA_LOG_LEVEL_SEVERE</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">SOLCLIENT_LOG_ERROR</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">MAMA_LOG_LEVEL_ERROR</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">SOLCLIENT_LOG_WARNING</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body">MAMA_LOG_LEVEL_WARN</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">SOLCLIENT_LOG_NOTICE</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">MAMA_LOG_LEVEL_WARN</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">SOLCLIENT_LOG_INFO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">MAMA_LOG_LEVEL_FINE</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">SOLCLIENT_LOG_DEBUG</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">MAMA_LOG_LEVEL_FINEST</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="Note">When last value caching is used, the logging level for each SolOpenMAMA Plug-In (set through their <code>mama.properties</code> files) must match the logging level set for its PubSub+ Cache Instance (set through the PubSub+ Cache Instance configuration file). By default, the logging levels set for the provided SolOpenMAMA Plug-In matches that set for the sample PubSub+ Cache Instance configuration file. However, if you want to change the logging level used for last-value caching, you must manually change the OpenMAMA log level for the <code>mama.properties</code> file and change the log level in the PubSub+ Cache Instance configuration file to an equivalent C API log level.</p>
+    <h2 class="with-rule"><a name="Datetime"/>Datetime</h2>
+    <p>The format of the datetime string returned by SolOpenMAMA depends on the platform and date range.</p>
+    <h3><a name="WinPlatforms"/>Win32, Win64 and Linux_x86_64 Platforms</h3>
+    <p>For dates before January 1, 1601, SolOpenMAMA returns a datetime string with its value in seconds.</p>
+    <p>For dates after January 1, 1601, SolOpenMAMA returns a datetime string with its value in standard OpenMAMA datetime string format.</p>
+    <h3><a name="WinPlatforms"/>Linux_i386 Platforms</h3>
+    <p>For dates between December 13, 1901 and January 18, 2038, SolOpenMAMA returns a datetime string with its value in standard OpenMAMA datetime string format.</p>
+    <p>For dates before December 13, 1901 and after January 18, 2038, SolOpenMAMA returns a datetime string with its value in seconds.</p>
+  </body>
+</html>

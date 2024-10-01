@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><MadCap:concept term="Appliance"/>Replacing a Failed Appliance in a Redundant Pair</h1>
+    <p>This section describes in general terms how to replace a failed Solace PubSub+ appliance in a deployed high-availability (HA) redundant pair. The steps that must be performed are dependent on whether the appliance to be replaced was configured as active or backup and whether the Config‑Sync facility can be used to copy the configuration to the replacement appliance.</p>
+    <h2 class="with-rule"><a name="ESD/Safe"/>ESD/Safety Precautions</h2>
+    <div class="Caution">
+      <p> To prevent equipment damage from Electrostatic Discharge (ESD), always ensure that the appliance chassis is electrically connected to earth ground. Always follow ESD prevention procedures when removing and replacing power supplies. Use an anti-static wrist strap, or another anti-static device. If no wrist strap or mat is available, ground yourself by touching the metal part of the chassis.</p>
+    </div>
+    <h2 class="with-rule"><a name="Tool"/>Tool and Equipment Requirements</h2>
+    <p>The following tools and equipment are required:</p>
+    <ul>
+      <li>electrostatic discharge wrist strap</li>
+      <li>anti-static mat</li>
+      <li>replacement appliance</li>
+    </ul>
+    <h2 class="with-rule"><a name="Procedur"/>Procedure</h2>
+    <p>Perform the following general steps provide in this example to replace a failed appliance in a deployed HA redundant pair. In this example, the <code>solace1</code> is the active appliance and <code>solace2</code> is the appliance that has failed and must be replaced.</p>
+    <p class="Note">If you require further assistance, or if you have any questions regarding this procedure, <a href="../../get-support.htm" class="link-internal">contact Solace</a> for technical support.</p>
+    <div class="Caution">
+      <p> When replacing a failed appliance in a deployed HA redundant pair, do NOT physically connect the HBA links between the replacement appliance and the external disk storage unit, do NOT physically connect the NAB in the replacement appliance to the network, and do NOT physically connect the ADB links between the replacement appliance and paired in-service appliance until explicitly instructed to do so in the steps in the following procedure.</p>
+    </div>
+    <ol>
+      <li>On the currently active appliance, enter the following Solace CLI commands to ensure that auto revert is not enabled.
+        <pre>solace1&gt; enable
+solace1# configure
+solace1(configure)# redundancy
+solace1(configure/redundancy)# no auto-revert
+solace1(configure/redundancy)# end
+solace1#</pre></li>
+      <li>Install the replacement appliance in the hardware rack, power it up, and connect a management console.        <p>For more information, refer to <MadCap:xref href="../Appliance-Set-Up/Hardware-Installation.htm"> Solace Appliance Hardware Installation</MadCap:xref>, <MadCap:xref href="Turning-Appliance-Power.htm">Turning Appliance Power On or Off Without the CLI</MadCap:xref>, and <MadCap:xref href="../Appliance-Set-Up/Connecting-M-Consoles.htm">Connecting Management Consoles</MadCap:xref>.</p></li>
+      <li>Using the management console, run set-up and configure only the management IP address and default route for the replacement appliance.
+<p>For information, refer to <MadCap:xref href="../Appliance-Set-Up/Setting-Basic-Configurations.htm">Setting Basic Configurations for Appliances</MadCap:xref> and <MadCap:xref href="../../Admin/IP-Interfaces/Configuring-Mgmt-and-MBackbone-Interfaces.htm">Configuring Management &amp; Message Backbone Interfaces</MadCap:xref>.</p></li>
+      <li>Enter the following show command to display the HBA Port and Node names for the replacement appliance:
+        <pre>solace2&gt; show hardware detail</pre><p><u>Example output</u>:</p><pre>...
+Slot 1/3: Host Bus Adapter Blade
+<b>  Product #: HBA-0204FC-02-A</b>
+  Serial #: M54687
+  Model Name: QLE2462
+  Model Description: PCI-Express to 4Gb FC, Dual Channel
+  Driver Version: 8.01.07-k1
+ 
+  Fibre-Channel 1
+    State: Link Up - F_Port (fabric via point-to-point)
+    Speed: 2 Gbit
+    Port Id: 0x031f00
+<b>    Port Name: 0x210000e08b931f25 </b>
+    Port Type: NPort (fabric via point-to-point)
+<b>    Node Name: 0x200000e08b931f25</b></pre></li>
+      <li>Using the displayed HBA Port and Node names from the output, register the HBA ports with the proper storage Logical Unit Number (LUN) on the external disk storage array.</li>
+      <li class="SWStep">Enter the following show command to ensure that the correct version of Solace PubSub+ software is installed on the replacement appliance.
+        <pre>solace2&gt; show version</pre></li>
+      <p>If necessary, upgrade or downgrade the version to match that of the version used by the mate appliance. For information on upgrading software on appliances, refer to the <i class="Emphasis">Solace PubSub+ Appliance Release Notes</i>. For information on downgrading appliances, refer to <MadCap:xref MadCap:unresolvedLink="import-link:system_and_software_maintenance_tasks_3138406956_18160" href="../Changing-Software-Loads.htm#system_and_software_maintenance_tasks_3138406956_208346">Downgrading SolOS Versions</MadCap:xref>.</p>
+      <li>To apply the configuration of the active event broker to the replacement appliance, you can either apply a saved backup configuration file to the replacement mate appliance or use the Config-Sync facility to apply the configuration of the active event broker to the replacement mate appliance:</li>
+      <ul>
+        <li>To apply a backup configuration file to the replacement appliance, refer to step 8.</li>
+        <li>To use the Config-Sync facility assert the active event broker's configuration on to the replacement appliance, refer to step 9.</li>
+      </ul>
+      <li>To apply a saved configuration file to the replacement appliance, do the following:<ol style="list-style-type: lower-alpha;"><li><p>Perform the procedure outlined in <MadCap:xref href="../../Admin/Restoring-Config-Files.htm">Restoring Configuration Files</MadCap:xref>.</p></li><li><p>Enter the following commands to ensure that auto revert is not enabled for the replacement appliance:</p><pre>solace2&gt; enable
+solace2# configure
+solace2(configure)# redundancy
+solace2(configure/redundancy)# no auto-revert
+solace2(configure/redundancy)# end
+solace2#</pre></li><li><p>Turn off power to the replacement appliance:</p><pre>solace2# power-down</pre><p class="Note">The appliances do not restart automatically after this command is run.</p></li><li><p>Physically connect the HBA links between the replacement appliance and the external disk storage array.</p></li><li><p>Connect the NAB in the replacement appliance to the network.</p></li><li><p> Physically connect the ADB mate links between the replacement appliance and the paired in-service appliance.</p></li><li><p>Power up the replacement appliance:</p><p>See <MadCap:xref href="Turning-Appliance-Power.htm">Turning Appliance Power On or Off Without the CLI</MadCap:xref>.</p></li><li><p> Assert the configuration settings of the active appliance onto the replacement appliance. See <MadCap:xref href="../../Features/Config-Sync/Configuring-Config-Sync.htm#Assertin">Asserting Routers' System Configurations Over Their Mates</MadCap:xref> and <MadCap:xref href="../../Features/Config-Sync/Configuring-Config-Sync.htm#Assertin2">Asserting Routers' VPN Configurations Over Their Mates</MadCap:xref>.</p></li><li><p>Verify that the replacement appliance's configuration fully matches the active appliance's configuration.</p><p class="Note">You can use the <code>show current-config</code> User EXEC command to obtain the sequence of CLI commands that are required to duplicate the system-level and Message VPN-level configurations used by the active appliance. For more information, refer to <MadCap:xref href="../../Admin/Generating-CLI-Config-Sequences.htm">Show the CLI Sequence for the Current Configuration</MadCap:xref>.</p></li></ol></li>
+      <li>To use Config-Sync to automatically synchronize the configurations of the mate event brokers, perform the following steps for the replacement appliance:<ol style="list-style-type: lower-alpha;"><li>Configure the Message Backbone (LAG &amp; IP).<p>See <MadCap:xref href="../../Admin/IP-Interfaces/Configuring-Mgmt-and-MBackbone-Interfaces.htm">Configuring Management and Message Backbone Interfaces</MadCap:xref>.</p></li><li>Depending on the deployed SolOS version, configure a redundancy interface or a routing interface. 
+                    
+                    <p>See <MadCap:xref href="../../Features/HA-Redundancy/Configuring-Appliance-Redundancy-Parameters.htm#Assignin2">Assigning a Redundancy Interface</MadCap:xref> (version 9.5.0 and later).</p><p>See <MadCap:xref href="../../Features/MNR/Managing-Multi-Node-Routing-Links.htm#Assign-Routing-Int">Assigning Routing Interfaces</MadCap:xref> (versions earlier than 9.5.0).</p></li><li>Configure its redundancy parameters. <p>See <MadCap:xref href="../../Features/HA-Redundancy/Configuring-Appliance-Redundancy-Parameters.htm">Configuring Router Redundancy Parameters</MadCap:xref>.</p></li><li>Configure its message spool.
+<p>See <MadCap:xref href="../../Messaging/Guaranteed-Msg/Managing-Guaranteed-Messaging.htm">Managing Guaranteed Messaging</MadCap:xref>.</p></li><li>Surrender activity from the given appliance to its mate:
+                <pre>solace2(configure/redundancy)# release-activity</pre></li><li><p>Manually set the configuration parameters that are unique to the appliance and cannot be set through the Config-Sync facility. For a list of Config-Sync ineligible parameters, see <MadCap:xref href="../../Features/Config-Sync/Configuring-Config-Sync.htm#Properti">Properties That Are Not Synchronized</MadCap:xref>.</p></li><li>Enable Config-Sync:
+                <pre>solace2(configure)# config-sync
+solace2(configure/config-sync)# no shutdown</pre></li><li>Power down the appliance:
+                <pre>solace2(configure/config-sync)# end
+solace2# power-down</pre><p class="Note">The appliances do not restart automatically after this command is run.</p></li><li>Connect the HBA links between the replacement appliance and the external disk storage array.</li><li>Connect the NAB in the replacement appliance to the network.</li><li>Connect the ADB links between the replacement appliance and the paired in-service appliance</li><li>Power up the appliance.<p>See <MadCap:xref href="Turning-Appliance-Power.htm">Turning Appliance Power On or Off Without the CLI</MadCap:xref>.</p></li><li>Assert the configuration settings of the existing event broker onto the replacement event broker. See <MadCap:xref href="../../Features/Config-Sync/Configuring-Config-Sync.htm#Assertin">Asserting Routers' System Configurations Over Their Mates</MadCap:xref> and <MadCap:xref href="../../Features/Config-Sync/Configuring-Config-Sync.htm#Assertin2">Asserting Routers' VPN Configurations Over Their Mates</MadCap:xref></li><li>Verify that the configuration is fully in sync. See <MadCap:xref href="../../Features/Config-Sync/Configuring-Config-Sync.htm#View-Config-Sync-Info">Viewing Config-Sync Info</MadCap:xref>.</li><li>Force the appliance to take activity back from its mate:<pre>solace2(configure/redundancy)# no release-activity</pre></li><li>Optionally: revert activity.</li></ol></li>
+      <li>
+        <p>If necessary, restore the auto‑revert redundancy setting.</p>
+        <p class="Note">Solace recommends that the auto revert redundancy configuration should normally be kept disabled on an event broker. However, if you do want to use auto revert for your event broker, it should be re-enabled at this point.</p>
+      </li>
+      <li>Enter the following commands to verify that the replacement event broker is in the correct redundancy state.
+                <pre>solace2&gt; enable
+solace2# show redundancy</pre><p>If it is not  in the correct redundancy state, revert-activity, as required.</p></li>
+    </ol>
+  </body>
+</html>

@@ -1,0 +1,497 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Managing Subscriptions</h1>
+    <p>A client must use Topic subscriptions to receive Direct messages from the Message VPN that it has connected to on a Solace PubSub+ event broker. A subscription represents a message attractor a client can use in a Publish/ Subscribe (pub/sub) messaging domain to express its interest in the messages it wants to receive.</p>
+    <p>A Topic represents a logical destination. A client can publish messages to a Topic destination. A client can also subscribe to a Topic, and when the event broker has a Topic subscription for the client that matches the message’s destination, the client can receive the message.</p>
+    <p>Topics can be grouped in hierarchies. Therefore Topic subscriptions, which support wildcards, can attract parts of the hierarchy for a client without subscribing to each possible combination of the hierarchy levels. For detailed information on the characters and syntax supported by event brokers, refer to <MadCap:xref MadCap:unresolvedLink="import-link:a_topic_support_and_syntax_819845554_56063" href="../../Messaging/Topic-Support-and-Syntax.htm">Topic Support and Syntax</MadCap:xref>.</p>
+    <p>A Topic has the following properties:</p>
+    <ul>
+      <li>Name—A string that represents the topic to publish and/or subscribe to.</li>
+      <li>Durability—That is, whether it is temporary (where the scope and lifetime of a temporary Topic is that of the Session it is created in) or non‑temporary (created at the factory level).<![CDATA[       ]]></li>
+      <li>Whether it has the Receive All Deliver‑To‑One (DTO) flag enabled—When the topic has this flag is enabled in a subscription ADD request, it overrides an enabled DTO flag in a published message. Therefore, if the topic in the message matches, it is delivered to clients with topics that have the Receive All Deliver‑To‑One flag set, in addition to any one client that is subscribed to the topic without this override.<![CDATA[		]]></li>
+    </ul>
+    <p class="Note">When using the JCSMP and .NET APIs, creating a Topic for a subscription follows the same procedure as creating a Topic for a destination (for Direct messages, refer to <MadCap:xref href="Creating-Topics.htm">Creating Topics</MadCap:xref>; for Guaranteed messages, refer to <MadCap:xref href="Creating-Topics.htm">Creating Topics</MadCap:xref>).</p>
+    <p style="font-weight: bold;">Related Samples</p>
+    <p>For an example of how to add Topic subscriptions, refer to the <code>DirectPubSub</code> sample for the JCSMP, Java RTO, C, and .NET APIs, and the <code>TopicSubscriber</code> sample for the JavaScript and Node.js APIs.</p>
+    <h2 class="with-rule"><a name="Sess-Level-Ctrls"/>Session-Level Controls for Subscription Operations</h2>
+    <p>A number of Session level controls can affect the subscription operations, they are:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Network-IO">Network I/O Blocking and Non-Blocking Modes</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Reapply-On-Reconnect">Reapplying Subscriptions on Reconnect</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Set-Sub-Priority">Setting Subscriber Priority Levels</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="Network-IO"/>Network I/O Blocking and Non-Blocking Modes</h3>
+    <p>The Java RTO, C, and .NET APIs support the ability to use non-blocking network I/O in subscribe and unsubscribe operations. This ability is controlled by the Subscribe Blocking Session property. By default, a blocking mode is used.</p>
+    <p>When a non-blocking mode is used, subscription requests, which are sent within a TCP stream, are affected by TCP flow control. A send call that cannot be immediately accepted by the messaging API returns a <code>SOLCLIENT_WOULD_BLOCK</code> error code to the application. When it can be accepted, the API receives a subsequent <code>SOLCLIENT_SESSION_EVENT_CAN_SEND</code> event, and then it can retry sending the request. In the interim, it can continue to process other actions.</p>
+    <p>When a blocking mode is used, the calling thread for each send call is blocked until the API can accept the message. As a result, the application automatically controls the flow of send calls to a rate at which the event broker can accept them. A send call remains blocked until either it is accepted by the API, or the blocking write timer expires.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">Blocking Write Timers</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 184px;"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Not applicable (see below)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">SessionHandle.PROPERTIES.BLOCKING_WRITE_TIMEOUT_MS</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">SOLCLIENT_SESSION_PROP_BLOCKING_WRITE_TIMEOUT_MS</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">SessionProperties.BlockingWriteTimeoutInMsecs</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">Not applicable (see below)</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="Note">
+      <ul>
+        <li>For JCSMP, all subscribe and unsubscribe operations use a blocking mode.</li>
+        <li>For the JavaScript and Node.js APIs all subscribe and unsubscribe operations are non-blocking and are only considered successful when <code>solace.SessionEventCode.SUBSCRIPTION_OK</code> has been received.</li>
+      </ul>
+    </div>
+    <h3><a name="Reapply-On-Reconnect"/>Reapplying Subscriptions on Reconnect</h3>
+    <p>By default, the event broker that a client connects to does not maintain that client’s subscriptions (that is, by default, subscriptions are non‑durable). However, the Reapply Subscriptions property can be enabled for a Session so that all subscriptions a client adds or deletes are remembered by the API, and, if the Session fails, the client’s last subscription set is automatically reapplied to the event broker upon a successful reconnect. Therefore, enabling the Reapply Subscriptions property effectively makes a client’s subscriptions durable.</p>
+    <p>This property doesn't apply to subscriptions on Endpoints. Endpoint subscriptions are maintained by the event broker (that is, Topic subscriptions applied to Queues are durable). If a client is using a Temporary Queue and disconnects for over a minute, the Temporary Queue will be removed from the event broker, and automatically recreated once the client reconnects. However, the subscription will not be re-applied even if <code>REAPPLY_SUBSCRIPTIONS</code> is enabled.</p>
+    <p>If an error occurs when reapplying subscriptions, the channel connection is declared down, and the client attempts to reconnect according to the configured reconnection properties for the Session (refer to <MadCap:xref href="Configuring-Connection-T.htm#Reconnec">Reconnect Retries</MadCap:xref>). The subscriptions must be successfully reapplied for the connection to be reestablished.</p>
+    <p class="Note">Topic subscriptions made on behalf of another client are not maintained by the event broker that that client connects to—that is, they are not durable (refer to <MadCap:xref href="#Manage-On-Behalf">Managing Topic Subscriptions on Behalf of Other Clients</MadCap:xref>). In addition, Topic subscriptions are not maintained in API memory; so they cannot be reapplied when the client reconnects.</p>
+    <table style="caption-side: top;width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Enable the Reapplication of Subscriptions</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">JCSMPProperties.REAPPLY_SUBSCRIPTIONS</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">SessionHandle.PROPERTIES.REAPPLY_SUBSCRIPTIONS</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">SOLCLIENT_SESSION_PROP_REAPPLY_SUBSCRIPTIONS</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">SessionProperties.ReapplySubscriptions</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode">solace.SessionProperties.reapplySubscriptions</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-weight: bold;">Related Samples</p>
+    <p>For an example of how to reapply subscriptions when a session reconnects, refer to the <code>DirectPubSub</code> sample for the appropriate messaging API.</p>
+    <h3><a name="Set-Sub-Priority"/>Setting Subscriber Priority Levels</h3>
+    <p>To control which clients receive DTO messages, the clients are assigned a local subscriber priority. A local priority is the priority that a client’s subscriptions have for receiving DTO messages published on the event broker that the client is directly connected to. Subscriber priority levels range from 1 (the highest) to 4 (the lowest).</p>
+    <p>When a message is published with the DTO feature enabled, a local client with the highest subscriber priority level receives the message, and if that subscriber local priority level is shared by multiple clients, a single client is chosen in a round‑robin fashion.</p>
+    <p>If there is no local client with a matching subscription, the message may be delivered to one client with matching subscription that is connected to a neighbor event broker.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">Subscriber Priorities</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">JCSMPProperties.SUBSCRIBER_LOCAL_PRIORITY</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">SessionHandle.PROPERTIES.SUBSCRIBER_LOCAL_PRIORITY</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">SOLCLIENT_SESSION_PROP_SUBSCRIBER_LOCAL_PRIORITY</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">SessionProperties.SubscriberLocalPriority</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JavaScript</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">DTO is not supported</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode">solace.SessionProperties.subscriberNetworkPriority</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-weight: bold;">Related Samples</p>
+    <p>For an example of how to publish and subscribe to messages using DTO, refer to the <code>DTOPubSub</code> sample for the appropriate messaging API.</p>
+    <h2 class="with-rule"><a name="Add-Topic-Subs"/>Adding Topic Subscriptions</h2>
+    <p>In a Publish/Subscribe messaging domain, a client can use Topic subscriptions to attract messages of interest.</p>
+    <p>To add Topic subscriptions to event broker, call a method or function appropriate for the messaging API used and pass in the Topic subscription. You can also set optional subscribe flags to control the behavior of the API call.</p>
+    <p>The subscription flags that can be set include:</p>
+    <ul>
+      <li>Wait For Confirm (for JCSMP, Java RTO, C, and .Net)</li>
+      <li>Request Confirm (for Java RTO, C and .Net, JavaScript, and Node.js)</li>
+      <li>Receive All Deliver To One (for JCSMP, Java RTO, C, and .NET)</li>
+    </ul>
+    <p class="Note">A topic subscription of the “&gt;” character alone will attract all published messages regardless of their Topic, and it acts as a Deliver Always subscription (that is, it overrides enabled Deliver‑To‑One flags in published messages).</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Add Subscriptions</p>
+      </caption>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">JCSMPSession.addSubscription(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">SessionHandle.subscribe(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">solClient_session_topicSubscribeExt(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">ISession.Subscribe(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode">solace.Session.subscriber(...)</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-weight: bold;">Related Samples</p>
+    <p>For an example of how to add Topic subscriptions, refer to the <code>DirectPubSub</code> sample for the Java, Java RTO, C, and .NET APIs, and the <code>TopicSubscriber</code> sample for the JavaScript and Node.js APIs.</p>
+    <h2 class="with-rule"><a name="Manage-On-Behalf"/>Managing Topic Subscriptions on Behalf of Other Clients</h2>
+    <p>A client can act as a subscription manager to add and remove topic subscriptions for other clients in the same Message VPN. For a client to be a subscription manager, it must connect to the router using a client username which has been configured to be a subscription manager. These clients are referred to as OBO (On-Behalf-Of) agents, or OBO subscription managers. Using an OBO subscription manager allows you to centralize the management of which clients get which subscriptions. For information on how to enable the subscription manager capability for a client username, see <MadCap:xref href="../../Security/Configuring-Client-Usernames.htm#Configuring-Sub-Managers">Configuring Subscription Managers</MadCap:xref>.</p>
+    <div class="Note">
+      <ul>
+        <li>Only direct messages can be received through topic subscriptions made on behalf of other clients.</li>
+        <li>
+					A subscription manager can add topic subscriptions on behalf of a client only for direct messaging. It does not necessarily have the permissions to modify the subscriptions of the guaranteed messaging endpoints (queues or
+					topic-endpoints) owned by those clients.
+				</li>
+        <li>The subscription manager must create a client name endpoint for a client to add or remove topic subscriptions for that client. When subscriptions are added on behalf of another client, they behave like any other subscriptions. For example, subscriptions added by a subscription manager are removed if the client disconnects. Disconnecting the subscription manager has no effect on the subscriptions already added.</li>
+      </ul>
+    </div>
+    <p style="font-weight: bold;">JCSMP, Java RTO, and .NET APIs</p>
+    <p>For the JCSMP, Java RTO, and .NET APIs, a client name endpoint instance must first be created for each client you want to manage subscriptions for. Once you create a client name endpoint instance, the subscription manager can add topic subscriptions to or remove topic subscriptions from that client name endpoint instance.</p>
+    <p style="font-weight: bold;">C API</p>
+    <p>For the C API, when the subscription manager client uses one of the functions listed below to add or remove a subscription on behalf of another client, an endpoint type of client name endpoint (<code>SOLCLIENT_ENDPOINT_PROP_CLIENT_NAME</code>) and a name for that endpoint are endpoint properties that must be passed in.</p>
+    <table style="width: 95%;caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p>To Manage Topic Subscriptions on Behalf of Other Clients</p>
+      </caption>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li>
+                <p class="Tbl_BodyCode">
+                  <code>JCSMPFactory.createClientName(...)</code>
+                </p>
+              </li>
+              <li>
+                <p class="Tbl_BodyCode">
+                  <code>JCSMPSession.addSubscription(...)</code>
+                </p>
+              </li>
+              <li>
+                <p class="Tbl_BodyCode">
+                  <code>JCSMPsession.removeSubscription(...)</code>
+                </p>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li>
+                <p class="Tbl_BodyCode">
+                  <code>Solclient.Allocator.newClientName(...)</code>
+                </p>
+              </li>
+              <li>
+                <p class="Tbl_BodyCode">
+                  <code>SessionHandle.subscribe(...)</code>
+                </p>
+              </li>
+              <li>
+                <p class="Tbl_BodyCode">
+                  <code>SessionHandle.unsubscribe(...)</code>
+                </p>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li>
+                <p class="Tbl_BodyCode">
+                  <code>solClient_session_endpointTopicSubscribe(...)</code>
+                </p>
+              </li>
+              <li>
+                <p class="Tbl_BodyCode">
+                  <code>solClient_session_endpointTopicUnsubscribe(...)</code>
+                </p>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <ul>
+              <li>
+                <p class="Tbl_BodyCode">
+                  <code>ContextFactory.CreateClientName(...)</code>
+                </p>
+              </li>
+              <li>
+                <p class="Tbl_BodyCode">
+                  <code>ISession.Subscribe(...)</code>
+                </p>
+              </li>
+              <li>
+                <p class="Tbl_BodyCode">
+                  <code>ISession.UnSubscribe(...)</code>
+                </p>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Not currently supported</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">JMS</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>Not currently supported</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-weight: bold;">Related Samples</p>
+    <p>For an example of how to use a subscriber manager client to add to a topic subscription on behalf of another client, see:</p>
+    <ul>
+      <li>
+        <p><a href="https://docs.solace.com/API-Developer-Online-Ref-Documentation/c/ex_2ios_2examples_2_subscribe_on_behalf_of_client_example_8m-example.html" class="link-offsite">SubscribeOnBehalfOfClientExample.m</a> for the C API</p>
+      </li>
+      <li>
+        <p><a href="https://github.com/SolaceSamples/solace-samples-javarto/blob/master/src/main/java/com/solace/samples/javarto/features/SubscribeOnBehalfOfClient.java" class="link-offsite">SubscribeOnBehalfOfClient.java</a> for the Java RTO API</p>
+      </li>
+      <li>
+        <p><a href="https://github.com/SolaceSamples/solace-samples-java-jcsmp/blob/master/src/main/java/com/solace/samples/jcsmp/features/SubscribeOnBehalfOfClient.java" class="link-offsite">SubscribeOnBehalfOfClient.java</a> for the JCSMP API</p>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Remove-Subs"/>Removing Subscriptions</h2>
+    <p>You can also set optional subscribe flags to control the behavior of the API call. (These flags are the same as their add subscription counterparts.)</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" cellspacing="0">
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">JCSMPsession.removeSubscription(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">SessionHandle.unsubscribe(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">solClient_session_topicUnsubscribeExt(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">ISession.UnSubscribe(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode">solace.Session.unsubscribe(...)</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-weight: bold;">Related Samples</p>
+    <p>For an example of how to remove Topic subscriptions, refer to the <code>DirectPubSub</code> sample for the Java, Java RTO, C, and .NET APIs, and the <code>TopicSubscriber</code> sample for the JavaScript and Node.js APIs.</p>
+  </body>
+</html>

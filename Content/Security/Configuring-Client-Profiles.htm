@@ -1,0 +1,402 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <meta name="description" content="Learn to perform a range of configuration tasks for Client Profiles."/>
+    <meta name="keywords" content="client profile"/>
+    <meta name="author" content="Solace Corporation"/>
+    <title>Configuring Client Profiles</title>
+  </head>
+  <body>
+    <h1>Configuring Client Profiles</h1>
+    <p>Client profiles are associated with client username accounts so that an administrator can easily apply common configurations to groups of clients.</p>
+    <p>To create a client profile, enter the following command:</p>
+    <p class="Code">solace(configure)# create client-profile &lt;name&gt; message-vpn &lt;vpn‑name&gt;</p>
+    <p>To edit an existing client profile, enter the following command:</p>
+    <p class="Code">solace(configure)# client-profile &lt;name&gt; message-vpn &lt;vpn-name&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the name of the client profile. A client profile name can contain up to 32 alphanumeric characters (case-sensitive). The “_” character is also permitted.</p>
+    <p><code>&lt;vpn-name&gt;</code> is the name of an existing Message VPN that the client profile is in.</p>
+    <p>The <code>no</code> version of this command, <code>no client-profile</code>, deletes the specified client profile, and client username that were associated with this profile are associated with the profile named <code>default</code>. The profile named <code>default</code> cannot be deleted.</p>
+    <div class="Caution">
+      <p class="Tbl_Body">Deleting a client profile results in changing the profiles of potentially many client username accounts back to the profile named <code>default</code>. This can cause unforeseen disruptions to customer service. To list all the clients using a particular client profile, enter the <code>show client-profile &lt;name&gt; detail</code> User EXEC command for the given client profile.</p>
+    </div>
+    <p>In this section we'll show you the various configuration tasks that can be performed on a client profile. Note that the parameters that are configured are applied to the client username accounts that are assigned the client profile.</p>
+    <h2 class="with-rule"><a name="allow-bridge-connections"/>Allowing Bridge Connections</h2>
+    <p>The Message VPN bridge feature allows for inter-connection between Message VPNs on Solace PubSub+ event brokers. By default, the Message VPN bridge feature is not available to clients—it must first be configured in the client’s profile on the event broker.</p>
+    <p>To permit clients using this client profile to use Message VPN bridging, enter the following command:</p>
+    <p class="Code">solace(configure/client-profile)# allow-bridge-connections</p>
+    <p>The no version of this command, <code>no allow-bridge-connections</code>, removes the permission to use Message VPN bridging from the client profile. Changing this permission during event broker operation does not affect existing sessions. It is only validated when client sessions are established.</p>
+    <h2 class="with-rule"><a name="Allowing-Shared-Subs"/>Allowing Shared Subscriptions</h2>
+    <p>Because allowing indiscriminate access to  MQTT and SMF shared subscriptions is a potential security issue (where a client could join a shared subscription and siphon off a portion of the traffic), you can configure whether or not specific clients can use  shared subscriptions. By default, clients are not permitted to use shared subscriptions.</p>
+    <p>To permit clients using this profile to use shared subscriptions, enter the following command:</p>
+    <p class="Code">solace(configure/client-profile)# allow-shared-subscriptions</p>
+    <p>The no version of this command, <code>no allow-shared-subscriptions</code>, removes the permission to use shared subscriptions from the client profile.</p>
+    <div class="Note">
+      <ul>
+        <li>Allowing shared subscriptions is an all or nothing setting. This means that clients permitted to use shared subscriptions are allowed to subscribe to all shared subscriptions in the Message VPN. If you want to control access to specific shared subscriptions, you can use an ACL to configure a list of share names that are permitted (or denied) and then associate it with a client profile. For more information, see <MadCap:xref href="Managing-Access-Control-Lists.htm#Configur">Configuring Share Name Subscribe Permissions</MadCap:xref>.</li>
+        <li>Web messaging clients do not support shared subscriptions.</li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="Allow-Bridge-Connect-Standby"/>Allowing Client Connects to Replication Standby VPNs</h2>
+    <p>To allow clients using the given client profile to connect to a Message VPN with a standby Replication state, enter the following commands for the client profile on the Message VPN that has an active Replication state:</p>
+    <p class="Code">solace(configure/client-profile)# replication<br/>solace(configure/client-profile/replication)# allow-clients-when-standby</p>
+    <p>The no version of this command, <code>no allow-clients-when-standby</code>, disallows clients from connecting to the Message VPN when it has a standby Replication state. By default, clients are not allowed to connect a Message VPN with a standby Replication state.</p>
+    <p>Also, to allow clients to consume messages from an endpoint in a Message VPN with a standby Replication state, you must also disable the propagation of acknowledgments (ack-propagation) for all endpoints from which the client will consume messages. For queues, see <MadCap:xref href="../Messaging/Guaranteed-Msg/Configuring-Queues.htm#Enabling">Enabling/Disabling Propagating Consumer Acks to Replicated VPNs</MadCap:xref>; for topic endpoints, see <MadCap:xref href="../Messaging/Guaranteed-Msg/Configuring-DTEs.htm#Enabling4">Enabling/Disabling Propagating Consumer Acks to Replicated VPNs</MadCap:xref>).</p>
+    <div class="Note">
+      <ul>
+        <li>When a Message VPN’s Replication state changes from active to standby, clients will not be disconnected if they are using a client profile that allows them to connect to a Message VPN with a standby Replication state. However, clients will be unbound from any endpoints that have the ack‑propagation feature enabled if the Replication state of Message VPN the endpoints are in changes to Replication standby. Also, when the Message VPN they are in changes to Replication standby, clients will be unbound from any endpoint if ack-propagation is enabled.</li>
+        <li>Clients connected to a Message VPN with a standby Replication state will get disconnected if the <code>allow‑clients-when-standby</code> option for client profile they are using is disabled.</li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="Config-Events-Gen"/>Configuring Client Events Generation</h2>
+    <p>To configure the conditions that cause client-related events to be generated for the given client profile, enter the following command:</p>
+    <p class="Code">solace(configure/client-profile)# event</p>
+    <p>The CLI moves to a level from which you can configure the set and clear thresholds at which client-related events are generated for clients using the given client profile. For information on how to set the high and low thresholds for generating the events, see <MadCap:xref href="../Monitoring/Configuring-Client-Event-Output-and-Thresholds.htm">Configuring Event Outputs and Thresholds</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Config-Max-Connects-Username"/>Configuring Max Connections Per Username</h2>
+    <p>For a given client profile you can configure the maximum permitted number of simultaneous client connections to the event broker that can be made using the same client username. This limit applies to client connections using any supported service type. That is, this limit applies to all client connections regardless of whether they use Solace Message Format (SMF), Web transport, REST, MQTT, and/or AMQP service.</p>
+    <p>To configure for the given client profile the maximum number of simultaneous client connections that can be made using the same client username account, enter the following command:</p>
+    <p class="Code">solace(configure/client-profile)# max-connections-per-client-username &lt;value&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is an integer value specifying the maximum number of simultaneous client connections that are permitted. Note that this value is not enforced, so it is possible for you to set a value that exceeds the maximum number of simultaneous connections supported by the type of event broker used. To view the supported limits for the event broker, enter the <code>show service</code> command.  </p>
+    <p>The no version of this command, <code>no max-connections-per-client-username</code>, resets the maximum number of client connections  back to the default value.</p>
+    <p class="Tip">You can also specifically limit the simultaneous client connections to the event broker that can be made using the same client username account according to whether they are SMF or Web clients. For more information, see the max-connections-per-client-username property for <MadCap:xref href="#Config-Max-SMF">Configuring Max SMF Connections</MadCap:xref> and <MadCap:xref href="#Max-Connects">Configuring Max Connections Per Client Username</MadCap:xref>, respectively.</p>
+    <h2 class="with-rule"><a name="Config-Max-Subscriptions"/>Configuring Max Permitted Subscriptions</h2>
+    <p>
+            When specifying the maximum number of subscriptions for a single client in the client profile, you should consider the total maximum number of permitted topic subscriptions and the total maximum number of client connections for the type of event broker that is used. That is, to ensure reliable system performance, you must find the right balance for your network, while staying within the system limits mentioned, between allowing the creation of many clients and allowing each client to add a large number of topic subscriptions. </p>
+    <p>To configure the maximum number of subscriptions permitted for a single client for the given client profile, enter the following command:</p>
+    <p class="Code">solace(configure/client-profile)# max-subscriptions &lt;value&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is an integer value specifying the maximum number of subscriptions. The valid range and default value depends on the type of event broker used.</p>
+    <p>The no version of this command, <code>no max-subscriptions</code>, resets the maximum number of subscriptions back to the default value.</p>
+    <h2 class="with-rule"><a name="Config-Guaranteed-Params"/>Configuring Guaranteed Messaging Parameters</h2>
+    <p>A Solace event broker provides a Guaranteed Messaging facility whereby the delivery of a message between two applications is guaranteed by the network even in cases where the receiving application is offline, or there is a failure of a piece of network equipment.</p>
+    <div class="Note">
+      <ul>
+        <li>On Solace PuSub+ appliances, Guaranteed Messaging is not available by default for clients—it must be configured in the client profile applied to the client username that the client uses.</li>
+        <li>On Solace PubSub+ software event brokers, Guaranteed Messaging is enabled by default for clients.</li>
+      </ul>
+    </div>
+    <h3><a name="Allow-G-Msg-Creates"/>Allowing Clients to Create Guaranteed Endpoints</h3>
+    <p>To permit clients assigned to a client profile to create queues or topic endpoints, enter the following commands:</p>
+    <p class="Code">solace(configure/client-profile)# message-spool<br/>solace(configure/client-profile/message-spool)# allow-guaranteed-endpoint-create</p>
+    <p>The no version of this command, <code>no allow-guaranteed-endpoint-create</code>, removes the permission to create queues or topic endpoints from the client profile. Changing this permission during event broker operation does not affect existing sessions. It is only validated at session establishment time.</p>
+    <p class="Note">
+            On a Solace PubSub+ appliance, by default, a client profile  does not permit clients to dynamically create endpoints. On a Solace PubSub+ software event broker, the default setting, on the default client profile for the default message VPN, is to permit clients to dynamically create endpoints.
+        </p>
+    <h3><a name="Specifyi"/>Specifying the Allowed Durability for Created Endpoints</h3>
+    <p>By default, if a client profile allows clients to create endpoints, they can create both durable and non-durable endpoints.  For more information about endpoint durability, refer to <MadCap:xref href="../Messaging/Guaranteed-Msg/Endpoints.htm#Endpoint_Durability">Endpoint Durability</MadCap:xref>.</p>
+    <p>To specify the durability of endpoints that clients assigned to a client profile can create, enter the following commands:</p>
+    <p class="Code">solace(configure/client-profile)# message-spool<br/>solace(configure/client-profile/message-spool)# allow-guaranteed-endpoint-create-durability {all | durable | non-durable}</p>
+    <p>
+      <u>Where:</u>
+    </p>
+    <p><code>all</code> specifies that a client associated with this client profile can create any type of endpoint. This is the default value.</p>
+    <p><code>durable</code> specifies that a client associated with this client profile can create only durable endpoints.</p>
+    <p><code>non-durable</code> specifies that a client associated with this client profile can create only non-durable endpoints.</p>
+    <p>The no version of this command  <code>no allow-guaranteed-endpoint-create-durability</code>, returns this setting to the default value.</p>
+    <p>Changing this permission during event broker operation does not affect existing sessions. It is only validated at session establishment time.</p>
+    <h3><a name="Allow-G-Msg-Receives"/>Allowing Clients to Receive Guaranteed Messages</h3>
+    <p>To permit clients assigned to a client profile to bind to topic endpoints or queues, enter the following commands:</p>
+    <p class="Code">solace(configure/client-profile)# message-spool<br/>solace(configure/client-profile/message-spool)# allow-guaranteed-message-receive</p>
+    <p>The no version of this command, <code>no allow-guaranteed-message-receive</code>, removes the permission to receive Guaranteed messages from the client profile. Changing this permission during event broker operation does not affect existing sessions. It is only validated at session establishment time.</p>
+    <p class="Note">
+            On a Solace PubSub+ appliance, by default, a client profile does not permit clients to bind to topic endpoints or queues and consume Guaranteed messages from those endpoints. On a Solace PubSub+ software event broker, the default setting, on the default client profile for the default message VPN, is to permit clients to bind to topic endpoints or queues and consume Guaranteed messages from those endpoints.
+        </p>
+    <h3><a name="All-G-Msg-Sends"/>Allowing Clients to Send Guaranteed Messages</h3>
+    <p> By default, client profiles do not permit clients to publish non-persistent or persistent messages (that is, Guaranteed messages).</p>
+    <p>To permit clients assigned to a client profile to send  non-persistent or persistent messages, enter the following commands:</p>
+    <p class="Code">solace(configure/client-profile)# message-spool<br/>solace(configure/client-profile/message-spool)# allow-guaranteed-message-send</p>
+    <p>The no version of this command, <code>no allow-guaranteed-message-send</code>, removes the permission to send Guaranteed messages from the client profile. Changing this permission during event broker operation does not affect existing sessions. It is only validated at session establishment time.</p>
+    <div class="Note">
+      <ul>
+        <li>
+            On PubSub+ appliances, client profiles  by default do not permit  publishing Guaranteed messages.</li>
+        <li> On PubSub+ software event brokers, the default setting on the default client profile for the default message VPN permits clients  to publish Guaranteed messages.
+</li>
+      </ul>
+    </div>
+    <div class="Caution">
+      <p class="Tbl_Body">For clients whose profiles allow guaranteed message sends, client connections   count against the <a href="../Monitoring/Configuring-VPN-M-Spool-Event-Thresholds.htm#montoring_and_management_1462237600_255543" class="link-internal">ingress flow threshold</a>, and therefore may cause events such as <code>SYSTEM_AD_MAX_INGRESS_FLOWS_EXCEEDED</code> to be generated.</p>
+      <p>For direct messaging clients, we recommend creating a separate client profile with <code>allow-guaranteed-message-send</code> disabled.</p>
+    </div>
+    <h3><a name="Allow-Trans-Sess"/>Allowing Transacted Sessions</h3>
+    <p>Transacted sessions (that is, local transacted sessions and/or XA Sessions) are supported by the Solace JMS, JCSMP, Java RTO, C, and .NET APIs messaging APIs. XA Sessions are only supported by the Solace JMS messaging API.</p>
+    <p>To permit clients assigned to a client profile to use transacted sessions, enter the following commands:</p>
+    <p class="Code">solace(configure/client-profile)# message-spool<br/>solace(configure/client-profile/message-spool)# allow-transacted-sessions</p>
+    <p>The no version of this command, <code>no allow-transacted-sessions</code>, removes the permission to use transacted sessions from the client profile.</p>
+    <div class="Note">
+      <ul>
+        <li>Changing this value during operation does not affect transacted sessions currently in progress.</li>
+        <li>On a Solace PubSub+ appliance, by default, a client profile does not permit clients to use transacted sessions. On a Solace PubSub+ software event broker, the default setting, on the default client profile for the default message VPN, is to permit clients to use transacted sessions.</li>
+      </ul>
+    </div>
+    <h3><a name="Config-Defaults-for-Endpoints"/>Configuring Initial Values for Client-Created Endpoints</h3>
+    <p>When a client using a Solace messaging API dynamically creates an endpoint on an event broker, its configuration is determined first by those endpoint properties and provision flags that the client may provide with a queue or topic endpoint create API function or method (refer to <MadCap:xref href="../API/API-Developer-Guide/Receiving-Guaranteed-Messages.htm">Receiving Guaranteed Messages</MadCap:xref> for Solace enterprise messaging APIs). Any remaining endpoint parameters to be configured are then filled by the values used for queues or topic endpoints that an administrator can provide through the Solace CLI. </p>
+    <p><MadCap:xref href="../Messaging/Guaranteed-Msg/Endpoint-Templates.htm">Endpoint Templates</MadCap:xref> can be used to specify custom attributes for client created endpoints based upon the endpoint name. Any configurable values associated with the endpoint template will be applied to client created endpoints. Administrators can choose which client created queues use specific endpoint templates through two mechanisms:</p>
+    <ul>
+      <li>Endpoint Templates have a <code>name-filter</code> that allows them to match an endpoint name to an endpoint template. This allows client created queues or topic endpoints the ability to dynamically copy attributes from the specified endpoint template. Refer to <MadCap:xref href="../Messaging/Guaranteed-Msg/Configuring-Endpoint-Templates.htm#Setting">Setting Name Filters to Match Queue Names </MadCap:xref>or <MadCap:xref href="../Messaging/Guaranteed-Msg/Configuring-Endpoint-Templates.htm#Setting19">Setting Name Filters to Match Topic Endpoint Names</MadCap:xref> for more information.</li>
+      <li> Client Profiles have an optional <code>copy-from-template-on-create</code> command that can be used to copy custom values from endpoint templates to client created endpoints. However, if no customized endpoint template to be copied is explicitly set, the system defaults for CLI‑provisioned endpoints are used. To set initial values for client-created endpoints, see <MadCap:xref href="#Config-Default-Queue-Values">Configuring Initial Values for Client-Created Queues</MadCap:xref> or <MadCap:xref href="#Config-Default-DTE-Values">Configuring Initial Values for Client-Created Topic Endpoints</MadCap:xref>.<br/>For event brokers before the 9.4.0 release, use the <code>copy-from-on-create</code> command to specify a CLI‑provisioned queue or topic endpoint with custom values, and those values will be applied to any new client‑created endpoints.</li>
+    </ul>
+    <p class="Note">A client application may only dynamically create durable and non-durable/temporary queues or topic endpoints on the event broker if it uses a client profile that has the <code>allow-guaranteed-endpoint-create</code> parameter enabled (refer to <MadCap:xref href="#Allow-G-Msg-Creates">Allowing Clients to Create Guaranteed Endpoints</MadCap:xref>).</p>
+    <h4><a name="Config-Default-Queue-Values"/>Configuring Initial Values for Client-Created Queues</h4>
+    <p>To set a CLI-provisioned queue template that all new client‑created queues will copy their configuration parameter values from, enter the following commands:</p>
+    <p class="Code" xml:space="preserve">solace(configure/client-profile)# message-spool<br/>solace(configure/client-profile/message-spool)# api-queue-management<br/>solace(...le/message-spool/api-queue-management)# copy-from-template-on-create &lt;queue-template-name&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;queue-template-name&gt;</code> is the name of a queue template provisioned on the given Message VPN whose parameter values will be used for any new client-created queues.</p>
+    <p>The no version of this command, <code>no copy-from-template-on-create</code>, resets the default setting, which is that the default event broker queue parameter values will be used for any new client-created queues.</p>
+    <h4><a name="Config-Default-DTE-Values"/>Configuring Initial Values for Client-Created Topic Endpoints</h4>
+    <p>To set a CLI-provisioned topic endpoint template that all new client‑created topic endpoints will copy their configuration parameter values from, enter the following commands:</p>
+    <p class="Code">solace(configure/client-profile)# message-spool<br/>solace(configure/client-profile/message-spool)# api-topic-endpoint-management<br/>solace(...e-spool/api-topic-endpoint-management)# copy-from-template-on-create &lt;topic-endpoint-template-name&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;topic-endpoint-template-name&gt;</code> is the name of a topic endpoint template provisioned on the given Message VPN whose parameter values will be used for any new client-created topic endpoints.</p>
+    <p>The no version of this command, <code>no copy-from-template-on-create</code>, resets the default setting, which is that the default event broker topic endpoint parameter values will be used for any new client-created topic endpoints.</p>
+    <h3><a name="Config-Max-Egress"/>Configuring the Max Egress Flows Permitted</h3>
+    <p>To configure the maximum number of egress flows (that is, Guaranteed message client receive flows or consumer flows) that can be created by a single client associated with this client profile, enter the following commands:</p>
+    <p class="Code">solace(configure/client-profile)# message-spool<br/>solace(configure/client-profile/message-spool)# max-egress-flows &lt;value&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt; </code>specifies the maximum number of egress flows that a client associated with the client profile can create. The valid range and default value depends on the type of Solace PubSub+ event broker used. </p>
+    <p>The no version of this command, <code>no max-egress-flows</code>, resets the maximum number of egress flows allowed for a client back to the default value.</p>
+    <h3><a name="Config-Max-Endpoints"/>Configuring the Max Endpoints Permitted Per Client Username</h3>
+    <p>There is a maximum number of durable and non-durable queues and topic endpoints that can be owned by the clients using the same client username within a client profile. A client username is the owner of an endpoint when a client with that username dynamically creates an endpoint through an API call. You can also assign an owner to a durable endpoint through the Solace CLI (refer to <MadCap:xref href="../Messaging/Guaranteed-Msg/Configuring-Queues.htm#Configur18">Configuring Queue Owners</MadCap:xref> or <MadCap:xref href="../Messaging/Guaranteed-Msg/Configuring-DTEs.htm#Configur29">Configuring Topic Endpoint Owners</MadCap:xref>).</p>
+    <p>To configure the maximum number of durable and non-durable queues and topic endpoints that can be owned by clients using the same client username associated with a client profile, enter the following commands:</p>
+    <p class="Code">solace(configure/client-profile)# message-spool<br/>solace(configure/client-profile/message-spool)# max-endpoints-per-client-username &lt;value&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> specifies the maximum number of queues and topic endpoints that a client username associated with the given client profile can be the owner of. The valid range and default value depends on the type of Solace PubSub+ event broker used. </p>
+    <p>The no version of this command, <code>no max-endpoints-per-client-username</code>, resets the maximum number of endpoints per client username value back to the default.</p>
+    <h3><a name="Config-Max-Ingress"/>Configuring the Max Ingress Flows Permitted</h3>
+    <p>To configure the maximum number of ingress flows (that is, Guaranteed message client publish flows) that can be created by a single client associated with this client profile, enter the following commands:</p>
+    <p class="Code">solace(configure/client-profile)# message-spool<br/>solace(configure/client-profile/message-spool)# max-ingress-flows &lt;value&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> specifies the maximum number of ingress flows that a client associated with the client profile can create. The valid range and default value depends on the type of Solace PubSub+ event broker used. </p>
+    <p>The no version of this command, <code>no max-ingress-flows</code>, resets the maximum number of ingress flows allowed for a client back to the default value.</p>
+    <h3><a name="Config-Max-Transacts"/>Configuring the Max Number of Transactions</h3>
+    <p>To configure the total maximum number of simultaneous transactions (both local transactions and transactions within XA transaction branches) allowed for a single client associated with this client profile, enter the following commands:</p>
+    <p class="Code">solace(configure/client-profile)# message-spool<br/>solace(configure/client-profile/message-spool)# max-transactions &lt;value&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is an integer value specifying the maximum number of transactions allowed per client associated with the given client profile. The valid range and default value depends on the type of Solace PubSub+ event broker used. </p>
+    <p>The no version of this command, <code>no max-transactions</code>, resets the total maximum number of simultaneous transactions back to the default value.</p>
+    <h3><a name="Config-Max-Messages-Per-Transaction"/>Configuring the Max Number of Messages Per Transaction</h3>
+    <p>By default, a client can publish and/or consume up to a combined maximum of 256 Guaranteed messages in a single transaction.  Exceeding this limit will result in a transaction prepare or commit failure. To configure how many messages a client can use in a transaction, enter the following commands:</p>
+    <div class="Caution">
+      <p>Changing the maximum number of messages per transaction is a Controlled Availability (CA) feature and should only be used under the supervision of Solace support. </p>
+      <p>Currently, this configuration option is not available for use in <MadCap:variable name="Product-Names.cloud_product_short"/>. </p>
+    </div>
+    <p class="Code">solace(configure/client-profile)# message-spool<br/>solace(configure/client-profile/message-spool)# max-messages-per-transaction &lt;value&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is an integer value specifying the maximum number of messages per transaction allowed per client associated with the given client profile. The valid range is 1 to 20000. The default is 256. Changing this value during operation will not affect existing sessions. It is only validated at transaction creation time. </p>
+    <p>The no version of this command, <code>no max-messages-per-transaction</code>, resets the maximum number of messages per transaction  allowed per client by the client profile back to the default value (256).</p>
+    <div class="Caution">
+      <p>Large transactions consume additional resources and are more likely to require retrieving messages from the ADB or from disk to process the transaction prepare or commit requests. The transaction processing rate may diminish if a large number of messages must be retrieved this way. Do not use excessively large transactions needlessly to avoid exceeding resource limits and  reducing the overall broker performance.</p>
+    </div>
+    <p>Use of large transactions makes the PubSub+ broker more susceptible to transaction resource exhaustion. You can use the following Syslog events to monitor whether the resources needed to track messages that are part of uncompleted transactions are at a healthy level:</p>
+    <ul>
+      <li>
+        <p>SYSTEM_AD_TRANSACTED_SESSION_RESOURCE_UTILIZATION_EXCEEDED</p>
+      </li>
+      <li>
+        <p>SYSTEM_AD_TRANSACTED_SESSION_RESOURCE_UTILIZATION_HIGH</p>
+      </li>
+      <li>
+        <p>SYSTEM_AD_TRANSACTED_SESSION_RESOURCE_UTILIZATION_HIGH_CLEAR</p>
+      </li>
+    </ul>
+    <p>For more information about these events, see <MadCap:xref href="../Admin-Ref/Solace-PubSub-Event-Reference/event_ref_boiler.html">Solace PubSub+ Syslog Events</MadCap:xref>.</p>
+    <p>To view the percentage of such resources available, see the <code>Transacted Session Resource Utilization</code> field in the output of the <code>show message-spool</code> command. For more information about the <code>show message-spool</code> output fields, see <MadCap:xref href="../Messaging/Guaranteed-Msg/Monitoring-Guaranteed-Messaging.htm#Viewing-msg-spool-info">Message Spool Information</MadCap:xref>.</p>
+    <h3><a name="Max-Transacted-Sess"/>Configuring the Max Number of Transacted Sessions</h3>
+    <p>To configure the maximum number of simultaneous transacted sessions and/or XA Sessions allowed for a single client associated with this client profile, enter the following commands:</p>
+    <p class="Code">solace(configure/client-profile)# message-spool<br/>solace(configure/client-profile/message-spool)# max-transacted-sessions &lt;value&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the integer value specifying the maximum number of transacted sessions allowed per client. The valid range and default value depends on the type of Solace PubSub+ event broker used. </p>
+    <p>The no version of this command, <code>no max-transacted-sessions</code>, resets the maximum number of transacted sessions allowed per client by the client profile back to the default value.</p>
+    <h3><a name="Configur"/>Handling Guaranteed Messages with No Matches</h3>
+    <p>When Guaranteed messages are published, and there are no Guaranteed subscriptions on the event broker that match the messages’ topics, the event broker can either:</p>
+    <ul>
+      <li>Return negative acknowledgments (that is, “Nacks”) to the publishers to indicate that there are no matching Guaranteed subscriptions for the messages. Messages published to unknown queue names are always Nacked.</li>
+      <li>Silently discard the messages (that is, no Nacks are returned to the publishers). This is the default action.</li>
+    </ul>
+    <p>To configure that Nacks should be returned for published Guaranteed messages that do not have Guaranteed message subscription matches, enter the following commands:</p>
+    <p class="Code">solace(configure/client-profile)# message-spool<br/>solace(configure/client-profile/message-spool)# reject-msg-to-sender-on-no-subscription-match</p>
+    <p class="Note">Even if a Nack is returned to the publisher, it will still be delivered to any clients that have Direct subscriptions to the topic.</p>
+    <p>To restore the default action, that published Guaranteed messages should be silently discarded when there are no Guaranteed subscription matches, enter the <code>no</code> version of the command:</p>
+    <p class="Code">solace(configure/client-profile/message-spool)# no reject-msg-to-sender-on-no-subscription-match</p>
+    <h2 class="with-rule"><a name="Config-Egress-Queues"/>Configuring Egress Priority Queues</h2>
+    <p>Refer to <MadCap:xref href="../Messaging/Managing-Event-Delivery-Resources.htm">Managing Message Delivery Resources</MadCap:xref> for details on the <code>queue</code> Client Profile CONFIG command and general information on how to configure and monitor egress per-client priority queues.</p>
+    <h2 class="with-rule"><a name="Config-Services"/>Configuring Services</h2>
+    <p>To set the configuration parameters for the given Message VPN for the types of services offered to clients using the given client profile, enter the following commands:</p>
+    <p class="Code">solace(configure/client-profile)# service</p>
+    <p>The CLI is now at a level where you can configure service settings for the given client profile for the following service types:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Configur4">Configuring Minimum Keepalive Timeout</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Config-Max-SMF">Configuring Max SMF Connections</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Enabling">Enabling Minimum Keepalive Timeout for SMF Connections</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Config-Web-Services">Configuring Web Transport Services</MadCap:xref>
+      </li>
+    </ul>
+    <p class="Tip">
+           Once you have configured appropriate services, you can view the maximum number of client connections that the Solace event broker can supported, enter the <code>show service</code> User EXEC command.       </p>
+    <h3><a name="Configur4"/>Configuring a Minimum Keepalive Timeout</h3>
+    <p>Solace PubSub+ supports keepalives for SMF and MQTT clients. Clients of this type declare a keepalive interval during  login that defines an upper limit for allowed periods of inactivity on the connection to the broker.  The broker uses this interval to derive a timeout value (in seconds) that defines the longest acceptable period of inactivity on a client connection before the broker disconnects.</p>
+    <p>The keepalive timeout value is calculated based on the client provided timeout interval (3 x the keepalive interval for SMF, 1.5 x the keepalive interval for MQTT). For the given client profile, you can choose to impose a minimum timeout value in seconds.  The effective timeout value for a client then becomes the greater value between the client derived timeout value, and the one you configure.</p>
+    <p class="Note">Clients that explicitly disable keepalives during login are not subject to this minimum, and will never be disconnected by the broker due to inactivity.</p>
+    <p>To configure the minimum keepalive value, enter the following commands:</p>
+    <p class="Code">solace(configure/client-profile/service)# min-keepalive-timeout &lt;seconds&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;seconds&gt;</code> is the minimum  period of time (in seconds) that the PubSub+ broker will tolerate inactivity on a client connection. The valid range is from 3 to 3600. The default is 30.</p>
+    <p class="Note">We recommend that you set the minimum keepalive timeout to at least 10 seconds. This is to prevent applications being disconnected from the broker because of events outside of the broker's control, such as a brief loss of network connectivity, or a Solace API not getting sufficient CPU time due to load on the server hosting the application (for example, while garbage collection is occurring in a JVM).</p>
+    <h3><a name="Config-Max-SMF"/>Configuring Max SMF Connections</h3>
+    <p>Solace PubSub+ uses the Solace Message Format (SMF) as its underlying messaging transport protocol.</p>
+    <p> For the given client profile, you can configure the maximum permitted number of simultaneous SMF client connections to the event broker that can be made using the same client username account.</p>
+    <p>To configure the maximum number of simultaneous SMF client connections, enter the following commands:</p>
+    <p class="Code">solace(configure/client-profile/service)# smf<br/>solace(configure/client-profile/service/smf)# max-connections-per-client-username &lt;value&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the maximum number of simultaneous SMF client connections permitted. To view the maximum total number of SMF client connections that the Solace PubSub+ event broker can support, enter the <code>show service</code> User EXEC command. The valid range depends on the type of Solace PubSub+ event broker used. </p>
+    <p>The no version of the command, <code>no max-connections-per-client-username</code>, resets the max-connections-per-client-username value to the default value, which is the maximum total number of SMF client connections that the event broker can support.</p>
+    <h3><a name="Enabling"/>Enabling a Minimum Keepalive Timeout for SMF Connections</h3>
+    <p>To enforce a minimum keepalive timeout  for SMF clients, enter the following command:</p>
+    <p class="Code">solace(configure/client-profile/service/smf)# min-keepalive-enabled</p>
+    <p>The no version of this command, <code>no min-keepalive-enabled</code>, prevents the broker from enforcing a minimum keepalive timeout on SMF connections.</p>
+    <h3><a name="Config-Web-Services"/>Configuring Web Transport Services</h3>
+    <p>To configure specific Web transport service settings for the given client profile, enter the following commands:</p>
+    <p class="Code">solace(configure/client-profile)# service web-transport</p>
+    <p>The CLI is now at a configuration mode that allows you to specify the following Web transport service parameters:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Config-Inactive-Timeouts">Configuring Inactivity Timeouts</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Max-Connects">Configuring Max Connections Per Client Username</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Config-Max-Web-Payload">Configuring Max Web Payloads</MadCap:xref>
+      </li>
+    </ul>
+    <h4><a name="Config-Inactive-Timeouts"/>Configuring Inactivity Timeouts</h4>
+    <p>To configure the number of seconds a Web client has to send a request before its session will timeout (that is, will be terminated) for being inactive, enter the following command:</p>
+    <p class="Code">solace(.../client-profile/web-transport)# inactive-timeout &lt;seconds&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;seconds&gt;</code> is the number of seconds a Web client has to send a request or have its session timeout for being inactive. The valid range is 1 to 4294967295. The default value is 30.</p>
+    <p>The no version of this command, <code>no inactive-timeout</code>, resets the duration back to the default value.</p>
+    <h4><a name="Max-Connects"/>Configuring Max Web Transport Connections Per Username</h4>
+    <p>To configure for the given client profile the maximum permitted number of simultaneous Web transport client connections to the event broker that can be made using the same client username account, enter the following command:</p>
+    <p class="Code">solace(.../client-profile/web-transport)# max-connections-per-client-username &lt;value&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the maximum number of simultaneous Web transport client connections permitted. The valid range depends on the type of Solace PubSub+ event broker used. To view the maximum total number of Web client connections that the event broker can support, as determined by the type of event broker used, enter the <code>show service</code> User EXEC command. </p>
+    <p>The no version of the command, <code>no max-connections-per-client-username</code>, resets the max connections per client username value to the default value, which is the maximum total number of Web client connections that the event broker can support.</p>
+    <h4><a name="Config-Max-Web-Payload"/>Configuring Max Web Payloads</h4>
+    <MadCap:snippetBlock src="../Resources/Snippets/configuring-max-web-payloads.flsnp"/>
+    <p>To configure the maximum number of bytes allowed in a single Web transport message, enter the following command:</p>
+    <p class="Code">solace(.../client-profile/web-transport)# max-web-payload &lt;bytes&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;bytes&gt;</code> is the maximum number of bytes allowed in each Web transport message payload. The valid range is 300 to 10000000. The default value is 1000000.</p>
+    <p>The no version of this command, <code>no max-web-payload</code>, resets the maximum back to default.</p>
+    <h2 class="with-rule"><a name="Config-Client-TCP"/>Configuring Client TCP Settings</h2>
+    <p>To configure the TCP settings for the given client profile, enter the following command:</p>
+    <p class="Code">solace(configure/client-profile)# tcp</p>
+    <p>The CLI is now at a level from which you can configure the following client-to-event broker TCP settings:</p>
+    <ul>
+      <li>TCP Initial Congestion Window Sizes</li>
+      <li>TCP Keepalives</li>
+      <li>TCP Maximum Segment Sizes</li>
+      <li>TCP Maximum Window Sizes</li>
+    </ul>
+    <p>For details on how to set these client-to-event broker TCP settings, see <MadCap:xref href="../Services/Configuring-TCP-Settings.htm">Configuring TCP Settings.</MadCap:xref></p>
+    <h2 class="with-rule"><a name="Configuring-Eliding"/>Configuring Message Eliding</h2>
+    <p>Eliding allows you to define   a custom per-topic rate for client applications so they can effectively consume relevant messages, rather than queuing up outdated messages. For example, when eliding is configured, clients could receive Direct messages for their topic subscriptions at a rate of at most 5 per second per topic even though the source is publishing updates at much higher rates.</p>
+    <p class="Note">Message eliding is not supported on Solace PubSub+ appliances that use a Network Acceleration Blade-0401EM (NAB-0401EM). This NAB model does not support message eliding.</p>
+    <p>To configure the given client profile to use message eliding, enter the following command:</p>
+    <p class="Code">solace(configure/client-profile)# eliding</p>
+    <p>The CLI is now at a level from you can configure message eliding parameters and start or stop message eliding for the client profile:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#managing_client_authentication_and_authorization_21734666_222722">Configuring Message Delay Intervals</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#managing_client_authentication_and_authorization_21734666_225859">Configuring the Maximum Number of Topics to Elide</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#managing_client_authentication_and_authorization_21734666_222825">Starting/Stopping Message Eliding</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="managing_client_authentication_and_authorization_21734666_222722"/>Configuring Message Delay Intervals</h3>
+    <p>To configure the amount of time to delay the delivery of messages to a client after the initial message has been delivered, enter the following command:</p>
+    <p class="Code">solace(configure/client-profile/eliding)# delay &lt;milliseconds&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;milliseconds&gt;</code> is a delay time interval in milliseconds. This delay interval controls on a topic-by-topic basis the rate of message updates sent to a client. The valid range is 0 to 60000. The default is 0 (no delay).</p>
+    <p>The no version of this command, <code>no delay</code>, resets the delay back to default value.</p>
+    <h3><a name="managing_client_authentication_and_authorization_21734666_225859"/>Configuring the Maximum Number of Topics to Elide</h3>
+    <p>To configure the maximum number of topics the event broker can track for performing the eliding function on each client connection, enter the following command:</p>
+    <p class="Code">solace(configure/client-profile/eliding)# max-topics &lt;num&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;num&gt;</code> is the maximum number of topics that can be tracked for eliding. Once this maximum number is reached, the event broker clears the elided topics for the client to prevent consuming more eliding resources than have been allocated for the connection, and a one-time Syslog event is generated on a per-client basis. The topics of any subsequent messages that are received are then tracked for eliding again. The valid range is 1 to 32000. The default is 256.</p>
+    <p>The no version of this command, <code>no max-topics</code>, resets the maximum number of topics to default.</p>
+    <p class="Note">
+           Any messages that are received on a topic that was tracked before exceeding the maximum is regarded as a message published to a new topic. The “new” topic is tracked again, and a message for that topic is sent immediately. The result is that two messages may be sent for an elided topic: one message is sent before the eliding maximum is reached, another is sent after the eliding maximum is reached and a new eliding topic tracking period begins.
+        </p>
+    <h3><a name="managing_client_authentication_and_authorization_21734666_222825"/>Starting/Stopping Message Eliding</h3>
+    <p>By default message eliding is disabled on client profiles.</p>
+    <ul>
+      <li>To start message eliding for clients using the given client profile, enter the following command:
+                <p class="Code">solace(configure/client-profile/eliding)# no shutdown</p></li>
+      <li>To stop messaging eliding for clients using the given client profile, enter the following command:
+                <p class="Code">solace(configure/client-profile/eliding)# shutdown</p></li>
+    </ul>
+    <h2 class="with-rule"><a name="Configur3"/>Configuring Downgrade to Plain-Text</h2>
+    <p>To allow clients which support the option to downgrade their connections to plain-text, enter the following commands:</p>
+    <p class="Code">solace(configure/client-profile)# ssl<br/>solace(configure/client-profile/ssl)# allow-downgrade-to-plain-text</p>
+    <p>The command allows downgrading to both <code>{plaintext, compressed}</code> and <code>{plain-text, uncompressed}</code>.</p>
+    <p> By default, clients are allowed to downgrade their connections to plain-text. </p>
+    <p>The no version of this command, <code>no allow-downgrade-to-plain-text</code>, prevents clients from downgrading their connections to plain-text.</p>
+    <h2 class="with-rule"><a name="Configur2"/>Disabling Compression</h2>
+    <p>By default, clients are allowed to transfer data using compression. To disable this ability, enter the following commands:</p>
+    <p class="Code">solace(configure/client-profile)# compression<br/>solace(configure/client-profile/compression)# shutdown</p>
+    <p>Disabling compression means:</p>
+    <ul>
+      <li>Not allowing plain-text compressed SMF connections.</li>
+      <li>No SSL client negotiation to <code>{secure, compressed}</code>.</li>
+      <li>No SSL client negotiation to <code>{plain-text, compressed}</code>.</li>
+      <li>No bridging with compressed traffic.</li>
+    </ul>
+    <p>The no version of this command, <code>no shutdown</code>, restores data transfer with compression.</p>
+    <h2 class="with-rule"><a name="Config-Usernames-Example"/>Configuring Client Username Accounts Example</h2>
+    <p>This example shows how to:</p>
+    <ul>
+      <li>Create client username accounts (<code>pascal</code>) in separate Message VPNs (<code>blue</code> and <code>red</code>)</li>
+      <li>Create client profiles (<code>Sales_Access</code>) in both Message VPNs</li>
+      <li>Assign those client profiles to the client username accounts</li>
+      <li>Activate the client username accounts for service</li>
+    </ul>
+    <ol>
+      <li>Create the Message VPN <code>blue</code>:            
+			<p class="Code">solace&gt; enable<br/>solace# configure<br/>solace(configure)# create message-vpn blue<br/>solace(configure/message-vpn)# exit</p></li>
+      <li>Create the Message VPN <code>red</code>:
+        <p class="Code">solace(configure)# create message-vpn red<br/>solace(configure/message-vpn)# exit</p></li>
+      <li>Create the client username account <code>pascal</code> in Message VPN <code>blue</code>:        <p class="Code">solace(configure)# create client-username pascal message-vpn blue<br/>solace(configure/client-username)# exit</p></li>
+      <li>Create the client username account <code>pascal</code> in Message VPN <code>red</code>:        <p class="Code">solace(configure)# create client-username pascal message-vpn red<br/>solace(configure/client-username)# exit</p></li>
+      <li>Enter the following show command on the client username accounts <code>pascal</code> to confirm their creation:
+        <p class="Code">solace(configure)# show client-username pascal message-vpn *</p></li>
+      <li>Create the client profile <code>Sales_Access</code> in Message VPN <code>blue</code>:        <p class="Code">solace(configure)# create client-profile Sales_Access message-vpn blue<br/>solace(configure/client-profile)# exit</p></li>
+      <li>Create the client profile <code>Sales_Access</code> in Message VPN <code>red</code>:        <p class="Code">solace(configure)# create client-profile Sales_Access message-vpn red<br/>solace(configure/client-profile)# exit</p></li>
+      <li>Enter the following show command on the client profile <code>Sales_Access</code> to confirm its creation and configuration.
+                <p class="Code">solace(configure)# show client-profile Sales_Access detail</p></li>
+      <li>Assign client profile <code>Sales_Access</code> to the client username account <code>pascal</code> in Message VPN <code>blue</code>:            <p class="Code">solace(configure)# client-username pascal message-vpn blue<br/>solace(configure/client-username)# client-profile Sales_Access<br/>solace(configure/client-username)# exit</p></li>
+      <li>Assign client profile <code>Sales_Access</code> to the client username account <code>pascal</code> in Message VPN <code>red</code>:
+            <p class="Code">solace(configure)# client-username pascal message-vpn red<br/>solace(configure/client-username)# client-profile Sales_Access<br/>solace(configure/client-username)# exit</p></li>
+      <li>Enter the following show command to confirm the client username accounts have been assigned to client profile <code>Sales_Access</code>:
+            <p class="Code">solace(configure)# show client-username pascal detail</p></li>
+      <li>Activate the client username account <code>pascal</code> in Message VPN <code>blue</code> for service:
+			<p class="Code">solace(configure)# client-username pascal message-vpn blue<br/>solace(configure/client-username)# no shutdown<br/>solace(configure/client-username)# exit</p></li>
+      <li>Activate the client username account <code>pascal</code> in Message VPN <code>red</code> for service:
+            <p class="Code">solace(configure)# client-username pascal message-vpn red<br/>solace(configure/client-username)# no shutdown<br/>solace(configure/client-username)# exit</p></li>
+      <li>Enter the following show command to confirm the client username accounts’ activation:
+            <p class="Code">solace(configure)# show client-username pascal message-vpn *</p><p class="Code">Username                        Message VPN                 Enabled # Clients<br/>------------------------------- --------------------------- -------  --------<br/>pascal                          blue                            Yes         0<br/>pascal                          red                             Yes         0<br/></p></li>
+      <li>To activate the Message VPNs <code>blue</code>, <code>red</code>, and <code>default</code> for service, go to <MadCap:xref href="../Features/VPN/CLI-Sequence-VPN-to-C-Profiles.htm">CLI Sequence for Setting Up VPNs With Client Profiles</MadCap:xref>.</li>
+    </ol>
+  </body>
+</html>

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Software"/>Rootless Podman for Ubuntu</h1>
+    <p>This section walks you through the steps to set up a single PubSub+ <MadCap:variable name="Product-Names.broker_sw_short"/> container with Podman   in a non-cloud Ubuntu environment.
+</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#before-you-begin">Before You Begin</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#get-a-pubsub-software-event-broker">Step 1: Get a PubSub+ Software Event Broker </MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#create-the-container">Step 2: Create the Container</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#manage-the-pubsub-software-event-broker">Step 3: Manage the PubSub+ Software Event Broker</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#next-steps">Next Steps</MadCap:xref>
+      </li>
+    </ul>
+    <p>For information about working with rootless containers, see <MadCap:xref href="../../Container-Tasks/rootless-containers.htm">Rootless Containers</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="before-you-begin"/>Before You Begin</h2>
+    <p>It's assumed that you have a stable version of Ubuntu with Podman installed.
+</p>
+    <h3><a name="system-requirements"/>System Requirements</h3>
+    <MadCap:snippetBlock src="../../../Resources/Snippets/System-Requirements-Container-Images.flsnp"/>
+    <h2 class="with-rule"><a name="get-a-pubsub-software-event-broker"/>Step 1: Get a PubSub+ Software Event Broker </h2>
+    <p>Rootless Podman is supported for PubSub+ <MadCap:variable name="Product-Names.broker_sw_short"/> <MadCap:variable name="Minimum-Supported-Component-Versions.Solace .NET Messaging API"/>. Please select a version that is 10.1 or higher.</p>
+    <p>To pull an event broker image from the Docker repository, run this command: </p>
+    <pre xml:space="preserve">
+podman pull docker.io/solace/solace-pubsub-standard:edge</pre>
+    <MadCap:snippetBlock src="../../../Resources/Snippets/container-ubuntu-linux-download-instance.flsnp"/>
+    <p>After you've obtained the package, load the image to the local Podman registry by running the following command:</p>
+    <pre xml:space="preserve">$ podman load -i solace-pubsub-&lt;edition&gt;-&lt;version&gt;-docker.tar.gz</pre>
+    <h2 class="with-rule"><a name="create-the-container"/>Step 2: Create the Container</h2>
+    <p>There are a few setups that you can implement with the <code>podman create</code> or <code>podman run</code> commands (both of which pull from the Docker Hub) to build an event broker container. The following example illustrates a simple configuration that is suitable for a test deployment.</p>
+    <p>This example:</p>
+    <ul>
+      <li> runs an event broker <code>solace</code> using the <code>latest</code> PubSub+ Standard image from Docker Hub</li>
+      <li>creates an <code>admin</code> user with global access permissions</li>
+      <li> publishes the following event broker container ports to the same ports on the Ubuntu host:<MadCap:snippetBlock src="../../../Resources/Snippets/container-ubuntu-linux-ports.flsnp"/></li>
+    </ul>
+    <p>In this example, the <code><a href="../../Configuring-Storage.htm#understanding-storage-group" class="link-internal">storage-group</a></code> (mapped to <code>/var/lib/solace</code> in the container) is bind-mounted to <code>/home/&lt;user-name&gt;/storage-group</code> on the host. </p>
+    <MadCap:snippetBlock src="../../../Resources/Snippets/container-ubuntu-linux-storage.flsnp"/>
+    <p>You must create a directory called <code>storage-group</code> in the user's home directory for the bind mount, and then run <code>chown</code> with <code>podman unshare</code> to give the container user access to the directory. To do this, run the following commands:</p>
+    <pre xml:space="preserve">mkdir /home/&lt;user-name&gt;/storage-group
+podman unshare chown 1000:0 -R /home/&lt;user-name&gt;/storage-group</pre>
+    <p>To run the container, run the following command:</p>
+    <pre xml:space="preserve">podman run -d -u 1000 -p 8080:8080 -p 55555:55555 --shm-size=1g \
+--env username_admin_globalaccesslevel=admin \
+--env username_admin_password=admin --name=solace \
+--net slirp4netns:port_handler=slirp4netns \
+--mount type=bind,source=/home/&lt;user-name&gt;/storage-group,destination=/var/lib/solace,relabel=private,ro=false \
+docker.io/solace/solace-pubsub-standard:edge</pre>
+    <div class="Note">
+      <ul>
+        <li>This example assumes that you are  starting the container with UID 1000. </li>
+        <li>If you loaded the image from a compressed tar archive, replace <code>docker.io/solace/solace-pubsub-standard</code> in the example with the repository and tag that corresponds to your image. For example, if you loaded version 10.1.0.19 of the PubSub+ Enterprise edition, use <code>solace-pubsub-enterprise:10.1.0.19</code>.</li>
+      </ul>
+    </div>
+    <p>After the container is created, create a systemd unit file to manage container starts, stops, and restarts:</p>
+    <pre xml:space="preserve">podman generate systemd --restart-policy=always -t 1200 solace &gt; ~/.config/systemd/user/solace.service
+systemctl --user enable solace.service
+loginctl enable-linger &lt;username&gt;
+systemctl --user start solace.service</pre>
+    <p>For more information, see  <a href="https://docs.podman.io/en/latest/markdown/podman-generate-systemd.1.html" class="link-offsite">Podman Documentation</a>.</p>
+    <h2 class="with-rule"><a name="manage-the-pubsub-software-event-broker"/>Step 3: Manage the PubSub+ Software Event Broker</h2>
+    <MadCap:snippetBlock src="../../../Resources/Snippets/container-manage-broker-podman.flsnp"/>
+    <h2 class="with-rule"><a name="next-steps"/>Next Steps</h2>
+    <MadCap:snippetBlock src="../../../Resources/Snippets/SW-broker-setup-next-steps.flsnp"/>
+  </body>
+</html>

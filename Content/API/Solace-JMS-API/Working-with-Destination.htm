@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Working with Destinations</h1>
+    <p>A destination object is a JMS‑administered object that provides a destination that clients can publish messages to and consume messages from. Destinations can be temporary (<code>TemporaryTopic</code> or <code>TemporaryQueue</code>) or durable (<code>Topic</code> or <code>Queue</code>). Durable destination objects are provisioned on the event broker and can be found through a JNDI lookup.</p>
+    <p>The JMS API supports the use of wildcards in destination names. For a detailed overview on wildcarding and destination syntax support when using an event broker, refer to <MadCap:xref MadCap:unresolvedLink="import-link:a_topic_support_and_syntax_819845554_56063" href="../../Messaging/Topic-Support-and-Syntax.htm">Topic Support and Syntax</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="JNDI-Lookups"/>Performing Destination JNDI Lookups</h2>
+    <p>If a destination object is configured on the JNDI store on the event broker, a JMS application can perform a destination lookup after obtaining an InitialContext (as described in <MadCap:xref href="Establishing-Connections.htm#establishing_connections_577400906_336926" class="MCXref xref">Working with JNDI</MadCap:xref>) by executing the following command:</p>
+    <p class="Code">Destination dest = (Destination)context.lookup(Dest_name)</p>
+    <p>The <code>Dest_name</code> argument specifies the destination’s configured JNDI name defined.</p>
+    <p>If a destination object is configured on an LDAP-based JNDI store on a remote host, a JMS application can perform a destination lookup after obtaining an InitialContext by executing the same command for configured SolConnectionFactory, SolTopic, and SolQueue objects, as shown by the following code snippet:</p>
+    <p class="Code">SolTopic topic = (SolTopic)ctx.lookup(ldapDestDN);</p>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">The process for configuring Connection Factory, Queue, and Topic JNDI objects on an LDAP store is dependent on the particular LDAP provider that is used. For an example of how to bind JMS administered objects in an Open LDAP JNDI store, refer to the <code>SolJMSLDAPBind.java</code> sample.</p>
+    <h2 class="with-rule"><a name="Creating-Temp-Dests"/>Creating Temporary Destinations</h2>
+    <p>A client can call <code>createTemporaryTopic()</code> or <code>createTemporaryQueue()</code> on a Session to create a unique temporary destination (either a <code>TemporaryTopic</code> or a <code>TemporaryQueue</code> respectively) that has the same scope and lifetime of its connection. Only the client that establishes a temporary destination’s connection is allowed to create <code>MessageConsumers</code> for that temporary destination.</p>
+    <p>Temporary topics and temporary queues are unique JMS topic and queue objects that are created at the <code>Session</code> level. Temporary topics can also be created at the <code>TopicSession</code> level, and temporary queues can be created at the <code>QueueSession</code> level. One use for a temporary destination is as a <code>JMSReplyTo</code> destination.</p>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">Temporary topics and queues are briefly maintained on the event broker when a client disconnects, instead of being immediately destroyed. This allows temporary topics and queues to survive event broker activity switch-overs where the client is momentarily disconnected from one event broker and is then connected to its mate. When Guaranteed Transport is used, messages for the temporary topics and queues received during the outage are stored, and they can be consumed when the client reconnects. When Direct Transport is used, messages for the temporary topics and queues received during the outage are not stored, so they cannot be consumed when the client reconnects.</p>
+    <ul>
+      <li>To create a temporary topic, call the following method from a Session:
+            <p class="Code">TemporaryTopic = session.createTemporaryTopic()</p></li>
+      <li>To create a temporary queue, call the following method from a session:
+            <p class="Code">TemporaryQueue = session.createTemporaryQueue()</p></li>
+    </ul>
+    <h2 class="with-rule"><a name="Creating-Topics"/>Creating Topics</h2>
+    <p>You can call the <code>createTopic(java.lang.String topicName)</code> method from a Session to create a durable topic as a destination that a producer can publish messages to. The <code>topicName</code> is the physical name of the destination.</p>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">To create a durable Topic on an event broker, the event broker must have an ADB installed, and it must have Guaranteed Messaging and message spooling enabled.</p>
+    <p>To consume messages published to a topic, a topic subscriber is required. Refer to <MadCap:xref href="Creating-Durable-Topic-S.htm">Creating Durable Topic Subscribers</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Creating-Queues"/>Creating Queues</h2>
+    <p>You can call the <code>createQueue(java.lang.String queueName)</code> method from a Session to create a queue instance. When using Queue destinations, durable queues must be provisioned on the event broker with the same names as the Queue instance.</p>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">To create a durable Queue on an event broker, the event broker must have an ADB installed, and it must have Guaranteed Messaging and message spooling enabled. </p>
+    <ul>
+      <li>If a physical queue has already been provisioned on the event broker (through SolAdmin or the CLI), when you call the <code>createQueue(java.lang.String queueName)</code> method and pass in the name of the physical queue, an instance of that queue (that is, an in-memory representation of the queue in the API) is created.
+        <p>You can use SolAdmin or the Solace CLI to configure and provision a durable queue on an event broker. The default configuration parameters can be modified, as required.</p></li>
+      <li>If a physical queue has not already provisioned on the event broker, and the creation of dynamic durable endpoints are permitted (refer to <MadCap:xref href="API-Properties.htm#jms_properties_39190069_304368">Dynamic Durables</MadCap:xref>), you can call the <code>createQueue(java.lang.String queueName)</code> method and pass in a queue name to dynamically create a durable physical queue on the event broker.
+		<p>When a queue is dynamically created, the default queue configuration parameters are used, which results in an exclusive queue that does not provide access to users other than the queue owner. For information on all of the queue configuration parameters, refer to <MadCap:xref MadCap:unresolvedLink="import-link:managing_guaranteed_messaging_1618706360_82425" href="../../Messaging/Guaranteed-Msg/Configuring-Queues.htm">Configuring Queues</MadCap:xref>.</p><p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">To allow the creation of dynamic durable endpoints, set the <code>InitialContext</code> environment property <code>SupportedProperty.SOLACE_JMS_DYNAMIC_DURABLES</code> to true. You can also use SolAdmin or the Solace CLI to enable the equivalent JNDI Connection Factory property.</p></li>
+    </ul>
+  </body>
+</html>

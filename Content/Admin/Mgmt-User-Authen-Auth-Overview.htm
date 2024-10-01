@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Management User Authentication / Authorization Overview</h1>
+    <p>There are two ways you can authenticate users to provide management access to a PubSub+ event broker: Basic Authentication or OAuth Authentication.</p>
+    <p>
+      <u>Basic Authentication</u>
+    </p>
+    <p>When setting up basic authentication, there are two types of management users that can connect to an event broker:</p>
+    <ul>
+      <li><u>CLI user</u>: A user that connects to an event broker for the purpose of configuring, managing, and monitoring that event broker. A CLI user can be an administrator that uses the Solace Command Line Interface (CLI) or <MadCap:variable name="Product-Names.pubsubmanager_short"/> (a browser-based administration console), or SolAdmin (a GUI-based equivalent of the Solace CLI). It can also be a management application that uses Solace Element Management Protocol (SEMP) request over HTTP service. (For information on SEMP service, see <MadCap:xref href="SEMP/Using-SEMP.htm">Using SEMP</MadCap:xref>.)</li>
+      <li><u>File Transfer user</u>: A user that can remotely transfer files to and from specific directories on the selected event broker using Secure File Transfer Protocol (SFTP) or Secure Copy (SCP).</li>
+    </ul>
+    <p class="Note">When a user successfully logs in or logs out, or fails to authenticate for a CLI, SEMP, shell, scp, or sftp session to the event broker, an authentication event is written to the event log. If SEMP is used to manage the event broker, a persistent SEMP connection should be used if a high volume of authentication event logs is not desired.</p>
+    <p>
+      <u>OAuth 2.0 Authentication</u>
+    </p>
+    <p>There are two ways you can use OAuth to provide management access to an event broker:</p>
+    <ul>
+      <li><u>Interactive</u>: OAuth is used to authenticate a user interacting with <MadCap:variable name="Product-Names.pubsubmanager_short"/> or any other browser-based web application that use SEMPv2.</li>
+      <li><u>Automated</u>: OAuth token is used as credentials to authenticate REST request from SEMPv2.</li>
+    </ul>
+    <h2 class="with-rule"><a name="cli_user_authentication_and_authorization_2240435144_348846"/>Basic Authentication</h2>
+    <p>When a CLI user initially establishes a connection to the event broker, no requests by that user can be processed until it is authenticated according to the authentication type that has been configured for that CLI user account.</p>
+    <p>The following authentication types can be configured for a provisioned CLI user account:</p>
+    <ul>
+      <li>Internal—The CLI user’s name and password are authenticated against an internal event broker database.</li>
+      <li>RADIUS—The CLI user’s name and password are sent to an external RADIUS server for authentication.</li>
+      <li>LDAP—The CLI user’s name and password are sent to an external LDAP server for authentication. LDAP over TLS is also supported.</li>
+    </ul>
+    <p>The event broker always first attempts to authenticate a CLI user using internal authentication. If user does not exist in the internal database, the event broker checks if either RADIUS or LDAP authentication is configured (one of the two can be configured for the event broker). If RADIUS or LDAP authentication is configured, the event broker then attempts to authenticate the user using one of those authentication types. For information on how to configure RADIUS or LDAP authentication, see <MadCap:xref href="Setting-CLI-User-Authentication-Types.htm">Setting CLI User Authentication Types</MadCap:xref>.</p>
+    <p>If the CLI user is successfully authenticated, the event broker permits the connection with the access privileges configured for the CLI user account.</p>
+    <p class="Note">If you are using RADIUS or LDAP user authentication, it is recommended that you configure a few internal user accounts that can be used to administer the event broker if the external RADIUS or LDAP servers are unreachable. However, do not duplicate internal user accounts on a RADIUS or LDAP server or vice versa, because this can cause confusion over where user account passwords reside. For example, if a user account password is changed on the RADIUS or LDAP server, and a duplicate account also exists locally on the event broker, internal authentication will be used and because the old password is expected, the user authentication will fail.</p>
+    <h3><a name="cli_user_authentication_and_authorization_2240435144_356803"/>File Transfer User Authentication</h3>
+    <p>A file transfer user is authenticated through the Internal authentication type. The File Transfer user’s name and password are verified against the internal event broker database. If the verification is successful, the event broker permits the connection.</p>
+    <p class="Note">File Transfer user accounts do not have a permission level associated with them. All File Transfer users can read, write, and delete files from the file system available to File Transfer users.</p>
+    <h2 class="with-rule"><a name="OAuth"/>OAuth 2.0 Authentication</h2>
+    <p>OAuth allows applications to perform authentication using temporary tokens instead of permanent credentials. Using OAuth, users interacting with PubSub+ event brokers can be authenticated without requiring access to their permanent credentials. Note that OAuth is only supported over TLS.</p>
+    <p>There are two ways you can use OAuth to provide management access to an event broker:</p>
+    <ul>
+      <li><b>Interactive</b>: OAuth is used to authenticate a user interacting with <MadCap:variable name="Product-Names.pubsubmanager_short"/> or any other browser-based web application that use SEMPv2.</li>
+      <li><b>Automated</b>: OAuth token is used is as credentials to authenticate REST request from SEMPv2.</li>
+    </ul>
+    <p>When using OAuth to access <MadCap:variable name="Product-Names.pubsubmanager_short"/>, the user will be logged in based on the token from a third-party identity provider. If OAuth is configured as the authentication method, an OAuth login button will be displayed on the login screen. Clicking the button will redirect the user to the OAuth provider's login page where they can enter their credentials.   If the user is already logged with the provider, they will be immediately redirected back to <MadCap:variable name="Product-Names.pubsubmanager_short"/>. For more information, see <MadCap:xref href="Configuring-OAuth-for-Management-Access.htm">OAuth for Management Access Configuration</MadCap:xref>.</p>
+    <p>Similarly, with the automated setup, when a client makes a SEMP v2 request using OAuth, it will include one or more OAuth tokens in the HTTP Authorization header as a bearer token. The event broker will verify the token and automatically select the correct profile. For more information, see <MadCap:xref href="SEMP/SEMP-Security.htm">SEMP Authentication and Authorization</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="cli_user_authentication_and_authorization_2240435144_357078"/>User Access To CLI Commands</h2>
+    <p>Each command offered through the Solace CLI has a particular scope and access level requirement. Therefore, a CLI user can only use a command offered through the CLI if that user’s configured access levels are sufficient for the scope of the command.</p>
+    <h3><a name="cli_user_authentication_and_authorization_2240435144_357200"/>CLI User Access Levels</h3>
+    <MadCap:snippetBlock src="../Resources/Snippets/CLI-User-Access-Levels.flsnp"/>
+    <h3><a name="cli_user_authentication_and_authorization_2240435144_357432"/>CLI Command Scopes</h3>
+    <MadCap:snippetBlock src="../Resources/Snippets/CLI-Command-Scopes.flsnp"/>
+    <h4>Assigning Access Levels</h4>
+    <MadCap:snippetBlock src="../Resources/Snippets/Assigning-Access-Levels.flsnp"/>
+    <h3><a name="cli_user_authentication_and_authorization_2240435144_354153"/>Creating and Managing CLI User Accounts</h3>
+    <MadCap:snippetBlock src="../Resources/Snippets/Creating-Managing-CLI-User-Accounts.flsnp"/>
+    <h2 class="with-rule"><a name="cli_user_authentication_and_authorization_2240435144_348965"/>Access Level Capabilities</h2>
+    <p>There are multiple possible global access levels and Message VPN access levels that can be assigned to a CLI user with various capabilities and limitations.</p>
+    <p class="Note">CLI users only see commands that they are authorized to execute. This means, for example, that Help commands will not show unauthorized commands, and CLI tab‑completion will not complete a command for which the user is not authorized. In addition, wildcard characters used in CLI commands will not allow a user to see or access network resources, such as Message VPNs or client profiles, that they are not authorized for.</p>
+    <h3><a name="Global"/>Global Access Levels</h3>
+    <MadCap:snippetBlock src="../Resources/Snippets/Global-Access-Levels.flsnp"/>
+    <h3><a name="VPN"/>VPN Access Levels</h3>
+    <MadCap:snippetBlock src="../Resources/Snippets/VPN-Access-Levels.flsnp"/>
+  </body>
+</html>

@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>High Availability for Appliances</h1>
+    <p>Solace PubSub+ appliances can operate in high-availability (HA) redundant pairs for fault tolerance. Redundancy provides 1:1 appliance sparing to increase overall service availability. HA redundancy eliminates the potential for a single point of failure by allowing a network administrator to define two appliances as a redundant pair. If one of the appliances is taken out of service or fails, the other appliance automatically takes over responsibility for the clients typically served by the out-of-service appliance.</p>
+    <p>The redundancy feature is largely transparent to clients and other appliances in the network. Only the two appliances that are paired as mates require explicit configuration to take advantage of the feature.</p>
+    <p>Similarly, there is no configuration needed on a client host system to take advantage of the HA redundancy facility. The only visible impact to clients during a redundancy failover is non-delivery of messages for a short period of time, and the clients are forced to reconnect.</p>
+    <p>The Virtual Router Redundancy Protocol (VRRP), as defined by Request For Comments (RFC) 3768, is used to manage the IP address used by clients to communicate with appliances. The appliance that is active for a given IP address terminates all client messages sent to that IP address. If the active appliance fails, the backup appliance takes over the IP address. Therefore, migration of the IP address and messaging services from one appliance in the HA pair to its mate appliance allows clients to reconnect to the same IP address which is now managed by the mate appliance.</p>
+    <p>Solace PubSub+ redundancy models are built around the concept of virtual routers:</p>
+    <ul>
+      <li><u>If an active/standby model is deployed</u>: One virtual router with a unique IP address must be configured for the redundant pair. This virtual router is configured as the primary on one appliance and as the backup on its mate.</li>
+      <p>Under normal operating conditions, the physical appliance that is active for the primary virtual router handles messaging activity. If that appliance fails, the mate appliance takes over activity for the virtual router.</p>
+      <li><u>If an active/active model is deployed</u>: Two virtual routers must be configured within the redundant pair, each with its own unique IP address. One appliance is configured as the primary for one of the virtual routers (and backup for the second virtual router), while the second physical appliance is configured as the primary for the other virtual router (and backup for the first virtual router).</li>
+      <p>Under normal operating conditions, each appliance is active for its primary virtual router, and standby for the mate’s virtual router. If one of the appliances fails, the mate appliance takes over activity for the virtual router associated with the failed appliance.</p>
+    </ul>
+    <h2 class="with-rule"><a name="redundancy_and_fault_tolerance_344917737_312237"/>Active/Standby Redundancy Model</h2>
+    <p>Active/standby redundancy is supported by Solace PubSub+ for both Guaranteed and Direct Messaging.</p>
+    <p>In the active/standby model, the primary appliance provides service to clients and sends and receives data and messages. The backup appliance waits in standby mode and only provides service should the primary appliance fail <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">(because load sharing between the two appliances is not supported)</MadCap:conditionalText>.</p>
+    <p>In the active/standby model:</p>
+    <ul>
+      <li>All clients connect to the same virtual router, which is configured as primary for one appliance and as backup on its mate appliance.</li>
+      <li>The backup appliance acts only as a standby. While the primary appliance is active, no clients can connect to the backup, and no messaging traffic can flow through the backup.</li>
+      <li>If the primary appliance fails for any reason, the backup appliance takes over the IP address of the virtual router associated with the failed appliance by sending gratuitous Address Resolution Protocol (ARP) requests, and all the clients reconnect to the backup appliance.</li>
+    </ul>
+    <h2 class="with-rule"><a name="redundancy_and_fault_tolerance_344917737_312242"/>Active/Active Redundancy Model</h2>
+    <p>Active/active redundancy is supported by the Solace PubSub+ for Direct Messaging.</p>
+    <p> In the active/active model, clients may be distributed between the two appliances, and both appliances can provide service simultaneously during normal operating conditions. This allows for load-sharing while both appliances are functional. However, should one of the appliances fail for any reason, the active appliance can provide the service ordinarily provided by both of the appliances individually.</p>
+    <p>In the active/active model: </p>
+    <ul>
+      <li>One appliance is active for one virtual router, while the other appliance is active for the second virtual router.</li>
+      <li>Clients actively connect to both virtual routers (thus to both appliances) and both appliances carry messaging traffic.</li>
+      <li>If one of the appliances fails, the mate appliance takes over the IP address of the virtual router associated with the failed appliance by sending gratuitous ARPs, and all the clients associated with the failed appliance reconnect to the backup appliance.</li>
+    </ul>
+    <p>Two variants of the active/active redundancy model can be deployed:</p>
+    <ul>
+      <li>
+        <u>Individual Message VPNs are Active/Standby</u>
+      </li>
+      <p>In this deployment model, all clients for one group of Message VPNs are configured to connect to virtual router #1, and all clients for a separate group of Message VPNs are configured to connect to virtual router #2. That is, all clients for a given Message VPN are configured to be serviced by one appliance in the redundant pair.</p>
+      <li>
+        <u>Individual Message VPNs are Active/Active</u>
+      </li>
+      <p>In this deployment model, clients of a given Message VPN span the two appliances in the redundant pair, with the clients divided between the virtual routers. For this model to provide full reachability between all clients of the distributed Message VPN at all times, either multiple-node routing links or Message VPN bridge links <u>must</u> be provisioned to provide connectivity between the two appliances.</p>
+    </ul>
+    <p class="Note">Guaranteed Messaging may also be configured in conjunction with Direct Messaging, however, only one appliance may provide Guaranteed Messaging service at any given time. That is, while the Redundancy Mode can be configured as Active/Active where both appliances support Direct Messaging concurrently, Guaranteed Messaging will operate in Active/Standby mode on one virtual router.</p>
+    <h2 class="with-rule"><a name="redundancy_and_fault_tolerance_344917737_312907"/>Recommended Redundancy Model</h2>
+    <p>Solace recommends deploying appliances in the active/standby model, for the following reasons:</p>
+    <ul>
+      <li>Active/standby supports both Guaranteed and Direct Messaging.</li>
+      <li>Active/standby avoids the risk of inadvertent overbooking an appliance, whereby each appliance has sufficient capacity to handle the messaging load for its own virtual router, but under a failure scenario, a single appliance has insufficient capacity to handle the workload of the two virtual routers, resulting in an unacceptable service degradation that is not exposed until a failover occurs.</li>
+      <li>Lower engineering/planning overhead. No need to decide which Message VPNs are going to reside within each virtual router, or which clients will connect to which virtual router.</li>
+      <li>Active/standby is an easier model to test and validate prior to going into production.</li>
+    </ul>
+    <p class="Note">If you are using PubSub+ Cache, we do not recommend using the active/standby redundancy model, unless it is the only redundancy model that is possible for your use case. For more information, see <MadCap:xref href="../../Additional-Products/Solace-PubSub-Cache/PubSub-Cache-and-Msg-Broker-Redu.htm">PubSub+ Cache and Event Broker Redundancy</MadCap:xref>.</p>
+    <h2 class="with-rule" MadCap:conditions="Default.HideFromAllOutput"><a name="Ensuring"/>Ensuring Consistent Appliance Configurations</h2>
+    <p class="Note" MadCap:conditions="Default.HideFromAllOutput">If replication is enabled for an appliance, that appliance is always the leader of its own system‑level configuration, but whether it is the leader of its own Message VPN‑level configuration depends on whether that Message VPN has a replication active or replication standby state. If it is replication active, it is the leader for the Message VPN. If it is replication standby, it is dependent on (or have a “follower” relationship to) another Message VPN with the same name. For information on the replication facility, refer to <MadCap:xref href="../DR-Replication/Data-Center-Replication-Overview.htm">Replication Overview</MadCap:xref>.</p>
+    <h3 MadCap:conditions="Default.HideFromAllOutput"><a name="Synchron"/>Synchronizing Configuration Information Between Mates</h3>
+    <p MadCap:conditions="Default.HideFromAllOutput">Although the Config-Sync facility automatically synchronizes the appliances’ configurations, there are some operational situations when you should manually apply the system-level and/or Message VPN configurations of one appliance in the HA pair over that of its mate. That is, you must assert one leader system‑level and/or Message VPN-level configuration from one appliance over that of its mate. These operational situations include the following:</p>
+    <ul>
+      <li MadCap:conditions="Default.HideFromAllOutput">After Config-Sync has been enabled on both appliances, the system-level configuration of one appliance must be asserted over its mate, and if there are existing Message VPNs of the same name on both appliances, one of the Message VPNs for each pair must be asserted as the leader. (The chosen Message VPNs do not have to be all on the same appliance.)</li>
+      <li MadCap:conditions="Default.HideFromAllOutput">If system-level or Message VPN-level configurations go out of sync, then they can be manually re-synced.</li>
+    </ul>
+    <div class="Caution" MadCap:conditions="Default.HideFromAllOutput">
+      <img src="../../Resources/Images/banner_notice2.gif" style="max-height: 28px;" alt="Notice"/>
+      <p class="Tbl_Body"><b>NOTICE</b>: System-level and Message VPN-level configurations can be re-synced through the <b>assert-leader</b> and <b>resync‑leader</b> commands in the Solace CLI (refer to <MadCap:xref MadCap:unresolvedLink="import-link:managing_router_redundancy_4019795582_92633" href="Managing-Appliance-Redundancy.htm">HA Configuration for Appliances</MadCap:xref>). They can also be re‑synced through SolAdmin.</p>
+    </div>
+    <h2 class="with-rule"><a name="redundancy_and_fault_tolerance_344917737_232756"/>Fault Tolerance</h2>
+    <p>The following sections discuss the interaction between primary and virtual routers and primary and backup IP interfaces in appliance failover situations. It also provides network topology examples.</p>
+    <h3><a name="redundancy_and_fault_tolerance_344917737_274307"/>Primary and Backup Virtual Routers</h3>
+    <p>To support redundancy, each appliance uses a primary and backup virtual router. To enable the backup virtual router to assume the role of its mate’s primary virtual router when a failure occurs, the configuration of the virtual routers on each appliance must mirror one another. That is, the backup virtual routers must have the same configuration as the primary virtual routers they backup.</p>
+    <h4>For an Active/Standby redundant pair</h4>
+    <p>For an active/standby redundant pair, the primary virtual router is on the primary appliance, and the backup virtual router is on the standby appliance. If the primary appliance goes out of service, the backup virtual router of the standby appliance changes to an active state, and it provides service for clients and handles the data and messages that typically use the primary virtual router of the primary appliance that has gone out of service. The figure below shows the relationship between the virtual routers of an active/standby redundant pair.</p>
+    <p class="GraphicCaption">Virtual Router Relationships in an Active/Standby Redundancy</p>
+    <p class="GraphicCaption">
+      <img src="../../Resources/Images/HA-Redundancy/14_32.jpg" alt="Virtual Router Relationships in an Active/Standby Redundancy" MadCap:mediastyle="@media print { max-width: 400px; }" style="max-width: 400px;"/>
+    </p>
+    <table class="Default" style="width: 365px;caption-side: top;">
+      <col width="131px"/>
+      <col width="87px"/>
+      <col width="147px"/>
+      <tbody>
+        <tr>
+          <td>
+            <p class="Tbl_Body">Appliance <code>Solace2 </code>Backup virtual router</p>
+          </td>
+          <td>
+            <p class="Tbl_Body">supports...<br/><br/><br/></p>
+          </td>
+          <td>
+            <p class="Tbl_Body">Appliance <code>Solace1 </code>Primary virtual router<br/><br/></p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h4>For an Active/Active redundant pair</h4>
+    <p>For an active/active redundant pair, the primary virtual routers on both appliances are active, but the backup virtual routers are idle. If one of the appliances in the redundant pair goes out of service, the backup virtual router of the inactive appliance changes to an active state, and it provides service for clients and handles the data and messages that typically use the primary virtual router of the appliance that is out of service. The figure below  shows the relationship between the virtual routers of an active/active redundant pair.</p>
+    <p class="GraphicCaption">Virtual Router Relationships in Active/Active Redundancy</p>
+    <p class="GraphicCaption">
+      <img src="../../Resources/Images/HA-Redundancy/14_36.jpg" alt="Virtual Router Relationships in Active/Active Redundancy" MadCap:mediastyle="@media print { max-width: 400px; }" style="max-width: 400px;"/>
+    </p>
+    <table class="Default" style="width: 365px;caption-side: top;">
+      <col width="131px"/>
+      <col width="87px"/>
+      <col width="147px"/>
+      <tbody>
+        <tr>
+          <td>
+            <p class="Tbl_Body">Appliance <code>Solace1 </code>Backup virtual router</p>
+          </td>
+          <td>
+            <p class="Tbl_Body">supports...<br/><br/><br/></p>
+          </td>
+          <td>
+            <p class="Tbl_Body">Appliance <code>Solace2 </code>Primary virtual router<br/><br/></p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <p class="Tbl_Body">Appliance <code>Solace2 </code>Backup virtual router</p>
+          </td>
+          <td>
+            <p class="Tbl_Body">supports...<br/><br/><br/></p>
+          </td>
+          <td>
+            <p class="Tbl_Body">Appliance <code>Solace1 </code>Primary virtual router<br/><br/></p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>The primary and backup virtual routers are served by the Message Backbone Virtual Routing and Forwarding (VRF) object. Through the physical interfaces located on the Network Acceleration Blade (NAB), the Message Backbone VRF handles the client traffic (including subject subscriptions) for the virtual routers.</p>
+    <h3><a name="redundancy_and_fault_tolerance_344917737_321638"/>Primary and Backup IP Interfaces</h3>
+    <p>For each appliance, physical interfaces on the NAB must be bound to distinct IP interfaces that are identified by an IP address and subnet mask. Clients connect to  these IP interfaces. These primary and backup IP interfaces are associated with the primary and backup virtual routers on each appliance in the redundant pair.</p>
+    <h4>For an Active/Standby redundant pair</h4>
+    <p>The example immediately below shows a simplified example of the primary and backup IP interfaces and virtual routers used by an active/standby redundant pair. In a failover situation, clients can reconnect to the backup IP interface.</p>
+    <p class="GraphicCaption">Simplified Active/Standby Configuration<br/><img src="../../Resources/Images/HA-Redundancy/active_standby_primary_and_backup_physical_interfaces_VRs.jpg" style="width: 512.5056px;height: 261.6662px;" alt="Simplified Active/Standby Configuration"/></p>
+    <h4>For an Active/Active redundant pair</h4>
+    <p>To enable active/active redundancy, primary and backup instances of the IP interfaces are created for each appliance in a redundant pair. The same IP interfaces are used by each appliance, but they are assigned as primary on one and as backup on the other. Therefore, if one appliance goes out of service, a backup IP interface can still be accessed by the client on the inactive appliance.</p>
+    <p>Below is shown a simplified example of the primary and backup IP interfaces and virtual routers used by an active/active redundant pair, and then the same redundant pair is shown in a failover situation.</p>
+    <ul>
+      <li>On appliance<code> Solace2</code>, the physical interface 1/1/1 contains two IP interfaces. 1/1/1:1 is configured as the primary IP interface with IP address 192.168.181.133/24, and 1/1/1:2 is configured as the backup IP interface with IP address 192.168.181.110/24.</li>
+      <li>To maintain service if appliance <code>Solace2</code> goes down, the mate appliance, <code>Solace1</code>, also contains the IP interfaces 1/1/1:1 and 1/1/1:2. However the IP addresses assigned to these IP interfaces are reversed. For <code>Solace1</code>, the primary IP interface 1/1/1:1 is configured with IP address 192.168.181.110/24, and the backup IP interface 1/1/1:2 is configured with IP address 192.168.181.133/24.</li>
+    </ul>
+    <p class="Note">An IP number from 1 to 3 indicates the type of IP interface (primary, backup, or static). A typical association is 1 for primary, 2 for backup, and 3 for static, but this is not enforced.</p>
+    <p class="GraphicCaption">Simplified Active/Active Configuration</p>
+    <p class="GraphicCaption">
+      <img src="../../Resources/Images/HA-Redundancy/Fig 6-2 primary_and_backup_physical_interfaces_VRs-new.png" alt="Simplified Active/Active Configuration" MadCap:mediastyle="@media print { max-width: 450px; }" style="max-width: 450px;"/>
+    </p>
+    <p class="GraphicCaption">Simplified Active/Active Configuration in Failover</p>
+    <p class="GraphicCaption">
+      <img src="../../Resources/Images/HA-Redundancy/Fig 6-3 primary_and_backup_physical_interfaces_vrouters_out_of_service-new.png" alt="Simplified Active/Active Configuration in Failover" MadCap:mediastyle="@media print { max-width: 450px; }" style="max-width: 450px;"/>
+    </p>
+    <h4>VRRP interface</h4>
+    <p>In addition to the IP interface that clients connect to, an appliance uses a VRRP interface. Through this VRRP interface, both appliances of the redundant pair can communicate the status of their virtual routers. Primary and backup instances are required for each VRRP interface, and to enable redundancy, the IP addresses assigned for both primary VRRP interfaces must match the IP addresses for their backup VRRP interfaces.</p>
+    <h3><a name="redundancy_and_fault_tolerance_344917737_274878"/>Active/Standby Network Topology Example</h3>
+    <p>The example shown immediately below shows a physical network topology example for active/standby redundancy when used for Guaranteed Messaging. Only one appliance in the redundant pair (<code>Solace1</code>) receives messages through the primary virtual router. For the other appliance (<code>Solace2</code>), the same virtual router is configured as backup. However, should <code>Solace1</code> fail, <code>Solace2</code> will detect the failure and start providing service to the clients that were connected to <code>Solace1</code>. </p>
+    <p>When active/standby redundancy is used with Guaranteed Messaging, a customer‑supplied external disk storage array is required, and each appliance must have an ADB and an HBA. </p>
+    <p>In addition, when Guaranteed Messaging is used, a pair of redundant optical links connect the ADBs between the two appliances. The ADB optical link is used to propagate Guaranteed messages and states from the active appliance to the standby appliance. Whenever the standby appliance becomes reachable over the ADB link, the active appliance copies the entire ADB contents from the active to the standby appliance over the ADB link. Any subsequent messages and state information which the active appliance writes to the ADB is automatically propagated over the optical link to the ADB of the backup appliance. This ensures that the message contents and state of the ADB in the backup appliance are always in sync with the ADB of the active appliance.</p>
+    <h4><a name="redundancy_and_fault_tolerance_344917737_295043"/>SAN Behavior for Guaranteed Messaging Through Active/Standby Redundancy</h4>
+    <p>Each pair of appliances in an active/standby redundancy configuration require a separate Logical Unit Number (LUN) on the Storage Area Network (SAN), whereby two partitions are created on the LUN. One of the appliances mounts the first partition as “read/write” and the second partition as ‘read only, while the mate appliance mounts the first partition as ‘read only’ and the second partition as “read/write” (that is, the inverse of its paired appliance).</p>
+    <p>The active appliance in an active/standby redundant pair only ever writes to its “read/write” or active partition. In the case of a failover, it provides service for its mate by reading the messages spooled by its mate through the standby partition mounted as “read only”.</p>
+    <p class="GraphicCaption">Physical Network Topology Example for Active/Standby Redundancy</p>
+    <p class="GraphicCaption">
+      <img src="../../Resources/Images/HA-Redundancy/Fig5_1_ActiveActive_SolOS_CR.jpg" alt="Physical Network Topology Example for Active/Active Redundancy" MadCap:mediastyle="@media print { max-width: 500px; }" style="max-width: 500px;"/>
+    </p>
+    <h4>Basic Operation</h4>
+    <p>If an appliance detects that its mate is down, it asserts an activity switch on behalf of its mate. </p>
+    <p>The basic operational activity is: </p>
+    <ol>
+      <li>The primary appliance periodically advertises that it is active for its VRID.</li>
+      <li>If the primary appliance stops advertising for a predetermined period of time, the backup appliance using the same VRID takes over message forwarding responsibilities from the primary. The backup appliance is now active.</li>
+    </ol>
+    <h2 class="with-rule"><a name="redundancy_and_fault_tolerance_344917737_311335"/>Failure Detection</h2>
+    <p>As shown in the figure of the redundant HA pair immediately above, there are several paths of connectivity between the redundant appliance pair. The redundancy state machines within each appliance monitors the status of the mate appliance through the following communication paths:</p>
+    <ol>
+      <li><u>VRRP over the Layer 2 Network</u>: VRRP is always employed between a redundant pair of appliances to communicate activity status, and to detect a failure of the mate appliance.</li>
+      <li><u>Multiple-Node Routing</u>: If the appliances have been configured as CSPF neighbors in multiple-node routing, then the activity status of the appliances is advertised as part of the periodic “hello” messages sent by CSPF.</li>
+      <li><u>ADB Optical Links</u>: If the appliances are equipped with ADBs for Guaranteed Messaging, then the activity status of the appliances is advertised over the fibre links that interconnect the ADBs on the two appliances.</li>
+    </ol>
+    <p>An active appliance may decide to voluntarily release activity to the standby appliance by sending a “releasing-activity” indication over all the inter-event broker communication paths. However, to prevent the possibility of paired appliances becoming primary simultaneously and creating a split-brain scenario, the standby appliance does not take activity until it receives a “releasing-activity” indication, or detects a loss of connectivity on all three of the communication paths described above.</p>
+    <p>Once an appliance has taken activity, it typically does not pro-actively send a “releasing-activity” indication to its mate unless one of the following events occur:</p>
+    <ol>
+      <li>A <b>release-activity</b> Redundancy CONFIG or <b>revert-activity</b> Admin EXEC command is executed through the CLI or SEMP.</li>
+      <li>The appliance detects that it has lost all Layer 2 connectivity on the NAB.</li>
+      <li>The appliance detects that it has lost all connectivity to the SAN.</li>
+      <li>The appliance detects a fault that requires it to restart.</li>
+    </ol>
+    <p class="Note">Under some fault conditions, the failing appliance may not always be able to send a “releasing-activity” indication to its mate before restarting. However, such a restart causes an interruption of all three communication paths, which after a debounce time of several seconds on the mate appliance, causes the mate appliance to take activity.</p>
+    <h2 class="with-rule"><a name="redundancy_and_fault_tolerance_344917737_284328"/>Failover Sequences</h2>
+    <p>This section discusses the failover sequences that occur for:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#redundancy_and_fault_tolerance_344917737_258022">Event Broker Failure Activity Switch</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#redundancy_and_fault_tolerance_344917737_211395">Appliance Recovery Activity Switch</MadCap:xref>
+      </li>
+    </ul>
+    <div class="Note">
+      <ul>
+        <li>
+          <p>For a list of the most common reasons for an HA failover, see <MadCap:xref href="#redundancy_and_fault_tolerance_344917737_258022">Event Broker Failure Activity Switch</MadCap:xref>.</p>
+        </li>
+      </ul>
+      <ul>
+        <li>
+          <p>A number of event broker priority levels have been defined for redundancy. These priority levels are advertised by the virtual routers. When activity switches occur between redundant pairs, the priority levels advertised by the virtual routers of each appliance change to indicate their current state and role. These advertisements are broadcast between redundant pairs through VRRP. For example, the virtual router that advertises the highest priority level for a given VRID is the active virtual router for that VRID. All messages and system requests for that VRID are then forwarded to that virtual router.</p>
+        </li>
+      </ul>
+    </div>
+    <h3><a name="redundancy_and_fault_tolerance_344917737_258022"/>Event Broker Failure Activity Switch</h3>
+    <p>This is a list of the most common reasons for a failover scenario: </p>
+    <ul>
+      <li>reset or power-cycle of the event broker (transient outage, planned or unplanned)</li>
+      <li>hardware failure of the event broker (longer-term outage, unplanned)</li>
+      <li>physical link to the event broker is down (could be transient or longer-term, planned or unplanned)</li>
+      <li>software upgrade of the event broker (transient outage, planned)</li>
+      <li>event broker has been placed in the standby state as a result of the network operator entering the <b>release-activity</b> Redundancy CONFIG command through the Solace CLI (longer-term outage, planned)</li>
+    </ul>
+    <p>The following figure shows an example of an active/active network configuration.</p>
+    <p class="GraphicCaption">Active/Active Redundant Pairing</p>
+    <p class="GraphicCaption">
+      <img src="../../Resources/Images/HA-Redundancy/Fig 6-5 active_switch_recover.jpg" alt="Active/Active Redundant Pairing" MadCap:mediastyle="@media print { max-width: 400px; }" style="max-width: 400px;"/>
+    </p>
+    <p>Using this example the following series of operations occur if one of the appliances (<code>Solace2</code> in this case) goes out of service for any reason:</p>
+    <ol>
+      <li>VRRP on appliance <code>Solace1</code> detects the failure of appliance <code>Solace2</code>.</li>
+      <li><code>Solace1</code> becomes active for the IP address 192.168.181.133/19. When this occurs, the backup virtual router for <code>Solace1</code> goes from an idle state to an active state.</li>
+      <li><code>Solace1</code> increases the priority of its VRRP advertisements for the IP address 192.168.181.133/19 to Assert-Activity. It also sends out a gratuitous ARP to let other network devices know that it is taking over the IP address. At this point, network traffic to the IP address 192.168.181.133/19 flows to <code>Solace1</code>.</li>
+      <li>Clients that had already established TCP connections to <code>Solace2</code> receive error messages back from <code>Solace1</code> because the TCP connections are not present on <code>Solace1</code>. This causes the clients to tear down the existing TCP sessions and immediately establish new TCP sessions. These new connections are accepted by <code>Solace1</code>.</li>
+      <li><code>Solace1</code> accepts subscription updates and published messages from its own clients and those that typically have service from <code>Solace2</code>.</li>
+    </ol>
+    <h4>Active/Standby Using Guaranteed Messaging</h4>
+    <p>If an active/standby redundancy model for Guaranteed Messaging is used for the redundant pair, the failure of the primary appliance is detected through the VRRP link between the appliances. In addition, the failure is also detected by the ADB link—the standby appliance uses the state from its local ADB to continue to provide service. The figure below shows the links used between active/standby appliances.</p>
+    <p class="GraphicCaption">Links Used by Active/Standby Appliances Using Guaranteed Messaging</p>
+    <p class="GraphicCaption">
+      <img src="../../Resources/Images/HA-Redundancy/Fig 9-1 Redundant Config.jpg" alt="Active/Active Redundant Pairing" MadCap:mediastyle="@media print { max-width: 450px; }" style="max-width: 450px;"/>
+    </p>
+    <h3><a name="redundancy_and_fault_tolerance_344917737_211395"/>Appliance Recovery Activity Switch</h3>
+    <p>The figure below shows a common recovery activity switch scenario for an active/active redundant pair, where appliance <code>Solace2</code> has failed and its mate appliance, <code>Solace1</code>, is acting on behalf of <code>Solace2</code>.</p>
+    <p class="GraphicCaption">Activity Switch Behavior Failure</p>
+    <p class="GraphicCaption">
+      <img src="../../Resources/Images/HA-Redundancy/Fig 6-7 active_switch_fail.jpg" alt="Activity Switch Behavior Failure" MadCap:mediastyle="@media print { max-width: 400px; }" style="max-width: 400px;"/>
+    </p>
+    <p>When appliance <code>Solace2</code> comes back online, the following series of operations occur:</p>
+    <ol>
+      <li>As <code>Solace2</code> starts up, its primary virtual router uses a VRRP advertisement of Primary-Reconcile, and its backup virtual router uses a VRRP advertisement of Backup-Reconcile. These advertisements indicate that the virtual routers are initializing, but are not yet ready to take on client activity.</li>
+      <p class="Note">If Guaranteed Messaging is enabled for the redundant pair, the ADB on <code>Solace1</code> transfers its entire contents to the ADB on <code>Solace2</code> over the ADB links.</p>
+      <p>If auto revert is enabled (b), then the following series of operations also occur:</p>
+      <p class="Note">By default auto revert is not enabled, which is preferable for most situations. However, you may want to enable auto revert so that clients revert to their primary appliance as soon as it comes back online when <u>all</u> of the following conditions are met:</p>
+      <ul>
+        <li>The appliances are deployed in an active/active redundancy model.</li>
+        <li>The redundant pair has been deliberately “overbooked” beyond the capacity of a single appliance, so that service will degrade when one of the appliances is off-line.</li>
+        <li>The disruption caused by the momentary service outage during auto revert is considered less harmful than continuing to run in an overbooked state until service can be manually reverted during a service window.</li>
+      </ul>
+      <p class="Note">For an HA appliance pair that is configured for only Direct Messaging  and is running SolOS 8.13.1.38 or SolOS 9.1.1.12 and later, auto-revert behavior may be exhibited under specific network outages where VRRP communication is lost for over three seconds even if the auto-revert option is disabled. This is to prevent the possibility of both appliances entering a split-brain scenario when VRRP communication is lost. For more information, refer to <MadCap:xref href="#Auto-Rev">Auto-Revert Behavior of HA Appliances Using Only Direct Messaging</MadCap:xref>.</p>
+      <li>Once <code>Solace2</code> has fully started, its primary virtual router increases the priority of its VRRP advertisements to Assert-Activity. This priority level causes the backup virtual router of its mate system to relinquish activity. <code>Solace2</code> then sends a gratuitous ARP to let the other network services know it is taking over the IP address 192.168.181.133/19 for client connections.</li>
+      <li><code>Solace1</code> disconnects any TCP sessions that it had established for clients receiving service from IP address 192.168.181.133/19.</li>
+      <p class="Note">If Guaranteed Messaging is enabled for the redundant pair, on redundancy switchover the following steps also occur:</p>
+      <ul>
+        <li>The old active appliance unmounts the disk partitions.</li>
+        <li>The newly active appliance mounts both disk partitions as “read only” then probes the AdKey. If no conflict is detected, the disk partitions are mounted as described in <MadCap:xref href="#redundancy_and_fault_tolerance_344917737_295043">SAN Behavior for Guaranteed Messaging Through Active/Standby Redundancy</MadCap:xref> (that is, the active LUN partition is mounted as “read/write”, and the standby LUN partition is mounted as “read only”).</li>
+        <li>Garbage collection may be done in the background where messages spooled on the newly active partition have already been delivered or administratively deleted (since it was previously read-only so file cleanup was not possible).</li>
+      </ul>
+      <li>The primary virtual router for <code>Solace1</code> advertises a local priority level of Active, and the backup virtual router advertises a local priority level of Backup.</li>
+      <p class="Note">Through the <b>auto-revert</b> Redundancy CONFIG command, the network administrator can configure whether the standby appliance in a redundant pair should automatically revert back at this point to the primary when the primary comes back online after a service outage.</p>
+      <li><code>Solace2</code> accepts new TCP connections to IP address 192.168.181.133/19 and delivers messages to, and accepts messages from, clients using this IP address.</li>
+    </ol>
+    <h2 class="with-rule"><a name="Auto-Rev"/>Auto-Revert Behavior of HA Appliances Using Only Direct Messaging</h2>
+    <p>For appliances that are running SolOS 8.13.1.38 or SolOS 9.1.1.12 and later, auto-revert behavior may be exhibited under specific network outages where VRRP communication is lost for over three seconds, even if the auto-revert option is disabled. In this situation, if activity has failed over to the backup, when the VRRP communication is recovered the primary appliance will forcefully take activity for the virtual message router. This occurs to prevent the possibility of both appliances entering a split-brain scenario when VRRP communication is lost. This  is applicable for both active/standby and active/standby HA appliance pairs.</p>
+    <p>In the event that a failover occurs due to any other cause, the auto-revert behavior depends on whether it is enabled. If auto-revert is disabled, the backup appliance  remains active after the primary appliance comes back online.</p>
+    <h2 class="with-rule"><a name="redundancy_and_fault_tolerance_344917737_309074"/>Subscription Exporting &amp; Message VPNs</h2>
+    <p>As discussed in <MadCap:xref href="../VPN/Configuring-VPNs.htm#Enable-Sub-Export">Enabling Subscription Exporting</MadCap:xref>, each Message VPN has a topic subscription export policy associated with it and the default mode is set to not exporting subscriptions.</p>
+    <p>If a Message VPN is not exporting topic subscriptions, then clients connected to one appliance in an active/active appliance pair do not receive messages from clients connected to another appliance in the pair. However, if a failure occurs such that the clients from both virtual routers end up connected to the same appliance, then messages can be passed between clients on different virtual routers.</p>
+    <p>This is because the topic subscriptions are then maintained within the scope of the appliance, since the Message VPN export policy does not apply between virtual routers hosted on the same appliance.</p>
+    <p>To avoid this scenario, either:</p>
+    <ul>
+      <li>Deploy the redundant pair in an active/standby configuration.</li>
+      <li>For Message VPNs not exporting topic subscriptions all clients of the Message VPN should connect to the same virtual router so that the Message VPN is effectively deployed in an active/standby configuration.</li>
+    </ul>
+    <h2 class="with-rule"><a name="redundancy_and_fault_tolerance_344917737_309262"/>VPN Bridging &amp; Fault Tolerance</h2>
+    <p>For details on how to establish Message VPN bridge connections to remote appliances when those remote appliances have been deployed in a redundant configuration to provide fault tolerance, refer to <MadCap:xref href="../VPN/VPN-Bridging-to-Remote-Event-Brokers.htm">Bridging to Remote Event Brokers That Use Redundancy</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Next"/>Next Steps</h2>
+    <ul>
+      <li><MadCap:xref href="Managing-Appliance-Redundancy.htm">HA Configuration for Appliances</MadCap:xref> shows you how to set up and use redundancy.</li>
+    </ul>
+  </body>
+</html>

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Using NodePort</h1>
+    <p>The customer can expose the <MadCap:variable name="Product-Names.broker_cloud_short"/>s within a Kubernetes cluster to external traffic using NodePort. Since traffic needs to be routed to the cluster, it is necessary when using NodePort to front it with a load balancer.  This solution opens one TCP port (called a NodePort) on all Worker nodes for each <MadCap:variable name="Product-Names.broker_cloud_short"/> exposed. Traffic going to this port is transferred to the pod behind that NodePort service. With this option, the customer must implement the following:</p>
+    <ul>
+      <li>The customer configures the <MadCap:variable name="Product-Names.cloud_agent_short"/> to deploy the Kubernetes cluster with the Kubernetes Service of <code>NodePort</code>. </li>
+      <li> Each <MadCap:variable name="Product-Names.broker_cloud_short"/> that's created has its own <code>NodePort</code> service that can receive traffic from any of the Worker nodes</li>
+      <li>The external ports that are exposed are no longer the <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.cloud_product_long"/></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><MadCap:variable name="Product-Names.cloud_product_firstuse"/></MadCap:conditionalText>  defaults but are instead randomly chosen ports.  <MadCap:variable name="Product-Names.cloud_product_short_initialcase"/> reports the chosen ports back in the <MadCap:variable name="Product-Names.console_ui_short"/> so that the customer can determine which ports are assigned to which <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li>
+      <li>Customers must manually provision a single load balancer in front of Kubernetes with a single address that receives the traffic for the cluster. This manual provisioning of a load balancer is typically done by a network administrator within the customer's private network. The load balancer forwards traffic to a default NodePort range of 30000-32767 (this can be modified on the API server if the <code>--service-node-port-range</code> setting is used to define the range), which is  used by the Kubernetes cluster for its Target Pool. The load balancer's Target Pool should be configured to contain a list of the worker nodes within the Kubernetes cluster to ensure that traffic is routed reliably.  This network load balancer will also need to be mapped to an IP address which clients outside of the Kubernetes cluster can reach. </li>
+      <li>When using NodePort, the <MadCap:variable name="Product-Names.cloud_agent_short"/> must be setup with a <code>k8s.serviceHostname</code>. It must also be configured with a <code>hostname</code> that resolves to the load balancer. The <MadCap:variable name="Product-Names.cloud_agent_short"/> reads the <code>k8s.serviceHostname</code> and uses it as the <code>hostname</code> for the <MadCap:variable name="Product-Names.broker_cloud_short"/>s. The <MadCap:variable name="Product-Names.cloud_agent_short"/> will not generate a <code>hostname</code> via a DNS Agent when the <code>K8s.serviceHostname</code> is set. The <code>hostname</code> is typically the <code>CNAME</code> that is created by <MadCap:variable name="Variables.CompanyName"/> in the <code>message.solace.cloud</code> domain that resolves to the load balancer. </li>
+    </ul>
+    <p> </p>
+    <p>In this solution, the customer must use an external network load balancer created by the themselves (typically by a  network administrator) and that network load balancer must be configured with a single address that forwards all TCP traffic over the NodePort range to the worker nodes. By doing this, all <MadCap:variable name="Product-Names.broker_cloud_short"/>s can share the same <code>hostname</code>.</p>
+    <p>Public access outside of the customer's private network is optional. If required, an Internet gateway is required to route a public IP address to the appropriate private network IP address. If the customer's network blocks external traffic from the Internet, they must whitelsit the <MadCap:variable name="Product-Names.home_cloud_long"/>'s IP address. In this case, the customer must provide details (URL, username, and password) of the HTTP/HTTPS proxy server to the <MadCap:variable name="Product-Names.cloud_agent_short"/> during deployment.</p>
+    <p>
+      <div class="thumbnail-container">
+        <img src="../../Resources/Images/Cloud-Deployment-Guides/k8s_manual_load_balancer_diagram.png" class="solacethumbnail" alt=""/>
+      </div>
+    </p>
+    <p>If you must use a NodePort with an external network load balancer, these  are the advantages and disadvantages over using  an integrated load balancer:</p>
+    <p>
+      <b>Advantages</b>
+    </p>
+    <ul>
+      <li>All services are available over the same endpoint so only one public IP address can be used to expose multiple <MadCap:variable name="Product-Names.broker_cloud_short"/>s, publicly.</li>
+      <li>The setup is easier to implement for on-premises environments as a tight load balancer integration with Kubernetes is not required.</li>
+    </ul>
+    <p>
+      <b>Disadvantages</b>
+    </p>
+    <ul>
+      <li>The TCP ports which the client connects to are arbitrarily chosen by Kubernetes over the NodePort range. A customer isn't able to specify custom TCP ports for brokers created from the <MadCap:variable name="Product-Names.console_ui_short"/>. Specifying custom ports from the <MadCap:variable name="Product-Names.console_ui_short"/> has no effect.</li>
+      <li>The load balancer must be manually configured by the customer, usually by a network administrator, whereas typically they are created dynamically. </li>
+      <li>You can have only one service per port.</li>
+      <li>When Worker nodes are decommissioned or commissioned (includes if the VM IP addresses change), the load balancer needs to be updated manually to have the Target Group match the worker nodes that currently exists.</li>
+      <li>The customer cannot specify custom TCP ports when creating an <MadCap:variable name="Product-Names.broker_cloud_short"/> from the <MadCap:variable name="Product-Names.console_ui_long"/>  - even if they try to specify a custom port from the <MadCap:variable name="Product-Names.console_ui_short"/> , it has no effect. Instead, the NodePort numbers that are allocated are shown in <b>Connect</b> tab for the <MadCap:variable name="Product-Names.broker_cloud_short"/> in <MadCap:variable name="Product-Names.cluster_mgr"/> within the <MadCap:variable name="Product-Names.console_ui_short"/>. </li>
+      <li>If you are upgrading from a cluster that was not configured for public connectivity, you will be unable to create public endpoints. </li>
+    </ul>
+    <p>For more information, see <a href="https://kubernetes.io/docs/concepts/services-networking/service/#nodeport" class="link-offsite" target="_blank">Type NodePort</a> in the <i>Kubernetes</i> documentation.</p>
+  </body>
+</html>

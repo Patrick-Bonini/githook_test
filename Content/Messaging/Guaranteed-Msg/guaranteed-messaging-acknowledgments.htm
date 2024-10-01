@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud;Appliance;Software"/>Guaranteed Messaging Acknowledgments</h1>
+    <p>Guaranteed messages are accomplished using ACKs and NACKs (acknowledged/unacknowledged). In this way, producers receive ACKs from the broker indicating that the broker has received and accepted the message, and consumers send ACKs to the event broker telling it that they have received and completed processing of the messages.</p>
+    <h2>Producers</h2>
+    <p>When an application sends a Guaranteed message, the API handles delivery of the message to the event broker on behalf of the application. If the API does not receive an acknowledgment for the message within a configurable timeout, the API  retransmits the message. This does not result in duplicate messages as the event broker ensures de-duplication of retransmitted messages. </p>
+    <p>The timeout is configurable as an API property. For example, in the Java API (JCSMP), it is set with the <code>PUB_ACK_TIME</code> property of the <code>JCSMPProperties</code> class. It defaults to 2000 milliseconds or 2 seconds. Most applications use the default setting.</p>
+    <p style="background-color: #ffffff;">When receiving a Guaranteed message, the event broker sends an ACK to the producer when whichever one of the following happens first: </p>
+    <ul>
+      <li>once the event broker has received 1/3 of a window’s worth of messages.</li>
+      <li>if it has been 1 second since the last unacknowledged message was received.</li>
+    </ul>
+    <p>The settings of 1/3 and 1 second are not configurable.</p>
+    <p>Note that ACKs sent from the broker to the producer are cumulative and can acknowledge multiple messages. However, the API notifies the application that a message has been acknowledged on a pre-message basis.</p>
+    <p>Some APIs allow the publishing application to request that a message be acknowledged immediately. In this case, the event broker sends the ACK as soon as it has received the message and processed it. For example, in the Java API (JCSMP), the message class has the <code>setAckImmediately()</code> method, which takes a Boolean parameter where the default setting is false.</p>
+    <h2>Consumers</h2>
+    <p> There are two different kinds of ACKs for delivery of Guaranteed messages from a queue or topic endpoint to a consumer. These are application ACKs and transport ACKs. </p>
+    <p>Application ACKs tell the event broker that the application is done processing the message and that it can be removed from the queue or topic endpoint. The API sends transport ACKs as part of the Guaranteed messaging protocol that delivers messages from the event broker to the API. The API in turn delivers the message to the application.</p>
+    <h3>Application ACKs</h3>
+    <p>The API sends an application ACK when:</p>
+    <ul>
+      <li>the application calls the API’s method to acknowledge the message.</li>
+      <li>the message callback returns (if the application is using AUTO acknowledge).</li>
+    </ul>
+    <p>Once the event broker has delivered a message to a consumer, it waits indefinitely for the application ACK from the consumer while the consumer remains connected. The message is only redelivered if the client disconnects or if the consumer (also known as a flow in some APIs) is closed without the application having acknowledged the message.</p>
+    <h3>Transport ACKs</h3>
+    <p>The API sends a transport ACK when whichever one of the following happens first: </p>
+    <ul>
+      <li>once the consumer or flow has received a configurable percentage of a window’s worth of messages.</li>
+      <li>if a configurable amount of time has passed since the message was received.</li>
+    </ul>
+    <p> Note that transport ACKs are cumulative and can acknowledge multiple messages.</p>
+    <p> The percentage of the window is configurable as an API property. For example, in the Java API (JCSMP), it is set with the <code>SUB_ACK_WINDOW_THRESHOLD</code> property of the <code>JCSMPProperties</code> class. It defaults to 60%. The timeout is also configurable. For example, in the Java API (JCSMP), it is set with the <code>SUB_ACK_TIME</code> property of the <code>JCSMPProperties</code> class. It defaults to 1 second. Thus, by default, the Java API (JCSMP) sends a transport ACK whenever one of the following happens: </p>
+    <ul>
+      <li>the flow has received 60% of a window’s worth of messages </li>
+      <li>if 1 second has elapsed since the message was received </li>
+    </ul>
+    <p>Note, again, that the transport ACK only tells the event broker that the API has received the message for delivery to the application. Receipt of the transport ACK does not cause the event broker to remove the message from the queue or topic endpoint. This only happens when the application acknowledges the message with the application ACK.</p>
+    <p>When sending a Guaranteed message to a consumer, the event broker waits for 2 seconds for a transport ACK before retransmitting the message to the consuming API. Retransmitting does not result in duplicate messages as the API ensures de-duplication of the retransmitted messages and does not pass them to the application. The 2 second timeout is not configurable.</p>
+  </body>
+</html>

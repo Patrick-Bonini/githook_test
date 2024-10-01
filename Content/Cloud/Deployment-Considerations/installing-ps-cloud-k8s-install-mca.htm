@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Installing the <MadCap:variable name="Product-Names.cloud_agent_short"/></h1>
+    <div class="Note">
+      <p>
+        <MadCap:snippetText src="../../Resources/Snippets/CloudDeployment/no_proxy_metacharacters.flsnp"/>
+      </p>
+    </div>
+    <p>After <MadCap:variable name="Variables.CompanyName"/> validates your installation,  you've downloaded the registry secret, and <code>values.yaml</code> file, you're ready to install the <MadCap:variable name="Product-Names.cloud_agent_short"/> with <MadCap:variable name="Variables.CompanyName"/>. </p>
+    <p>During the meeting, <MadCap:variable name="Variables.CompanyName"/> provides you  (the customer) the URL to the Helm chart. The URL differs based on the type of Kubernetes cluster you have (for example, Amazon EKS or Azure Kubernetes Service).</p>
+    <ol>
+      <li>Use the namespace you created during cluster validation with <MadCap:variable name="Variables.CompanyName"/> for the <MadCap:variable name="Product-Names.cloud_agent_short"/>. See <MadCap:xref href="installing-ps-cloud-k8s-validate.htm"> Kubernetes Cluster Validation</MadCap:xref> for more information. 
+            <p>If you need a namespace, run the following command, where the &lt;<code>namespace</code>&gt; is the name for the data center.
+			<pre class="Code">kubectl create namespace &lt;namespace&gt;</pre></p></li>
+      <li>Create the Docker registry secret to pull images from <MadCap:variable name="Variables.CompanyName"/>'s <code>gcr.io</code> registry. Use the command that matches the file you <a href="installing-ps-cloud-k8s-get-secret.htm#Download" class="link-internal">downloaded</a>: 			<ul><li><code>&lt;datacenter-id&gt;-registry-credentials.json</code> . <br/>You can use any name for the namespace (e.g., <code>orgnameabc</code>). Note the email value (<code>any@anywhere.com</code>) can be any valid-formatted email; it's a required parameter for the command, but is not used.
+<pre xml:space="preserve" class="Code">kubectl create secret docker-registry gcr-reg-secret --namespace orgnameabc \
+--docker-server=https://gcr.io --docker-username=_json_key --docker-email=any@anywhere.com \
+--docker-password="$(cat ./<code>&lt;datacenter-id&gt;-registry-credentials.json</code>)"</pre></li><li><code>&lt;datacenter-id&gt;-pull-secret.yaml</code>.
+<br/>You can use any name for the namespace (e.g., <code>orgnameabc	</code>).				<pre xml:space="preserve">
+kubectl apply -f &lt;datacenter-id&gt;-pull-secret.yaml -n orgnameabc		</pre></li></ul></li>
+      <li>
+        <p>Install the <MadCap:variable name="Product-Names.cloud_agent_short"/>'s Helm chart using the Helm
+                 chart URL and name (<code>&lt;chartname&gt;</code>) provided by <MadCap:variable name="Variables.CompanyName"/>, and <a href="installing-ps-cloud-getparameters.htm" class="link-internal">the <code>values.yaml</code> file that you downloaded</a>:</p>
+        <pre xml:space="preserve">helm install &lt;release-name&gt; \
+&lt;Helm Chart's URL&gt;/chartname --namespace orgnameabc \
+--values values.yaml</pre>
+        <p>You can use any name for the <code>--namespace</code> parameter (such as
+                <code>orgnameabc</code>). The value  <code>&lt;release-name&gt;</code> parameter can also be any value; <MadCap:variable name="Variables.CompanyName"/> usually uses <code>cloud-agent-rel</code>. For example:</p>
+        <pre xml:space="preserve">helm install cloud-agent-rel \
+http://URL.from<MadCap:variable name="Variables.CompanyName"/>.com/chart --namespace orgnameabc \
+--values values.yaml</pre>
+      </li>
+    </ol>
+    <p>After you complete the installation of the <MadCap:variable name="Product-Names.cloud_agent_short"/>, you can <a href="../create-service.htm" target="_blank" class="link-internal">create <MadCap:variable name="Product-Names.broker_cloud_short"/></a> to verify the deployment. </p>
+  </body>
+</html>

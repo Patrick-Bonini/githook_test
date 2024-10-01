@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+    <title>
+			Configuring	Active/Backup High-availability Solace PubSub+ Appliances
+		</title>
+  </head>
+  <body>
+    <h1>Active/Standby Pairs</h1>
+    <p>To configure active/standby redundancy on a pair of Solace PubSub+ appliances, the following tasks must be performed:</p>
+    <ul>
+      <li>Step 1: <MadCap:xref href="#Configur">Configure the Primary Appliance</MadCap:xref></li>
+      <li>Step 2: <MadCap:xref href="#Configur2">Configure the Backup Appliance</MadCap:xref></li>
+      <li>Step 3: If you want to use the Config-Sync feature to maintain consistent configurations for both mates, you must also enable Guaranteed Messaging and Config-Sync for the primary and backup appliances. Refer to <MadCap:xref href="Enable-G-Msg-HA-Appliance.htm">Enabling Guaranteed Messaging for HA Appliances</MadCap:xref>.</li>
+    </ul>
+    <p>The following command sequence examples assume that the Message VPNs <code>blue</code> and <code>red</code> have already been created, and that the client username account named <code>default</code> belongs to Message VPNs <code>blue</code> and <code>red</code>.The examples don't show how to configure these items; for examples on how to configure them, refer to <MadCap:xref href="../VPN/Configuring-VPNs.htm">Configuring Message VPNs</MadCap:xref> and <MadCap:xref href="../../Security/Configuring-Client-Usernames.htm">Configuring Client Username Accounts</MadCap:xref>.</p>
+    <p>The following table specifies the required configuration parameter matches for a primary  appliance and its backup for active/standby redundancy.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">Parameter Matches Required by Active/Standby HA Pair</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">If the Primary Appliance uses. . .</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">The Backup Appliance must use. . .</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>(configure/ip/vrf)# interface &lt;ip-interface&gt; primary</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>(configure/ip/vrf)# interface &lt;ip-interface&gt; backup</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>(configure/ip/vrf/interface)# ip-address &lt;cidr-addr&gt;</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>(configure/ip/vrf/interface)# ip-address &lt;cidr-addr&gt;</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_BodyCode"><code>(configure/redundancy/vrrp)# primary-vrid &lt;vrid&gt;</code> (9.5.0 and later)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode"><code>(configure/redundancy/vrrp)# backup-vrid &lt;vrid&gt;</code> (9.5.0 and later)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_BodyCode"><code>(configure/redundancy)# vrrp-vrid &lt;vrid&gt; primary</code> (earlier than 9.5.0)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode"><code>(configure/redundancy)# vrrp-vrid &lt;vrid&gt; backup</code> (earlier than 9.5.0)</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="Configur"/>Primary Appliance Configuration</h2>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Primary Appliance Configuration in Version 9.5.0 and Later</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <p>To configure an appliance as the primary (<code>solace1</code> in this example), perform the following steps:</p>
+        <ol>
+          <li>Configure and start a primary IP interface for the Message Backbone VRF:        <p class="Code">solace1(configure)# ip vrf msg-backbone<br/>solace1(configure/ip/vrf)# create interface 1/1/1:1 primary<br/>solace1(configure/ip/vrf/interface)# ip-address 192.168.181.198/19</p><p class="Note">The primary IP address of the primary appliance is the backup IP address of the backup appliance.</p><p class="Code">solace1(configure/ip/vrf/interface)# no shutdown<br/>solace1(configure/ip/vrf/interface)# exit<br/>solace1(configure/ip/vrf)# exit<br/>solace1(configure/ip)# exit</p></li>
+          <li>Assign a redundancy interface. For more information about redundancy interfaces, see <MadCap:xref href="Configuring-Appliance-Redundancy-Parameters.htm#Assignin2">Assigning a Redundancy Interface</MadCap:xref>. 
+			<p class="Code">solace1(configure)# redundancy<br/>solace1(configue/redundancy)# vrrp<br/>solace1(configue/redundancy/vrrp)# interface 1/1/1<br/>solace1(configue/redundancy/vrrp)# exit<br/></p></li>
+          <li>Set the appliance's redundancy role to primary.
+			<p class="Code">solace1(configure/redundancy)# active-standby-role primary<br/></p></li>
+          <li>Specify the mate event broker and assign a VRID for the primary virtual router (for example, 11):        <p class="Code">solace1(configure/redundancy)# mate-router-name solace2<br/>solace1(configure/redundancy)# vrrp<br/>solace1(configure/redundancy/vrrp)# primary-vrid  11<br/>solace1(configure/redundancy/vrrp)# exit</p><p class="Note">The VRID for the primary virtual router must be the same as the VRID for the backup virtual router on the mate appliance.</p></li>
+          <li>Start redundancy:        <p class="Code">solace1(configure/redundancy)# no shutdown<br/>solace1(configure/redundancy)# exit</p></li>
+        </ol>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Primary Appliance Configuration in Versions Earlier than 9.5.0</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <p>To configure an appliance as the primary (<code>solace1</code> in this example), perform the following steps:</p>
+        <ol>
+          <li>Configure and start a primary IP interface for the Message Backbone VRF:        <p class="Code">solace1(configure)# ip vrf msg-backbone<br/>solace1(configure/ip/vrf)# create interface 1/1/1:1 primary<br/>solace1(configure/ip/vrf/interface)# ip-address 192.168.181.198/19</p><p class="Note">The primary IP address of the primary appliance is the backup IP address of the backup appliance.</p><p class="Code">solace1(configure/ip/vrf/interface)# no shutdown<br/>solace1(configure/ip/vrf/interface)# exit<br/>solace1(configure/ip/vrf)# exit<br/>solace1(configure/ip)# exit</p></li>
+          <li>Assign a routing interface:<p class="Code">solace1(configure)# routing interface 1/1/1<br/>solace1(configue/routing)# exit</p></li>
+          <li>Set the appliance's redundancy role to primary.
+			<p class="Code">solace1(configure)# redundancy<br/>solace1(configure/redundancy)# active-standby-role primary<br/></p><p class="Note">This step is not applicable to appliances running versions earlier than 9.1.</p></li>
+          <li>Specify the mate event broker and assign a VRID for the primary virtual router (for example, 11):        <p class="Code">solace1(configure/redundancy)# mate-router-name solace2<br/>solace1(configure/redundancy)# vrrp-vrid 11 primary</p><p class="Note">The VRID for the primary virtual router must be the same as the VRID for the backup virtual router on the mate appliance.</p></li>
+          <li>Start redundancy:        <p class="Code">solace1(configure/redundancy)# no shutdown<br/>solace1(configure/redundancy)# exit</p></li>
+        </ol>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <h2 class="with-rule"><a name="Configur2"/>Backup Appliance Configuration</h2>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Backup Appliance Configuration in Version 9.5.0 and Later</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <p>To configure an  appliance as the backup (<code>solace2</code> in this example), do the following:</p>
+        <ol>
+          <li>Configure and start the backup IP interface for the Message Backbone VRF:        <p class="Code">solace2(configure)# ip vrf msg-backbone<br/>solace2(configure/ip/vrf)# create interface 1/1/1:2 backup<br/>solace2(configure/ip/vrf/interface)# ip-address 192.168.181.198/19</p><p class="Note">The backup IP address of the backup appliance is the primary IP address of the primary appliance.</p><p class="Code">solace2(configure/ip/vrf/interface)# no shutdown<br/>solace2(configure/ip/vrf/interface)# exit<br/>solace2(configure/ip/vrf)# exit<br/>solace2(configure/ip)# exit</p></li>
+          <li>Assign a redundancy interface. For more information about redundancy interfaces, see <MadCap:xref href="Configuring-Appliance-Redundancy-Parameters.htm#Assignin2">Assigning a Redundancy Interface</MadCap:xref>.<![CDATA[
+			]]><p class="Code">solace2(configure)# redundancy<br/>solace2(configure/redundancy)# vrrp<br/>solace2(configure/redundancy/vrrp)# interface 1/1/1<br/>solace2(configure/redundancy/vrrp)# exit<br/></p></li>
+          <li>Set the appliance's redundancy role to backup.
+			<p class="Code">solace2(configure/redundancy)# active-standby-role backup<br/></p></li>
+          <li>Tell appliance <code>solace2</code> who its mate is, assign the VRID for the backup virtual router (<code>11</code> in this example): 
+			<p class="Code">solace2(configure/redundancy)# mate-router solace1<br/>solace2(configure/redundancy)# vrrp<br/>solace2(configure/redundancy/vrrp)# backup-vrid 11<br/>solace2(configure/redundancy/vrrp)# exit</p><p class="Note">The VRID for the backup virtual router must be the same as the VRID for the primary virtual router on the mate appliance.</p></li>
+          <li>Start redundancy:
+			<p class="Code">solace2(configure/redundancy)# no shutdown<br/>solace2(configure/redundancy)# exit</p></li>
+        </ol>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Backup Appliance Configuration in Versions Earlier than 9.5.0</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <p>To configure an  appliance as the backup (<code>solace2</code> in this example), do the following:</p>
+        <ol>
+          <li>Configure and start the backup IP interface for the Message Backbone VRF:        <p class="Code">solace2(configure)# ip vrf msg-backbone<br/>solace2(configure/ip/vrf)# create interface 1/1/1:2 backup<br/>solace2(configure/ip/vrf/interface)# ip-address 192.168.181.198/19</p><p class="Note">The backup IP address of the backup appliance is the primary IP address of the primary appliance.</p><p class="Code">solace2(configure/ip/vrf/interface)# no shutdown<br/>solace2(configure/ip/vrf/interface)# exit<br/>solace2(configure/ip/vrf)# exit<br/>solace2(configure/ip)# exit</p></li>
+          <li>Assign a routing interface:
+			<p class="Code">solace2(configure)# routing interface 1/1/1<br/>solace2(configure/routing)# exit</p></li>
+          <li>Set the appliance's redundancy role to backup.
+			<p class="Code">solace2(configure)# redundancy<br/>solace2(configure/redundancy)# active-standby-role backup<br/></p><p class="Note">This step is not applicable to appliances running versions earlier than 9.1.</p></li>
+          <li>Tell appliance <code>solace2</code> who its mate is, assign the VRID for the backup virtual router (<code>11</code> in this example): 
+			<p class="Code">solace2(configure/redundancy)# mate-router solace1<br/>solace2(configure/redundancy)# vrrp-vrid 11 backup</p><p class="Note">The VRID for the backup virtual router must be the same as the VRID for the primary virtual router on the mate appliance.</p></li>
+          <li>Start redundancy:
+			<p class="Code">solace2(configure/redundancy)# no shutdown<br/>solace2(configure/redundancy)# exit</p></li>
+        </ol>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+  </body>
+</html>

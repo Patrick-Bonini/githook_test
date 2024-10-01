@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Replaying from the Replay Log</h1>
+    <p>This section describes how a client application should handle an event broker initiated message replay, and how a client application may initiate a message replay entirely on its own behalf. </p>
+    <p>If you're not familiar with Message Replay, take a look at <MadCap:xref href="../../Features/Replay/Message-Replay-Overview.htm">Message Replay Overview</MadCap:xref> for a high-level introduction, and for detailed information on how to configure and use the feature on the event broker have a look at <MadCap:xref href="../../Features/Replay/Msg-Replay-Concepts-Config.htm">Message Replay Concepts &amp; Configuration</MadCap:xref>.</p>
+    <p>Also, there's a <a href="https://tutorials.solace.dev/jcsmp/message-replay/" target="_blank" class="link-internal">Solace JCSMP tutorial</a> that shows you how a client can initiate and process a replay.</p>
+    <h2 class="with-rule"><a name="Message"/>Event Broker Initiated Replay</h2>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Event Broker Initiated Replay when Flow Reconnect is Enabled</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <p>If Flow Reconnect is enabled, when an event broker initiates message replay on an endpoint, whether it's a queue or a durable topic endpoint, with a client bound to it,  the first thing the client application will see is an event broker unbind of its guaranteed message flow.  The API specific flow event handler will receive a <code>FLOW_RECONNECTING</code> event. If the event subcode is <code>REPLAY_STARTED</code>, then this indicates that the event broker has initiated a replay on the flow.</p>
+        <p>The API then automatically attempts to reconnect the flow based on this event subcode. If the flow is successfully reconnected, the API generates a <code>FLOW_RECONNECTED</code> event. Once this event is generated, the application can then expect to start  receiving replayed messages that it may, or may not, have seen before, depending on why the replay was initiated.</p>
+        <p>For more information, refer to <MadCap:xref href="Creating-Flows.htm#Flow">Flow Auto Reconnect</MadCap:xref>.</p>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Event Broker Initiated Replay when Flow Reconnect is Disabled or Not Supported</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <p>If Flow Reconnect is disabled or not supported in the API version, when an event broker initiates message replay on an endpoint, whether it's a queue or a durable topic endpoint, with a client bound to it,  the first thing the client application will see is an event broker unbind of its guaranteed message flow.  The API specific flow event handler will receive a <code>FLOW_DOWN</code> event. If the event subCode is <code>REPLAY_STARTED</code>, then this indicates that the event broker has initiated a replay on the flow.</p>
+        <p>
+          <b>Flow reconnection with the Node.js API</b>
+        </p>
+        <p>With the Node.js API, the application may choose to call <code>MessageConsumer.connect()</code> to reconnect the flow.  The application can then expect to start receiving replayed messages that it may, or may not, have seen before, depending on why the replay was initiated.</p>
+        <p>
+          <b>Flow reconnection with other APIs</b>
+        </p>
+        <p>For all other APIs, if the application wishes to reconnect the flow, it must disconnect the encompassing session to connect the session again. The flow will automatically rebind when the session is reconnected. The application can then expect to start receiving replayed messages that it may, or may not, have seen before, depending on why the replay was initiated.</p>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <h2 class="with-rule"><a name="Client"/>Client Initiated Replay</h2>
+    <p>A client can initiate message replay for a variety of reasons including that it may be able to detect that it needs to replay messages from the replay log, or there may be a start-up condition in the client that requires that messages are replayed from a certain point-in-time.</p>
+    <p>Message replay may be initiated by a client whenever it binds to a queue or topic endpoint.  You may want to consult your API's reference documentation for specific details on how to bind to a queue or topic endpoint.  When creating a  guaranteed message receiver, either flow or consumer, the application may specify a replay start location, to indicate the starting point of the message replay. </p>
+    <p>The different types of replay starting points supported are:</p>
+    <ul>
+      <li>
+        <p>Replay from the beginning of the replay log.</p>
+      </li>
+      <li>
+        <p>Replay all messages starting from a specified timestamp.</p>
+      </li>
+      <li>
+        <p>Replay all messages after a specified replication group message ID.</p>
+      </li>
+    </ul>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Set the Replay Start Location of a Flow</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">ConsumerFlowProperties.setReplayStartLocation(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">FlowHandle.PROPERTIES.REPLAY_START_LOCATION</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">SOLCLIENT_FLOW_PROP_ REPLAY_START_LOCATION</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">FlowProperties.ReplayStartLocationEx</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">Javascript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode">MessageConsumerProperties.replayStartLocation</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>Consult your API's reference documentation for specific details on how to specify these different replay starting points. </p>
+    <p>You should keep in mind that replay attempts from a timestamp earlier than when the replay log was created will fail.</p>
+    <p>When the flow is successfully bound, it will receive all messages from the replay log starting from the specified replay start location.</p>
+    <h4>Restrictions on client initiated replays</h4>
+    <ul>
+      <li>Not supported on non-exclusive endpoints.</li>
+      <li>Can't be initiated from a non-active flow.</li>
+      <li>Can't be initiated on a browser flow.</li>
+      <li>Can't be done using the JMS API.</li>
+    </ul>
+    <h4>If your application wishes to replay messages for a certain topic to a queue</h4>
+    <p>When connecting to a topic-endpoint, the topic to be replayed from the replay log is set in the flow properties when the flow is created. If connecting to a queue, the messages published to the queue, that match subscriptions that exist on the queue prior to creating a flow, will be replayed. If the application wishes to replay messages for a certain topic to a queue, it must be sure to add a subscription to the queue before connecting the flow.</p>
+    <h4>Replay failure</h4>
+    <p>If a message replay fails, the event broker closes the client's flow, and the application will be notified via a flow down event.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">Flow Down Events</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">FlowEvent.FLOW_DOWN</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">SolEnum.FlowEventCode.DOWN_ERROR</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">SOLCLIENT_FLOW_EVENT_DOWN_ERROR</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">FlowEvent.DownError</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">Javascript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode">MessageConsumerEventName.DOWN_ERROR</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>Refer to your API's documentation for the different subcodes that could be received. </p>
+  </body>
+</html>

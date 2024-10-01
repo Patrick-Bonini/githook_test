@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Configuring Cache Clusters</h1>
+    <p>To create a Cache Cluster within an existing Distributed Cache, enter the following CONFIG command:
+                <p class="Code">solace(configure/distributed-cache)# create cache-cluster &lt;name&gt; </p></p>
+    <p>To edit properties for an existing Cache Cluster, enter the following CONFIG command:
+                <p class="Code">solace(configure/distributed-cache)# cache-cluster &lt;name&gt; </p></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the name of the Cache Cluster</p>
+    <p class="Note">By default, a Cache Cluster is not enabled after it is created. To enable a Cache Cluster, refer to <MadCap:xref href="#Enable-Clusters">Enabling Cache Clusters</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="DTO"/>Enabling Deliver-To-One-Overrides</h2>
+    <p>A client may publish a message with a Deliver-To-One (DTO) flag, so that the message may only to be delivered to one subscriber. This may be desirable where there is a fast publisher and only some subscribers need to get the message.</p>
+    <p>However, by default, Cache Clusters use a DTO override so that every PubSub+ Cache Instance gets every message. This is the recommended configuration for Cache Clusters.</p>
+    <p>To enable the DTO override for PubSub+ Cache Instances under the Cache Cluster, enter the following  CONFIG commands:
+                <p class="Code">solace(configure/distributed-cache)# cache-cluster &lt;name&gt;<br/>solace(...igure/distributed-cache/cache-cluster)# deliver-to-one-override</p></p>
+    <p>To disable the DTO override for PubSub+ Cache Instances under the Cache Cluster, enter the following CONFIG commands:
+                <p class="Code">solace(configure/distributed-cache)# cache-cluster &lt;name&gt;<br/>solace(...igure/distributed-cache/cache-cluster)# no deliver-to-one-override</p></p>
+    <h2 class="with-rule"><a name="Config-Event-Thresholds"/>Configuring Event Thresholds</h2>
+    <p>You can configure high and low thresholds at which events are published to the message bus for a number of operating conditions experienced by PubSub+ Cache Instances in the Cache Cluster. For information on configuring these event thresholds, refer to <MadCap:xref href="Monitoring-PubSub-Cache.htm">Monitoring PubSub+ Cache</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Config-Global-Caching"/>Configuring Global Caching</h2>
+    <p>The Global Caching feature allows client applications to request messages that are cached on remote Distributed Caches. For information on the Global Caching parameters that you can configure for a Cache Cluster, refer to <MadCap:xref href="Configuring-Global-Cachi-1.htm#using_global_caching_590796381_233280">Configuring Global Caching Parameters for a Cache Cluster</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Config-Max-Mem"/>Configuring Max Memory for PubSub+ Cache Instances</h2>
+    <p>A clusterʼs PubSub+ Cache Instances should have an appropriate limit for the maximum amount of memory that they each may consume. For example, the PubSub+ Cache Instance process itself uses 128 MB of memory. Therefore, if an application is required to store, for example, 3000 MB of messages, then 3000 + 128 MB (that is, 3128 MB) must be configured.  The default value is 2048 MB.</p>
+    <p> If the maximum memory limit provided for a PubSub+ Cache Instance is reached, any arriving messages that require more memory are discarded, and the PubSub+ Cache Instance triggers a single discard event to the Designated Router and enters the lost message state. </p>
+    <p class="Note">Cache instances using an <a href="Ingress-Message-Plug-In.htm" class="link-internal">Ingress Message Plug-In</a> require additional memory as live messages received during cluster synchronization must be queued for playback through the plug-in. To accommodate the queuing the max-memory configured for instances using an Ingress Message Plug-In should be at least double the memory required to store the cached messages.</p>
+    <p>To configure the maximum memory consumption each PubSub+ Cache Instance in this Cache Cluster is allowed to consume, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/distributed-cache)# cache-cluster &lt;name&gt;<br/>solace(...igure/distributed-cache/cache-cluster)# max-memory &lt;megabytes&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;megabytes&gt;</code> is an integer value representing the maximum memory consumption limit in MB for each PubSub+ Cache Instance in the Cache Cluster. The valid range is 128 through 4294967294.</p>
+    <p>The <code>no</code> version of this command, <code>no max-memory</code>, resets the maximum memory consumption limit back to default.</p>
+    <div class="Note">
+      <ul>
+        <li>You can increase or decrease the maximum memory consumption limit without stopping the Cache Cluster or its PubSub+ Cache Instances. If the limit is increased or decreased, the new configuration takes effect immediately. However, decreasing the limit below the current memory utilization does not cause the cache to delete already cached messages.</li>
+        <li>Monitor events are raised and logs generated when the maximum memory is reached. When it is reached:<ul><li>A single syslog is generated and an event published, indicating “Messages Discarded, Max-Memory exceeded”.</li><li>A status indication is sent with all responses to cache requests, indicating the cache contents may be incomplete.</li><li>The PubSub+ Cache Instance, Cache Cluster, and Distributed Cache all enter the “lost message” state, and a lost message event is generated. The network operator then needs to correct the situation, and reset the event through CLI or SEMP because there is no way for the cache to know when the condition has been cleared and whether the cache contents have been brought back to a consistent state.</li></ul></li>
+        <li>Cache instances enter the “lost message” state but do not stop when maximum memory is reached, even if configured as “stop-on-lost-message”. This is because all instances within a cluster typically reach maximum memory at the same time and stopping them all would leave no instances to respond to cache requests. Instead, cache instances at maximum memory continue to respond to cache requests but flag the responses as suspect until the “lost message” state is cleared.</li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="Config-Max-Msgs"/>Configuring Max Number of Messages Per Topic</h2>
+    <p>You can configure the maximum number of messages per topic that each PubSub+ Cache Instance in this Cache Cluster may cache. When the number of messages for a topic exceeds this number, the oldest message entry is dropped to make room for the newly arrived message.</p>
+    <p class="Note">To ensure consistency, it is recommended that all Cache Clusters enabled for Global Caching (that is, both home and local Cache Clusters) be configured with the same maximum number of messages per topic.</p>
+    <p>To configure the maximum number of messages per topic, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure/distributed-cache)# cache-cluster &lt;name&gt;<br/>solace(...igure/distributed-cache/cache-cluster)# max-messages-per-topic &lt;num-messages&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;num-messages&gt;</code> is an integer value representing the maximum number of messages any one topic can cache. The valid range is 1 through 100000000. The default value is 1.</p>
+    <p>The <code>no </code>version of this command, <code>no max-messages-per-topic</code>, resets the maximum number of messages any one topic can cache back to the default.</p>
+    <h2 class="with-rule"><a name="Config-Max-Topics"/>Configuring Max Number of Topics</h2>
+    <p>You can configure the maximum number of topics each PubSub+ Cache Instance in this Cache Cluster may cache messages for.</p>
+    <p>To configure the maximum number of topics that can be cached by PubSub+ Cache Instances in the given Cache Cluster, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure/distributed-cache)# cache-cluster &lt;name&gt;<br/>solace(...igure/distributed-cache/cache-cluster)# max-topics &lt;num-topics&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;num-topics&gt;</code> is the integer value representing the maximum number of topics a PubSub+ Cache Instance can contain. The default value is 2000000. For information on the valid range, see <MadCap:xref href="Configuring-and-Managing-PubSub-Cache.htm#Operatin">Operating Limits</MadCap:xref>.</p>
+    <p>The <code>no</code> version of this command, <code>no max-topics</code>, resets the maximum number of topics back to default settings.</p>
+    <p>When the maximum number of topics is reached, any further messages arriving for new topics are discarded, and the PubSub+ Cache Instance triggers a single discard event to the Designated Router and enters the lost message state (refer to <MadCap:xref href="Monitoring-PubSub-Cache-Conf.htm#Lost-Msg-State">Lost Message State</MadCap:xref>).</p>
+    <ul>
+      <li>Monitor events are raised and logs generated when max topics is exceeded.
+                <p>When max topics is exceeded:</p><ul><li>A single syslog is generated and an event published, indicating “Messages Discarded, Max-Topics exceeded”.</li><li>A status indication is sent with all responses to cache requests, indicating the cache contents may be suspect. </li><li>The PubSub+ Cache Instance, Cache Cluster, and Distributed Cache all enter the “lost message” state and a lost message event is generated. The network operator then needs to correct the situation, and reset the event through CLI or SEMP because there is no way for the cache to know when the condition has been cleared and whether the cache contents have been brought back to a consistent state.</li><li>If the PubSub+ Cache Instance is configured as “stop-on-lost-message” (the default), the PubSub+ Cache Instance is stopped when the lost message event occurs. The network operator then also needs to restart the PubSub+ Cache Instance after having cleared the lost message event.</li><li><p>Cache instances enter the “lost message” state but do not stop when maximum topics is exceeded even if configured as “stop-on-lost-message”. This is because all instances within a cluster typically exceed maximum topics at the same time and stopping them all would leave no instances to respond to cache requests. Instead, cache instances that have exceeded maximum topics continue to respond to cache requests but flag the responses as suspect until the “lost message” state is cleared.</p></li></ul></li>
+    </ul>
+    <h2 class="with-rule"><a name="Config-Msg-Life"/>Configuring Message Lifetimes</h2>
+    <p>Messages held by PubSub+ Cache Instances belonging to a Cache Cluster have a set lifetime (measured in seconds) after they are cached. Once messages have reached their maximum age, they are deleted from the PubSub+ Cache Instance.</p>
+    <p>To configure a maximum lifetime for messages to be cached by PubSub+ Cache Instances in the given Cache Cluster, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure/distributed-cache)# cache-cluster &lt;name&gt;<br/>solace(...igure/distributed-cache/cache-cluster)# message-lifetime &lt;seconds&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;seconds&gt;</code> is an integer value representing the maximum age of any message in the cache in seconds. The valid range is 3 to 4294967294. </p>
+    <p>The <code>no</code> version of this command, <code>no message-lifetime</code>, resets the lifetime expiry age for messages held by PubSub+ Cache Instances of this Cache Cluster back to default (that is, no lifetime limit).</p>
+    <h2 class="with-rule"><a name="Config-New-Topic-Adverts"/>Enabling New Topic Advertisements</h2>
+    <p>When the new-topic-advertisement option is enabled, PubSub+ Cache Instances that belong to the Cache Cluster will generate new topic advertisement events when they cache a message for a new topic. These new topic advertisements can be published over the event broker message bus to indicate to subscribing clients that there are new cached messages for that topic of interest.</p>
+    <p>To configure a Cache Cluster to generate new topic advertisements, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure/distributed-cache)# cache-cluster &lt;name&gt;<br/>solace(...igure/distributed-cache/cache-cluster)# new-topic-advertisement</p>
+    <p>The <code>no</code> version of this command, <code>no new-topic-advertisement</code>, disables the generation of new topic advertisements.</p>
+    <p>Once a message is cached for a topic of interest, no new topic advertisements are generated for that topic until after the PubSub+ Cache Instance no longer contains a message with that topic and then it caches a new message with a matching topic. For information on how all cached messages for a topic can removed from the PubSub+ Cache Instance, refer to <MadCap:xref href="Performing-PubSub-Cache-Admi.htm#configuring_and_managing_solcache_541341864_270883">Deleting Cached Messages</MadCap:xref>.</p>
+    <p>New topic advertisement event messages are published to the following topic on the same Message VPNs that PubSub+ Cache Instances are connected to:</p>
+    <p class="Code">#LOG/NOTICE/VPN/&lt;rtr-name&gt;/VPN_SOLCACHE_NEW_TOPIC/&lt;vpn-name&gt;/&lt;distributed-cache-name&gt;/&lt;fully-qualified-topic&gt;</p>
+    <p>For a client to receive new topic advertisement messages, the client must subscribe to that topic and event publishing over the message bus must be enabled (refer to <MadCap:xref MadCap:unresolvedLink="import-link:subscribing_to_message_bus_events_1651767527_38232" href="../../Monitoring/Receiving-Message-Bus-Events.htm">
+           Subscribing to Message Bus Events</MadCap:xref>.</p>
+    <div class="Note">
+      <ul>
+        <li>A new topic advertisement event is not returned when a local PubSub+ Cache Instance learns of a new global topic because it is the sole responsibility of the home Cache Cluster to return this event for its local topics. This prevents duplicate new topic events for the same topic.</li>
+        <li>When the &lt;fully-qualified-topic&gt; is appended to the topic prefix shown above, and it results in a topic that exceeds the maximum topic length supported by the event brokers, the &lt;fully-qualified-topic&gt; is truncated, so that the maximum supported topic length is not exceeded.</li>
+      </ul>
+    </div>
+    <p>The payload of the new topic advertisement message published on the Solace message bus is a Solace structured data type (SDT) map containing the following fields:</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">Payload of New Topic Message</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <td class="TableStyle-Table_Num-HeadE-Column1-Header1">Keyed Data Field</td>
+          <td class="TableStyle-Table_Num-HeadE-Column1-Header1">Data Type</td>
+          <td class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</td>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">topic</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">String</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The fully qualified name of the cached topic.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">distributed-cache-name</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">String</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The name of the Distributed Cache the PubSub+ Cache Instance belongs to. Client applications that are not using Global Caching can directly query the particular Distributed Cache that has cached the new topic.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">cache-cluster</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">String</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The name of the Cache Cluster the PubSub+ Cache Instance belongs to.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">cache-instance</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">String</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">The PubSub+ Cache Instance that learned the new topic.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>A client application can get the keyed data from the received new topic advertisement. If the new advertised topic is of interest, the client application can make a cache request for messages that match that topic.</p>
+    <p>For information on how to work with SDT maps, refer to <MadCap:xref MadCap:unresolvedLink="import-link:using_structured_data_types_587121267_67887" href="../../API/API-Developer-Guide/Using-Structured-Data.htm">Using Structured Data </MadCap:xref> for Solace enterprise messaging APIs and Solace Web messaging APIs.</p>
+    <h2 class="with-rule"><a name="Config-Req-Queue-Depths"/>Configuring Request Queue Depths</h2>
+    <p>You can configure the maximum queue depth for the queue responsible for receiving cache requests for each PubSub+ Cache Instance in the Cache Cluster. If this request queue depth is surpassed, any newly arriving requests are discarded until the request queue depth returns to below maximum.</p>
+    <p>To configure the maximum queue depth, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure/distributed-cache)# cache-cluster &lt;name&gt;<br/>solace(...igure/distributed-cache/cache-cluster)# request-queue-depth &lt;num-messages&gt; </p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;num-messages&gt;</code> is the integer value representing the maximum number of messages in the cache request queue. The valid range is 1 through 200000. The default value is 100000.</p>
+    <p>The <code>no</code> version of this command, <code>no request-queue-depth</code>, resets the maximum queue depth for the queue responsible for receiving cache requests back to default.</p>
+    <p class="Note">Although local cache requests can support larger request queue depths, when Global Caching is enabled for a Cache Cluster, a request depth of 1 is strongly recommended.</p>
+    <h2 class="with-rule"><a name="Assign-Topics"/>Assigning Topics to Cache Clusters</h2>
+    <p>To assign a topic subscription to the given Cache Cluster, enter the following CONFIG commands. The PubSub+ Cache Instances that belong to the Cache Cluster will then cache any messages published to topics that match that subscription.</p>
+    <p class="Code">solace(configure/distributed-cache)# cache-cluster &lt;name&gt;<br/>solace(...igure/distributed-cache/cache-cluster)# topic &lt;topic-str&gt; </p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;topic-str&gt;</code> is the assigned topic string. Refer to <MadCap:xref MadCap:unresolvedLink="import-link:a_topic_support_and_syntax_819845554_56063" href="../../Messaging/Topic-Support-and-Syntax.htm">Topic Support and Syntax</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Enable-Clusters"/>Enabling Cache Clusters</h2>
+    <p>By default, a Cache Cluster is not enabled. When a Cache Cluster is enabled, its PubSub+ Cache Instances are not automatically enabled. They must be enabled individually. For a PubSub+ Cache Instance to be in service, it has to be enabled from the PubSub+ Cache Instance context.</p>
+    <p>To enable a given Cache Cluster, enter the following CONFIG commands:
+                <p class="Code">solace(configure/distributed-cache)# cache-cluster &lt;name&gt;<br/>solace(...igure/distributed-cache/cache-cluster)# no shutdown</p></p>
+    <p>To disable a given Cache Cluster, enter the following CONFIG commands:
+                <p class="Code">solace(configure/distributed-cache)# cache-cluster &lt;name&gt;<br/>solace(...igure/distributed-cache/cache-cluster)# shutdown</p><p>When a Cache Cluster is shut down, all of the PubSub+ Cache Instances that belong to the Cache Cluster are taken out of service. All topic subscriptions are withdrawn from PubSub+ Cache Instances, and they cease to cache new data and handle cache requests. However, PubSub+ Cache Instances maintain their content during this time (subject to normal message lifetime aging).</p></p>
+  </body>
+</html>

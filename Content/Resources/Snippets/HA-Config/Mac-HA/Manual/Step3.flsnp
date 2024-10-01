@@ -1,0 +1,66 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+    <head>
+    </head>
+    <body>
+        <p>In this step, you'll create the Docker containers to be used for the HA group's primary and backup event brokers and monitoring node using the <code>docker create</code> command. Make note of the following before you get started:</p>
+        <ul>
+            <li>The <code>--network solace-net</code> option is used to connect all three containers to the <code>solace-net</code> Docker bridge network.</li>
+            <li>The HA group is set up using configuration keys. In the example below, the configuration key <code>redundancy/enable</code> is used in the line <code>--env 'redundancy_enable=yes'</code>  to enable redundancy. The containers are connected to each other using their hostnames through the use of the <code>redundancy/group/node/&lt;name&gt;/connectvia</code> configuration key in the line <code>--env 'redundancy_group_node_primary_connectvia=&lt;hostname&gt;'</code>. In this example, the values of the <code>&lt;hostname&gt;</code> variable are <code>primary</code>, <code>backup</code>, and <code>monitoring</code>. For a complete list of configuration keys associated with HA, refer to <MadCap:xref href="../../../../../Software-Broker/Configuration-Keys-Reference.htm#Setting_Config_Keys_and_Environ_Var">Configuration Keys</MadCap:xref>.</li>
+            <li>In the <code>docker create</code> command, the redundancy group's <code>&lt;pre-shared-key&gt;</code> must be at least 44 characters long, Base64 encoded, and the same for each node in the HA group. Refer to <a href="../../../../../Features/HA-Redundancy/Pre-Shared-Keys-SMB.htm" class="link-offsite">Pre-Shared Keys for Software Event Brokers</a> for more details.</li>
+            <li>If you loaded the image from a compressed tar archive, replace <code>solace/solace-pubsub-standard</code> in the example with the repository and tag that corresponds with your image. For example, if you loaded version 9.13.0.16 of the Solace PubSub+ Enterprise edition, use <code>solace-pubsub-enterprise:9.13.0.16</code>.</li>
+        </ul>
+        <p>To create the Docker containers and configure the HA&#160;group, perform the following steps:</p>
+        <ol>
+            <li>
+                <p>Run the following commands to configure the primary event broker:</p>
+                <p class="Code">&gt; docker create -p 212:2222 -p 213:8080 -p 214:55555 -p 215:8300 -p 216:8301 -p 217:8302 -p 218:8741 \<br />--shm-size=1g \<br />--ulimit nofile=2448:38048 \<br />--env 'username_admin_globalaccesslevel=admin' \<br />--env 'username_admin_password=admin' \<br />--env 'system_scaling_maxconnectioncount=100' \<br />--name=primary \<br />--hostname=primary \<br />--env 'routername=primary' \<br />--network solace-net \<br />--env 'nodetype=message_routing' \<br />--env 'configsync_enable=yes' \<br />--env 'redundancy_enable=yes' \<br />--env 'redundancy_group_node_primary_connectvia=primary' \<br />--env 'redundancy_group_node_primary_nodetype=message_routing' \<br />--env 'redundancy_group_node_backup_connectvia=backup' \<br />--env 'redundancy_group_node_backup_nodetype=message_routing' \<br />--env 'redundancy_group_node_monitoring_connectvia=monitoring' \<br />--env 'redundancy_group_node_monitoring_nodetype=monitoring' \<br />--env 'redundancy_authentication_presharedkey_key=&lt;pre-shared-key&gt;' \<br />--env 'redundancy_activestandbyrole=primary' \<br />--env 'redundancy_matelink_connectvia=backup' \<br />solace-pubsub-standard:9.13.x.x<br /></p>
+                <p>
+                    <MadCap:dropDown>
+                        <MadCap:dropDownHead>
+                            <MadCap:dropDownHotspot>Copy/Pastable Command</MadCap:dropDownHotspot>
+                        </MadCap:dropDownHead>
+                        <MadCap:dropDownBody>
+                            <p>If you are using other terminals, such as Git Bash, you can copy and paste the example below.</p>
+                            <p class="Code">&gt; docker create -p 212:2222 -p 213:8080 -p 214:55555 -p 215:8300 -p 216:8301 -p 217:8302 -p 218:8741 --shm-size=1g --ulimit nofile=2448:38048 --env username_admin_globalaccesslevel=admin --env username_admin_password=admin --env system_scaling_maxconnectioncount=100 --name=primary --hostname=primary --env routername=primary --network solace-net --env nodetype=message_routing --env configsync_enable=yes --env redundancy_enable=yes --env redundancy_group_node_primary_connectvia=primary --env redundancy_group_node_primary_nodetype=message_routing --env redundancy_group_node_backup_connectvia=backup --env redundancy_group_node_backup_nodetype=message_routing --env redundancy_group_node_monitoring_connectvia=monitoring --env redundancy_group_node_monitoring_nodetype=monitoring --env redundancy_authentication_presharedkey_key=&lt;pre-shared-key&gt; --env redundancy_activestandbyrole=primary --env redundancy_matelink_connectvia=backup solace-pubsub-standard:9.13.x.x<br /></p>
+                        </MadCap:dropDownBody>
+                    </MadCap:dropDown>
+                </p>
+            </li>
+            <li>
+                <p>Run the following commands to configure the backup event broker:</p>
+                <p class="Code">&gt; docker create -p 312:2222 -p 313:8080 -p 314:55555 -p 315:8300 -p 316:8301 -p 317:8302 -p 318:8741 \<br />--shm-size=1g \<br />--ulimit nofile=2448:38048 \<br />--env 'username_admin_globalaccesslevel=admin' \<br />--env 'username_admin_password=admin' \<br />--env 'system_scaling_maxconnectioncount=100' \<br />--name=backup \<br />--hostname=backup \<br />--env 'routername=backup' \<br />--network solace-net \<br />--env 'nodetype=message_routing' \<br />--env 'configsync_enable=yes' \<br />--env 'redundancy_enable=yes' \<br />--env 'redundancy_group_node_primary_connectvia=primary' \<br />--env 'redundancy_group_node_primary_nodetype=message_routing' \<br />--env 'redundancy_group_node_backup_connectvia=backup' \<br />--env 'redundancy_group_node_backup_nodetype=message_routing' \<br />--env 'redundancy_group_node_monitoring_connectvia=monitoring' \<br />--env 'redundancy_group_node_monitoring_nodetype=monitoring' \<br />--env 'redundancy_authentication_presharedkey_key=&lt;pre-shared-key&gt;' \<br />--env 'redundancy_activestandbyrole=backup' \<br />--env 'redundancy_matelink_connectvia=primary' \<br />solace-pubsub-standard:9.13.x.x<br /></p>
+                <p>
+                    <MadCap:dropDown>
+                        <MadCap:dropDownHead>
+                            <MadCap:dropDownHotspot>Copy/Pastable Command</MadCap:dropDownHotspot>
+                        </MadCap:dropDownHead>
+                        <MadCap:dropDownBody>
+                            <p>If you are using other terminals, such as Git Bash, you can copy and paste the example below.</p>
+                            <p class="Code">&gt; docker create -p 312:2222 -p 313:8080 -p 314:55555 -p 315:8300 -p 316:8301 -p 317:8302 -p 318:8741 --shm-size=1g --ulimit nofile=2448:38048 --env username_admin_globalaccesslevel=admin --env username_admin_password=admin --env system_scaling_maxconnectioncount=100 --name=backup --hostname=backup --env routername=backup --network solace-net --env nodetype=message_routing --env configsync_enable=yes --env redundancy_enable=yes --env redundancy_group_node_primary_connectvia=primary --env redundancy_group_node_primary_nodetype=message_routing --env redundancy_group_node_backup_connectvia=backup --env redundancy_group_node_backup_nodetype=message_routing --env redundancy_group_node_monitoring_connectvia=monitoring --env redundancy_group_node_monitoring_nodetype=monitoring --env redundancy_authentication_presharedkey_key=&lt;pre-shared-key&gt; --env redundancy_activestandbyrole=backup --env redundancy_matelink_connectvia=primary solace-pubsub-standard:9.13.x.x<br /></p>
+                        </MadCap:dropDownBody>
+                    </MadCap:dropDown>
+                </p>
+            </li>
+            <li>
+                <p>Run the following commands to configure the monitoring node:</p>
+                <p class="Code">&gt; docker create -p 412:2222 -p 413:8080 -p 414:55555 -p 415:8300 -p 416:8301 -p 417:8302 -p 418:8741 \<br />--shm-size=1g \<br />--ulimit nofile=2448:38048 \<br />--env 'username_admin_globalaccesslevel=admin' \<br />--env 'username_admin_password=admin' \<br />--env 'system_scaling_maxconnectioncount=100' \<br />--name=monitoring \<br />--hostname=monitoring \<br />--env 'routername=monitoring' \<br />--network solace-net \<br />--env 'nodetype=monitoring' \<br />--env 'redundancy_enable=yes' \<br />--env 'redundancy_group_node_primary_connectvia=primary' \<br />--env 'redundancy_group_node_primary_nodetype=message_routing' \<br />--env 'redundancy_group_node_backup_connectvia=backup' \<br />--env 'redundancy_group_node_backup_nodetype=message_routing' \<br />--env 'redundancy_group_node_monitoring_connectvia=monitoring' \<br />--env 'redundancy_group_node_monitoring_nodetype=monitoring' \<br />--env 'redundancy_authentication_presharedkey_key=&lt;pre-shared-key&gt;' \<br />solace-pubsub-standard:9.13.x.x<br /></p>
+                <p>
+                    <MadCap:dropDown>
+                        <MadCap:dropDownHead>
+                            <MadCap:dropDownHotspot>Copy/Pastable Command</MadCap:dropDownHotspot>
+                        </MadCap:dropDownHead>
+                        <MadCap:dropDownBody>
+                            <p>If you are using other terminals, such as Git Bash, you can copy and paste the example below.</p>
+                            <p class="Code">&gt; docker create -p 412:2222 -p 413:8080 -p 414:55555 -p 415:8300 -p 416:8301 -p 417:8302 -p 418:8741 --shm-size=1g --ulimit nofile=2448:38048 --env username_admin_globalaccesslevel=admin --env username_admin_password=admin --env system_scaling_maxconnectioncount=100 --name=monitoring --hostname=monitoring --env routername=monitoring --network solace-net --env nodetype=monitoring --env redundancy_enable=yes --env redundancy_group_node_primary_connectvia=primary --env redundancy_group_node_primary_nodetype=message_routing --env redundancy_group_node_backup_connectvia=backup --env redundancy_group_node_backup_nodetype=message_routing --env redundancy_group_node_monitoring_connectvia=monitoring --env redundancy_group_node_monitoring_nodetype=monitoring --env redundancy_authentication_presharedkey_key=&lt;pre-shared-key&gt; solace-pubsub-standard:9.13.x.x<br /></p>
+                        </MadCap:dropDownBody>
+                    </MadCap:dropDown>
+                </p>
+            </li>
+            <li>
+                <p> After the software event broker Docker containers are configured, execute the <code>docker start</code> command to start the containers.</p>
+                <p class="Code">&gt; docker start primary backup monitoring</p>
+            </li>
+        </ol>
+    </body>
+</html>

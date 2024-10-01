@@ -1,0 +1,613 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="Default.ContentProductLink">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>
+      <MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF">Configuring Event Brokers from </MadCap:conditionalText>
+      <MadCap:conditionalText MadCap:conditions="Default.NotForPDF">Setting Queue Configurations in </MadCap:conditionalText>
+      <MadCap:variable name="Product-Names.eventportal_product_short"/>
+    </h1>
+    <p MadCap:conditions="Default.HideFromAllOutput"><b>Writer's Note:</b> This page is titled Configuring Event Brokers from Event Portal when the Config Push information isn't hidden. Config push details are also on this page, but hidden until we are ready to make those docs public. </p>
+    <p class="Note" MadCap:conditions="Default.OnlyForPDF">This document contains an Early Access version of the technical documentation for the described features. The documentation may not meet our usual standards and is subject to change without notice. Links to topics that are not included in this document are not functional. Please visit <a href="https://docs.solace.com/Cloud/Event-Portal/event-portal-lp.htm" class="link-offsite">Solace PubSub+ Documentation</a> for additional <MadCap:variable name="Product-Names.eventportal_product_short"/> information.</p>
+    <p MadCap:conditions="Default.NotForPDF">You can add queue configuration details for Solace event brokers in <MadCap:variable name="Product-Names.eventportal_product_short"/>.</p>
+    <p MadCap:conditions="Default.OnlyForPDF">You can configure clients details and queues for a Solace event broker in <MadCap:variable name="Product-Names.eventportal_product_short"/> and use the configuration to add, update, and delete clients and queues on Solace event brokers. For more information about configuring queues on event brokers using <MadCap:variable name="Product-Names.cluster_mgr"/>, see <MadCap:xref href="../Broker-Manager/configuring-queues-broker-manager.htm">Configuring Queues</MadCap:xref>.</p>
+    <p>This page includes the following information:</p>
+    <ul>
+      <li MadCap:conditions="Default.OnlyForPDF">
+        <MadCap:xref href="#config-prerequisites">Prerequisites</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Linking_a_Queue">Linking Event Brokers to Applications in [%=Product-Names.eventportal_product_short%]</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#adding_client_details">Adding Client Details to an Application in [%=Product-Names.ep_designer%]</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Adding_an_Event_Queue">Adding an Event Queue to an Application in [%=Product-Names.ep_designer%]</MadCap:xref>
+      </li>
+      <li MadCap:conditions="Default.OnlyForPDF">
+        <MadCap:xref href="#Sending_Queue_Updates">Sending Configuration Updates to an Event Broker</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule" MadCap:conditions="Default.OnlyForPDF"><a name="config-prerequisites"/>Prerequisites</h2>
+    <p MadCap:conditions="Default.OnlyForPDF">Before you can update an operational event broker from <MadCap:variable name="Product-Names.eventportal_product_short"/>, several setup steps must be completed.</p>
+    <ul MadCap:conditions="Default.OnlyForPDF">
+      <li>
+        <p>An operational Solace <MadCap:variable name="Product-Names.cloud_product_short"/> <MadCap:variable name="Product-Names.broker_cloud_short"/> or software event broker running version 10.5 or later must exist and <MadCap:variable name="Product-Names.eventportal_product_short"/> must have access to it. For more information about creating a cloud <MadCap:variable name="Product-Names.broker_cloud_short"/> that <MadCap:variable name="Product-Names.eventportal_product_short"/> can connect to see <MadCap:xref href="../create-service.htm" target="_blank">Creating  [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>An <MadCap:variable name="Product-Names.ep_runtime_agent"/> connection must exist between the operational event broker and an event broker in a modeled event mesh in <MadCap:variable name="Product-Names.eventportal_product_short"/> and the connection must use <b>Scan from </b><MadCap:variable name="Product-Names.eventportal_product_short" style="font-weight: bold;"/> mode. See <MadCap:xref href="event-portal-collect-runtime-data.htm#creating_connection_file" target="_blank">Setting Up [%=Product-Names.ep_runtime_agent%] Connections</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>Runtime event broker configuration must be enabled for the environment containing the model event broker. For more information, see <MadCap:xref href="../environments.htm" target="_blank">Creating and Managing Environments</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>Any client profile that you require in addition to the default profile must be configured on the event broker. For more information, see <MadCap:xref href="../client-profiles.htm#creating-client-profiles">Creating a Client Profile</MadCap:xref>.</p>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Linking_a_Queue"/>Linking Event Brokers to Applications in <MadCap:variable name="Product-Names.eventportal_product_short"/></h2>
+    <p>In <MadCap:variable name="Product-Names.eventportal_product_short"/>, an <a href="event-portal-designer-applications.htm" target="_blank" class="link-internal">application</a> represents an actual client application that publishes or receives event messages. A consumer within an application in <MadCap:variable name="Product-Names.eventportal_product_short"/> represents a queue on an operational event broker in the runtime. A topic subscription in the consumer  is analogous to a queue subscribing to a topic on the event broker.</p>
+    <p>
+      <img src="../../Resources/Images/Event-Portal/app-consumer-queue.png" alt="Diagram showing the concepts described in the surrounding text."/>
+    </p>
+    <p MadCap:conditions="Default.OnlyForPDF">In <MadCap:variable name="Product-Names.ep_designer"/>, if you add a Solace event queue as a consumer in an application, you can specify configuration details for the queue. If the application is added to a model event broker in an environment with runtime configuration enabled and the event broker is connected to an operational event broker in the runtime, configuration changes that you make in the application can be pushed to the runtime event broker.</p>
+    <p MadCap:conditions="Default.OnlyForPDF,Default.HideFromAllOutput">You can link a queue on a runtime <MadCap:variable name="Product-Names.broker_cloud_short"/> to a consumer in an application in <MadCap:variable name="Product-Names.eventportal_product_short"/> by <a href="#Adding_an_Event_Queue" class="link-internal">adding an event queue to an application</a> in <MadCap:variable name="Product-Names.ep_designer"/> and then <a href="event-portal-designer-applications.htm#app-environment" target="_blank" class="link-internal">adding the application</a> to the model event broker that represents the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+    <p MadCap:conditions="Default.OnlyForPDF">You can link a queue on a runtime <MadCap:variable name="Product-Names.broker_cloud_short"/> to a consumer in an application in <MadCap:variable name="Product-Names.eventportal_product_short"/> in two ways:</p>
+    <ul MadCap:conditions="Default.OnlyForPDF">
+      <li>
+        <p><a href="event-portal-audit-runtime-data.htm#Importing_Solace_Queues" target="_blank" class="link-internal">Import queues</a> from the <MadCap:variable name="Product-Names.broker_cloud_short"/> into an application in <MadCap:variable name="Product-Names.ep_designer"/>. If you use this method, the runtime queue creates a consumer in an application in <MadCap:variable name="Product-Names.ep_designer"/>.</p>
+      </li>
+      <li>
+        <p><a href="#Adding_an_Event_Queue" class="link-internal">Add an event queue to an application</a> in Designer and <a href="event-portal-designer-applications.htm#app-environment" target="_blank" class="link-internal">add the application</a> to the model event broker that represents the runtime event broker.</p>
+      </li>
+    </ul>
+    <h2 MadCap:conditions="Default.OnlyForPDF"><a name="adding_client_details"/>Adding Client Details to an Application in <MadCap:variable name="Product-Names.ep_designer"/></h2>
+    <p MadCap:conditions="Default.OnlyForPDF">An application in <MadCap:variable name="Product-Names.ep_designer"/> represents a client application connected to an operational event broker in the runtime. Applications include attributes that can be used to configure clients on operational event brokers.</p>
+    <table style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');border-left-style: solid;border-left-width: 1px;border-left-color: #e1e1e1;border-right-style: solid;border-right-width: 1px;border-right-color: #e1e1e1;border-top-style: solid;border-top-width: 1px;border-top-color: #e1e1e1;border-bottom-style: solid;border-bottom-width: 1px;border-bottom-color: #e1e1e1;" class="TableStyle-Table_Num" cellspacing="0" MadCap:conditions="Default.OnlyForPDF">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Application Attribute</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Event Broker Setting</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Client Profile</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies the name of the client profile used by the runtime application when it connects to the operational event broker. If you don't specify a client profile for the application in <MadCap:variable name="Product-Names.ep_designer"/>, the application uses the <b>default</b> profile on the operational event broker. If you specify a profile other than default in <b>Designer</b>, a client profile with that name must already be set up on the event broker. For more information about creating and using client profiles on event brokers, see <MadCap:xref href="../client-profiles.htm" target="_blank">Using Client Profiles and Client Usernames</MadCap:xref>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Consumer Configuration</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies the queue configuration on the event broker in JSON format. For more information about setting the queue configuration in <MadCap:variable name="Product-Names.ep_designer"/>, see <MadCap:xref href="#Adding_an_Event_Queue">Adding an Event Queue to an Application in [%=Product-Names.ep_designer%]</MadCap:xref>. For more information about queue configuration on an event broker, see <MadCap:xref href="../Broker-Manager/configuring-queues-broker-manager.htm">Configuring Queues</MadCap:xref>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Consumer Subscription</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies the queue topic subscriptions on the event broker. For more information about setting queue topic subscriptions in <MadCap:variable name="Product-Names.ep_designer"/>, see <MadCap:xref href="#Adding_an_Event_Queue">Adding an Event Queue to an Application in [%=Product-Names.ep_designer%]</MadCap:xref>. For more information about queue configuration on an event broker, see <MadCap:xref href="../Broker-Manager/configuring-queues-broker-manager.htm" target="_blank">Configuring Queues</MadCap:xref>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">Client Usename and Credentials</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>Specifies the client username and access credentials for the client application connecting to the event broker. You set the client username and credentials when you add the application to a model event broker in an environment that has runtime configuration enabled. For more information, see <MadCap:xref href="event-portal-designer-applications.htm#app-environment">Adding an Application Version to an Environment</MadCap:xref>.</p>
+            <p>The client username you specify is set as the Owner for any queues configured from <MadCap:variable name="Product-Names.eventportal_product_short"/>.</p>
+            <p>If a client with the specified username is not already configured on the event broker, the client is created and given the specified password or assigned to the specified LDAP authorization group and an ACL profile for the client is generated automatically. If the client username already exists, the application in <MadCap:variable name="Product-Names.ep_designer"/> is linked with the existing client on the event broker. For more information about adding clients to an event broker, see <MadCap:xref href="../client-profiles.htm#create-client-username" target="_blank">Creating Client Usernames</MadCap:xref>.</p>
+            <p>After an application and consumers in <MadCap:variable name="Product-Names.ep_designer"/> are linked to clients and queues on an event broker, updates to applications in Designer are sent to the event broker. You can also update the application in <MadCap:variable name="Product-Names.ep_designer"/> by importing runtime data. For more information, see <MadCap:xref href="event-portal-audit-runtime-data.htm" target="_blank">Auditing and Importing Runtime Data</MadCap:xref>.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2><a name="Adding_an_Event_Queue"/>Adding an Event Queue to an Application in <MadCap:variable name="Product-Names.ep_designer"/></h2>
+    <p>To add a Solace event queue to an <a href="event-portal-designer-applications.htm" target="_blank" class="link-internal">application</a> in <MadCap:variable name="Product-Names.ep_designer"/>, perform these steps:</p>
+    <ol>
+      <li>On the <b>Application Domains</b> page, click the application domain that contains the application you want to update.</li>
+      <li>Right-click  the application in the graph view and select <b>View Details</b>.</li>
+      <li>Click <b>Open Application</b>.</li>
+      <li>In the <b>Versions</b> list, click <b>More Actions</b><img src="../../Resources/Images/Cloud/reusable-icons/more_actions_ellipsis.png" alt=" "/> next to the  version that you want to add queue configuration to, then select <b>Edit</b>. If the application doesn’t have a version in Draft state, <a href="event-portal-designer-applications.htm#update-app" target="_blank" class="link-internal">create a new version</a>.</li>
+      <li>In the <b>Event Flows</b> section, select <b>Consumers</b>.</li>
+      <li>Click <b>Add Consumer</b>.</li>
+      <li>Type a <b>Name</b> for the consumer. The value in the <b>Name</b> field is used as the default value for the <code>"queueName"</code> in the configuration details.</li>
+      <li> In  the <b>Type</b> list, select <b>Solace Event Queue</b>.</li>
+      <li>Click <b>Set Configuration</b>.</li>
+      <li>Enter <b>Configuration</b> details for the queue. For more information about the available configuration settings, see <MadCap:xref href="#Queue_Config_Props">Queue Configuration Properties</MadCap:xref>. To view or copy a sample configuration, see <MadCap:xref href="#Queue_Configuration_Example">Queue Configuration Example</MadCap:xref>.<p>The default values represent the default values of the required settings for a queue on an <MadCap:variable name="Product-Names.broker_cloud_short"/>. <MadCap:variable name="Product-Names.eventportal_product_short"/> validates that the configuration is in proper JSON format.</p><p MadCap:conditions="Default.HideFromAllOutput"><div class="thumbnail-container"><img src="../../Resources/Images/Event-Portal/app-queue-config.png" alt="Screenshot showing the settings described in the surrounding steps." class="solacethumbnail"/></div></p><p>If the queue you are specifying already exists on the <MadCap:variable name="Product-Names.broker_cloud_short"/>, the <code>"queueName"</code> in the consumer and on the <MadCap:variable name="Product-Names.broker_cloud_short"/> must match. Otherwise, sending the configuration details to the event broker service creates a new queue.</p></li>
+      <li>Click <b>Add Subscription</b> to add a topic subscription to the consumer.</li>
+      <li>Enter a topic subscription for the consumer to subscribe to. You can use <code>*</code> and <code>&gt;</code> as wildcard characters to subscribe to a group of related topics. For more information, see <MadCap:xref href="event-portal-topic-addresses.htm#Topic_Subscriptions">Topic Subscriptions</MadCap:xref>. When you enter a topic subscription, a <b>Preview of Attracted Events</b> shows all  event versions with a matching topic address in <MadCap:variable name="Product-Names.ep_designer"/>  that are published by an application version that has been added to at least one modeled event mesh. </li>
+      <li>Click <b>Save Version</b>.</li>
+    </ol>
+    <h3><a name="Queue_Config_Props"/>Queue Configuration Attributes</h3>
+    <p>The JSON queue configuration for the consumer can include the following attributes.  Some of these attributes are not supported by earlier event broker versions. <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">  For more information, see  <a href="https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/software-broker/config/index.html#/queue/createMsgVpnQueue" target="_blank" class="link-internal">SEMP API queue parameters</a>.</MadCap:conditionalText></p>
+    <table style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');border-left-style: solid;border-left-width: 1px;border-left-color: #e1e1e1;border-right-style: solid;border-right-width: 1px;border-right-color: #e1e1e1;border-top-style: solid;border-top-width: 1px;border-top-color: #e1e1e1;border-bottom-style: solid;border-bottom-width: 1px;border-bottom-color: #e1e1e1;" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Property</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>accessType</code>
+            </p>
+            <p>(included in default configuration)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies how messages are delivered when multiple consumer flows are bound to the queue. The default value is <code>exclusive</code>.</p>
+            <ul>
+              <li><code>Exclusive</code> specifies that only one consumer can receive a message at any one time, while additional consumers may be connected as standby. Only the first consumer to bind can receive messages. If the first consumer disconnects, the second consumer receives data, and so on. Exclusive queues always deliver messages in the order they are received.</li>
+              <li><code>Non-Exclusive</code> specifies that multiple consumers can bind to the queue, which enables load balancing and consumer auto-scaling. A non-exclusive queue can be non-partitioned or partitioned. <ul><li>For a non-partitioned queue (<code>partitionCount</code> is <code>0</code>), each consumer is serviced in a round-robin fashion. If a connection fails, unacknowledged messages are delivered to another consumer with the re-delivered flag set. In this way, messages can be delivered to consumers out of order.</li><li>For a partitioned queue (<code>partitionCount </code>is greater than <code>0</code>), each consumer is delivered messages from one or more partitions. Messages are mapped to partitions based on a hash of the partition key, which is set by the publishing application. Message order is maintained within a partition, but not between partitions.</li></ul></li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>consumerAckPropagationEnabled</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Enables or disables the propagation of consumer acknowledgments (ACKs) received on the active replication Message VPN to the standby replication Message VPN. The default value is <code>true</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>deadMsgQueue</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies the name of the dead message queue (DMQ) used by this queue. The default is <code>#DEAD_MSG_QUEUE</code>. <MadCap:variable name="Variables.CompanyName"/> recommends using a separate DMQ for each queue and topic endpoint that requires one and setting the DMQ name to the name of the queue, followed by "_dmq", for example <code>MyQueue_dmq</code>. For more information about configuring a DMQ, see <MadCap:xref href="#config_dmq">Adding a Dead Message Queue to an Application</MadCap:xref>.</p>
+            <p>A DMQ collects undelivered messages that would otherwise be discarded from the queue because the <b>Maximum TTL</b> or <b>Maximum Redelivery Count</b> has been reached. </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>
+              <code>deliveryCountEnabled</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>Enables or disables the ability for client applications to query the message delivery count of messages received from the queue. This is a controlled availability feature. Please contact support to find out if this feature is supported for your use case. The default value is <code>false</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>deliveryDelay</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies the delay, in seconds, to apply to messages arriving on the queue before the messages are eligible for delivery. The default value is <code>0</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>eventBindCountThreshold</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies event bind count thresholds for the queue:</p>
+            <MadCap:snippetBlock src="../../Resources/Snippets/Cloud/Event Threshold.flsnp"/>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>eventMsgSpoolUsageThreshold</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies message spool usage thresholds for the queue:</p>
+            <MadCap:snippetBlock src="../../Resources/Snippets/Cloud/Event Threshold.flsnp"/>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>
+              <code>eventRejectLowPriorityMsgLimitThreshold</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>Specifies message spool usage thresholds for the queue:</p>
+            <MadCap:snippetBlock src="../../Resources/Snippets/Cloud/Event Threshold.flsnp"/>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>maxBindCount</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies the maximum number of consumer flows that can bind to the queue. The default value is <code>1000</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>maxDeliveredUnackedMsgsPerFlow</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies the maximum number of messages delivered but not acknowledged per flow for the queue. The default value is <code>10000</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>maxMsgSize</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies he maximum message size allowed in the queue, in bytes. The default value is <code>10000000</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>
+              <code>maxMsgSpoolUsage</code>
+            </p>
+            <p>(included in default configuration)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>Specifies the maximum message spool usage allowed by the queue, in megabytes. A value of <code>0</code> only allows spooling of the last message received and disables quota checking. The default value is <code>5000</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>maxRedeliveryCount</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies the maximum number of times the queue will attempt redelivery of a message prior to it being discarded or moved to the DMQ. <code>redeliveryEnabled</code> A value of <code>0</code> means to retry forever. The default value is <code>0</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>maxTtl</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies the maximum time, in seconds, a message can stay in the queue when <code>respectTtlEnabled</code> is <code>true</code>. A message expires when the lesser of the sender-assigned time-to-live (TTL) in the message and the <code>maxTtl</code> configured for the queue, is exceeded. Expired messages are discarded or moved to a DMQ. A value of <code>0</code> disables expiry. The default value is <code>0</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>msgVpnName</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies the name of the Message VPN hosting the queue.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>
+              <code>owner</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>Specifies the client username that owns the queue. By default, users with access to <MadCap:variable name="Product-Names.pubsubmanager_long"/> have ownership privileges. Use this parameter to give ownership to the client application.The queue owner has full unlimited permissions for the queue. The owner can consume, delete, or modify topics in the queue. </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>partitionCount</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>	Specifies the count of partitions of the queue. This setting is only relevant for queues with an access type of non-exclusive. When set to <code>0</code>, bound clients receive messages in a round-robin fashion. Otherwise, bound clients receive messages from individually assigned partitions.  The default value is <code>0</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>partitionRebalanceDelay</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies the delay, in seconds, before a partition rebalance is started once needed. The default value is <code>5</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>partitionRebalanceMaxHandoffTime</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies the maximum time, in seconds to wait before handing off a partition while rebalancing. The default value is <code>3</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>
+              <code>permission</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>Specifies the access level given to client applications other than the queue owner.  The default value is <code>consume</code>. Possible values are:</p>
+            <ul>
+              <li style="font-weight: normal;"><code>no-access</code>—Disallows all access.</li>
+              <li><code>read-only</code>—Clients have read-only access to messages spooled to the queue.</li>
+              <li><code>consume</code>—Clients can consume and delete messages from the queue.</li>
+              <li><code>modify-topic</code>—Clients can consume and delete messages and modify the topic or selector assigned to the queue.</li>
+              <li><code>delete</code>—Clients can consume and delete messages, modify the topic or selector assigned to the queue, and delete the queue.</li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>queueName</code>
+            </p>
+            <p>(included in default configuration)</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies the name of the queue.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>redeliveryDelayEnabled</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Enables or disables a message redelivery delay. When <code>false</code>, messages are redelivered as soon as possible. When <code>true</code>, messages are redelivered according to the initial, max, and multiplier. The default value is <code>false</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>redeliveryDelayInitialInterval</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies the delay to be used between the first two redelivery attempts, in milliseconds. The default value is <code>1000</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>
+              <code>redeliveryDelayMaxInterval</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>Specifies the maximum delay to be used between any two redelivery attempts, in milliseconds. The default value is <code>64000</code>. </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>redeliveryDelayMultiplier</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies the amount each delay interval is multiplied by after each failed delivery attempt. This number is in a fixed-point decimal format in which you must divide by 100 to get the floating point value. For example, a value of <code>125 </code>would cause the delay to be multiplied by 1.25. The default value is <code>200</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>redeliveryEnabled</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>	Enables or disables message redelivery. When enabled, the number of redelivery attempts is controlled by <code>maxRedeliveryCount</code> and undelivered messages are discarded or moved to the DMQ after the specified number of attempts is reached. When disabled, the queue never attempts message delivery  more than once. The default value is <code>true</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>rejectLowPriorityMsgEnabled</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Enables or disables the checking of low priority messages against the <code>rejectLowPriorityMsgLimit</code>. This can be enabled only if <code>rejectMsgToSenderOnDiscardBehavior</code> does not have a value of <code>never</code>. The default value is <code>false</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>
+              <code>rejectLowPriorityMsgLimit</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>Specifies the number of messages of any priority in the queue above which low priority messages are not admitted but higher priority messages are allowed. The default value is <code>0</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>rejectMsgToSenderOnDiscardBehavior</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies when to return negative acknowledgments (NACKs) to sending clients on message discards. Note that NACKs cause the message to not be delivered to any destination and Transacted Session commits to fail. The default value is <code>when-queue-enabled</code>. Possible values are:</p>
+            <ul>
+              <li><code>never</code>—Silently discard messages</li>
+              <li><code>when-queue-enabled</code>—NACK each message discard back to the client, except messages that are discarded because an endpoint is administratively disabled</li>
+              <li><code>always</code>—NACK each message discard back to the client, including messages that are discarded because an endpoint is administratively disabled</li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>respectMsgPriorityEnabled</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Enables or disables the respecting of message priority. When enabled, messages contained in the queue are delivered in priority order. The default value is <code>false</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>
+              <code>respectTtlEnabled</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>Enables or disables the respecting of the time-to-live (TTL) for messages in the queue. When enabled, expired messages are discarded or moved to the DMQ. The default value is <code>false</code>.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="Queue_Configuration_Example"/>Queue Configuration Example</h3>
+    <p MadCap:conditions="Default.NotForPDF">The following JSON queue configuration example represents a queue on the event broker named <code>samplequeue</code> with default values for all parameters.</p>
+    <p MadCap:conditions="Default.OnlyForPDF">The following JSON queue configuration example creates a queue on the event broker named <code>samplequeue</code> with default values for all parameters.</p>
+    <pre xml:space="preserve">
+{
+	"queueName" : "samplequeue",
+	"accessType" : "exclusive",
+	"consumerAckPropagationEnabled" : true,
+	"deadMsgQueue" : "#DEAD_MSG_QUEUE",
+	"deliveryCountEnabled" : false,
+	"deliveryDelay" : 0,
+	"eventBindCountThreshold": {
+		"clearPercent": 60,	
+		"setPercent": 80
+	},
+	"eventMsgSpoolUsageThreshold": {
+		"clearPercent": 18,
+		"setPercent": 25
+	},
+	"eventRejectLowPriorityMsgLimitThreshold": {
+		"clearPercent": 60,
+		"setPercent": 80
+	},
+	"maxBindCount": 1000,
+	"maxDeliveredUnackedMsgsPerFlow": 10000,
+	"maxMsgSize": 10000000,
+	"maxMsgSpoolUsage": 5000,
+	"maxRedeliveryCount": 0,
+	"maxTtl": 0,
+	"partitionCount": 0,
+	"partitionRebalanceDelay": 5,
+	"partitionRebalanceMaxHandoffTime": 3,
+	"redeliveryDelayEnabled": false,
+	"redeliveryDelayInitialInterval": 1000,
+	"redeliveryDelayMaxInterval": 64000,
+	"redeliveryDelayMultiplier": 200,
+	"redeliveryEnabled": true,
+	"rejectLowPriorityMsgEnabled": false,
+	"rejectLowPriorityMsgLimit": 0,
+	"rejectMsgToSenderOnDiscardBehavior": "when-queue-enabled",
+	"respectMsgPriorityEnabled": false,
+	"respectTtlEnabled": false
+}</pre>
+    <h3><a name="config_dmq"/>Adding a Dead Message Queue to an Application</h3>
+    <p>You can configure a <a href="../../Messaging/Guaranteed-Msg/Queues.htm#dmq" target="_blank" class="link-internal">dead message queue</a> (DMQ) to receive messages that are discarded from a queue when they can't be delivered to the subscribing client. By default, messages are discarded from a queue in the following circumstances:</p>
+    <ul>
+      <li>
+        <p>the maximum time-to-live (TTL) value for the message has been reached and the queue is configured to respect message TTL expiry times. </p>
+      </li>
+      <li>
+        <p>the number of redelivery attempts to the consumer for a message has reached the max redelivery count value for the original endpoint. </p>
+      </li>
+    </ul>
+    <p>You can configure a Solace event queue in <MadCap:variable name="Product-Names.ep_designer"/> to act as a DMQ for another Solace event queue by setting the appropriate attribute values for both queues. </p>
+    <p>To configure a DMQ for another Solace event queue, perform these steps:</p>
+    <ol>
+      <li>Configure a Solace event queue according to the instructions for <MadCap:xref href="#Adding_an_Event_Queue">Adding an Event Queue to an Application in [%=Product-Names.ep_designer%]</MadCap:xref>.</li>
+      <li>
+        <p>In the configuration for your queue, set the following values:</p>
+        <table style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');margin-left: 0;margin-right: auto;" class="TableStyle-Table_Num" cellspacing="0">
+          <col class="TableStyle-Table_Num-Column-Column1" style="width: 20%;"/>
+          <col class="TableStyle-Table_Num-Column-Column1"/>
+          <thead>
+            <tr class="TableStyle-Table_Num-Head-Header1">
+              <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Attribute</th>
+              <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <code>deadMsgQueue</code>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p>Specify the <code>queueName</code> for the DMQ to send expired messages to. <MadCap:variable name="Variables.CompanyName"/> recommends using a separate DMQ for each queue that requires one and setting the DMQ name to the name of the queue, followed by "_dmq", for example <code>MyQueue_dmq</code>.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <code>maxRedeliveryCount</code>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p>Set this value if you want to specify the maximum number of times the queue attempts to deliver the message before the message expires. If you want to specify the maximum redelivery count, you must also set  <code>redeliveryEnabled</code>  to <code>true</code>.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p>
+                  <code>maxTtl</code>
+                </p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p>Set this value if you want to specify the TTL in seconds that the queue applies to messages when the message arrives in the queue. If you specify the maximum TTL, you must also set <code>respectTtlEnabled</code> to <code>true</code>.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+                <p>
+                  <code>respectTtlEnabled</code>
+                </p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+                <p>Set this value if you want messages that have not been delivered to expire at the end of the message  TTL.  If a message is not consumed and its TTL time is reached, the message is discarded or moved to a DMQ. </p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </li>
+      <li>
+        <p>Configure a second Solace event queue to act as the DMQ for the first queue and set the <code>queueName</code> to match the <code>deadMsgQueue</code> value you set for the first queue.</p>
+        <p>The DMQ does not need to subscribe to events. It receives only the expired messages from the first queue.</p>
+      </li>
+    </ol>
+    <p>For instructions to configure DMQs in <MadCap:variable name="Product-Names.missionctrl_short"/>, see <MadCap:xref href="../Broker-Manager/configuring-dmqs-broker-manager.htm">Configuring Dead Message Queues</MadCap:xref>.<br/></p>
+    <h2 MadCap:conditions="Default.OnlyForPDF"><a name="Sending_Queue_Updates"/>Sending Configuration Updates to an Event Broker</h2>
+    <p MadCap:conditions="Default.OnlyForPDF">When you add or update Solace event queue configuration in an application, you can send the updates to an operational event broker in the runtime. To update a queue on an event broker from <MadCap:variable name="Product-Names.eventportal_product_short"/> you must first complete the following tasks:</p>
+    <ul MadCap:conditions="Default.OnlyForPDF">
+      <li>
+        <p>All of the setup <MadCap:xref href="#config-prerequisites">Prerequisites</MadCap:xref> must be met.</p>
+      </li>
+      <li>
+        <p>You must have <a href="#Adding_an_Event_Queue" class="link-internal">an application</a> with at least one consumer that has configuration data representing a Solace event queue.</p>
+      </li>
+      <li>
+        <p>You must add the application to a model event broker in an environment that has runtime event broker configuration enabled. When you add the application to the model event broker, if all of the prerequisites have been met, the configuration data is pushed to the runtime event broker automatically. For more information, see <MadCap:xref href="event-portal-designer-applications.htm#app-environment">Adding an Application Version to an Environment</MadCap:xref>.</p>
+        <p class="Note">If you add an application that has event queue configuration data to an environment that has runtime event broker configuration enabled, but the model event broker you added the application to doesn't have a connection to a runtime event broker service, an error displays for the environment in the application. If this error is expected because you have not yet established a connection, you can ignore the error until you are ready to start sending configuration updates to the runtime event broker.</p>
+      </li>
+    </ul>
+    <p MadCap:conditions="Default.OnlyForPDF">If you update the configuration data or add new configuration data to a Solace event queue in the application after adding it to the event broker, <b>Update Required</b> appears next to the names of the environments that the application appears in that have runtime event broker configuration enabled.</p>
+    <p MadCap:conditions="Default.OnlyForPDF">To update the event broker, perform these steps:</p>
+    <ol MadCap:conditions="Default.OnlyForPDF">
+      <li>Click <b>Expand</b><img src="../../Resources/Images/Cloud/reusable-icons/expand-arrow.png" alt=""/>next to the environment to see the list of model event brokers.</li>
+      <li>Click <b>More Actions</b><img src="../../Resources/Images/Cloud/reusable-icons/more_actions_ellipsis.png" alt=" "/>&gt; <b>Update Event Broker</b> for the event broker that needs to be updated.</li>
+      <li>Review the update to be sent to the event broker and click <b>Update</b>.</li>
+    </ol>
+  </body>
+</html>

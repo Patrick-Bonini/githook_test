@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Client Authorization</h1>
+    <p>If a client connection to a Message VPN is successfully authenticated, access to the event broker resources and messaging capabilities within that Message VPN must be authorized for the client.</p>
+    <p>For a client to be authorized, it must provide the host event broker with a client username that matches one that is provisioned on the Message VPN to which the connection has been made. (These client usernames can either be provided by the connected client or be automatically generated for the client based on an LDAP group that it is a member of.) If the client provides a valid client username and password, the client’s connection is authorized.</p>
+    <p>Once authorized, the following two types of profiles that are assigned to the provisioned client username are then used to provide the client with its access permissions and messaging capabilities:</p>
+    <ul>
+      <li>
+        <u>Access Control List (ACL) profiles</u>
+      </li>
+      <p>ACL profiles define whether the client is permitted to connect to the Message VPN, and, if it is, permissions are assigned to the client that set whether it can publish messages to topics and whether it can subscribe to topics. They also set whether its publish and subscribe rights are limited to an explicit range of topics. For more information, refer to <MadCap:xref href="Granting-Clients-Access.htm">Controlling Client Access with ACL Profiles</MadCap:xref>.</p>
+      <li>
+        <u>Client profiles</u>
+      </li>
+      <p>Client profiles are sets of common configuration parameters that can be applied to groups of clients, which allows consistent configurations to be readily defined for many clients. For more information, refer to <MadCap:xref href="Assigning-Client-Profiles.htm">Configuring Clients with Client Profiles</MadCap:xref>.</p>
+    </ul>
+    <p>The following figure shows the basic process for authorizing an authenticated client according to the authorization properties assigned to a client username provisioned on the Message VPN.</p>
+    <p class="GraphicCaption">Authorization Process Using Provisioned Client Usernames</p>
+    <p>
+      <img src="../Resources/Images/Broker-Security/client_authorization_process1.PNG" alt="Client Authentication With Client Usernames"/>
+    </p>
+    <h2 class="with-rule"><a name="Internally"/>Authorizing Clients Through the Internal Database</h2>
+    <p>When internal authorization is used, rather than LDAP group authorization, client usernames provisioned on the Message VPN will  determine a client’s authorization. If the client provides a client username that matches a client username provisioned in the Message VPN that the client has connected to, the client and ACL profiles configured for that client username are applied to the client. If the client does not provide a client username, the event broker will attempt to apply the client username named <code>default</code> and the client and ACL profiles configured for that client username.</p>
+    <p>Internal authorization is the default authorization mode for Message VPNs.</p>
+    <p class="Note">The <code>default</code> client username account always exists on the event broker and cannot be deleted. However, by default, this account is not enabled.</p>
+    <p>After the client is bound to a client username account in the specified Message VPN, the event broker checks whether that client username account is enabled or not. If the client username account is not enabled, the client is disconnected. (The response “403 Client Username Is Shutdown” is sent before disconnecting.)</p>
+    <p>If the bound client username account is enabled, the client is then created with the properties of the client profile and ACL profile configured for the bound client username account object.</p>
+    <p>Not all authorization methods can be used with all authentication methods. For more information, see <MadCap:xref href="#Authoriz">Authorization and Authentication Method Compatibility</MadCap:xref>.</p>
+    <h3>Related Provisioning and Configuration Information</h3>
+    <ul>
+      <li>For information on how to configure client authentication and client profiles, refer to <MadCap:xref MadCap:unresolvedLink="import-link:managing_client_authentication_and_authorization_526830633_92633" href="Configuring-Client-Authentication.htm">Managing Client Authentication and Authorization</MadCap:xref>.</li>
+      <li>For information on how to configure ACLs, refer to <MadCap:xref MadCap:unresolvedLink="import-link:managing_access_control_lists_4168580380_92633" href="Managing-Access-Control-Lists.htm">Managing Access Control Lists</MadCap:xref>.</li>
+    </ul>
+    <h2 class="with-rule"><a name="LDAP-Groups"/>Authorizing Clients Through LDAP Groups</h2>
+    <p>Clients can also receive their authorizations based on whether they belong to specific LDAP authorization groups. Using LDAP authorization groups to authorize clients can assist network administrators that deal with large numbers of clients, especially when those clients are already configured in a corporate server, and churn frequently as employees join and leave an organization.</p>
+    <p>When LDAP authorization is enabled for the Message VPN that an authenticated client is attempting to connect to, an LDAP attribute (typically <code>MEMBEROF</code>) is retrieved for the client, and an LDAP lookup is made to an external LDAP server to determine the LDAP groups that the client belongs to.</p>
+    <p>Any LDAP groups that the lookup returns are compared against the LDAP authorization groups configured on the event broker, and the client is assigned a matching enabled authorization group  that has the highest priority.</p>
+    <p class="Note">The maximum number of authorization groups that may be retrieved for a client from an external LDAP server is 128. The client will not be authorized if more authorization groups are returned.</p>
+    <p>A client username is then automatically generated for the client, and the client and ACL profiles configured for the matching group are applied to the client username that the client is bound to. These profiles provide the client with its authorizations.</p>
+    <p>Not all authorization methods can be used with all authentication methods. For more information, see <MadCap:xref href="#Authoriz">Authorization and Authentication Method Compatibility</MadCap:xref>.</p>
+    <p>The following figure shows the basic process for authorizing an authenticated client that belongs to a configured LDAP authorization group.</p>
+    <p class="GraphicCaption">Authorization Process Using LDAP Groups</p>
+    <p class="GraphicCaption">
+      <img src="../Resources/Images/Broker-Security/client_authorization_process_revised_LDAP_only.png" alt="Authorization Process Using LDAP Groups"/>
+    </p>
+    <h3>Related Provisioning and Configuration Information</h3>
+    <ul>
+      <li>For information on how to configure client authentication and client profiles, refer to <MadCap:xref MadCap:unresolvedLink="import-link:managing_client_authentication_and_authorization_526830633_92633" href="Configuring-Client-Authentication.htm">Managing Client Authentication and Authorization</MadCap:xref>.</li>
+      <li>For information on how to configure ACLs, refer to <MadCap:xref MadCap:unresolvedLink="import-link:managing_access_control_lists_4168580380_92633" href="Managing-Access-Control-Lists.htm">Configuring Access Control Lists</MadCap:xref>.</li>
+    </ul>
+    <h2 class="with-rule"><a name="Authoriz2"/>Authorizing Clients Through OAuth</h2>
+    <p>  Clients that login using an OAuth token can also receive their authorizations based on whether they belong to specific  authorization groups.  </p>
+    <p>When OAuth authorization is enabled for a Message VPN that an authenticated client is attempting to connect to, the event broker extracts authorization groups  from the provided OAuth token or the token introspection result.  The event broker then compares the extracted groups with authorization groups configured on the event broker as if they were returned from an LDAP lookup. Once the client's authorization group is determined, the client profile and ACL profile configured for the  group are applied to the client. These profiles provide the client with its authorizations. </p>
+    <p>Not all authorization methods can be used with all authentication methods. For more information, see <MadCap:xref href="#Authoriz">Authorization and Authentication Method Compatibility</MadCap:xref>.</p>
+    <p>The following figure shows the basic process for authorizing an authenticated client that belongs to a configured  authorization group using OAuth.</p>
+    <p class="GraphicCaption">Authorization Process Using OAuth</p>
+    <p class="GraphicCaption">
+      <img src="../Resources/Images/Broker-Security/oauth_authorization_process.PNG" alt=""/>
+    </p>
+    <h3>Related Provisioning and Configuration Information</h3>
+    <ul>
+      <li>For information on how to configure client authentication and client profiles, refer to <MadCap:xref MadCap:unresolvedLink="import-link:managing_client_authentication_and_authorization_526830633_92633" href="Configuring-Client-Authentication.htm">Managing Client Authentication and Authorization</MadCap:xref>.</li>
+      <li>For information on how to configure ACLs, refer to <MadCap:xref MadCap:unresolvedLink="import-link:managing_access_control_lists_4168580380_92633" href="Managing-Access-Control-Lists.htm">Configuring Access Control Lists</MadCap:xref>.</li>
+    </ul>
+    <h2 class="with-rule"><a name="Authoriz"/> Authentication and Authorization Method Compatibility</h2>
+    <p>PubSub+ event brokers do not support using any authentication method with any authorization method. The following table shows the authentication and authorization methods that can be used together. </p>
+    <table style="width: 100%;margin-left: auto;margin-right: auto;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col style="width: 327px;" class="TableStyle-Table_Num-Column-Column1"/>
+      <col style="width: 103px;" class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"> </th>
+          <th colspan="3" class="TableStyle-Table_Num-HeadD-Column1-Header1">Authorization Method</th>
+        </tr>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Authentication Method</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Internal</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">LDAP</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">OAuth</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Internal</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="text-align: center;">
+            <p>
+              <img src="../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported" style="text-align: center"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <img src="../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1" style="text-align: center;">
+            <p>
+              <img src="../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">LDAP</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <img src="../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="text-align: center;">
+            <p>
+              <img src="../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1" style="text-align: center;">
+            <p>
+              <img src="../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Radius</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <img src="../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <img src="../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>
+              <img src="../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">Client Certificate</td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1" style="text-align: center;">
+            <p>
+              <img src="../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1" style="text-align: center;">
+            <p>
+              <img src="../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>
+              <img src="../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Kerberos</td>
+          <td style="text-align: center;" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <img src="../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <img src="../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td style="text-align: center;" class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>
+              <img src="../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">OAuth</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>
+              <img src="../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td style="text-align: center;" class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>
+              <img src="../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+          <td style="text-align: center;" class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>
+              <img src="../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt="Supported"/>
+            </p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

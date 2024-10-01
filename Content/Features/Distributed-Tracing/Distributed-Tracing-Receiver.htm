@@ -1,0 +1,377 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>
+      <MadCap:concept term="Cloud;Appliance;Software"/>
+      <MadCap:variable name="Product-Names.opentelemetry_receiver_long"/>
+    </h1>
+    <p>The <MadCap:variable name="Product-Names.opentelemetry_receiver_long"/> <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">is a software plugin that <MadCap:variable name="Variables.CompanyName"/> built for the OpenTelemetry Collector project. As part of the distributed tracing solution, the  Receiver </MadCap:conditionalText>helps your chosen backends interpret the tracing data related to the event messages that the <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.pubsub_brand_only"/></MadCap:conditionalText>event broker sends and receives. </p>
+    <p>The Receiver consumes trace messages from a <span style="font-style: italic;">telemetry queue</span> on the event broker and converts these messages into OpenTelemetry spans. The Collector then forwards these spans to your preferred OpenTelemetry backend (such as Jaeger, Prometheus, Zipkin, DataDog, DynaTrace, and so on).</p>
+    <p>You can use the <MadCap:variable name="Product-Names.opentelemetry_receiver_long"/> to collect basic statistics such as: </p>
+    <ul>
+      <li>the number of trace messages received</li>
+      <li>connection status</li>
+      <li>the number of failed connection attempts (particularly useful with HA standby event brokers)</li>
+      <li>any other monitoring or debugging statistics </li>
+    </ul>
+    <p> As part of the OpenTelemetry Collector, the <MadCap:variable name="Product-Names.opentelemetry_receiver_long"/> runs on any platform that the Collector is supported on. The Collector and Receiver do not run on the event broker; rather, they are deployed separately, as shown below:</p>
+    <div class="thumbnail-container">
+      <img src="../../Resources/Images/Distributed-Tracing/distributed-tracing-receiver.png" class="solacethumbnail" style="width: 499px;height: 177px;" alt="Illustration depicting the concepts described in the surrounding text."/>
+    </div>
+    <p>For more information on the relationship between the OpenTelemetry Collector and custom receivers like the <MadCap:variable name="Product-Names.opentelemetry_receiver_long"/>, refer to the <a href="https://opentelemetry.io/docs/collector/" target="_blank" class="link-offsite">Collector</a> section of the OpenTelemetry documentation.</p>
+    <h2><a name="receiver-setup-and-management"/>Getting the Collector</h2>
+    <MadCap:snippetBlock src="../../Resources/Snippets/get-otel-collector.flsnp"/>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For information about the minimum and recommended versions of the Collector, see <MadCap:xref href="Distributed-Tracing-Receiver-Versions.htm">Distributed Tracing Version Compatibility</MadCap:xref>.</p>
+    <h2><a name="configuring-the-receiver"/>Configuring the Collector</h2>
+    <p>The OpenTelemetry Collector and its components (Receivers, Processors, and Exporters) are configured  using a YAML configuration file, which is loaded at start-up.</p>
+    <p>You must configure the following parameters in the Receiver:</p>
+    <ul>
+      <li>the event broker URL (to connect to the event broker): This URL must include the AMQP port for the Message VPN</li>
+      <li>an authentication mechanism (basic, TLS client certificate, or OAuth)</li>
+      <li>authentication credentials</li>
+      <li>telemetry queue name</li>
+    </ul>
+    <p>Once you have configured the configuration keys of the Collector components, you must enable them via pipelines within the OpenTelemetry service section (see <a href="https://opentelemetry.io/docs/collector/configuration/#service" target="_blank" class="link-offsite">OpenTelemetry Service</a> for more information).</p>
+    <p>For more information on how to instantiate, configure, and manage the Receiver, see the <a href="https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/solacereceiver" target="_blank" class="link-offsite">Solace OpenTelemetry Receiver Project</a> on GitHub.</p>
+    <h4><a name="high-availability-and-disaster-recovery"/>High Availability (HA) and Disaster Recovery (DR)</h4>
+    <p>For event brokers deployed in High Availability (HA) or Disaster Recovery (DR) event broker pairs, you can instantiate and configure two (or more) receivers on a single pipeline within the OpenTelemetry Collector. One receiver connects to the primary event broker, and the other connects to the backup event broker. Only the receiver that is connected to the active event broker is able to successfully receive trace messages. In a failover scenario, the receiver that cannot connect retries connecting frequently (and infinitely) to minimize the amount of time the receiver is disconnected.</p>
+    <p>This example shows how you can configure multiple instances of the receiver (with SASL plain authentication) in an HA or DR setup:</p>
+    <pre xml:space="preserve">receivers:
+  solace/primary:
+    broker: [myHost-primary:5671]
+    auth:
+      sasl_plain:
+        username: otel
+        password: otel01$
+    queue: queue://#telemetry-profile123
+
+  solace/backup:
+    broker: [myHost-backup:5671]
+    auth:
+      sasl_plain:
+        username: otel
+        password: otel01$
+    queue: queue://#telemetry-profile123
+
+  service:
+    pipelines:
+      traces/solace:
+        receivers: [solace/primary,solace/backup]</pre>
+    <h2><a name="health-monitoring"/>Health Monitoring</h2>
+    <p>You can configure the OpenTelemetry Collector to expose an OpenMetrics endpoint on port 8888 at the path <code>/metrics</code> as follows:</p>
+    <pre xml:space="preserve">service: 
+ pipelines:
+  metrics:
+   address: ":8888"</pre>
+    <p>The OpenTelemetry Collector also has a special receiver observability API  for emitting observability signals (<code>obsreport.Receiver</code>). Below is a table with some of the Solace Receiver observability metric keys:</p>
+    <table style="width: 100%;margin-left: 0;margin-right: auto;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col style="width: 40%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <col style="width: 10%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <col style="width: 50%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Key</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Type</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Displayed Receiver Metric</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <pre>solacereceiver/failed_reconnections</pre>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>sum</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The number of failed event broker reconnections.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <pre>solacereceiver/recoverable_unmarshalling_errors</pre>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>sum</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The number of recoverable errors by messages unmarshalling (such as missing required event attributes, bad  fields, and so on).</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <pre>solacereceiver/fatal_unmarshalling_errors</pre>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>sum</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The number of fatal errors by messages unmarshalling (such as missing expected span attributes).</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <pre xml:space="preserve">solacereceiver/dropped_span_messages</pre>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>sum</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>The number of dropped span messages.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <pre>solacereceiver/received_span_messages</pre>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>sum</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The number of received span messages.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <pre>solacereceiver/need_upgrade</pre>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>latest value</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Upgrade status of the receiver. If the value equals 1, this indicates that the receiver requires an upgrade and is not compatible with the messages received form an event broker.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <pre>solacereceiver/reported_spans</pre>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>sum</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The number of received spans reported to the next component in the trace pipeline.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <pre>solacereceiver/receiver_connection_status</pre>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>latest value</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>Connection status of the receiver as follows:</p>
+            <ul>
+              <li>No metrics: The receiver hasn't started</li>
+              <li>0: The receiver is starting</li>
+              <li>1: The receiver is connecting</li>
+              <li>2: The receiver is connected</li>
+              <li>3: The receiver is idle (usually combined with <code>solacereceiver/need_upgrade</code> ==1)</li>
+              <li>4: The receiver is terminating</li>
+              <li>5: The receiver is terminated</li>
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="Note">If multiple Receiver instances are used with different given names (for example, in an HA setup), the full key names will be similar to <code>otelcol_receiver_solace_solacereceiver_primary_receiver_status</code> (for a Receiver instance called "primary").</p>
+    <h2><a name="debugging"/>Debugging</h2>
+    <p>Logs are the primary mechanism available in the OpenTelemetry Collector for debugging Collector and receiver issues. Logs display:</p>
+    <ul>
+      <li>event broker connectivity issues</li>
+      <li>issues in forwarding spans to the OpenTelemetry Collector or the backend</li>
+      <li>issues in parsing trace messages that are received from the event broker</li>
+      <li>any spans or trace messages that the receiver discards for any reason</li>
+    </ul>
+    <p>To learn more about debugging levels on the receiver and how to change between them, refer to <a href="https://opentelemetry.io/docs/collector/configuration/#service" target="_blank" class="link-offsite">OpenTelemetry Service</a>.</p>
+    <h2><a name="performance"/>Receiver Performance</h2>
+    <p>The <MadCap:variable name="Product-Names.opentelemetry_receiver_long"/> is designed as a high-performance real-time module that is capable of processing a high span rate. This is especially useful when the event broker publishes to a large number of endpoints. Conditions such as performance, server resources, and manageability of the configuration file may result in the need for multiple receivers to service all Message VPNs on the event broker. There is no fixed limit to how many receivers can be instantiated within one OpenTelemetry Collector. To allow for horizontal scaling of receivers and Collectors (given the very nature of distributed tracing across multiple microservices and brokers), telemetry queues are non-exclusive.</p>
+    <h3>Flow Control</h3>
+    <p>The OpenTelemetry Collector may encounter a situation where it cannot keep up with the rate of incoming trace messages. Without a proper strategy to manage the trace message flow (such as the use of a memory limiter processor), the OpenTelemetry Collector may crash due to an out-of-memory situation. To prevent this scenario, the Solace Receiver has a flow control strategy that provides a backpressure mechanism for synchronous and asynchronous pipelines:</p>
+    <ul>
+      <li>
+        <p style="font-weight: normal;">Synchronous pipelines don't apply any trace message batching or buffering. This results in a decreased chance of message loss, free error propagation (as problems can be reported synchronously), and lower performance. This is the preferred option for cases where data integrity is valued more than trace message throughput.</p>
+      </li>
+      <li>
+        <p style="font-weight: normal;">Asynchronous pipelines apply trace message batching and buffering. This results in  an increased chance of message loss, limited error propagation (as problems can't be reported synchronously), and higher performance. This is the preferred option for cases where trace message throughput is valued more than data integrity. </p>
+      </li>
+    </ul>
+    <p class="Note">In asynchronous pipelines, the possibility of trace message loss increases with growing message throughput, with backend unavailability, if the Collector crashes due to an out-of-memory situation, or if the Collector process is killed by the operating system without graceful termination.<br/></p>
+    <h4>Configuring Flow Control for Components</h4>
+    <p><MadCap:variable name="Variables.CompanyName"/> recommends the following configurations for the OpenTelemetry Collector components (Jaeger exporter, batch processor, and memory limiter processor) for synchronous and asynchronous pipelines.</p>
+    <p class="Note">Jaeger exporter is shown as an example. Other exporters may require a similar configuration.</p>
+    <table style="width: 100%;margin-left: 0;margin-right: auto;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col style="width: 10%;" class="TableStyle-Table_Num-Column-Column1">
+            </col>
+      <col style="width: 45%;" class="TableStyle-Table_Num-Column-Column1">
+            </col>
+      <col style="width: 45%;" class="TableStyle-Table_Num-Column-Column1">
+            </col>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Component</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Synchronous Pipelines</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Asynchronous Pipelines</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="font-weight: normal;">Jaeger Exporter</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <ul>
+              <li>
+                <p>Disable batching gRPC configuration for waiting when ready: </p>
+                <pre xml:space="preserve">exporters:
+otlp/jaeger:
+wait_for_ready: false</pre>
+              </li>
+              <li>
+                <p>Don't configure return on failure to return backend errors immediately:</p>
+                <pre xml:space="preserve">retry_on_failure:<br/>enabled: false</pre>
+              </li>
+              <li>
+                <p>Disable sending queues:</p>
+                <pre xml:space="preserve">otlp/jaeger:<br/>sending_queue:<br/>enabled: false</pre>
+              </li>
+            </ul>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Keep as enabled (see <a href="https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/exporterhelper/README.md" class="link-offsite" target="_blank">OpenTelemetry Exporter Helper</a> for Jaeger exporter configuration of asynchronous and queueing behavior).</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="font-weight: normal;">Batch Processor</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Don't enable (as the batch processor masks all errors returned from a next component).</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Enable as the last processor in the pipeline for enhanced performance (as this alignment places trace messages into batches before they are forwarded to the exporter).</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p style="font-weight: normal;">Memory Limiter</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Enable optionally (as only one trace message flows along at a given moment). Configure <code>check_interval</code> for periodic checks to 1 second.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>Configure low enough to apply backpressure to the Solace Receiver (for example, set <code>limit_percentage</code> at less than 50%, with a shorter <code>check_interval</code>, usually at less than 1 second).</p>
+            <p> </p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="Note">The implemented flow control strategy should be aware of the <MadCap:variable name="Variables.CompanyName"/> Receiver lifecycle. For instance, termination of the Receiver instance must interrupt the retry timer (if it's running using <code>passed</code> in <code>context.Context</code>). If not, the receiver may not acknowledge the trace messages after termination, and these trace messages will be delivered to another Receiver instance as it becomes available.</p>
+    <p>For more information on the Jaeger exporter, see <a href="https://www.jaegertracing.io/" class="link-offsite" target="_blank">Jaeger documentation</a>. For more information on the batch processor, see <a href="https://github.com/open-telemetry/opentelemetry-collector/tree/main/processor/batchprocessor" class="link-offsite" target="_blank">OpenTelemetry Batch Processor</a>. For more information on the memory limiter, see <a href="https://github.com/open-telemetry/opentelemetry-collector/blob/main/processor/memorylimiterprocessor/README.md" class="link-offsite" target="_blank">OpenTelemetry Memory Limiter</a>.</p>
+    <h4>Configuring Flow Control on the Receiver</h4>
+    <p>By default, the <MadCap:variable name="Product-Names.opentelemetry_receiver_long"/> has a delayed retry feature with a single timeout value of 10 milliseconds. Delayed retries occur each time a non-terminal error is returned from a pipeline due to memory shortage or backend unavailability. <MadCap:variable name="Variables.CompanyName"/> recommends implementing a delay using a  configuration that is similar to <code>check_interval</code> of the memory limiter. This enables usage of valid time units ("ns", "us", "ms", "s", "m", "h"). Only values less than 1 are currently supported. </p>
+    <p>This example shows you how to configure the <MadCap:variable name="Product-Names.opentelemetry_receiver_long"/> for a  1 second delay:</p>
+    <pre xml:space="preserve">receivers:
+  solace/primary:
+    broker: [myHost-primary:5671]
+    flow_control:
+       delayed_retry:
+         delay:1s
+....</pre>
+    <h4>Observability for Flow Control</h4>
+    <p>The <MadCap:variable name="Product-Names.opentelemetry_receiver_long"/> emits the following stats about trace message flow control. These stats can be monitored to tune receiver performance under heavy load. </p>
+    <table style="width: 100%;margin-left: 0;margin-right: auto;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col style="width: 40%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <col style="width: 10%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <col style="width: 50%;" class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Key</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Type</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Displayed Receiver Metric</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td rowspan="1" colspan="1" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <pre>solacereceiver/receiver_flow_control_status</pre>
+          </td>
+          <td rowspan="1" colspan="1" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>latest value</p>
+          </td>
+          <td rowspan="1" colspan="1" class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p rowspan="1" colspan="1">The current state of flow control: </p>
+            <ul>
+              <li>
+                <p rowspan="1" colspan="1">0: The receiver is not currently flow-controlled</p>
+              </li>
+              <li>
+                <p rowspan="1" colspan="1">1: The receiver is currently flow-controlled (delayed retry)</p>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td rowspan="1" colspan="1" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <pre>solacereceiver/receiver_flow_control_recent_retries</pre>
+          </td>
+          <td rowspan="1" colspan="1" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>latest value</p>
+          </td>
+          <td rowspan="1" colspan="1" class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The most recent (or current) number of retries while the receiver is flow-controlled.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td rowspan="1" colspan="1" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <pre>solacereceiver/receiver_flow_control_total</pre>
+          </td>
+          <td rowspan="1" colspan="1" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>sum</p>
+          </td>
+          <td rowspan="1" colspan="1" class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The total number of times the receiver was flow-controlled.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td rowspan="1" colspan="1" class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <pre>solacereceiver/receiver_flow_control_with_single_successful_retry</pre>
+          </td>
+          <td rowspan="1" colspan="1" class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>sum</p>
+          </td>
+          <td rowspan="1" colspan="1" class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>The number of flow control situations resolved after the first retry.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>Here are some tips to tune your receiver performance:</p>
+    <ul>
+      <li>
+        <p>If <code>receiver_flow_control_recent_retries</code> always reports 1, the configured delay may be too high. To achieve higher performance, decrease the configured delay to increase the number of retries required in a flow control situation.</p>
+      </li>
+      <li>
+        <p>If <code>receiver_flow_control_recent_retries</code> always reports a high number,  the configured delay is too low. To achieve higher performance, increase the configured delay to reduce the number of retries required in a flow control situation.</p>
+      </li>
+      <li>
+        <p>Use the smallest possible retry interval so that <code>receiver_flow_control_total</code> is equal to <code>receiver_flow_control_with_single_successful_retry</code>. In this case, the receiver doesn't need to retry more than once to push the trace data through the pipeline.</p>
+      </li>
+    </ul>
+    <h2><a name="security"/>Security</h2>
+    <p>As part of the OpenTelemetry Collector, the <MadCap:variable name="Product-Names.opentelemetry_receiver_long"/> uses configuration utilities and coding practices established  by the OpenTelemetry  community. By default, the  Receiver enforces TLS by connecting to the event broker and applying common authentication mechanisms like OAuth, client certificate authentication, and basic username/password authentication. The  Receiver validates the event broker's server certificate, including the hostname and expiry, via the trust store that is provided in the receiver's configuration. </p>
+    <p>For more information about the security of the Collector, refer to <a href="https://github.com/open-telemetry/opentelemetry-collector/blob/main/docs/security-best-practices.md" target="_blank" class="link-offsite">OpenTelemetry Collector Security Best Practices.</a></p>
+    <div class="Caution" MadCap:conditions="Default.HideFromAllOutput">
+      <p>The option to allow spans to include the user properties of published messages should be used with care. While including the user properties greatly helps in searching for the necessary traces during analysis or troubleshooting, administrators need to be aware of their company's privacy, security, and data retention policies before enabling this feature.</p>
+      <p>[This caution can be exposed once the option to disable user property propagation is available (Last checked May, 2023 with Michael Cardy)].</p>
+    </div>
+    <h2 MadCap:conditions="SAP.SapHideFromOutput"><a name="support"/>Solace Support for the OpenTelemetry Collector</h2>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Self-managed event broker customers (those who do not use <MadCap:variable name="Product-Names.cloud_product_short"/>) are responsible for deploying, upgrading, and maintaining the security posture of their OpenTelemetry Collector deployments.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Variables.CompanyName"/> will provide support for the OpenTelemetry Collector when connected to PubSub+ event brokers with distributed tracing licenses for issues impacting PubSub+ distributed tracing in accordance with our current support terms and will treat issues with the OpenTelemetry Collector with equal severity and priority as any other similar business-impacting issues.  Bugs and/or fixes requiring changes to the OpenTelemetry Collector or the accompanying <MadCap:variable name="Variables.CompanyName"/> Receiver will be submitted to OpenTelemetry and will be provided only in a future release of the OpenTelemetry Collector.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Variables.CompanyName"/> may provide commercially reasonable efforts at our discretion toward further development activities that deliver bug resolution, enhancements, and feature requests from customers should they suit the strategic direction of PubSub+ event brokers and the overall  suite of telemetry capabilities.</p>
+  </body>
+</html>

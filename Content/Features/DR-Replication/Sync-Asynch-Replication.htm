@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Synchronous and Asynchronous Message Replication</h1>
+    <p>Replication can be performed in one of two modes:</p>
+    <ul>
+      <li>Synchronous Replication—A message or transaction is not considered persisted until it has been confirmed to be stored on both the active and standby sites. While providing a greater guarantee that the published message or transaction will not be lost in an uncontrolled failover, synchronous replication incurs a performance penalty for the publisher, especially blocking publishers. This is because the publisher has to wait for communication between the two replication sites to complete before publishing the next message or transaction. In those use cases, the maximum message rate of a single publisher is limited by the round-trip time and available bandwidth between the active and the standby sites.</li>
+      <li>Asynchronous Replication—A message or transaction is considered persisted once it has been stored on the active site and put into the replication queue (<code>#MSGVPN_REPLICATION_DATA_QUEUE</code>) on the active site to be delivered to the standby site. This type of replication gives improved performance, since it does not have to wait for communication with the standby site to complete, but during an uncontrolled failure of the active site there is a chance that a message or transaction that the client has been told has completed has not been delivered to the standby site. In this uncontrolled case, messages or transactions may be lost or duplicated.</li>
+    </ul>
+    <h4>Non-Transacted Messages</h4>
+    <p>When using non-transacted messages, replicated topic subscriptions are configured to use either synchronous or asynchronous replication mode. If a message is published that matches a replicated topic subscription that is configured as synchronous, that message is not acknowledged until it is stored on both the active and standby site. Messages published to asynchronous topics are acknowledged once the message is stored on the active site and put into the replication queue for delivery to the standby site. If a message matches both a synchronous and an asynchronous replicated topic subscription, synchronous replication is used.</p>
+    <h4>Transactions</h4>
+    <p>When using transactions, the replication mode is set at the message VPN level. All local and XA transactions in the message VPN use the same replication mode. Synchronous transactions must be stored on the standby site before responding to the client. Asynchronous transactions only need to be stored in the replication queue. The replication mode of the replicated topic subscriptions are ignored when using transactions.</p>
+    <h2 class="with-rule"><a name="Synchron_downgrade"/>Downgrading to Asynchronous Replication</h2>
+    <p>With synchronous replication, if the replication bridge connection is very slow or goes down, the broker may be unable to process replicated messages and transactions. To continue processing messages and transactions,   the message VPN  by default switches to asynchronous replication. The message VPN is then considered "synchronous ineligible" and the replication service is considered degraded. At that point, all published messages that match synchronous replicated topic subscriptions and that are within synchronous transactions are handled asynchronously.</p>
+    <p>This behavior helps to avoid a business interruption when the standby site is temporarily unreachable.</p>
+    <p>The replication service is considered degraded when any of the following occurs:</p>
+    <ul>
+      <li>The replication bridge is disconnected from the replication queue.</li>
+      <li>A message can be put in the replication queue but cannot be sent immediately (streamed) to the replication mate because the link is slow or the replication queue is backed up. This state must persist for 30 seconds before replication is considered degraded.</li>
+      <li>A message put in the replication queue can be sent immediately but is not acknowledged by the replication mate within 30 seconds (and is therefore retransmitted). This state must persist for 30 seconds before replication is considered degraded.</li>
+    </ul>
+    <p>The event broker generates notification events whenever it transitions between synchronous eligible and ineligible (that is, degraded or not degraded).</p>
+    <h2 class="with-rule"><a name="Synchron_prevent_downgrade"/>Preventing Downgrade to Asynchronous Replication</h2>
+    <p>If the risks associated with asynchronous replication are not acceptable, it is possible to ensure synchronous replication is always strictly enforced. To maintain a synchronous replication mode, you can enable the <code>reject-msg-when-sync-ineligible</code> option for a Message VPN. With this enabled, synchronous replicated messages or transactions are rejected if they cannot be successfully stored on both the active and standby site.</p>
+  </body>
+</html>

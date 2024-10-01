@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:lastBlockDepth="7" MadCap:lastHeight="2793" MadCap:lastWidth="1339">
+  <head/>
+  <body>
+    <h1>Modifying Custom Monitors Created Before Version 6.1</h1>
+    <p>The 6.1 version of the Solace Geneos Agent used an updated HTTP Client library from Apache. As a result, any custom monitors that were created using earlier versions of the Solace-provided <code>UsersMonitor.java</code> example before Version 6.0 require code changes to work properly with the new library used in Version 6.1.</p>
+    <p>The required code changes are generic to all monitors based on the <code>UsersMonitor.java</code> example. </p>
+    <h2 class="with-rule"><a name="developing_and_deploying_monitors_275720940_233432"/>Steps to Modify Custom Monitors</h2>
+    <ol>
+      <li>Unpack the <code>sol-geneossample</code> file and copy all custom monitor java files into the appropriate places in the <code>src/com/…</code> directory structure. This ensures that the final product picks up the new libraries.</li>
+      <li>Modify the sections and methods, as described in <MadCap:xref href="#developing_and_deploying_monitors_275720940_233425">Sections and Methods Requiring Modification</MadCap:xref>.
+			<p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">SEMP parsing and data management code can remain unchanged.</p></li>
+      <li>After the indicated sections and methods are modified, you must recompile, redeploy, and restart the Solace Geneos Agent. Refer to
+			<MadCap:xref href="Adding-a-New-Monit.htm">Steps to Add a New Monitor</MadCap:xref>.</li>
+    </ol>
+    <h2 class="with-rule"><a name="developing_and_deploying_monitors_275720940_233425"/>Sections and Methods Requiring Modification</h2>
+    <p>The following sections and methods of pre-version 6.1 monitors must be modified:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#developing_and_deploying_monitors_275720940_233445">Import section</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#developing_and_deploying_monitors_275720940_230780">Private variable section</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#developing_and_deploying_monitors_275720940_230312">onPostInitialize() method</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#developing_and_deploying_monitors_275720940_230322">onCollect() method</MadCap:xref>
+      </li>
+    </ul>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">If the custom monitors are based on the <code>UsersMonitor.java</code> sample, the best way to update the code is to open the custom monitor beside <code>UsersMonitor.java</code> in a diff tool, such as WinMerge. Then copy individual pieces of the updated code from the 6.1 version of <code>UsersMonitor.java</code> into the custom monitor.</p>
+    <h3><a name="developing_and_deploying_monitors_275720940_233445"/>Import section</h3>
+    <ul>
+      <li>Replace <code>org.apache.http.*</code> section</li>
+      <li>Add:<ul><li><code>import com.solacesystems.solgeneos.sample.util.SampleHttpSEMPResponse;</code></li><li><code>import com.solacesystems.solgeneos.sample.util.SampleResponseHandler;</code></li></ul></li>
+      <li>Leave unchanged:<ul><li>the import of your <code>SEMPParser </code>class</li></ul></li>
+    </ul>
+    <p style="text-align: left;">
+      <img src="Images/semp_parser_class.png" style="width: 614.6718px;height: 221.9645px;margin-left: 2.76552px;margin-top: 2.8188px;margin-right: 2.440046px;margin-bottom: 2.841845px;" alt=""/>
+    </p>
+    <h3><a name="developing_and_deploying_monitors_275720940_230780"/>Private variable section</h3>
+    <ul>
+      <li>Change <code>httpClient</code> to <code>DefaultHttpClient</code></li>
+      <li>Add:<ul><li value="1"><code>private ResponseHandler&lt;SampleHttpSEMPResponse&gt; m_responseHandler;</code></li></ul></li>
+      <li>Leave unchanged:<ul><li value="1">your SEMP request string</li><li value="2">your parser variable, ‘<code>m_parser</code>’ should still refer to the appropriate <code>SEMPParser </code>class</li></ul></li>
+    </ul>
+    <p style="text-align: left;">
+      <img src="Images/m_parser.png" style="width: 611.6506px;height: 126.8688px;margin-left: 2.71512px;margin-top: 3.75336px;margin-right: 3.818175px;margin-bottom: 2.144155px;" alt=""/>
+    </p>
+    <h3><a name="developing_and_deploying_monitors_275720940_230312"/>onPostInitialize() method</h3>
+    <ul>
+      <li>Modify parameter management</li>
+      <li>Modify credential management</li>
+      <li>Leave unchanged:<ul><li value="1">your parser variable, <code>'m_parser'</code> should still refer to the appropriate <code>SEMPParser</code> class</li></ul></li>
+    </ul>
+    <p style="text-align: left;">
+      <img src="Images/m_parser3.png" style="width: 616.343px;height: 237.0154px;margin-left: 2.03904px;margin-top: 4.25592px;margin-right: 2.803703px;margin-bottom: 5.356812px;" alt=""/>
+    </p>
+    <p style="text-align: left;">
+      <img src="Images/m_parser2.png" style="width: 616.1242px;height: 247.2096px;margin-left: 2.15136px;margin-top: 1.2528px;margin-right: 2.855506px;margin-bottom: 2.964256px;" alt=""/>
+    </p>
+    <h3><a name="developing_and_deploying_monitors_275720940_230322"/>onCollect() method</h3>
+    <ul>
+      <li>Update <code>httpPost</code> declaration and handling</li>
+      <li>Leave unchanged:<ul><li value="1">the <code>post.setEntity</code> call should still refer to the request string constant set in the private variable declaration</li><li value="2"><code>'post.setEntity(new ByteArrayEntity(SHOW_CUSTOM_REQUEST.getBytes("UTF-8")));</code>'</li></ul></li>
+    </ul>
+    <p style="text-align: left;">
+      <img src="Images/post_setEntity.png" style="width: 611.521px;height: 254.2512px;margin-left: 2.07432px;margin-top: 2.6568px;margin-right: 4.904654px;margin-bottom: 6.11354px;" alt=""/>
+    </p>
+  </body>
+</html>

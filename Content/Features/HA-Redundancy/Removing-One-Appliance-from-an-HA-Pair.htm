@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <title/>
+  </head>
+  <body>
+    <h1>Removing Backup Appliance from HA Pair</h1>
+    <p>You can use the following procedure to remove the backup appliance from a high-availability (HA) redundancy pair of appliances. You should note that in the code snippets shown below <code>solace1</code> is the primary appliance, and <code>solace2</code> is the backup .</p>
+    <ol>
+      <li>
+        <p>Ensure that the primary appliance is <code>Local Active</code>, and the backup is <code>Mate Active</code>.</p>
+        <p class="Code">
+solace1&gt; show redundancy</p>
+        <pre class="Code" xml:space="preserve">Configuration Status     : Enabled
+Redundancy Status        : Up
+. . .
+
+Primary Virtual Router         Backup Virtual Router
+----------------------         ---------------------
+Activity Status                Local Active           Mate Active
+. . .
+Message Spool Status           AD-Active              AD-Disabled           
+Priority Reported By Mate      Standby                Active                
+. . .</pre>
+        <p class="Code">solace2&gt; show redundancy</p>
+        <pre class="Code" xml:space="preserve">Configuration Status     : Enabled
+Redundancy Status        : Up
+. . .
+Primary Virtual Router         Backup Virtual Router
+----------------------         ---------------------
+Activity Status                Local Active           Mate Active
+. . .
+Message Spool Status           AD-Disabled            AD-Standby            
+Priority Reported By Mate      Standby                Active  
+
+. . .</pre>
+      </li>
+      <li>If Guaranteed Messaging is used in the HA pair, shut down and disable the message spool on the backup appliance.
+				
+                <p class="Code">solace2(configure/ip/vrf)# exit<br/>solace2(configure/ip)# exit<br/>solace2(configure)# hardware message-spool<br/>solace2(configure/hardware/message-spool)# shutdown<br/>Do you want to continue (y/n)? y<br/>backup(configure/hardware/message-spool)# no disk-array</p></li>
+      <li>Shut down redundancy on the backup appliance.
+			
+			<p class="Code">solace2&gt; enable<br/>solace2# configure<br/>solace2(configure)# redundancy<br/>solace2(configure/redundancy)# shutdown</p></li>
+      <li>Shut down redundancy on the primary appliance.				
+			
+			<p class="Code">solace1&gt; enable<br/>solace1# configure<br/>solace1(configure)# redundancy<br/>solace1(configure/redundancy)# shutdown</p></li>
+      <li>Remove the redundancy configuration from the primary appliance.
+				
+				<p class="Code">solace1(configure/redundancy)# no vrrp-vrid primary<br/>solace1(configure/redundancy)# no vrrp-vrid backup<br/>solace1(configure/redundancy)# no mate-router-name</p></li>
+      <li>Remove the backup message backbone interface from the primary appliance.
+				
+				
+				<p class="Code">solace1(configure/redundancy)# exit<br/>solace1(configure)# ip vrf msg-backbone<br/>solace1(configure/ip/vrf)# interface &lt;backup-interface&gt;<br/>solace1(configure/ip/vrf/interface)# shutdown<br/>solace1(configure/ip/vrf/interface)# exit<br/>solace1(configure/ip/vrf)# no interface &lt;back-interface&gt;</p></li>
+      <li>Remove redundancy configuration from the backup appliance.
+				
+        <p class="Code">solace2(configure/redundancy)# no vrrp-vrid primary<br/>solace2(configure/redundancy)# no vrrp-vrid backup<br/>solace2(configure/redundancy)# no mate-router-name</p></li>
+      <li>Remove the backup message backbone interface from the backup appliance.
+        
+		<p class="Code">solace2(configure/redundancy)# exit<br/>solace2(configure)# ip vrf msg-backbone<br/>solace2(configure/ip/vrf)# interface &lt;backup_interface&gt;<br/>solace2(configure/ip/vrf/interface)# shutdown<br/>solace2(configure/ip/vrf/interface)# exit<br/>solace2(configure/ip/vrf)# no interface &lt;backup_interface&gt;</p></li>
+    </ol>
+  </body>
+</html>

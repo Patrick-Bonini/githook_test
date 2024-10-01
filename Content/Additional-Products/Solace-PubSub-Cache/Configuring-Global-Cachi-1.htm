@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Configuring Global Caching for a Cache Cluster</h1>
+    <p>To implement Global Caching for a network, Global Caching must be configured for each Cache Cluster within the Distributed Caches that will service global cache requests.</p>
+    <p>On a Cache Cluster, you must set the required Global Caching configuration parameters for that Cache Cluster and then enable the feature. By default, the use of the Global Caching feature is not enabled for a Cache Cluster.</p>
+    <h2 class="with-rule"><a name="Set-Heartbeat-Intervals">
+            </a>Setting Heartbeat Intervals</h2>
+    <p>PubSub+ Cache Instances send heartbeat messages over the message bus to detect a loss of connectivity to home Cache Clusters.</p>
+    <p>To configure the global cache heartbeat interval to be used, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure)# distributed-cache &lt;name&gt; message-vpn &lt;vpn-name&gt;<br/>solace(configure-distributed-cache)# cache-cluster &lt;name&gt;<br/>solace(...igure/distributed-cache/cache-cluster)# global-caching<br/>solace(...ed-cache/cache-cluster/global-caching)# heartbeat &lt;seconds&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;seconds&gt;</code> is the number of seconds the PubSub+ Cache Instances wait between sending heartbeat messages to home Cache Clusters. If three heartbeats are lost, a PubSub+ Cache Instance considers a home Cache Cluster to be unreachable. It will then generate client global prefix status messages to notify the home Cache Clusters of this loss of connectivity and that the topics from the unreachable Cache Cluster are now “stale”. The valid values are 1 through 255. The default value is 3.</p>
+    <div class="Note" MadCap:autonum="&lt;b&gt;Note  &lt;/b&gt;">
+      <ul>
+        <li>A PubSub+ Cache Instance can only generate global cache heartbeats when it is operationally and administratively UP, and global caching is enabled for its parent Cache Cluster.</li>
+        <li>All home Cache Clusters must use the same global cache heartbeat.</li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="Creating-Home-Clusters">
+            </a>Creating Home Cache Clusters</h2>
+    <p>To provide the local Cache Cluster with the names of the home Cache Clusters for the topics of interest, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure)# distributed-cache &lt;name&gt; message-vpn &lt;vpn-name&gt;<br/>solace(configure-distributed-cache)# cache-cluster &lt;cluster-name&gt;<br/>solace(...igure/distributed-cache/cache-cluster)# global-caching<br/>solace(...ed-cache/cache-cluster/global-caching)# create home-cache-cluster &lt;name&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the name of a home Cache Cluster in another Distributed Cache.</p>
+    <p>The <code>no</code> version of this command, <code>no home-cache-cluster</code>, removes the specified home Cache Cluster.</p>
+    <p>The CLI is now in a configuration mode that enables you to set topic prefixes for global topics that are available for the home Cache Cluster.</p>
+    <h3><a name="Adding-Topic-Prefixes">
+            </a>Adding Topic Prefixes</h3>
+    <p>To add a topic prefix for global topics that are available from the given home Cache Cluster, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure)# distributed-cache &lt;name&gt; message-vpn &lt;vpn-name&gt;<br/>solace(configure-distributed-cache)# cache-cluster &lt;name&gt;<br/>solace(...igure/distributed-cache/cache-cluster)# global-caching<br/>solace(...ed-cache/cache-cluster/global-caching)# home-cache-cluster &lt;name&gt;<br/>solace(...ter-global-caching-home-cache-cluster)# topic-prefix &lt;topic-prefix&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;topic-prefix&gt;</code> is the topic prefix that is available from a Cache Cluster in another Distributed Cache. Each topic prefix must be unique, unambiguous, and cannot overlap with other configured topics (local or global) when performing simple string comparisons. For example “a” and “a/b” are ambiguous overlapping prefixes, but “a/b”, and “a/c” are unique). A wildcard “/&gt;” is implied at the end of the prefix. It is an error to explicitly specify any wildcard expression in the configured topic prefix.</p>
+    <p>The <code>no</code> version of this command, <code>no topic-prefix</code>, removes the specified topic prefix.</p>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">Multiple global topic prefixes can be created for a Cache Cluster.</p>
+    <h2 class="with-rule"><a name="Config-Topic-Lifetimes">
+            </a>Configuring Topic Lifetimes</h2>
+    <p>When a PubSub+ Cache Instance sends a cache request to a remote home Cache Cluster, it also adds a subscription for the requested topic to the local Cache Cluster so that it can receive live data messages and locally cache them.</p>
+    <p>However, if the local PubSub+ Cache Instance does not receive further client requests for that global topic within a given amount of time (that is, the topic lifetime), it unsubscribes from that topic, and deletes any messages that are cached for the global topic.</p>
+    <p>To configure the topic lifetime for a global topic cached by a local PubSub+ Cache Instance, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure)# distributed-cache &lt;name&gt; message-vpn &lt;vpn-name&gt;<br/>solace(configure-distributed-cache)# cache-cluster &lt;name&gt;<br/>solace(...igure/distributed-cache/cache-cluster)# global-caching<br/>solace(...ed-cache/cache-cluster/global-caching)#topic-lifetime &lt;seconds&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;seconds&gt;</code> is an integer that specifies the global topic lifetime in seconds. A value of 0 specifies that cached messages for the global topic do not expire.</p>
+    <p>The <code>no</code> version of this command, <code>no topic-lifetime</code>, resets the topic‑lifetime interval to the default (3,600 seconds).</p>
+    <h2 class="with-rule"><a name="Enable-Global-Caching-on-Clusters">
+            </a>Enabling Global Caching on Cache Clusters</h2>
+    <p>By default, Global Caching is disabled on a Cache Cluster. When disabled, Cache Instances in the Cache Cluster do not attempt to fetch topics from the home Cache Clusters, do not send global cache heartbeat messages, do not monitor the status of home Cache Clusters, and do not send global topic prefix status messages.</p>
+    <p>To enable Global Caching for the Cache Cluster, enter the following CONFIG commands:
+                <p class="Code">solace(configure)# distributed-cache &lt;name&gt; message-vpn &lt;vpn-name&gt;<br/>solace(configure-distributed-cache)# cache-cluster &lt;name&gt;<br/>solace(...igure/distributed-cache/cache-cluster)# global-caching<br/>solace(...ed-cache/cache-cluster/global-caching)# no shutdown</p></p>
+    <p>To disable Global Caching for the Cache Cluster, enter the following CONFIG commands:
+                <p class="Code">solace(configure)# distributed-cache &lt;name&gt; message-vpn &lt;vpn-name&gt;<br/>solace(configure-distributed-cache)# cache-cluster &lt;name&gt;<br/>solace(...igure/distributed-cache/cache-cluster)# global-caching<br/>solace(...ed-cache/cache-cluster/global-caching)# shutdown</p></p>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">Changing Global Caching for the Cache Cluster from “no shutdown” to “shutdown” causes Cache Instances in the Cache Cluster to remove all subscriptions and cached messages for global topics.</p>
+  </body>
+</html>

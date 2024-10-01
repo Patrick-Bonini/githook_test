@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+    <body>
+        <p>When you configure message replay, <MadCap:variable name="Variables.CompanyName" /> recommends that you decide on a strategy to handle replay log trimming. You can simply choose to use automatic trimming where no additional configuration is required, but you should be aware that trimming the replay log may cause potential performance impacts to the event broker regarding the rate of received messages it is able to process.&#160;</p>
+        <p>You can choose to manually trim the replay log before the 90% threshold is reached. This strategy can reduce the performance implications of automatic trimming at unexpected times. Though manual trimming has the same performance impact on the event broker, you can choose to run it at designated times when the event broker isn't sensitive to performance variations. A use case that is well-suited for manual trimming and avoids automatic trimming includes these characteristics:</p>
+        <ul>
+            <li>
+                <p>The traffic pattern of the event broker follows a predictable cycle, in which there is a <i>quiet time</i> period where  trimming the replay log does not cause performance impacts.</p>
+            </li>
+            <li>
+                <p>The replay log can be sized large enough to hold all messages logged for the minimum replay log retention that you require, plus the messages logged within the duration of a traffic cycle. </p>
+            </li>
+            <li>
+                <p>It's possible  to deploy an automated application to perform the trimming on that runs on an appropriate schedule.</p>
+            </li>
+        </ul>
+        <p>The following example shows  how you could implement a manual trimming strategy. Consider a deployment where:</p>
+        <ul>
+            <li>A system writes up to 125,000&#160;MB of messages to the replay log each day.</li>
+            <li>The event broker has low-traffic during nighttime, when manual replay log trimming can be performed without impacting the event broker performance.</li>
+            <li>The required log retention is seven days and includes an additional cycle day.</li>
+        </ul>
+        <p>With the parameters mentioned above, you can use the following configuration:</p>
+        <ol>
+            <li>
+                <p>The replay log would require 1,000,000 MB without automatic trimming occurring. This sample calculation is as follows:</p>
+                <ul>
+                    <li>
+                        <p>The 125,000 MB&#160;/day x (7 days of retention with an addition one day cycle) = 125,000 MB/day x 8 days = 1,000,000 MB. </p>
+                    </li>
+                    <li>
+                        <p>Because trimming begins at 90% of the configured quota, you would set the <code>max-spool-usage</code> to 25% more than the size of the data to retain (1,250,000 MB) as recommended. Because the expected spool usage won't exceed 1,000,000 MB,  automatic trimming wouldn't begin until the replay log had approximately 1,125,000 MB of data and would ensure that your replay log is sufficiently sized. See <MadCap:xref href="../../../../Features/Replay/Msg-Replay-Config.htm#max-spool-usage-config">Configuring the Replay Log Size Using max-spool-usage</MadCap:xref> for more information. </p>
+                        <p>This design uses 80%&#160;of the replay log's configured quota for <code>max-spool-usage</code>, but because trimming doesn't occur until 90%, it minimizes automatic trimming from occurring and it provides you the flexibility to change the system behavior without losing important data.To ensure this design operates within the design parameters, monitoring is required as described in step 3.</p>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <p>In your deployment, your automated management application runs nightly to manually trim the replay log during your quiet period using one of the following mechanisms:</p>
+                <ul>
+                    <li>Running the <code>enable admin message-spool message-vpn &lt;vpn-name&gt; replay-log trim-logged-messages &lt;older-than-date&gt; </code>command (see <MadCap:xref href="#trim-log">Deleting Messages from Replay Log using trim-logged-messages</MadCap:xref>).</li>
+                    <li>Using the SEMPv2 command, <code>PUT /msgVpns/{msgVpnName}/replayLogs/{replayLogs/{replayLogName}/trimLoggedMsgs</code> (see the <a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/API-Developer-Online-Ref-Documentation/swagger-ui/software-broker/action/index.html#/replayLog/trimLoggedMsgs" class="link-internal">SEMP&#160;reference</a> for more information).</li>
+                </ul>
+            </li>
+            <li>
+                <p>As you monitor the replay log usage,  ensure the replay log usage never exceeds 80% as described in step 1. If it does, the presumptions of the design of your strategy are no longer valid and you must re-characterize your system, adjust the replay log's configured quota for <code>max-spool-usage</code>, and then update the system.</p>
+            </li>
+        </ol>
+    </body>
+</html>

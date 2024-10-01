@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><MadCap:concept term="Cloud;Appliance;Software"/>Direct Messages</h1>
+    <p>Direct messaging provides reliable, but not guaranteed, delivery of messages <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">from the <MadCap:variable name="Variables.CompanyName"/> message bus </MadCap:conditionalText>to consuming clients. It is the default message delivery system for <MadCap:variable name="Product-Names.pubsub_brand_only" MadCap:conditions="SAP.SapHideFromOutput"/><MadCap:variable name="Product-Names.cloud_product_long" MadCap:conditions="SAP.SapOnlyOutput"/>. It doesn't require any additional configuration beyond that required to set up and start the event broker. By default, direct messaging is always available  to all clients that connect to an event broker.</p>
+    <h3>Direct Messaging Characteristics</h3>
+    <p>Direct messages have the following characteristics:</p>
+    <ul>
+      <li>
+        <p>They are delivered to subscribing clients in the order that publishers publish them.</p>
+      </li>
+      <li>
+        <p>They don't require acknowledgment of receipt by subscribing clients.</p>
+      </li>
+      <li>
+        <p>They aren't spooled <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">on the message bus </MadCap:conditionalText>for consuming clients.</p>
+      </li>
+      <li>
+        <p>They aren't retained for a client when the client isn't connected to the event broker.</p>
+      </li>
+      <li>
+        <p>They can be discarded before delivery in some situations:</p>
+        <ul>
+          <li>
+            <p>a client disconnects from an event broker while messages are being published</p>
+          </li>
+          <li>
+            <p>a client fails to consume messages at the published rate and an egress message buffer overflow results</p>
+          </li>
+          <li>
+            <p>congestion or system failures.</p>
+          </li>
+        </ul>
+      </li>
+    </ul>
+    <h3>Direct Messaging Use Cases</h3>
+    <p>Direct messaging is useful in the following situations:</p>
+    <ul>
+      <li>
+        <p>Extremely high message rates and extremely low latency are required.</p>
+      </li>
+      <li>
+        <p>Consuming clients can tolerate message loss in the event of network congestion.</p>
+      </li>
+      <li>
+        <p>Messages don't need to be persisted for later delivery to slow or offline consumers.</p>
+      </li>
+      <li>
+        <p>Messages must be efficiently published to a large number of clients with matching subscriptions.</p>
+      </li>
+    </ul>
+    <p>For more information on features available with Direct messaging, see the following sections:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Shared">Shared Subscriptions</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Message-Eliding">Message Eliding</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Managing-Client-Subscriptions">Client Subscription Management</MadCap:xref>
+      </li>
+      <li MadCap:conditions="SAP.SAPTempHide">
+        <MadCap:xref href="DTO.htm">Deliver-To-One</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Shared"/>Shared Subscriptions</h2>
+    <p>Shared subscriptions can be used with Direct messaging to load balance large volumes of client data across multiple instances of backend data center applications. They are especially useful in situations where those applications parallelize the processing of published messages. Shared subscriptions are not supported with Guaranteed messaging.</p>
+    <p MadCap:conditions="SAP.SAPTempHide">To control whether a client can create or join in a shared subscription, the <code>allow-shared-subscriptions</code> attribute in the client’s client-profile is set to the desired value. For more information, see <MadCap:xref href="../../Security/Configuring-Client-Profiles.htm#Allowing-Shared-Subs">Allowing Shared Subscriptions</MadCap:xref>.</p>
+    <h3><a name="Syntax"/>Syntax of Shared Subscriptions</h3>
+    <p>A shared subscription has the form: </p>
+    <p>
+      <code>#share/&lt;ShareName&gt;/&lt;topicFilter&gt;</code>
+    </p>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li><code>ShareName</code> is the identifier associated with the shared subscription. It may not contain wildcards (<code>*</code> or <code>&gt;</code>).</li>
+      <li><code>topicFilter</code> is the topic filter.</li>
+    </ul>
+    <p>Shared subscriptions are exported (advertised by the local node  to other nodes in the network) by default. To prevent this export, start the shared subscription with <code>#noexport</code>, as follows: </p>
+    <p>
+      <code>#noexport/#share/&lt;ShareName&gt;/&lt;topicFilter&gt;</code>
+    </p>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li><code>ShareName</code> is the  identifier associated with the shared subscription. It may not contain wildcards (<code>*</code> or <code>&gt;</code>).</li>
+      <li><code>topicFilter</code> is the topic filter.</li>
+    </ul>
+    <p MadCap:conditions="SAP.SAPTempHide">For more information, see <MadCap:xref href="../No-Export.htm">Preventing Subscription Export</MadCap:xref> and the <code>#noexport</code> entry of the table in <MadCap:xref href="../Reserved-Topics.htm">Reserved Topics</MadCap:xref>.</p>
+    <h3><a name="How"/>How Shared Subscriptions Work</h3>
+    <p>To illustrate how shared subscriptions work, consider the following example:</p>
+    <ul>
+      <li>
+        <code>#share/ottawa/weathersensor/yow/temperature</code>
+      </li>
+    </ul>
+    <p>A number of clients are subscribing to <code>#share/ottawa/weathersensor/yow/temperature</code>. When a message is published to <code>weathersensor/yow/temperature</code> one of those clients is randomly chosen to receive the message. For each message that arrives that matches <code>weathersensor/yow/temperature</code>, a new random choice determines which subscribing client receives the message. With a large enough number of messages, <code>n</code>, to subscribing clients, <code>m</code>, the number of messages delivered to each subscriber evens out to approximately <code>n/m</code>.</p>
+    <h3><a name="identifiers"/>Shared Subscription Identifiers</h3>
+    <p>A <code>ShareName</code> is included in a shared subscription so there can be more than one shared subscription on an event broker that has the same <code>topicFilter</code>.</p>
+    <p>For example, consider the following shared subscriptions, which differ only by <code>ShareName</code>:</p>
+    <ul>
+      <li>
+        <code>#share/weatherapp/weathersensor/*/temperature</code>
+      </li>
+      <li>
+        <code>#share/temperaturelog/weathersensor/*/temperature</code>
+      </li>
+    </ul>
+    <p>Although the shared subscriptions have the same <code>topicFilter</code>, they are unique. When a message is published to <code>weathersensor/yow/temperature</code>, and a number of clients are subscribing to <code>#share/weatherapp/weathersensor/*/temperature</code>, one of those clients is randomly chosen to receive the message. Likewise, from all the clients subscribing to <code>#share/temperaturelog/weathersensor/*/temperature</code>, one of the clients with that subscription is randomly chosen to receive the message. </p>
+    <p> In typical use, application instances that share messages on a subscription agree on a <code>ShareName</code> to use in the shared subscription. Messages with topics matching the shared subscription are then randomly distributed between those application instances.</p>
+    <h3 MadCap:conditions="SAP.SapHideFromOutput"><a name="Feature"/>Feature Interactions</h3>
+    <h4 MadCap:conditions="SAP.SapHideFromOutput">Guaranteed Messaging</h4>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Shared subscriptions are not allowed on queues and will be rejected, whether they are configured or signaled in.</p>
+    <h4 MadCap:conditions="SAP.SapHideFromOutput">Eliding</h4>
+    <p MadCap:conditions="SAP.SapHideFromOutput">When a client, whose client-profile indicates eliding is being used, adds a shared subscription, eliding won't be performed on messages matching the shared subscription.  </p>
+    <h4 MadCap:conditions="SAP.SapHideFromOutput">Class-of-Service</h4>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Direct Messaging Class of Service (CoS) is always handled as COS1 when being delivered on a shared subscription, regardless of the message’s CoS.</p>
+    <h4 MadCap:conditions="SAP.SapHideFromOutput">No Local Sessions</h4>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Shared subscriptions ignore the no-local attribute of a session.  If a client adds a shared subscription on a no-local session, messages published on that session are eligible for delivery on the same session via the shared subscription.</p>
+    <h4 MadCap:conditions="SAP.SapHideFromOutput">API LocalDispatchOnly subscriptions</h4>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Shared subscriptions cannot be added as API LocalDispatchOnly subscriptions. If an application is trying to create a shared subscription limited in scope to a single session, use some randomly generated content within the shared subscription’s <code>sharedSubID</code> that would be unknown to other applications.</p>
+    <h4 MadCap:conditions="SAP.SapHideFromOutput">PubSub+ Cache</h4>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Shared subscriptions are not supported as being configurable against PubSub+ Cache.</p>
+    <h4 MadCap:conditions="SAP.SapHideFromOutput">Dynamic Message Routing (DMR) and Multi-Node Routing (MNR)</h4>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Shared subscription topic filters are exported. This attracts traffic that matches the shared subscription from other nodes, but it doesn't have the effect of a distributed shared subscription.  If a remote node has the same shared subscription, they are treated as different shared subscriptions, where one member of the group on each node will receive a copy of a published message that matches the shared subscription.</p>
+    <h4 MadCap:conditions="SAP.SapHideFromOutput">Web Messaging Clients</h4>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Web messaging clients do not support shared subscriptions.</p>
+    <h2 class="with-rule"><a name="Message-Eliding"/>Message Eliding</h2>
+    <p>Message eliding allows client applications to receive  Direct messages published to topics that they subscribe to, at a rate they can manage, rather than queue outdated messages. Message eliding can be useful in situations where messages are consumed at a slower rate then they are published due to slow consumers or human interaction.</p>
+    <p>When using message eliding, some message loss must be acceptable. For example, a producer may publish multiple messages per second that provide current state data, such as weather, a vehicle location, or stock market information, and the consumer cares only about the current state.</p>
+    <p>Only Direct messages can be elided. Messages received through shared subscriptions can't be elided.</p>
+    <p>To use message eliding:</p>
+    <ul>
+      <li>
+        <p>Publishing client applications must flag published message as eligible for message eliding.
+			</p>
+      </li>
+      <ul>
+        <li>
+          <p>Although only a Direct message can be elided, it is possible for a publishing client to flag Guaranteed messages as eliding‑eligible. However, the message is not elided unless the delivery mode of the message is changed to Direct, which can happen if the  message is published to a topic that matches a client’s topic subscription. </p>
+        </li>
+        <li>
+          <p>Messages published by MQTT client applications are treated as non‑eliding eligible.</p>
+        </li>
+      </ul>
+      <li>
+        <p>Receiving client applications must be assigned a client profile through its client username that permits it to:
+                </p>
+        <ul>
+          <li>
+            <p>Use message eliding</p>
+          </li>
+          <li>
+            <p>After the first message, receive subsequent messages with a time delay interval. The delay interval, which is configured in the client profile, controls  the rate of message updates sent to a client  on a topic-by-topic basis (for example, five messages per second per topic).</p>
+          </li>
+          <li>
+            <p>Receive up to the maximum number of topics the event broker can track for performing the eliding function on each client connection (up to 32,000 per client as configured in the client profile, with a total of 2,000,000 per event broker; the default is 256 per client). Once the maximum number of topics is reached, the event broker ages out the elided topics for the client to prevent the consumption of more eliding resources than have been allocated for the connection. Eliding behavior then continues as if this were a new client connection, and a one-time Syslog event is generated on a per client basis.
+                </p>
+            <ul>
+              <li>
+                <p>Event brokers dynamically track the number of topics on a client connection. Whenever this number is below the set maximum, eliding is applied to the new incoming messages.</p>
+              </li>
+              <li>
+                <p>For subscribers with wildcard subscriptions, each topic that matches the subscription is elided, up to the maximum number of subscriptions specified by the client profile.</p>
+              </li>
+              <li>
+                <p><MadCap:variable name="Variables.CompanyName"/> recommends that consuming clients don't use discard indications when using message eliding. In a situation where an event broker’s egress priority queue for a client fills up with received messages, the oldest messages on the egress queue are discarded to make room for newly arriving messages, and the message at the head of the queue is flagged with the discard indication. However, if eliding is enabled, that message could be elided, and the client would not receive the discard indication.</p>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+    </ul>
+    <p MadCap:conditions="SAP.SapOnlyOutput">For information about enabling message eliding in <MadCap:variable name="Product-Names.cloud_product_short"/>, see <MadCap:xref href="../../Cloud/client-profiles.htm#configuring-client-profile-settings" target="_blank">Configuring Client Profile Settings</MadCap:xref>.</p>
+    <h3><a name="Func-Description"/>Message Eliding Example</h3>
+    <p>The following diagram and example explain how message eliding works:</p>
+    <p>
+      <img src="../../Resources/Images/Messaging/message-eliding.png" alt="Diagram showing the process described in the surrounding text." class=""/>
+    </p>
+    <ol>
+      <li>
+        <p>The Producer publishes messages to a topic at a rate of one message per millisecond (ms). Each message is flagged as eliding-eligible.</p>
+      </li>
+      <li>
+        <p>The Consumer is assigned a client profile that has message eliding enabled, and has an eliding delay of 200 ms, which means it receives 5 messages per second..</p>
+      </li>
+      <li>
+        <p>When the first message, M1, for the topic arrives at the event broker, it's sent to the Consumer without any delay.</p>
+      </li>
+      <li>
+        <p>When the second message, M2, for the topic arrives at the event broker a millisecond later, it's held by the event broker and not sent to the Consumer because message  M1 for the same topic was sent to the Consumer within the 200ms delay time.</p>
+      </li>
+      <li>
+        <p>When subsequent messages, M3, M4, .... Mn, for the same topic arrive at the event broker for the Consumer, each new message replaces the previous message and is continuously held by the event broker.</p>
+      </li>
+      <li>
+        <p>Following the 200ms delay after message M1 was sent to the Consumer, the currently held message is sent to the Consumer.</p>
+      </li>
+    </ol>
+    <h3><a name="Use-Cases"/>Message Eliding Use Cases</h3>
+    <p>Use cases for message eliding feature include:</p>
+    <dl>
+      <dt>Eliding for congestion management</dt>
+      <dd>A client application wants to receive every message when it is able to keep up with the message flow. If the client can't keep up, then any queued messages are elided to send only the most recent message for each topic. For this use case the delay interval time is <code>0</code>.</dd>
+      <dt>Eliding for message rate control</dt>
+      <dd>A client application wants to receive no more than  five messages per second per topic. In this case, the event broker rate controls the output of messages to the client. For this use case the delay interval time is 200 ms (five messages per second per topic).</dd>
+    </dl>
+    <p>Example uses include:</p>
+    <dl>
+      <dt>Streaming market data to human traders</dt>
+      <dd>Even though market data updates might be published at a very high rate, humans can only deal with a few updates per second. The client always wants the latest information, but at a slower rate than the total feed rate. Message eliding can be used to limit the output stream to a few updates per topic per second.</dd>
+      <dt>Controlling update rates to subscribers over a Wide Area Network (WAN)</dt>
+      <dd>Sometimes, WAN bandwidth versus receiver processing capacity requires that only a subset of the entire feed rate be provided over the WAN. Message eliding can be used to control the message update rates to a client.</dd>
+    </dl>
+    <h2 class="with-rule"><a name="Managing-Client-Subscriptions"/>Client Subscription Management</h2>
+    <p>When consuming clients are authenticated on the event broker, they can add and remove topic subscriptions for Direct messages published to the <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">Message VPN</MadCap:conditionalText><MadCap:variable name="Product-Names.broker_cloud_short" MadCap:conditions="SAP.SapOnlyOutput"/> they are connected to. These topic subscriptions are not durable - the client subscriptions are not maintained on the event broker after the consumer disconnects from the event broker.</p>
+    <p>A client typically performs the following steps for managing their own subscriptions:</p>
+    <ol>
+      <li>The client connects to the event broker and authenticates itself. At this point, the event broker has no subscriptions for that client.</li>
+      <li>The client adds subscriptions to the event broker.</li>
+      <li>The client receives messages that match the requested subscriptions.</li>
+      <li>When the client disconnects from the event broker, the event broker immediately removes all subscriptions associated with that client.</li>
+    </ol>
+    <p class="Note">The topics that a client is permitted to subscribe to can be limited by an ACL assigned to the client username account used by the client. For more information, see <MadCap:xref MadCap:unresolvedLink="import-link:managing_access_control_lists_4168580380_92633" href="../../Security/Granting-Clients-Access.htm">Controlling Client Access with ACL Profiles</MadCap:xref>.</p>
+    <h3><a name="Subscriptions-on-Behalf"/>Managing Subscriptions on Behalf of Other Clients</h3>
+    <p>A client application can manage subscriptions on behalf of other clients within a <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">Message VPN</MadCap:conditionalText><MadCap:variable name="Product-Names.broker_cloud_short" MadCap:conditions="SAP.SapOnlyOutput"/> when its client username is configured to be a subscription manager<MadCap:conditionalText MadCap:conditions="SAP.SAPTempHide"> (see <MadCap:xref href="../../Security/Configuring-Client-Usernames.htm#Configuring-Sub-Managers">Configuring Subscription Managers</MadCap:xref> )</MadCap:conditionalText>. This is useful for centralizing the assignment of  client applications and services to direct messaging subscriptions. A client acting as a subscription manager has no control over Guaranteed messaging.</p>
+    <p>When a client is configured as a subscription manager, the subscriptions that it manages are subject to the access control permissions configured on that client’s associated Access Control List (ACL) profile - the ACLs of destination clients are not used. So, the client configured as a subscription manager can't add or remove subscriptions that its own ACL rules would deny adding. This restriction prevents the client from inadvertently adding or removing subscriptions that it's not entitled to.</p>
+    <p>When a client is configured as a subscription manager, other clients within the <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">Message VPN</MadCap:conditionalText><MadCap:variable name="Product-Names.broker_cloud_short" MadCap:conditions="SAP.SapOnlyOutput"/> typically perform the following steps for managing their subscriptions:</p>
+    <ol>
+      <li>The client connects to the event broker.</li>
+      <li>The client notifies the subscription manager that it's ready to receive messages.</li>
+      <li>
+        <p>The subscription manager authenticates the client, determines the subscription set needed by the client, and adds subscriptions to the event broker on behalf of the client. Subscriptions added by the subscription manager on behalf of the client have the same subscription rate (subscriptions per second) as those added by the client directly for itself.</p>
+      </li>
+      <li>The client receives messages that match the subscription set.</li>
+      <li>Once the client is done, it disconnects and its associated subscription set is deleted from the event broker.</li>
+    </ol>
+    <p>Once subscriptions have been added by a subscription manager on behalf of another client, they behave like any other subscriptions (for example, the subscriptions are removed if the client is disconnected). Disconnecting the subscription manager has no effect on the subscriptions already added by it.</p>
+    <p MadCap:conditions="SAP.SAPTempHide">For information on how clients using Solace APIs can act as subscription managers to add and remove subscriptions on behalf of others, see <MadCap:xref href="../../API/API-Developer-Guide/Managing-Subscriptions.htm#Manage-On-Behalf">Managing Topic Subscriptions on Behalf of Other Clients</MadCap:xref>. </p>
+  </body>
+</html>

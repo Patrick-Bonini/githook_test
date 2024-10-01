@@ -1,0 +1,368 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="Default.OnlyForPDF">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Migrating an <MadCap:variable name="Product-Names.broker_cloud_short_title"/> Using Controlled Failover </h1>
+    <p><span>During migration of your <MadCap:variable name="Product-Names.broker_cloud_short"/></span>, you perform a <i>controlled failover</i>, where activity is transferred from one replication site to its mate replication site.</p>
+    <p>A failover consists of transferring (or switching) the replication-active state of the Message VPN on the failed <MadCap:variable name="Product-Names.broker_cloud_short"/> to its replication mate on the Standby site and also moving the custom hostname.  When you successfully follow the controlled failover procedure, you gracefully release activity from the Message VPN on the <MadCap:variable name="Product-Names.broker_cloud_short"/> on your Active site (Source service or VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/>), and  switch the activity to the Standby site  (Target service)—referred to as the newly Active site in this procedure. As a result, no messages are lost if you're using guaranteed messaging (persistent messages), regardless of the replication mode of the messages. Service is restored when the client applications  connect to the newly Active site (Target service). </p>
+    <p>
+      <img src="../../Resources/Images/Cloud-VMMigration/vmmigration-before-overview.png" alt="Diagram that illustrates client applications connected to the Primary site. The Primary site currently has the replication-active status."/>
+    </p>
+    <p>Prior to failover, client applications connect to the Primary site (Source service) using the custom hostname as shown in the following diagram:</p>
+    <p>After a failover, client applications connect to the Backup site (Target service) after replication-state and custom hostname has  changed to the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+    <p>
+      <img src="../../Resources/Images/Cloud-VMMigration/vmmigration-after-overview.png" alt="Diagram that illustrates client applications connected to the Backup site. The Backup site now has the replication-active status and is assigned the custom hostname, which permits client applications to connect to the Active site."/>
+    </p>
+    <p class="Note"><MadCap:variable name="Variables.CompanyName"/> recommends that you verify that the configuration on the Standby site (Target service) is the same as the Active site (Source service) prior to performing a failover for migration. Any configuration changes that are made in the <MadCap:variable name="Product-Names.console_ui_long"/> to your <MadCap:variable name="Product-Names.broker_cloud_short"/> on the Active site must be manually configured duplicated on the Standby site. For more information, see <MadCap:xref href="cloud-vmmig-overview.htm#Limitati">Limitations of Replication in [%=Product-Names.cloud_product_titlecase%]</MadCap:xref>.</p>
+    <h2>Details of Using a Controlled Failover for Migration</h2>
+    <p> To perform a controlled failover in <MadCap:variable name="Product-Names.cloud_product_firstuse"/>, you switch the replication state of the Message VPN on the  <MadCap:variable name="Product-Names.broker_cloud_short"/> to <code>active</code> and reassign the custom hostname from the previously Active site (Source service) to the newly Active site (Target service).</p>
+    <p>After you have set all the required replication topics, you must wait until your oldest message on the <MadCap:variable name="Product-Names.broker_cloud_short"/> is newer than when you configured and enabled replication.</p>
+    <p> After the controlled failover completes successfully, the <MadCap:variable name="Product-Names.broker_cloud_short"/> is considered migrated.</p>
+    <p>Before you begin this procedure, ensure you have fulfilled the <MadCap:xref href="#prerequisites-controlled-fail-over">Prerequisites</MadCap:xref>.</p>
+    <p class="Note"><MadCap:variable name="Variables.CompanyName"/> recommends that you verify that the configuration on the Standby site (Target service) is the same as the Active site (Source service) prior to performing a failover for migration. Any configuration changes that are made in the <MadCap:variable name="Product-Names.console_ui_long"/> to your <MadCap:variable name="Product-Names.broker_cloud_short"/> on the Active site must be manually configured duplicated on the Standby site. For more information, see <MadCap:xref href="cloud-vmmig-overview.htm#Limitati">Limitations of Replication in [%=Product-Names.cloud_product_titlecase%]</MadCap:xref>.</p>
+    <p>To perform a controlled failover, perform the following procedure (you must repeat this procedure for each replication pair):</p>
+    <ol>
+      <li><MadCap:xref href="#check-fail-over-ability">Verify that the Replication Bridge is Bound to the Replication Queue</MadCap:xref>.
+            </li>
+      <li> Start the migration <ul><li><MadCap:xref href="#switch-activity">Switch  Activity on the Active site (Source service) to a Standby state</MadCap:xref>.
+            </li></ul></li>
+      <li><MadCap:xref href="#verify-wait">Drain the Replication Queue in the Formerly Active Site</MadCap:xref>.
+            </li>
+      <li><MadCap:xref href="#commit-heuristically">Heuristically Commit or Roll Back Any In-Progress Transactions</MadCap:xref>.
+            </li>
+      <li>Complete Migration.<ol style="list-style-type: lower-alpha;"><li><MadCap:xref href="#change-to-standby-site">Change the Status of the Message VPN to Active on the Formerly Replication Standby site (Source service).</MadCap:xref><![CDATA[           ]]></li><li><p><MadCap:xref href="#move-custom-hostname">Perform the Migration - Move the Custom Hostname to the Newly Active Site</MadCap:xref> (Target service).
+                </p><p class="Note">At this point, client applications should be able to re-connect to the Message VPN on the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p></li></ol></li>
+      <li><MadCap:xref href="#delete-heuristically-complete" class="link-internal">Delete any heuristically completed transactions</MadCap:xref>.</li>
+    </ol>
+    <p>For the examples provided for this procedure, we use the following values:</p>
+    <table style="width: 100%;margin-left: 0;margin-right: auto;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Example Item</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Value</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Name of the Message VPN</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>myfirstservice</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The <MadCap:variable name="Product-Names.broker_cloud_short"/>s are in different regions and name of the Message VPN on both are configured to be the same name.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Primary Site (Source service) </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>nano-production-azzn9vsqdk5-solace-primary-0</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The Active site at the start of the procedure that becomes the Standby site.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Backup Site (Target service) </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>nano-production-89il3uubs0c-solace-primary-0</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Upon successful completion of this procedure, the Standby site becomes the newly Active site and client applications connect to it for messaging connectivity.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">Name of Queue</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <code>myFirstQueue</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">The name of the queue for guaranteed messages.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="prerequisites-controlled-fail-over"/>Prerequisites</h2>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudVMMigration/failover-prerequisites.flsnp"/>
+    <h2 class="with-rule"><a name="check-fail-over-ability"/>Verify That the Replication Bridge is Bound to the Replication Queue</h2>
+    <p>Verify that the replication bridge on the <MadCap:variable name="Product-Names.broker_cloud_short"/>  with the replication state of <code>standby</code> is bound to the replication queue of the <MadCap:variable name="Product-Names.broker_cloud_short"/> with the replication state of <code>active</code>. If the replication status is not bound, you must determine the reason before proceeding. In the <MadCap:variable name="Product-Names.solace_cli"/>, enter the following command:</p>
+    <p>To verify that the replication bridge is bound to the replication queue and check that <code>Queue</code>&gt; <code>State</code> is a value of <code>bound</code> from running the following CONFIG command:</p>
+    <pre xml:space="preserve">SolaceCLI (configure) # show message-vpn &lt;Message VPN name&gt; replication [detail]
+</pre>
+    <p>Where:</p>
+    <ul>
+      <li><code>&lt;Message VPN name&gt;</code> is the Message VPN that is the same between your replication pair.</li>
+      <li><code>[detail]</code> is an optional parameter to get more details about the replication status.</li>
+    </ul>
+    <p>For example, the Active <MadCap:variable name="Product-Names.broker_cloud_short"/> is currently <code>nano-production-azzn9vsqdk5-solace-primary-0</code> and the Standby <MadCap:variable name="Product-Names.broker_cloud_short"/> is currently <code>nano-production-89il3uubs0c-solace-primary-0</code>. For it to  show as bounded, you would expect to see the results from running the following commands:
+		</p>
+    <ul>
+      <li>Q (Queue state) - (U)p on Active site. This value indicates whether the replication bridge is bound.</li>
+    </ul>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudVMMigration/boundvalues-replication-show-command.flsnp"/>
+    <pre xml:space="preserve">nano-production-azzn9vsqdk5-solace-primary-0&gt; show message-vpn myfirstservice replication
+
+Flags Legend:
+A - Admin State (U=Up, D=Down)
+C - Config State (A=Active, S=Standby)
+B - Local Bridge State (U=Up, Q=Queue Unbound, D=Down, -=N/A)
+R - Remote Bridge State (U=Up, D=Down, -=N/A)
+Q - Queue State (U=Up, D=Down, -=N/A)
+S - Sync Replication Eligible (Y=Yes, N=No, -=N/A)
+M - Reject Msg When Sync Ineligible (Y=Yes, N=No)
+T - Transaction Replication Mode (A=Async, S=Sync, -=N/A)
+
+Message VPN                      A C B R Q S M T
+-------------------------------- - - - - - - - - -
+myfirstservice                   U A - U U Y N A
+		</pre>
+    <p>For the Standby site:</p>
+    <pre xml:space="preserve">nano-production-89il3uubs0c-solace-primary-0&gt; show message-vpn myfirstservice replication
+
+Flags Legend:
+A - Admin State (U=Up, D=Down)
+C - Config State (A=Active, S=Standby)
+B - Local Bridge State (U=Up, Q=Queue Unbound, D=Down, -=N/A)
+R - Remote Bridge State (U=Up, D=Down, -=N/A)
+Q - Queue State (U=Up, D=Down, -=N/A)
+S - Sync Replication Eligible (Y=Yes, N=No, -=N/A)
+M - Reject Msg When Sync Ineligible (Y=Yes, N=No)
+T - Transaction Replication Mode (A=Async, S=Sync, -=N/A)
+
+Message VPN                      A C B R Q S M T
+-------------------------------- - - - - - - - -
+myfirstservice                   U S U - - - N A</pre>
+    <p>To further troubleshooting, you can see the details for the <MadCap:variable name="Product-Names.broker_cloud_short"/> on the currently Active site using the <code>details</code> option if something wasn't correct. In this example, the configuration is correct and you can <code>Queue:</code> &gt; <code>State:</code> is <code>bound</code>, which indicates that the Replication Queue is correctly bound.</p>
+    <pre>nano-production-azzn9vsqdk5-solace-primary-0&gt; show message-vpn myfirstservice replication detail
+
+Message VPN:                       myfirstservice
+Admin Status:                      enabled
+Config Status:                     active
+Local Bridge:
+  State:                           n/a
+  Name:                            n/a
+  Queue State:                     n/a
+  Authentication:
+    Scheme:                        Basic
+    Basic:
+      Client Username:             myfirstclientusername
+      Password Configured:         Yes
+    Client Certificate:
+      Certificate File:
+      Using Server Certificate:    Yes
+  Compressed:                      No
+  SSL:                             No
+  Message Spool:
+    Window Size:                   255
+  Unidirectional:
+    Client Profile:                #client-profile
+  Retry Delay:                     3
+Remote Bridge:
+  State:                           up
+  Name:                            #bridge/v:nanoproduction89il3uubs0csolaceprimary0/myfirst
+  service/1
+Queue:
+  State:                           bound
+  Quota (MB):                      60000
+  Reject Msg to Sender on Discard: Yes
+Ack Propagation:
+  Interval in Messages:            20
+Sync Replication:
+  Eligible:                        yes
+    Duration:                      2d 1h 51m 57s
+  Mate Flow Congested:             no
+    Duration:                      0d 0h 0m 0s
+  Reject Msg When Sync Ineligible: No
+Transaction Replication Mode:      async
+		</pre>
+    <h2 class="with-rule"><a name="switch-activity"/>Switch  Activity on the Active Site (Source Service) to a <code>Standby</code> State</h2>
+    <p>When you switch activity, you are switching the replication state of the Message VPN on one <MadCap:variable name="Product-Names.broker_cloud_short"/> (Active site or Source service) from <code>active</code> to <code>standby</code>.
+			</p>
+    <p>
+      <span>In the <MadCap:variable name="Product-Names.solace_cli"/>, use the following command to change replication state on the Message VPN on the currently Active site (Source service):</span>
+    </p>
+    <pre xml:space="preserve">SolaceCLI (configure) # message-vpn &lt;Message VPN name&gt;
+SolaceCLI (configure/message-vpn)# replication state &lt;newstate&gt;
+</pre>
+    <p>Where :</p>
+    <ul>
+      <li><code>&lt;Message VPN name&gt;</code> is the Message VPN that is the same between your replication pair.</li>
+      <li><code>&lt;newstate&gt;</code> is the state to move the Messge VPN to, which can be <code>active</code> or <code>standby</code></li>
+    </ul>
+    <p>For example, the following are the commands to use to switch activity:</p>
+    <pre xml:space="preserve">nano-production-azzn9vsqdk5-solace-primary-0&gt; enable
+nano-production-azzn9vsqdk5-solace-primary-0# configure
+nano-production-azzn9vsqdk5-solace-primary-0(configure)# message-vpn myfirstservice
+nano-production-azzn9vsqdk5-solace-primary-0(configure/message-vpn)# replication state standby
+nano-production-azzn9vsqdk5-solace-primary-0(configure/message-vpn)# show message-vpn myfirstservice replication
+
+Flags Legend:
+A - Admin State (U=Up, D=Down, -=N/A)
+C - Config State (A=Active, S=Standby, -=N/A)
+B - Local Bridge State (U=Up, Q=Queue Unbound, D=Down, -=N/A)
+R - Remote Bridge State (U=Up, D=Down, -=N/A)
+Q - Queue State (U=Up, D=Down, -=N/A)
+S - Sync Replication Eligible (Y=Yes, N=No, -=N/A)
+M - Reject Msg When Sync Ineligible (Y=Yes, N=No, -=N/A)
+T - Transaction Replication Mode (A=Async, S=Sync, -=N/A)
+
+Message VPN                      A C B R Q S M T
+-------------------------------- - - - - - - - -
+myfirstservice                   U S D U - - N A
+
+nano-production-azzn9vsqdk5-solace-primary-0(configure/message-vpn)#
+		</pre>
+    <h2 class="with-rule"><a name="verify-wait"/>Drain the Replication Queue in the Formerly Active Site (Source Service)</h2>
+    <p> You must allow any messages or transactions in the Message VPN from the formerly Active site (Source service) to propagate to the corresponding Message VPN on its replication mate (the newly Active site).  We recommend that you allow the propagation of all messages and transactions to prevent the loss of asynchronous replication messages and transactions. </p>
+    <p>To determine whether the replication queue has drained for the Message VPN on the replication-standby <MadCap:variable name="Product-Names.broker_cloud_short"/>, enter the following command in the <MadCap:variable name="Product-Names.solace_cli"/>:</p>
+    <pre xml:space="preserve">SolaceCLI &gt; show queue #MSGVPN_REPLICATION_DATA_QUEUE message-vpn &lt;Message VPN name&gt; </pre>
+    <p>Where :</p>
+    <ul>
+      <li><code>#MSGVPN_REPLICATION_DATA_QUEUE</code> is the name of the replication queue on the Message VPN of your <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li>
+      <li><code>&lt;Message VPN name&gt;</code> is the name of the Message VPN</li>
+    </ul>
+    <p>If the output displays a value of 0 for  the <code>Current Messages Spooled</code> value, the queue has been drained. If not, wait a few seconds and run the command the again.</p>
+    <p class="Warning">Do not change the replication state for the Message VPN on the formerly Active<MadCap:variable name="Product-Names.broker_cloud_short"/> until <code>Current Messages Spooled</code> is 0 for the replication queue.</p>
+    <p>For example,  check that the replication queue has drained on <code>nano-production-azzn9vsqdk5-solace-primary-0</code> (the formerly Active site or Source service):</p>
+    <pre xml:space="preserve">nano-production-azzn9vsqdk5-solace-primary-0&gt; enable
+nano-production-azzn9vsqdk5-solace-primary-0# configure
+nano-production-azzn9vsqdk5-solace-primary-0(configure)# show queue #MSGVPN_REPLICATION_DATA_QUEUE message-vpn myfirstservice
+
+Name                                 : #MSGVPN_REPLICATION_DATA_QUEUE
+Message VPN                          : myfirstservice
+Durability                           : Durable
+...
+...		
+Bind Time Forwarding Mode            : Store-And-Forward
+Current Messages Spooled             : 4
+Current Spool Usage (MB)             : 0.0060
+High Water Mark (MB)                 : 0.0100
+Total Delivered Unacked Msgs         : 0
+Max Delivered Unacked Msgs Per Flow  : 250000
+...
+...
+Last Msg Id Delivered            : 150462
+
+nano-production-azzn9vsqdk5-solace-primary-0(configure)#
+</pre>
+    <p>After a period of time, run the command again:</p>
+    <pre xml:space="preserve">
+nano-production-azzn9vsqdk5-solace-primary-0(configure)# show queue #MSGVPN_REPLICATION_DATA_QUEUE message-vpn myfirstservice
+
+Name                                 : #MSGVPN_REPLICATION_DATA_QUEUE
+Message VPN                          : myfirstservice
+Durability                           : Durable
+...
+...		
+Bind Time Forwarding Mode            : Store-And-Forward
+Current Messages Spooled             : 0
+Current Spool Usage (MB)             : 0.0000
+High Water Mark (MB)                 : 0.0000
+Total Delivered Unacked Msgs         : 0
+Max Delivered Unacked Msgs Per Flow  : 250000
+...
+...
+Last Msg Id Delivered            : 150462
+
+nano-production-azzn9vsqdk5-solace-primary-0(configure)#
+</pre>
+    <h2 class="with-rule"><a name="commit-heuristically"/>Heuristically Commit or Roll Back Any In-Progress Transactions</h2>
+    <p>If you have applications that use XA transactions, there may be some prepared transactions on the formerly Active site (Source service) that need to be heuristically committed or rolled back. If not, the steps in this section do not need to be done.</p>
+    <p>Only prepared transactions (in the PREPARED state) must be addressed. Transactions in other states can be ignored. If you do not deal with the prepared transactions:</p>
+    <ul>
+      <li>transaction resources are wasted and it reduces the transaction handling capacity of both the Active and Standby sites</li>
+      <li>in the event of a failover (or failback) to the originally Active site, duplicate message delivery or message loss may occur</li>
+    </ul>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For information on how to heuristically commit or roll back transactions, see  <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../../Messaging/Guaranteed-Msg/Performing-Heuristic-Actions.htm">Performing Heuristic Actions on Transactions</MadCap:xref></MadCap:conditionalText> <MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Messaging/Guaranteed-Msg/Performing-Heuristic-Actions.htm" class="link-offsite">Performing-Heuristic-Actions.htm</a></MadCap:conditionalText>.</p>
+    <p class="Note">It is important that you only perform the heuristic commit or heuristic rollback operations on the Message VPN of the formerly Active site.</p>
+    <p>Whether you decide to commit or rollback the transaction depend on various factors. When you look at XA transactions, the end goal is to make sure that the transactions are treated consistently on all branches of the distributed transaction across both replication sites. Here are some guidelines you can use to make this decision:</p>
+    <ul>
+      <li>For prepared XA transactions that are controlled by a transaction manager in an application server, you should check the logs or state of the transaction manager for the XID of the prepared transaction to examine the other branches of the distributed transaction:<ul><li>If all the other branches have been committed, you should heuristically commit the transaction</li><li>If any of the other branches have rolled back, you should heuristically roll back the transaction</li></ul></li>
+      <li>For XA prepared transactions that are not controlled by a transaction manager, manually coordinate the distributed transaction so that all the branches of the distributed transaction are either committed or rolled back.</li>
+    </ul>
+    <p>To show replicated transactions, enter the following command to find all transactions with the state of PREPARED. </p>
+    <pre xml:space="preserve">SolaceCLI &gt; show transaction message-vpn &lt;Message VPN name&gt; state PREPARED replicated [detail]</pre>
+    <p>Where:</p>
+    <ul>
+      <li><code>&lt;Message VPN name&gt;</code> is the Message VPN that is the same between your replication pair.</li>
+      <li><code>[detail]</code> is an optional parameter</li>
+    </ul>
+    <p>For example, to show the replicated transaction for <code>PREPARED</code> for the Message VPN of <code>myfirstservice</code>, enter the following command:</p>
+    <pre xml:space="preserve">nano-production-azzn9vsqdk5-solace-primary-0&gt; show transaction message-vpn myfirstservice state PREPARED replicated 
+Flags Legend
+T - Transaction Type (X=XA L=Local)
+S - Transaction State (A=Active S=Suspended I=Idle P=Prepared C=Complete)
+R - Replicated (Y=Yes N=No)
+XID                                                                   Messages
+Message VPN                                   T S R Last State Change  Spooled
+--------------------------------------------- - - - ----------------- --------
+myfirstservice                                X P Y                1s        0</pre>
+    <p>If <MadCap:annotation MadCap:createDate="2022-11-05T08:28:43.5047865-04:00" MadCap:creator="GilYu" MadCap:initials="GI" MadCap:comment="IS this true? I could not get this work atall" MadCap:editor="GilYu" MadCap:editDate="2022-11-05T08:28:55.1314965-04:00">you don't see a value, then there are no transactions in the PREPARED state</MadCap:annotation>:
+			</p>
+    <p>For example, to show the details of <code>PREPARED</code> transactions for the Message VPN named <code>myfirstservice</code>:</p>
+    <pre xml:space="preserve">nano-production-azzn9vsqdk5-solace-primary-0&gt; show transaction message-vpn myfirstservice state PREPARED replicated detail<br/>XID:                       0021B028-00-01<br/>Message VPN:               myfirstservice<br/>Client:                    username/15848/#000c0001<br/>Client Username:           myfirst-clientusername<br/>Session:                   N/A<br/>Idle Timeout:              0<br/>Type:                      XA<br/>State:                     PREPARED<br/>Replicated:                Yes<br/>Last State Change:         0d 0h 0m 0s<br/>Messages:                  10<br/>Messages Published:        0<br/>Messages Consumed:         150<br/>Publisher Messages:<br/>Message Id           Topic<br/>-------------------- -----------------------------------------------------------<br/>Consumer Messages:<br/>Message Id           Type  Endpoint Name<br/>-------------------- ----- -----------------------------------------------------<br/>3118727406           queue test<br/>3118727407           queue test<br/>3118727408           queue test<br/>3118727409           queue test<br/>3118727410           queue test<br/>3118727411           queue test<br/>3118727412           queue test<br/>3118727413           queue test<br/>3118727414           queue test<br/>3118727415           queue test</pre>
+    <p>To show the details of  a particular transaction, enter the following command:</p>
+    <p class="Code">nano-production-azzn9vsqdk5-solace-primary-0&gt; show transaction xid &lt;xidvalue&gt; detail</p>
+    <p>Where:</p>
+    <p><code>xidsvalue</code> specifies the XID of the transaction to be displayed.</p>
+    <h2 class="with-rule"><a name="change-to-standby-site"/>Change the State of the Message VPN to Active on the Formerly Standby Site (Target Service)</h2>
+    <p>After you have set all the required replication topics, you must wait until your oldest message on the <MadCap:variable name="Product-Names.broker_cloud_short"/> is newer than when you configured and enabled replication. When you are ready to switch the activity to the Standby site (Target service), you set the replication status of the Message VPN to the <code>active</code> state using the following CONFIG commands:</p>
+    <pre xml:space="preserve">SolaceCLI (configure)# message-vpn &lt;Message VPN name&gt;
+SolaceCLI(configure/message-vpn)# replication state &lt;newstate&gt;</pre>
+    <p>Where:</p>
+    <ul>
+      <li><code>&lt;Message VPN name&gt;</code> is the Message VPN that is the same between your replication pair.</li>
+      <li><code>&lt;newstate&gt;</code> is the state to move the Messge VPN to, which can be <code>active</code> or <code>standby</code>. In this case, use <code>active</code>.</li>
+    </ul>
+    <p>The following example shows the status before setting the replication state of the Message VPN on the Standby site (Target service) to the newly Active site:</p>
+    <pre xml:space="preserve">nano-production-89il3uubs0c-solace-primary-0&gt; enable
+nano-production-89il3uubs0c-solace-primary-0# configure
+nano-production-89il3uubs0c-solace-primary-0(configure)# message-vpn myfirstservice
+nano-production-89il3uubs0c-solace-primary-0(configure/message-vpn)# show message-vpn myfirstservice replication
+
+Flags Legend:
+A - Admin State (U=Up, D=Down, -=N/A)
+C - Config State (A=Active, S=Standby, -=N/A)
+B - Local Bridge State (U=Up, Q=Queue Unbound, D=Down, -=N/A)
+R - Remote Bridge State (U=Up, D=Down, -=N/A)
+Q - Queue State (U=Up, D=Down, -=N/A)
+S - Sync Replication Eligible (Y=Yes, N=No, -=N/A)
+M - Reject Msg When Sync Ineligible (Y=Yes, N=No, -=N/A)
+T - Transaction Replication Mode (A=Async, S=Sync, -=N/A)
+
+Message VPN                      A C B R Q S M T
+-------------------------------- - - - - - - - -
+myfirstservice                   U S U - - - N A
+
+nano-production-89il3uubs0c-solace-primary-0(configure/message-vpn)# replication state active
+nano-production-89il3uubs0c-solace-primary-0(configure/message-vpn)# show message-vpn myfirstservice replication
+			
+Flags Legend:
+A - Admin State (U=Up, D=Down, -=N/A)
+C - Config State (A=Active, S=Standby, -=N/A)
+B - Local Bridge State (U=Up, Q=Queue Unbound, D=Down, -=N/A)
+R - Remote Bridge State (U=Up, D=Down, -=N/A)
+Q - Queue State (U=Up, D=Down, -=N/A)
+S - Sync Replication Eligible (Y=Yes, N=No, -=N/A)
+M - Reject Msg When Sync Ineligible (Y=Yes, N=No, -=N/A)
+T - Transaction Replication Mode (A=Async, S=Sync, -=N/A)
+
+Message VPN                      A C B R Q S M T
+-------------------------------- - - - - - - - -
+myfirstservice                   U A - D D N N A
+
+nano-production-89il3uubs0c-solace-primary-0(configure/message-vpn)#</pre>
+    <h2 class="with-rule"><a name="move-custom-hostname"/>Move the Custom Hostname to the Newly Active Site</h2>
+    <p>You move the custom hostname (or custom domain hostname) to the newly Active <MadCap:variable name="Product-Names.broker_cloud_short"/>, which was your Target service during the migration.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudVMMigration/customhostname-steps.flsnp"/>
+    <p>At this point, full messaging operations resume.</p>
+    <h2 class="with-rule"><a name="delete-heuristically-complete"/>Delete the Heuristically Completed Transactions</h2>
+    <p><span>If there are transactions that you previously heuristically completed (you have applications that use XA Transactions), <MadCap:variable name="Variables.CompanyName"/> recommends that you delete them to free up resources. If you do not use XA Transactions, the steps in this section are not required</span>. </p>
+    <p>You must always delete the completed transactions on the formerly Active site. In addition, you may have to delete completed transactions on the newly Active site (Target service or formerly Standby site), depending on the replication mode and the XA transaction manager. </p>
+    <p>The XA transaction manager may automatically delete the heuristically completed transactions on the Message VPN on your <MadCap:variable name="Product-Names.broker_cloud_short"/> after it connects to the newly Active site as it reconciles the XA transaction states. We recommend that you  allow this process to complete before deleting the completed transactions.</p>
+    <p>To delete a completed transaction, enter the following ADMIN command on the formerly Active site:</p>
+    <p class="Code">SolaceCLI (admin/message-spool )&gt; delete-transaction xid &lt;xid&gt;</p>
+    <p>Where:</p>
+    <ul>
+      <li><code>xid</code> specifies the XID of the transaction to be deleted.</li>
+    </ul>
+    <p>We recommend that you check both  Message VPNs on the Active and Standby sites for completed transactions. </p>
+  </body>
+</html>

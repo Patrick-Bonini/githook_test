@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Managing Cryptographic Keys</h1>
+    <p>The event broker uses three categories of cryptographic keys, each for a different purpose:</p>
+    <ul>
+      <li>TLS server keys for TLS server authentication on inbound connections.</li>
+      <li class="f">TLS client keys for TLS client authentication on outbound connections with these types of connections: <ul><li>bridges </li><li>replication</li><li> REST/RDP </li><li>DMR </li><li>MNR</li></ul></li>
+      <li> TLS pre-shared keys for mutually authenticating TLS connections between redundancy group members (starting with release 9.2.0).</li>
+    </ul>
+    <p>You must use a unique key for each purpose. The event broker uses a key only for the purpose for which it is configured. </p>
+    <p>TLS server certificates must contain appropriate <code>keyUsage</code> and <code>extendedKeyUsage</code> extensions for server authentication. TLS client certificates must contain appropriate <code>keyUsage</code> and <code>extendedKeyUsage</code> extensions for client authentication.</p>
+    <h3>Key Generation</h3>
+    <p>You must generate the keys and obtain their certificates (no certificates are needed for pre-shared keys). TLS client and server keys are RSA private keys, while TLS pre-shared keys are symmetric. </p>
+    <h3>Key Transfer</h3>
+    <p style="color: #000000;text-decoration: none;">You can load keys using different mechanisms as described below.</p>
+    <p>To deploy a software event broker: </p>
+    <ul>
+      <li> with a pre-installed TLS server key,  use a secret . For details, see <MadCap:xref href="../Software-Broker/Container-Tasks/Config-Secrets.htm">Secrets Configuration.</MadCap:xref></li>
+      <li>with a  TLS pre-shared key,  use the following configuration keys: <ul><li><![CDATA[  ]]><code>redundancy/authentication/presharedkey/key</code></li><li><code>redundancy/authentication/presharedkey/keyfilepath</code></li></ul></li>
+      <li>with TLS client and server keys, use SEMPv2. However, the process depends on the kind of key you're using. For details,  see <MadCap:xref href="../Admin/SEMP/SEMP-API-Ref.htm">SEMP API Reference</MadCap:xref>. </li>
+    </ul>
+    <p>Overall, the process for loading TLS client and server keys includes setting up:</p>
+    <ul>
+      <li> a write-only attribute that contains a PEM (<code>.pem</code>) encoded certificate chain and a password-encrypted key</li>
+      <li>a separate write-only attribute that provides that password</li>
+    </ul>
+    <p>For example, if you set up a TLS server key using <code>tlsServerCertContent</code> and <code>tlsServerCertPassword</code> attributes of the root object, the event broker uses the supplied password to decrypt the key once only. Before the event broker stores the key, it re-encrypts it using a unique key.</p>
+    <p class="Note">You can copy TLS client and server  keys  from one event broker to another in opaque encrypted form. In this method, the event broker uses an SEMPv2 opaque write-only retrieval mechanism for configuration keys. This mechanism is encrypted with a provided password. For details, see <MadCap:xref href="../Admin/SEMP/SEMP-API-Ref.htm">SEMP API Reference</MadCap:xref>.</p>
+    <p>The process for loading TLS client keys using CLI depends on the key purpose:</p>
+    <ul>
+      <li>For bridges, see <MadCap:xref href="../Features/VPN/Configuring-VPN-Bridges.htm"> Configuring VPN Bridges </MadCap:xref></li>
+      <li>For replication, see <MadCap:xref href="../Features/DR-Replication/Replication-VPN-Level-Settings.htm">Configuring VPN-Level Replication Settings</MadCap:xref></li>
+      <li>For REST/RDP, see <MadCap:xref href="../Services/Managing-RDPs.htm">Managing REST Delivery Points</MadCap:xref><a href="https://docs.solace.com/Configuring-and-Managing/Managing-RDPs.htm#managing_rest_messaging_1948951837_1010930"> </a></li>
+      <li>For DMR, see <MadCap:xref href="../Features/DMR/DMR-Mgmt-Cluster-Config.htm">Configuring a DMR Cluster</MadCap:xref></li>
+      <li>For MNR, see <MadCap:xref href="../Features/MNR/Managing-Multi-Node-Routing-Links.htm">Basics of Multi-Node Routing</MadCap:xref></li>
+    </ul>
+    <p>In general, to load TLS client and server keys on the event broker, do the following:</p>
+    <ol>
+      <li> Using encrypted connection such as scp, copy a PEM (<code>.pem</code>) file that contains a certificate and a password-protected key (a private key) to the event broke. For details, see <MadCap:xref href="../Admin/Managing-Event-Broker-Files.htm">Event Broker File Management</MadCap:xref>.</li>
+      <li>Configure the event broker to use that key pair for your purpose. <p class="Note">At this point, the event broker prompts for and uses a password to decrypt the private key. The event broker then re-encrypts the loaded private key using a unique broker key and stores it in the event broker configuration. If the broker key doesn’t exist already, the event broker generates a unique broker key and stores it separately from configuration.</p></li>
+      <li>Delete the PEM file from the event broker.</li>
+    </ol>
+    <p>To review the detailed process for loading TLS pre-shared keys using the CLI, see <MadCap:xref href="../Features/HA-Redundancy/Pre-Shared-Keys-SMB.htm">Pre-Shared Authentication Keys for Software Event Brokers</MadCap:xref>.</p>
+    <h3>Key Storage</h3>
+    <p>The event broker stores keys in configuration files and encrypts them using a unique key that it stores separately. </p>
+    <p>For additional protection, you can use the capabilities of the underlying infrastructure (such as a cloud provider) to encrypt the volume the event broker uses.</p>
+    <h3>Key Lifetime</h3>
+    <p>You must determine the lifetime for each key. Typically, this lifetime corresponds to the certificate expiry date. You should replace the keys (and certificates) before the certificate expiry date to avoid service disruption.</p>
+  </body>
+</html>

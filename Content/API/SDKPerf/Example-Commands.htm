@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Example Commands for SDKPerf</h1>
+    <p>The following are example SDKPerf command lines with brief descriptions of the test performed. The goal of this section is to make it easier to determine how to build your own SDKPerf command lines through examples. All of the examples assume the following:</p>
+    <ul>
+      <li>You want to connect to the Message VPN named <code>default</code>.</li>
+      <li>You have authentication disabled in that Message VPN.</li>
+      <li>You have the client username named <code>default</code> enabled in your Message VPN.</li>
+    </ul>
+    <p class="Note">By default, a Solace PubSub+ software event broker meets these requirements.</p>
+    <p>In all of these commands replace <code>&lt;HOST&gt; </code>with the host or IP of your Solace PubSub+ event broker. The following examples also favor using sdkperf_java, but the command line options will work equally with other versions of SDKPerf as outlined in the <b>Applicability</b> notes.</p>
+    <h2 class="with-rule"><a name="Pub-Sub"/>Publish/Subscribe with Direct Messages</h2>
+    <p>Publish and receive five messages of 100 bytes in size on a topic of <code>T/a</code> at 1 msg/sec:</p>
+    <pre>sdkperf_java -cip=HOST -ptl=T/a -stl=T/a -msa=100 -mn=5 -mr=1</pre>
+    <p>For Solace REST messaging, the concept is similar except that the subscribe topics are provisioned on the REST delivery point queue. See <MadCap:xref href="SDKPerf.htm#Tool">Tool Dependencies</MadCap:xref> for details on required Solace PubSub+ event broker configuration for this to work. In Solace REST messaging, add topic <code>T/a</code> to the REST delivery point queue and have the REST consumers connect to port 8081, and then the command is simply:</p>
+    <pre>sdkperf_rest -cip=HOST -spl=8081 -ptl=T/a -mt=persistent -msa=100 -mn=1 -mr=1</pre>
+    <p>Applicability:</p>
+    <ul>
+      <li>Supported in all SDKPerf versions</li>
+    </ul>
+    <h2 class="with-rule"><a name="Point-to-Point"/>Point to Point with Guaranteed Messaging</h2>
+    <p>Assuming a pre-existing durable queue of <code>Q/demo</code>, bind to this queue, send a 100 byte persistent message, and receive it.</p>
+    <pre>sdkperf_java -cip=HOST -pql=Q/demo -sql=Q/demo -mt=persistent -msa=100 -mn=1 -mr=1</pre>
+    <p>For REST, the concept is similar except that the REST delivery point queue is a pre-configured queue. So make sure the <code>–pql</code> argument is the name of the REST deliver point queue.</p>
+    <pre>sdkperf_rest -cip=HOST -spl=8081 -pql=Q/rdp -mt=persistent -msa=100 -mn=1 -mr=1</pre>
+    <p>Applicability:</p>
+    <ul>
+      <li>Supported in SDKPerf C#, JCSMP, JMS, REST</li>
+      <li>Unsupported in SDKPerf JavaScript, MQTT</li>
+    </ul>
+    <h2 class="with-rule"><a name="Pub-Sub-Guarn"/>Publish/Subscribe with Guaranteed Messaging</h2>
+    <p>In general, Solace APIs support pub/sub by either using a queue with topic subscriptions that are mapped to it or by using a topic endpoint. This example uses a temporary topic endpoint.</p>
+    <pre>sdkperf_java -cip=HOST -ptl=T/demo -stl=T/demo -mt=persistent –tte=1 -msa=100 -mn=1 -mr=1</pre>
+    <p>For MQTT, the concept is the same, but the way you express the Guaranteed Messaging changes. Instead of <code>-mt</code> and <code>-tte</code>, you use <code>-mpq</code> and <code>-msq</code> to specify the MQTT QoS for the messages.</p>
+    <pre>sdkperf_mqtt -cip=HOST -ptl=T/demo -stl=T/demo -mpq=1 -msq=1 -msa=100 -mn=1 -mr=1</pre>
+    <p>For Solace REST messaging, the concept is again similar except that the topic subscriptions are provisioned on the REST delivery point queue. So the command is simply:</p>
+    <pre>sdkperf_rest -cip=HOST -spl=8081 -ptl=T/demo -mt=persistent -msa=100 -mn=1 -mr=1</pre>
+    <p>Applicability:</p>
+    <ul>
+      <li>Supported in SDKPerf C, C#, Java, JMS, MQTT</li>
+      <li>Unsupported in SDKPerf JavaScript</li>
+    </ul>
+    <h2 class="with-rule"><a name="Provision-Queue"/>Provision a Queue and Map Topics</h2>
+    <p>Provision a queue through <code>-pe</code> and then map two topic subscriptions to this queue. Finally, publish 100 persistent messages to the topics to validate message flow. The provisioned queue is also cleaned up by the tool at the end of the execution.</p>
+    <pre>sdkperf_java -cip=HOST -pe -sql=queue -stl=a,b -ptl=a,b -mt=persistent -mn=100 -mr=100 -msa=100</pre>
+    <p>Applicability:</p>
+    <ul>
+      <li>Supported in SDKPerf C, C#, JCSMP</li>
+      <li>Unsupported in SDKPerf JavaScript, JMS, MQTT, REST</li>
+    </ul>
+    <h2 class="with-rule"><a name="Sub-Del"/>Subscribe with Deliver Always</h2>
+    <p>Subscribe to topic <code>T/a</code> with deliver always flag. Useful in testing publish to one (<code>-pto</code>).</p>
+    <pre>sdkperf_java -cip=HOST -stl="T/a&lt;TOPIC_END/&gt;DA=1"</pre>
+    <p>Applicability:</p>
+    <ul>
+      <li>Supported in SDKPerf C, C#, JCSMP, JavaScript</li>
+      <li>Unsupported in SDKPerf JMS, REST, MQTT</li>
+    </ul>
+    <h2 class="with-rule"><a name="Publish-Persistent"/>Publish Persistent Messages with TTL- and DMQ- Eligible</h2>
+    <p>Publish a persistent message to a queue with time-to-live of 1000 milliseconds, and mark the message as DMQ-eligible.</p>
+    <pre>sdkperf_java -cip=HOST -pql=queue -mt=persistent -mn=1 -mr=1 -msa=100 -mtl=1000 –mdq</pre>
+    <p>Applicability:</p>
+    <ul>
+      <li>Supported in SDKPerf C, C#, Java, JMS, REST</li>
+      <li>Unsupported in SDKPerf JavaScript, MQTT</li>
+    </ul>
+    <h2 class="with-rule"><a name="Publish-Selectors"/>Publish/Subscribe to Persistent Messages with Selectors and Structured Data</h2>
+    <p>Publish a persistent message containing structured data to a queue.</p>
+    <pre>sdkperf_c -cip=HOST -pql=queue -mt=persistent -mn=1 -mr=1 –sdm=sdm1.txt</pre>
+    <p>Where the contents of <code>sdm1.txt</code> are:</p>
+    <pre>msg: type=map
+msg: useBinaryAttachment=0
+bool   name=a value=0
+uint16 name=b value=3
+int16  name=c value=4
+uint32 name=d value=5
+int32  name=e value=6
+uint64 name=f value=7
+int64  name=g value=8
+string name=h value=matchTopic
+float  name=i value=1.2345678
+double name=j value=2.3456789</pre>
+    <p>Applicability of <code>-sdm</code> argument as used in the above example:</p>
+    <ul>
+      <li>Supported in SDKPerf C</li>
+      <li>Unsupported in SDKPerf C#, Java, JMS, JavaScript, REST, MQTT</li>
+    </ul>
+    <p>Subscribe to the queue using a selector to allow only messages matching specific criteria:</p>
+    <pre>sdkperf_java -cip=HOST -sql=queue –ssl="c&gt;2 AND h='matchTopic'"</pre>
+    <p>Applicability of <code>-ssl</code> argument to add selectors:</p>
+    <ul>
+      <li>Supported in SDKPerf C, C#, JCSMP, JMS</li>
+      <li>Unsupported in SDKPerf JavaScript, REST, MQTT</li>
+    </ul>
+    <h2 class="with-rule"><a name="Advanced-Test"/>Advanced Testing Commands</h2>
+    <p>The following are example SDKPerf command lines for advanced testing.</p>
+    <h3><a name="Measure"/>Measure Latency</h3>
+    <p>There are several options that can control latency measurement within SDKPerf. See <MadCap:xref href="Command-Line-Options.htm#Performa">Performance and Latency Measurement</MadCap:xref> for the list of options. The following is a simple example that enables latency measurement and sets the warmup period to one second.</p>
+    <pre>sdkperf_java -cip=HOST -ptl=T/a -stl=T/a -mn=5 -msa=100 -mr=1 -l -lwu=1</pre>
+    <p>When you add this, you get additional output similar to the following:</p>
+    <pre>Latency Info:
+Latency Info:
+Individual latency bucket size = 1.0 us
+Latency warmup                 = 1.0s
+Latency Messages received      = 1000000
+Latency msg rate (msg/sec)     = 10000
+
+Latency Stats:
+Minimum latency for subs       = 27
+Average latency for subs       = 34
+50th percentile latency        = 35
+95th percentile latency        = 39
+99th percentile latency        = 39
+99.9th percentile latency      = 40
+Maximum latency for subs       = 41
+Standard Deviation             = 2.3</pre>
+    <h3><a name="Check"/>Check Message Order</h3>
+    <p>SDKPerfcan check the order of all messages sent and received by embedding a unique ID within each message sent. This is enabled using the option <code>-oc</code>.</p>
+    <pre>sdkperf_java -cip=HOST -ptl=T/a -stl=T/a -mn=5 -msa=100 -mr=1 -oc</pre>
+    <p>When order checking is enabled, SDKPerf will print extra stats similar to the following which summarizes the order checking:</p>
+    <pre xml:space="preserve">Message Order Check Summary:
+Total Msgs Order Checked        : 5
+Total Out of Order Msgs         : 0
+Total Missing Msgs              : 0
+Total Duplicate Msgs            : 0
+Total Redelivered Msgs          : 0
+Total Redelivered Duplicate Msgs: 0
+Total Republished Duplicate Msgs: 0
+</pre>
+    <h3><a name="Check2"/>Check Message Integrity</h3>
+    <p>SDKPerf can check the integrity of all message contents sent and received by embedding a CRC hash within the transmitted message. This is enabled using the option <code>-crc</code>.</p>
+    <pre>sdkperf_java -cip=HOST -ptl=T/a -stl=T/a -mn=5 -msa=100 -mr=1 -crc</pre>
+    <p>When integrity checking is enabled, SDKPerf will print extra stats similar to the following, which summarizes the results:</p>
+    <pre>
+Message Integrity Checking:
+Total Messages with OK          = 5
+Total Messages with ERRORS      = 0
+Msgs with xml payload OK        = 0
+Msgs with xml payload ERRORS    = 0
+Msgs with attachment OK         = 5
+Msgs with attachment ERRORS     = 0
+Msgs with userdata OK           = 0
+Msgs with userdata ERRORS       = 0
+Msgs with stuctured data OK     = 0
+Msgs with stuctured data ERRORS = 0</pre>
+  </body>
+</html>

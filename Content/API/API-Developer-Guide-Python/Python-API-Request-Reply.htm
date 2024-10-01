@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><a name="top"/>Request-Reply Messaging in the Python  API</h1>
+    <p>Request-reply messaging is a method of data transmission where applications use separate point-to-point channels: one for requests, and another for replies. In request-reply messaging, each request sent from a <i>message requestor</i> requires a reply from a <i>message replier</i>. When a message replier consumes a request message, it sends a reply back to the requestor. This messaging pattern is useful when each message sent between components in your applications requires a reply, for example when performing authentication or financial transactions. </p>
+    <p>
+      <img src="../API-Developer-Guide/Images/request-reply-2.png"/>
+    </p>
+    <p>The  <MadCap:variable name="Manifest-Products-APIs.PubSub-GenericAll-Messaging-API"/>s publish request messages with a unique, automatically generated ReplyTo destination topic in the message header field. This ReplyTo topic serves as the return address that the reply should be sent to. Because the ReplyTo topic destination is handled by the <MadCap:variable name="Manifest-Products-APIs.PubSub-GenericAll-Messaging-API"/>s, it allows users to perform request-reply operations without worrying about registering appropriate topic subscriptions to receive replies.</p>
+    <div class="Note">
+      <p>Request-reply messaging can only be used with direct messages in the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API.</p>
+    </div>
+    <p>To use the request-reply messaging pattern with the Python  API, follow these steps:</p>
+    <ol>
+      <li>
+        <MadCap:xref href="#Creating-A-RequestReplyMessagePublisher">Create a RequestReplyMessagePublisher</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Sending">Sending a Request</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Creating-A-RequestReplyMessageReceiver">Create a RequestReplyMessageReceiver</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Receivin3">Receiving Requests and Sending Replies</MadCap:xref>
+      </li>
+    </ol>
+    <h2><a name="Creating-A-RequestReplyMessagePublisher"/>Create a RequestReplyMessagePublisher</h2>
+    <p>To send message requests, create a <code>MessagingService</code> object (see <MadCap:xref href="Python-API-Messaging-Service.htm#Messaging-Service">Messaging Service</MadCap:xref> for instructions). After you create a <code>MessagingService</code> object and connect it to the event broker, use the <code>request_reply()</code> function to build a <code>RequestReplyMessagePublisher</code> object:</p>
+    <pre xml:space="preserve">direct_requestor: RequestReplyMessagePublisher = messaging_service.request_reply() \
+                                                  .create_request_reply_message_publisher_builder() \
+                                                  .build()
+direct_requestor.start()
+</pre>
+    <p>Next create an <code>OutboundMessage</code> instance. This is the request that your publisher sends to the receiver instance. For information on creating an <code>OutboundMessage</code> object see <MadCap:xref href="Python-DM-Publish.htm#Configuring-Messages">Configuring and Creating Outbound Messages</MadCap:xref>. </p>
+    <h2><a name="Sending"/>Sending a Request</h2>
+    <p>When you send a request, it can be either blocking or non-blocking. A blocking request blocks your application until a reply is received. A non-blocking request allows your application to send multiple requests before any replies are received.</p>
+    <ul>
+      <li>
+        <p>
+          <MadCap:xref href="#Sending2">Sending a Blocking Request</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Sending3">Sending a Non-Blocking Request</MadCap:xref>
+        </p>
+      </li>
+    </ul>
+    <h3><a name="Sending2"/>Sending a Blocking Request</h3>
+    <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API provides synchronous request-reply messaging, which blocks each request until a reply is received. This is useful for synchronous, point to point communication where the order of events is important, for example when processing financial transactions. To send a blocking request, use your <code>RequestReplyMessagePublisher</code> to call the <code>publish_await_response()</code> function. The <code>publish_await_response()</code> function takes the following parameters:</p>
+    <ul>
+      <li style="font-size: 11pt;"><code>request_message</code>—the <code>OutboundMessage</code> request to send</li>
+      <li style="font-size: 11pt;"><code>request_destination</code>—the <code>Topic</code> destination for request messages</li>
+      <li style="font-size: 11pt;"><code>reply_timeout</code>—an <code>Int</code> value representing the maximum time to wait for a response message (in milliseconds)</li>
+      <li style="font-size: 11pt;"><code>additional_message_properties</code>—(Optional) A <code>Dict</code> that contains additional message properties (see <MadCap:xref href="Python-DM-Publish.htm#Configuring-Messages">Configuring and Creating Outbound Messages</MadCap:xref>). Omit this parameter if you do not have additional message properties to set.</li>
+    </ul>
+    <p style="font-size: 11pt;">For more information, see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a>.</p>
+    <p style="font-size: 11pt;">The following example shows how to send a blocking message request and assign the reply to an <code>InboundMessage</code> object:</p>
+    <pre xml:space="preserve">
+inbound_message_response = direct_requestor.publish_await_response(request_message=outbound_msg, \
+                                                                            request_destination=Topic.of('my/sample/topic'), \
+                                                                            reply_timeout=3000)</pre>
+    <p>For a complete example, see <a href="https://github.com/SolaceSamples/solace-samples-python/blob/main/patterns/direct_requestor_blocking.py" class="link-offsite">direct_requestor_blocking.py</a> on the <MadCap:variable name="Variables.CompanyName"/> Developer Hub.</p>
+    <h3><a name="Sending3"/>Sending a Non-Blocking Request</h3>
+    <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python  API provides non-blocking request-reply messaging, which allows your application to send multiple requests before a reply is received. This is useful for asynchronous communication where the order of events is not important. To send a non-blocking request, use your <code>RequestReplyMessagePublisher</code> to call the <code>publish()</code> function. The <code>publish()</code> function takes the following parameters:</p>
+    <ul>
+      <li style="font-size: 11pt;"><code>request_message</code>—the <code>OutboundMessage</code> request to send.</li>
+      <li style="font-size: 11pt;"><code>request_destination</code>—the <code>Topic</code> destination for request messages.</li>
+      <li style="font-size: 11pt;"><code>additional_message_properties</code>—(Optional) A <code>Dict</code> that contains additional message properties (see <MadCap:xref href="Python-DM-Publish.htm#Configuring-Messages">Configuring and Creating Outbound Messages</MadCap:xref>). Omit this parameter if you do not have additional message properties to set.</li>
+      <li style="font-size: 11pt;"><code>reply_timeout</code>—an <code>Int</code> value representing the maximum time to wait for a response message (in milliseconds)</li>
+    </ul>
+    <p style="font-size: 11pt;">For more information, see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a>.</p>
+    <p style="font-size: 11pt;">The following code snippet shows how to send a non-blocking message request and assign the reply to the result of the asynchronous <code>publish_async()</code> function:</p>
+    <pre xml:space="preserve">publish_async = direct_requestor.publish(request_message=outbound_msg, \
+                                         request_destination=Topic.of('my/sample/topic'), \
+                                         reply_timeout=3000)
+			
+if publish_async.exception() is not None:
+    logger.warn(f"Got exception from request reply publish: {publish_async.exception()}")
+			
+response = publish_async.result()</pre>
+    <p>For a complete example, see <a href="https://github.com/SolaceSamples/solace-samples-python/blob/main/patterns/direct_requestor.py" class="link-offsite">direct_requestor.py</a> on the <MadCap:variable name="Variables.CompanyName"/> Developer Hub.</p>
+    <h2><a name="Creating-A-RequestReplyMessageReceiver"/>Create a RequestReplyMessageReceiver</h2>
+    <p>To send message replies, create a <code>MessagingService</code> object (see <MadCap:xref href="Python-API-Messaging-Service.htm#Messaging-Service">Messaging Service</MadCap:xref> for instructions). After you create a <code>MessagingService</code> object and connect it to the event broker, use the <code>request_reply()</code> function to build a <code>RequestReplyMessageReceiver</code> object:</p>
+    <pre xml:space="preserve">direct_replier: RequestReplyMessageReceiver = messaging_service.request_reply() \
+                                               .create_request_reply_message_receiver_builder() \
+                                               .build(TopicSubscription.of('my/sample/topic'))
+direct_replier.start()
+</pre>
+    <p>Next create an <code>OutboundMessage</code> instance. This is the reply that your receiver sends to the requestor instance. For information on creating an <code>OutboundMessage</code> object see <MadCap:xref href="Python-DM-Publish.htm#Configuring-Messages">Configuring and Creating Outbound Messages</MadCap:xref>. </p>
+    <h2><a name="Receivin3"/>Receiving Requests and Sending Replies</h2>
+    <p>Your <code>RequestReplyMessageReceiver</code> can receive a request synchronously or asynchronously as an <code>InboundMessage</code> object.</p>
+    <ul>
+      <li>
+        <p>
+          <MadCap:xref href="#Receivin">Receiving a Request Synchronously and Sending a Reply</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Receivin2">Receiving a Request Asynchronously and Sending a Reply</MadCap:xref>
+        </p>
+      </li>
+    </ul>
+    <h3><a name="Receivin"/>Receiving a Request Synchronously and Sending a Reply</h3>
+    <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python  API provides synchronous request-reply messaging, which blocks your application until the <code>receive_message()</code> function returns. This is useful for synchronous, point to point communication where the order of events is important, for example when processing financial transactions. To receive a synchronous request, use your <code>RequestReplyMessageReceiver</code> object to call the <code>receive_message()</code> function. The <code>receive_message()</code> function returns the received message and a replier object. The replier object allows your <code>RequestReplyMessageReceiver</code> to send a reply back to the requestor. The <code>receive_message()</code> function takes the following parameter:</p>
+    <ul>
+      <li style="font-size: 11pt;"><code>timeout</code>—(Optional) an <code>Int</code> value representing the time to wait before exiting the blocking function (in milliseconds). Value should be greater than 0. Omit this property if you do not want to set a timeout value.</li>
+    </ul>
+    <p style="font-size: 11pt;">For more information, see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a>.</p>
+    <p style="font-size: 11pt;">The code below shows how to receive a blocking message request, assign the reply to an <code>OutboundMessage</code> object, and send a reply with the <code>reply()</code> function:</p>
+    <pre xml:space="preserve">
+msg, replier = direct_replier.receive_message(5000)
+			
+if replier is not None:
+    outbound_msg = service.message_builder().build("my reply")
+    replier.reply(outbound_msg)
+</pre>
+    <p>For a complete example, see the receive_request_and_send_response_message() function in <a href="https://github.com/SolaceSamples/solace-samples-python/blob/main/howtos/pubsub/how_to_use_request_reply_pattern.py" class="link-offsite">how_to_use_request_reply_pattern.py</a> on the <MadCap:variable name="Variables.CompanyName"/> Developer Hub.</p>
+    <h3><a name="Receivin2"/>Receiving a Request Asynchronously and Sending a Reply</h3>
+    <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python  API provides asynchronous request-reply messaging, which allows your application to receive multiple message requests asynchronously with the <code>receive_async()</code> function. This is useful for point to point communication where the order of events is not important. To receive asynchronous requests, use a <code>RequestReplyMessageReceiver</code> object to call the <code>receive_async()</code> function. The <code>receive_async()</code> function takes the following parameter:</p>
+    <ul>
+      <li style="font-size: 11pt;"><code>message_handler</code>—an instance of <code>RequestMessageHandler</code>, a callback handler to process incoming request messages and the replier objects. This callback allows the <code>receive_async()</code> function to receive both an <code>inboundMessage</code> (the request) <i>and</i> an instance of <code>RequestReplyMessageReceiver.Replier</code>. The replier object allows your <code>RequestReplyMessageReceiver</code> to send a reply back to the requestor.</li>
+    </ul>
+    <p style="font-size: 11pt;">For more information, see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a>.</p>
+    <p style="font-size: 11pt;">The following shows an example implementation of a <code>RequestMessageHandler</code>, which receives a non-blocking message request, assigns the reply to an <code>OutboundMessage</code> object and sends it with the <code>reply()</code> function:</p>
+    <pre xml:space="preserve">
+class RequestMessageHandlerImpl(RequestMessageHandler):
+    def __init__(self, message_builder):
+        self.message_builder = message_builder
+
+    def on_message(self, request: InboundMessage, replier: Replier):
+
+        # Check if the payload is a String or Byte, decode if its the later
+        payload = request.get_payload_as_string() if request.get_payload_as_string() is not None else request.get_payload_as_bytes()
+        if isinstance(payload, bytearray):
+            print(f"Received a message of type: {type(payload)}. Decoding to string")
+            payload = payload.decode()
+        # Handle the message payload, ie. save it, print it etc..
+        # Prepare response payload
+        response = "This is my reply message"
+
+        if replier is not None:
+            outbound_msg = self.message_builder \
+            .build(response)
+            replier.reply(outbound_msg)
+        else:
+            print(f'Invalid request, reply_to not set')    
+# ...
+# Prepare outbound message builder
+outbound_msg_builder = messaging_service.message_builder()			
+direct_replier.receive_async(RequestMessageHandlerImpl(outbound_msg_builder))</pre>
+    <p>For a complete example, see <a href="https://github.com/SolaceSamples/solace-samples-python/blob/main/patterns/direct_replier.py" class="link-offsite">direct_replier.py</a> on the <MadCap:variable name="Variables.CompanyName"/> Developer Hub.</p>
+  </body>
+</html>

@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Publishing Messages that Request Replies</h1>
+    <p>The enterprise messaging APIs enable clients to use convenience functions and methods to publish Direct messages that request replies from receiving clients. This differs from a traditional publish and subscribe scenario where a message is published to a particular Topic and clients interested in that Topic can receive the message without providing replies to the publisher.</p>
+    <p>A request message is published with a unique identifying ReplyTo destination Topic in its <code>ReplyTo</code> message header field. This ReplyTo Topic serves as the return address that the reply should be sent to.</p>
+    <p>When a client connects to an event broker, a point‑to‑point (P2P) Inbox subscription is automatically registered for that client, and, by default, this P2P address is used for the ReplyTo destination for requests. Automatically setting the P2P address as the ReplyTo destination allows clients to perform request/reply operations without worrying about registering appropriate Topic subscriptions to receive replies.</p>
+    <p class="Note">Clients can query the P2P address in use by performing a get for the P2P session property; for more information, refer to the appropriate <MadCap:xref href="../Messaging-APIs/Solace-APIs-Overview.htm">APIs &amp; Protocols</MadCap:xref> documentation.</p>
+    <p>To send a request message, call one of the methods or functions listed in table below, and pass in the following information:</p>
+    <ul>
+      <li>The message content to be sent.</li>
+      <li>A reply time‑out value.
+                <p>A reply time‑out value of 0 creates a non-blocking request (that is, the call returns immediately upon the successful buffering of the message for transmission). For a non-blocking request, if a response is received from the destination client, it is delivered in the received message callback along with all other received messages. It is the responsibility of the application to manage non‑blocking responses.</p><p>For a non-blocking call (that is, a time-out value of 0), correlation ID matching is optional, and its implementation is the responsibility of the application. To map replies to requests, the replying application should specify an identifier in the <code>correlationId</code> message header field of the reply.</p><p>A reply time‑out with a value greater than 0 sets the number of milliseconds that the API will wait for a reply from the receiving client. This is a blocking request. In this case, if a response is received before the time‑out expires, the reply message is returned; if a response is not received in time, an error is signaled. By default, when the request is blocking, a correlation ID is automatically generated.</p></li>
+    </ul>
+    <ul>
+      <li>When using JCSMP, pass in a Topic destination to publish to.
+                <p>For the Java RTO, C, and .NET APIs, the Topic destination is set as a message property (refer to <MadCap:xref href="Setting-Message-Properti.htm#Destination">Destination</MadCap:xref>).</p></li>
+    </ul>
+    <p>For information on replying to request messages, refer to <MadCap:xref href="Receiving-Direct-Message.htm#reply">Replying to Request Messages</MadCap:xref>.</p>
+    <p style="font-weight: bold;">JCSMP</p>
+    <p>To send a request message, you must create an <code>XMLMessageProducer</code> and an <code>XMLMessageConsumer</code> in a Session, and start the <code>XMLMessageConsumer</code>. You can then call <code>Session.createRequestor()</code> to acquire a <code>Requestor</code> instance.</p>
+    <table style="caption-side: top;width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption"><a name="publishing_direct_messages_2102779381_676615"/>To Send a Request Message</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">Requestor.request(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">SessionHandle.sendRequest(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">solClient_session_sendRequest(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">ISession.SendRequest(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode">solace.Session.sendRequest(...)</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-weight: bold;">Related Samples</p>
+    <p>For examples of how to send a Direct request message, refer to the <code>RRDirectRequester</code> and <code>RRDirectReplier</code> samples for the Java, Java RTO, C, and .NET APIs, and the <code>BasicReplier</code> and <code>BasicRequestor</code> samples for JavaScript and Node.js APIs.</p>
+    <h2 class="with-rule"><a name="publishing_direct_messages_2102779381_621161"/>Setting Custom ReplyTo Suffixes and Destinations</h2>
+    <p>Although by default a <code>ReplyTo</code> destination value is automatically generated, applications may optionally add a specific <code>ReplyTo</code> suffix to the Session’s default<code> ReplyTo</code> base topic. (If the given string does not start with a / delimiter, one is inserted.)</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Add a ReplyTo suffix</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">XMLMessage.setReplyToSuffix(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">MessageHandle.setReplyToSuffix(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">solClient_msg_setReplyTo(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">IMessage.SetReplyToSuffix(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">Not applicable</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>You can also set a specific <code>ReplyTo</code> destination value (that is, a Queue or a Topic).</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Set a Specific ReplyTo Destination</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">XMLMessage.setReplyTo(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">MessageHandle.setReplyTo(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">solClient_msg_setReplyTo(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">IMessage.ReplyTo</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode">solace.Message.setReplyTo(...)</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Installing <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.cloud_product_titlecase"/></MadCap:conditionalText> in Amazon Elastic Kubernetes Service (EKS)</h1>
+    <p>Amazon Elastic Kubernetes Service (Amazon EKS) gives you (the customer) the flexibility to start, run, and scale Kubernetes applications in the AWS cloud or on-premises. Amazon EKS helps you provide highly-available and secure clusters and automates key tasks such as patching, node provisioning, and updates. For more information about EKS, see the
+                <a href="https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html" target="_blank" class="link-offsite">Amazon EKS</a> documentation.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/k8s-environment-specific-intro.flsnp"/>
+    <ol>
+      <li>Create  a Kubernetes cluster. For customer-owned deployments, you are  responsible for the set up of the Kubernetes cluster and the maintenance and operation of the cluster. The following information can help you to understand the requirements of that Kubernetes cluster that you create:<ul><li>The Kubernetes cluster must fulfill the <MadCap:xref href="#amazon-eks-prerequisites">Amazon
+                    EKS Prerequisites</MadCap:xref></li><li>Review and choose from various <a href="#amazon-eks-considerations" class="link-internal">considerations to deploy your EKS cluster</a>. </li><li> One way to create and  understand the requirements for the Kubernetes EKS cluster is to use the  examples (Terraform  module and deployment scripts) available from  <MadCap:variable name="Variables.CompanyName"/>.</li></ul><p class="Note" MadCap:conditions="Default.HideFromAllOutput">Available from <MadCap:variable name="Variables.CompanyName"/> are sample scripts and Terraform modules you can use as reference example to understand what is required in your Kubernetes cluster. The example is provided as-is. You (the customer) can modify the files as required to create your Kubernetes cluster. If you choose to do so, then you are responsible to maintain and modify the files for your deployment. For more information,<a href="../../get-support.htm" class="link-internal"> contact  <a href="../../get-support.htm" target="_blank" class="link-internal"><MadCap:variable name="Variables.CompanyName"/></a></a>.</p></li>
+      <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/solace-k8s-terraforms.flsnp"/>
+    </ol>
+    <h2><a name="amazon-eks-prerequisites"/>Amazon EKS Prerequisites</h2>
+    <p>The following are the technical prerequisites for an Amazon EKS deployment to deploy <MadCap:variable name="Product-Names.broker_cloud_short"/>s:</p>
+    <dl>
+      <dt>VPC Security Group</dt>
+      <dd>Before you begin, you must <a href="[%=Manifest-Products-Links.CloudConsoleSupport%]" target="_blank" class="link-offsite"> open an AWS support ticket </a>and request an increase to the Rules per
+                VPC Security Group to 200 for the region you intend to deploy your EKS. This increase is required for <MadCap:variable name="Product-Names.broker_cloud_short"/>s to support the default protocols, which are as follows:</dd>
+      <ul>
+        <li>SSH</li>
+        <li>WEB-messaging</li>
+        <li>SEMP </li>
+        <li>AMQP TLS</li>
+        <li>MQTT web tls</li>
+        <li>MQTT TLS</li>
+        <li>REST</li>
+        <li>SMF/TLS</li>
+        <li>Load Balancer</li>
+      </ul>
+    </dl>
+    <dl>
+      <dt>Permissions</dt>
+      <dd>An AWS account with the following permissions. These permissions are
+            required only by the individual when deployment is done using a Terraform module:</dd>
+      <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/eks-related/eks-permissions.flsnp"/>
+      <ul>
+        <dt>Elastic  Load Balancers</dt>
+        <dt>
+          <dd> Permission is required for the Kubernetes module to create ELBs for the Load Balancer services. The Load Balancer services requires rules that are added in the Security Groups mentioned below.
+Additional permissions required by the AWS Load Balancer Controller and must be updated to match those specified at <a href="https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.2.0/docs/install/iam_policy.json" target="_blank" class="link-offsite">https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.2.0/docs/install/iam_policy.json</a>.		                       </dd>
+        </dt>
+      </ul>
+      <dt>Networking</dt>
+      <dd>You must create an Elastic IP address (EIP) for each NAT Gateway that you intend to use with the following considerations:<ul><li>The EIPs for the NAT gateways must be created upfront.</li><li><MadCap:variable name="Variables.CompanyName"/><b>recommends  two EIPs</b> are created. A minimum of one EIP allocation ID is required. </li></ul></dd>
+    </dl>
+    <h2><a name="amazon-eks-considerations"/>Considerations for Deploying <MadCap:variable name="Product-Names.cloud_product_titlecase"/> on an Amazon EKS Cluster</h2>
+    <p>You (the customer) should consider the following limitations and recommendations regarding your Amazon EKS cluster for a private data center deployment of <MadCap:variable name="Product-Names.cloud_product_firstuse"/>:</p>
+    <ul>
+      <li>
+        <p>A minimum size of <code>/24</code> is required for an EKS cluster that's dedicated to <MadCap:variable name="Product-Names.broker_cloud_short"/>s. A larger size is required if the cluster contains other services. For more information, see <MadCap:xref href="#ip-range-vpc-size">IP Range</MadCap:xref>.</p>
+      </li>
+      <li><MadCap:variable name="Variables.CompanyName"/> recommends that you have   <b>two NAT Gateways and two EIPs for redundancy</b>. You can
+                choose to use one NAT Gateway with one EIP with the consideration that all <MadCap:variable name="Product-Names.broker_cloud_short"/>                features [e.g., VPN bridges, Dynamic Message Routing (DMR), Disaster Recovery (DR), REST Destination Points (RDP)] that rely on external connections will fail to function if
+                the zone of the NAT Gateways fails.</li>
+      <li><MadCap:variable name="Variables.CompanyName"/> recommends that you  <b>have a least two Bastion hosts</b>, and that these hosts are spread out evenly over the three Availability zones. This recommendation allows you  to remotely access the deployment should a zone fail. It's important to note that remote access to your deployment if a zone fails is not a requirement; you can choose to use the minimum of one Bastion host instead.</li>
+      <li MadCap:conditions="Default.HideFromAllOutput"> We recommend that you use  the version of the AWS Load Balancer Controller from <MadCap:variable name="Variables.CompanyName"/> for your EKS cluster. <MadCap:variable name="Variables.CompanyName"/>'s version of the AWS Load Balancer Controller optimizes the ingress rules. The default (non-optimized) ingress rules in the default AWS Load Balancer Controller limit a deployment to eleven <MadCap:variable name="Product-Names.broker_cloud_short"/>s.</li>
+    </ul>
+    <h3><a name="deployments-china"/>Considerations for Deployments in China Regions</h3>
+    <p>Additional considerations are required if the private region you deploy to is within China.</p>
+    <ul>
+      <li>You must have a separate Amazon Web Services (China) Account, which is a set of credentials that are distinct and separate from the Amazon Web Services Global Accounts. To register an account, go to <a href="http://www.amazonaws.cn/" target="_blank" class="link-offsite">http://www.amazonaws.cn</a>.</li>
+      <li>
+        <p><MadCap:snippetText src="../../Resources/Snippets/CloudDeployment/china-require-custom-domain.flsnp"/> For more information, see <MadCap:xref href="deployments-restricted-regions-china.htm">Deployments in China</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>Instead of the GCP registry, you must use the Azure China registry. The Azure China registry uses a different secret that's required when you later deploy the <MadCap:variable name="Product-Names.cloud_agent_short"/>. For example, run the following command where the <code>&lt;username&gt;</code> and <code>&lt;password&gt;</code> is provided by <MadCap:variable name="Variables.CompanyName"/>.</p>
+        <pre xml:space="preserve">kubectl create secret docker-registry cn-reg-secret --namespace kube-system \ <br/>--docker-server=solacecloud.azurecr.cn --docker-username=&lt;username&gt;  --docker-password=&lt;password&gt;</pre>
+        <p MadCap:conditions="Default.HideFromAllOutput,SAP.SAPTempHide">To use <MadCap:variable name="Variables.CompanyName"/>'s version of the AWS Load Balancer Controller, contact <a href="../../get-support.htm" target="_blank" class="link-internal"><MadCap:variable name="Variables.CompanyName"/></a> when you are ready to deploy your Kubernetes cluster.</p>
+        <p MadCap:conditions="Default.HideFromAllOutput,SAP.SAPTempHide">In the Helm chart, customers would add when running the  <code>helm install</code>:</p>
+        <pre xml:space="preserve" MadCap:conditions="Default.HideFromAllOutput,SAP.SAPTempHide">--set image.repository=solacecloud.azurecr.cn/aws-load-balancer-controller 
+--set imagePullSecrets[0].name=cn-reg-secret</pre>
+      </li>
+    </ul>
+    <p>All other EKS clusters specifications are the same as described in <MadCap:xref href="#eks-cluster-specifications">EKS Cluster Specifications</MadCap:xref>.</p>
+    <h2><a name="eks-cluster-specifications"/>EKS Cluster Specifications</h2>
+    <p>Before you (the customer) install the <MadCap:variable name="Product-Names.cloud_agent_short"/>, you must configure the EKS cluster with the technical specifications listed in the following sections:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#node-groups">Node Groups </MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#eks-instance-type">Instance Type Requirements</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#bastion-host">Bastion Host</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#eks_storage_class">Storage Class</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#networking">Networking</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#nat">NAT Gateway</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#load-balancer">Load Balancer</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#ip-range-vpc-size">IP Range</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Autoscaling">Autoscaling</MadCap:xref>
+      </li>
+    </ul>
+    <p>For more detailed information about using Amazon EKS, see the
+            <a href="https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html" target="_blank" class="link-offsite" style="font-style: italic;">User Guide</a>
+            on the Amazon EKS documentation site.</p>
+    <h3><a name="node-groups"/>Node Groups </h3>
+    <p>The Kubernetes cluster autoscaler must use two node groups. The nodegroups can be configured to start from zero instances, which means that it has a full set of node groups for each scaling tier without requiring that instances run in each. </p>
+    <p>
+      <div class="thumbnail-container">
+        <img class="solacethumbnail" src="../../Resources/Images/Cloud-Deployment-Guides/eks-arch-v2.png" alt=""/>
+      </div>
+    </p>
+    <p>The node groups must be configured to start at 0 . Hints should be provided to the autoscaler as to which <a href="k8s_labels_taints.htm#top" class="link-internal">labels and taints</a> are set on the worker nodes by using stags on the auto-scaling group (ASG). There is no mechanism available to tag the ASG when you create the node groups, but can be accomplished as described in <a href="https://github.com/aws/containers-roadmap/issues/724" target="_blank" class="link-offsite">Managed Nodes Scale to Zero</a> and <a href="https://github.com/kubernetes/autoscaler/issues/3802" target="_blank" class="link-offsite">Cluster Autoscaler does not start new nodes when Taints and NodeSelector are used in EKS</a>.</p>
+    <h3><a name="eks-instance-type"/>Instance Type Requirements</h3>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/eks-related/instance-type.flsnp"/>
+    <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Scaling Tier</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Instance Type Required</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Monitor</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">T3.medium</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">Developer</MadCap:conditionalText>
+            <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">Standard</MadCap:conditionalText>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">R5.large</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <MadCap:variable name="Product-Names.class_250"/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">R5.large</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <MadCap:variable name="Product-Names.class_1k"/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">R5.large</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <MadCap:variable name="Product-Names.class_5k"/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">R5.xlarge</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <MadCap:variable name="Product-Names.class_10k"/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">R5.xlarge</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <MadCap:variable name="Product-Names.class_50k"/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">R5.2xlarge</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <MadCap:variable name="Product-Names.class_100k"/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1"> R5.2xlarge</td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="bastion-host"/>Bastion Host</h3>
+    <p><MadCap:variable name="Variables.CompanyName"/> recommends that you have at least two Bastion hosts, and that these hosts are spread out evenly over the three Availability zones. This allows you to remotely access your deployment should a zone fail; if remote access to your deployment if a zone fails is not a requirement, you can choose to use the minimum of one Bastion host instead to manage the EKS cluster. The Bastion host is deployed using a minimal VM that runs only an SSH server.</p>
+    <ul MadCap:conditions="Default.HideFromAllOutput">
+      <li>To configure the <code>number_of_bastion_hosts</code> variable to specify the number of Bastion hosts to
+             create. 						<pre xml:space="preserve" class="Code">variable "number_of_bastion_hosts" {
+  type = number
+  default = 2
+</pre></li>
+    </ul>
+    <h3><a name="eks_storage_class"/>Storage Class</h3>
+    <p>The EKS storage class (<code>type</code>) can use either GP2 or GP3. Consider the following when choosing which storage class to use:</p>
+    <ul>
+      <li>
+        <p>With GP2, the performance improves as the size of the disk increases. In cases where the your disk size is greater than 1 TB, using GP2 is a better option than GP3.</p>
+      </li>
+      <li>
+        <p>With GP3, the default performance is 3k IOPS regardless of disk size. GP3 is recommended for disk sizes that are less than 1TB. For cases where the disk size is greater than 1 TB,  GP2 is the better choice unless you configure the GP3 storage class with a provisioned IOPS that's higher than 3k. It's important to note that if you increase the IOPS on the storage class, then all <MadCap:variable name="Product-Names.broker_cloud_short"/>s get the same IOPS. For example, if you increase to 6k IOPS, then all <MadCap:variable name="Product-Names.broker_cloud_short"/>s get 6k IOPS disks and you may incur an extra 3k IOPs costs as a result of doing this.</p>
+      </li>
+    </ul>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/eks-related/common-storage-info.flsnp"/>
+    <p>The properties of your<code> StorageClass</code> yaml should be similar to the following:
+        </p>
+    <pre xml:space="preserve">apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+ annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+  name: gp2
+  selfLink: /apis/storage.k8s.io/v1/storageclasses/gp2
+parameters:
+  encrypted: "true"
+  fsType: xfs
+  type: gp2
+provisioner: kubernetes.io/aws-ebs
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true</pre>
+    <p MadCap:conditions="Default.HideFromAllOutput">For more information about creating a storage class for EKS, see 
+            <MadCap:xref href="resource-requirements-k8s.htm#supported-storage-solutions"><span href="https://docs.aws.amazon.com/eks/latest/userguide/storage-classes.html" style="font-style: italic;">Storage classes</span></MadCap:xref> on the Amazon EKS User Guide site.
+        </p>
+    <h3><a name="networking"/>Networking</h3>
+    <p>To spread an <MadCap:variable name="Product-Names.broker_cloud_short"/>, or rather the event brokers over the Availability Zones (AZ), an anti-pod affinity should be used. When the region has multiple availability zones, the <code>topologyKey</code> key should be set to <code>kubernetes.io/zone</code>, whereas when AZs not are available,  set it to  <code>topology.kubernetes.io/hostname</code>. </p>
+    <h3><a name="nat"/>NAT Gateway</h3>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/eks-related/nat-gateway.flsnp"/>
+    <ul MadCap:conditions="Default.HideFromAllOutput">
+      <li>Configure
+                            <code>nat_gw_eip_allocation_ids</code> to have at least two EIP IDs (recommended).  but if you
+                        don't have two, you can configure one EIP allocation ID. You can optionally configure up to three EIPs, which gives you one NAT per AZ:.                        <pre xml:space="preserve" class="Code">variable "nat_gw_eip_allocation_ids" {
+  type = list
+  default = ["eipalloc-08dcc4f349b281c5f", "eipalloc-08dcc4f349b281c6a"]
+}</pre></li>
+    </ul>
+    <h3><a name="load-balancer"/>Load Balancer</h3>
+    <p><MadCap:variable name="Product-Names.cloud_product_short"/> requires the deployment of the AWS Load Balancer Controller to create Network Load Balancers (NLB) to front <MadCap:variable name="Product-Names.broker_cloud_short"/>s. You can find instructions for deploying the AWS Load Balancer Controlled at <a href="https://kubernetes-sigs.github.io/aws-load-balancer-controller" target="_blank" class="link-offsite">https://kubernetes-sigs.github.io/aws-load-balancer-controller</a></p>
+    <p><MadCap:variable name="Variables.CompanyName"/> configures the NLBs used in <MadCap:variable name="Product-Names.cloud_product_short"/> with IP targets and cross-zone enabled. This results in the fastest possible failover times.</p>
+    <p><MadCap:variable name="Variables.CompanyName"/> uses the following service annotations to configure the NLB:</p>
+    <pre>service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+service.beta.kubernetes.io/aws-load-balancer-type: external
+service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
+service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing # this one is removed for internal (private) services
+service.beta.kubernetes.io/aws-load-balancer-target-group-attributes: preserve_client_ip.enabled=true
+service.beta.kubernetes.io/aws-load-balancer-healthcheck-healthy-threshold: '2'
+service.beta.kubernetes.io/aws-load-balancer-healthcheck-unhealthy-threshold: '2'
+service.beta.kubernetes.io/aws-load-balancer-healthcheck-port: '5550'
+service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol: http
+service.beta.kubernetes.io/aws-load-balancer-healthcheck-path: /health-check/guaranteed-active
+service.beta.kubernetes.io/aws-load-balancer-healthcheck-timeout: '6'
+service.beta.kubernetes.io/aws-load-balancer-healthcheck-interval: '10'</pre>
+    <p> </p>
+    <p>If you configured your EKS cluster using <MadCap:variable name="Variables.CompanyName"/>'s custom AWS Load Balancer configurations and require information about the custom AWS Load Blanacer see <MadCap:xref href="eks_custom_loadbalancer.htm" target="_blank">[%=Variables.CompanyName%] Custom AWS Load Balancer</MadCap:xref>.</p>
+    <h3><a name="ip-range-vpc-size"/>IP Range</h3>
+    <p>A minimum size of <code>/24</code> is required for an EKS cluster that's dedicated to <MadCap:variable name="Product-Names.broker_cloud_short"/>s. A larger size is required if the cluster contains other services. </p>
+    <p>Amazon's VPC Container Network Interface (CNI) allocates IPs directly from the VPC’s subnets. The number of IPs that are allocated is directly proportional to the number of worker nodes, which is also proportional to the number of <MadCap:variable name="Product-Names.broker_cloud_short"/>s.</p>
+    <p>The calculations below are based on custom settings for <code>WARM_IP_TARGET</code> and <code>WARM_ENI_TARGET</code>:</p>
+    <pre xml:space="preserve">kubectl set env ds aws-node -n kube-system WARM_IP_TARGET=1     
+kubectl set env ds aws-node -n kube-system WARM_ENI_TARGET=0</pre>
+    <p>Details about these settings are available in the <a href="https://github.com/aws/amazon-vpc-cni-k8s/blob/master/docs/eni-and-ip-target.md" target="_blank" class="link-offsite">Amazon Kubernetes VPC CNI documentation on GitHub</a>.</p>
+    <h4><a name="CIDR_calc"/>CIDR Calculator</h4>
+    <p>You can use the <MadCap:variable name="Variables.CompanyName"/> provided  <a href="CIDR_calculator/cloud-CIDR-calculator.xlsx" target="_blank" class="link-offsite" MadCap:conditions="SAP.SapHideFromOutput">downloadable excel-based CIDR calculator</a><a href="CIDR_calculator/cloud-CIDR-calculator-sap.xlsx" target="_blank" class="link-offsite" MadCap:conditions="SAP.SapOnlyOutput">downloadable excel-based CIDR calculator</a> to calculate your CIDR requirements. </p>
+    <h4>Limitations</h4>
+    <p>Currently, the limit for <MadCap:variable name="Product-Names.broker_cloud_short"/>s in a cluster using the standard <code>aws-load-balancer-controller</code> is 11 due to security group rule limits. You can avoid this limitation by using a modified <code>aws-load-balancer-controller</code> provided by <MadCap:variable name="Variables.CompanyName"/>. </p>
+    <h3><a name="Autoscaling"/>Autoscaling</h3>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/eks-related/autoscaling-info.flsnp"/>
+    <h2 MadCap:conditions="Default.HideFromAllOutput"><a name="deploy-cloud-agent-eks"/>Deploying the <MadCap:variable name="Product-Names.cloud_agent_short"/><MadCap:annotation MadCap:createDate="2022-10-07T15:30:25.0726325-04:00" MadCap:creator="GilYu" MadCap:initials="GI" MadCap:comment="Comment out this section as we want folks to follow the high-level flow." MadCap:editor="GilYu" MadCap:editDate="2022-10-07T15:30:25.9816185-04:00">on</MadCap:annotation> EKS</h2>
+    <p MadCap:conditions="Default.HideFromAllOutput">As discussed in 
+                <MadCap:xref href="installing-ps-cloud-k8s.htm">Kubernetes Cluster Installation</MadCap:xref>, before you (the customer) can deploy the <MadCap:variable name="Product-Names.cloud_agent_short"/> Here's an overview of the sample files you modify to deploy the <MadCap:variable name="Product-Names.cloud_agent_short"/> : </p>
+    <ul>
+      <li MadCap:conditions="Default.HideFromAllOutput">A file containing registry credentials, provided by <MadCap:variable name="Variables.CompanyName"/> and downloaded through the Private Region tab (see <MadCap:xref href="../private_regions_tab.htm#Download">Downloading the Image Pull Secret File to Access Registry Credentials</MadCap:xref>). The file you download will be based on your Kubernetes configuration and is either:<ul><li MadCap:conditions="Default.HideFromAllOutput">A JSON file used to create the Docker registry secret to pull images
+                from <MadCap:variable name="Variables.CompanyName"/>'s official <code>GCR.IO</code> registry.
+                In the examples below, it is called <code><code>&lt;datacenter-id&gt;-registry-credentials.json</code></code>.   </li><li MadCap:conditions="Default.HideFromAllOutput">A YAML file used to create the Docker registry secret to pull images from <MadCap:variable name="Variables.CompanyName"/>'s official <code>GCR.IO</code> registry. In the examples below, it is called <code>&lt;datacenter-id&gt;-pull-secret.yaml</code>. </li><li MadCap:conditions="Default.HideFromAllOutput"><MadCap:conditionalText MadCap:conditions="SAP.SAPTempHide"> Note for China, this differs, see <MadCap:xref href="#deployments-china">Considerations for Deployments in China Regions</MadCap:xref>.</MadCap:conditionalText></li></ul></li>
+      <li MadCap:conditions="Default.HideFromAllOutput">The YAML file (<code>values.yaml</code>) contains the parameters required by the Helm
+                chart; <MadCap:variable name="Variables.CompanyName"/> creates this file with input from the you about your Kubernetes cluster. You can modify this file as required and are responsible to maintain and modify it for your deployment. </li>
+      <li MadCap:conditions="Default.HideFromAllOutput">The URL to the <MadCap:variable name="Product-Names.cloud_agent_short"/>'s Helm
+                chart, which is provided by <MadCap:variable name="Variables.CompanyName"/>.</li>
+    </ul>
+    <p MadCap:conditions="Default.HideFromAllOutput">To deploy the <MadCap:variable name="Product-Names.cloud_agent_short"/>, you complete the following steps (optionally with assistance from <MadCap:variable name="Variables.CompanyName"/>):</p>
+    <ol MadCap:conditions="Default.HideFromAllOutput">
+      <li>Create the <MadCap:variable name="Product-Names.cloud_agent_short"/>'s namespace in the
+                cluster by running the following command:<pre class="Code">kubectl create namespace &lt;namespace&gt;			</pre></li>
+      <li>Create the Docker registry secret to pull images from <MadCap:variable name="Variables.CompanyName"/>'s GCR.IO registry one of the commands below based on the file you <a href="../private_regions_tab.htm#Download">downloaded from the Private Region</a> tab: <![CDATA[			]]><ul><li><code><code>&lt;datacenter-id&gt;-registry-credentials.json</code></code> . You can use any name for the namespace (e.g., <code>myorgabc</code>). Note the email value (<code>any@anywhere.com</code>) can be any valid-formatted email; it's a required parameter for the command, but is not used.
+<pre xml:space="preserve" class="Code">kubectl create secret docker-registry gcr-reg-secret --namespace orgnameabc\
+--docker-server=https://gcr.io --docker-username=_json_key --docker-email=any@anywhere.com \
+--docker-password="$(cat ./<code>&lt;datacenter-id&gt;-registry-credentials.json</code>)"</pre></li><li><code>&lt;datacenter-id&gt;-pull-secret.yaml</code>.
+You can use any name for the namespace (e.g., <code>myorgabc</code>).<![CDATA[				]]><pre xml:space="preserve">
+kubectl apply -f &lt;datacenter-id&gt;-pull-secret.yaml -n &lt;namespace&gt;		</pre></li></ul></li>
+      <li>
+        <p>Install the <MadCap:variable name="Product-Names.cloud_agent_short"/>'s Helm chart, using the Helm
+                 chart URL and <code>values.yaml</code>:</p>
+        <pre xml:space="preserve">helm install &lt;release-name&gt; \
+&lt;Helm Chart's URL&gt; --namespace orgnameabc\
+--values values.yaml</pre>
+        <p>You can use any name for the <code>--namespace</code> parameter (such as
+                <code>orgnameabc</code>). The value  <code>&lt;release-name&gt;</code> parameter can also be any value; <MadCap:variable name="Variables.CompanyName"/> usually uses <code>cloud-agent-rel</code>. For example:</p>
+        <pre xml:space="preserve">helm install cloud-agent-rel \
+http://URL.from<MadCap:variable name="Variables.CompanyName"/>.com/chart --namespace orgnameabc\
+--values values.yaml</pre>
+      </li>
+    </ol>
+  </body>
+</html>

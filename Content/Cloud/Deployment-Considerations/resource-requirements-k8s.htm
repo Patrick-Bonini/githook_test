@@ -1,0 +1,1515 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Resource Requirements for Kubernetes  and Default Port Configuration</h1>
+    <p>This section lists the various resources required to run <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.cloud_product_long"/></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><MadCap:variable name="Product-Names.cloud_product_firstuse"/></MadCap:conditionalText>  in a Kubernetes environment. The resources consumed by <MadCap:variable name="Product-Names.broker_cloud_short"/>s are provided by worker nodes, which are part of the Kubernetes cluster.</p>
+    <p>The resources for each pod must be sufficient for the type of service it is running: </p>
+    <ul>
+      <li>messaging—the pod is running a <MadCap:variable name="Product-Names.broker_sw_short"/> in messaging mode. In a high-availability (HA) configuration, the event broker takes either the primary or backup role.</li>
+      <li>monitoring—the pod is running a <MadCap:variable name="Product-Names.broker_sw_short"/> in monitoring mode (applies only to HA configurations)</li>
+      <li><MadCap:variable name="Product-Names.cloud_agent_short"/>—the pod is running the <MadCap:variable name="Product-Names.cloud_agent_short"/>, which communicates with the <MadCap:variable name="Product-Names.home_cloud_long"/> to configure and manage <MadCap:variable name="Product-Names.broker_cloud_short"/>s. For more information, see <MadCap:xref href="../Security/mission-control-agent-security.htm">[%=Product-Names.cloud_agent_short%]</MadCap:xref>.</li>
+    </ul>
+    <p class="Note">When sizing worker nodes, it is important to provision more RAM than listed in the table. The table below lists the RAM required by pods and doesn't take into account the overhead taken by Kubernetes. Typically, this overhead is less than 2 GB but can reach 4 GB.
+</p>
+    <p class="Note">The <span MadCap:conditions="SAP.SapHideFromOutput">Developer and Standalone service classes</span><span MadCap:conditions="SAP.SapOnlyOutput">Standard class</span> use a single messaging node (requires one pod for messaging). <MadCap:variable name="Product-Names.class_250"/> and larger Service Classes are  High-Availability  groups that require two messaging pods (Primary and Backup) and one monitoring pod. <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> Standalone <MadCap:variable name="Product-Names.broker_cloud_short"/>s are only available after you have added them as a service class to your  <a href="../ght_capacity_increase.htm" class="link-internal">Service Limits</a>.  To  use standalone <MadCap:variable name="Product-Names.broker_cloud_short"/>s, <a href="../../get-support.htm" class="link-internal">contact Solace </a>or <a href="../ght_capacity_increase.htm" class="link-internal">request a limit change</a></MadCap:conditionalText>.</p>
+    <h4><a name="multiple-pods-per-worker-node"/>Running Multiple Pods per Worker Node</h4>
+    <p>Typically, <MadCap:variable name="Variables.CompanyName"/> runs only one pod per worker node. This helps with cost management in Elastic Cloud platforms where <MadCap:variable name="Variables.CompanyName"/> can add VMs as needed.</p>
+    <p>It is also possible to run multiple pods on a worker node. This configuration can be helpful in customer environments with less dynamic IaaS virtualization. In this case, ensure that the requirements listed below are  multiplied by the number of pods that will be running on the worker node. The worker node will have to provide that much, plus more (i.e., an extra 2 GB RAM) for overhead taken by Kubernetes systems pods.</p>
+    <p>For example, a customer could create two worker nodes that have 32 GB of RAM, 8 cores each, with one worker node that has 4 cores with 10 GB of RAM (8 GB + extra 2 GB). The customer could then deploy four <MadCap:variable name="Product-Names.class_1k"/> services on those three worker nodes.  The 32 GB nodes would be running four pods each (Primary and Backup nodes), and the 10 GB node would be running four monitoring pods.</p>
+    <h4><a name="multiple-agents-in-cluster"/>Multiple <MadCap:variable name="Product-Names.cloud_agent_short"/>s per Kubernetes Cluster</h4>
+    <p>It is also possible to run more than one <MadCap:variable name="Product-Names.cloud_agent_short"/> in one Kubernetes cluster. A customer may wish to have a single cluster serve multiple environments such as development, QA, production, and so on. Installing multiple <MadCap:variable name="Product-Names.cloud_agent_short"/>s in the same Kubernetes cluster allows these customer environments to reside together in the same cluster.</p>
+    <p>The <MadCap:variable name="Product-Names.cloud_agent_short"/> requires one namespace to be fully dedicated to it. Thus to run multiple <MadCap:variable name="Product-Names.cloud_agent_short"/>s, multiple namespaces are required.</p>
+    <p>Each <MadCap:variable name="Product-Names.cloud_agent_short"/> represents one data center in <MadCap:variable name="Product-Names.cloud_product_short"/>, which means that a Kubernetes cluster with multiple <MadCap:variable name="Product-Names.cloud_agent_short"/>s is hosting multiple data centers from the <MadCap:variable name="Product-Names.console_ui_long"/> point of view. The worker nodes are shared amongst these <MadCap:variable name="Product-Names.cloud_agent_short"/>s, therefore it is important to have enough resources provided by the worker nodes to be able to schedule all the services created by the different <MadCap:variable name="Product-Names.cloud_agent_short"/>s. When worker nodes are sized so they can run multiple software broker pods, it is also possible for pods from different <MadCap:variable name="Product-Names.cloud_agent_short"/>s to get scheduled on the same node.</p>
+    <h4><a name="dynamic-volume-provisioning"/>Dynamic Volume Provisioning</h4>
+    <p><MadCap:variable name="Product-Names.cloud_product_short_initialcase"/> requires dynamic volume provisioning, which is requested through Persistent Volume Claims managed by Kubernetes StatefulSets. This requirement requires the infrastructure to provide a storage backend that is supported by one of the Kubernetes storage plugins. In addition, <MadCap:variable name="Product-Names.cloud_product_short"/> requires a block storage backend for dynamic volume provisioning (filesystem-based backends are not supported).</p>
+    <p class="Note">To accomplish data encryption at rest for the <MadCap:variable name="Product-Names.broker_sw_short"/> messages and configuration, the storage backend must provide encrypted volumes. The <MadCap:variable name="Product-Names.broker_cloud_short"/> itself does not provide data encryption at rest.</p>
+    <p style="font-weight: bold;"><a name="supported-storage-solutions"/>Supported Storage Solutions</p>
+    <p><MadCap:variable name="Product-Names.cloud_product_short_initialcase"/> has been tested to work with the following storage solutions:
+
+</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/k8s-supported-storage-providers.flsnp">
+        </MadCap:snippetBlock>
+    <p class="Note"> Do not use the Network File System (NFS) protocol as part of your storage solution with <MadCap:variable name="Product-Names.cloud_product_short"/>.</p>
+    <p style="font-weight: bold;"><a name="volume-performance-requirements"/>Volume Performance Requirements</p>
+    <p><MadCap:variable name="Product-Names.cloud_product_short_initialcase"/> requires a storage backend that is capable of providing the following performance:</p>
+    <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Requirement</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Latency</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">IOPS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Minimum</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">3 ms</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">5 K</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">Recommended</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">1 ms</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">20 K</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>The latency and IO operations per second are the most important dimensions. Performance below the minimum threshold will severely impair guaranteed messaging performance.</p>
+    <h2><a name="compute-resources"/>Compute Resource Requirements</h2>
+    <p>The term <i>Allocatable Core</i> refers to the CPU capacity that the Kubernetes/Openshift clusters must be able to provide to the  pods used for <MadCap:variable name="Product-Names.cloud_product_short"/>. For example, an m5.xlarge instance in AWS has 4000 mCore of CPU capacity. However, only 3500 mCore of CPU can be requested by pods. It is important to account for this when you are planning the capacity for a Kubernetes cluster.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">The first of the following tables provides the compute resource requirements for high availability <MadCap:variable name="Product-Names.broker_cloud_short"/>s. The second table provides the compute resource requirements for developer and standalone <MadCap:variable name="Product-Names.broker_cloud_short"/>s. Note that standalone <MadCap:variable name="Product-Names.broker_cloud_short"/>s are not available by default. Contact <MadCap:variable name="Variables.CompanyName"/> for more information.</p>
+    <h3>Compute Resources for <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">High Availability </MadCap:conditionalText><MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</h3>
+    <p class="Note">The CPU Request and CPU Limit numbers in the table below include a 200 mCore requirement per <a href="../Security/security-centralized-monitoring-service.htm" target="_blank" alt="link to topic about monitoring agents" class="link-internal">monitoring agent</a>. Each high-availability <MadCap:variable name="Product-Names.broker_cloud_short"/> has three monitoring agents, one per broker that compose the service (primary, backup, monitoring). <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">The standard service has a single monitoring agent.</MadCap:conditionalText></p>
+    <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Service Class</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Pod Type<br/>(High-Availability Role)</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">CPU Request<br/>(mCores)</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">
+            <span class="Strong">Total CPU Request<br/>(mCores)</span>
+          </th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">
+            <span class="Strong">CPU Limit<br/>(mCores)</span>
+          </th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">
+            <span class="Strong">Total CPU Limit<br/>(mCores)</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1" MadCap:conditions="SAP.SapOnlyOutput">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Standard</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Messaging</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>1,250</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>1,250</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>2,200</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>2,200</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <MadCap:variable name="Product-Names.class_250"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Primary Messaging</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>1,250</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>2800</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>2,200</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>5,600</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Backup Messaging</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>1,250</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>2,200</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Monitoring</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>300</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>1,200</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <MadCap:variable name="Product-Names.class_1k"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Primary Messaging</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>1,250</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>2800</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>2,200</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>5,600</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Backup Messaging</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>1,250</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>2,200</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Monitoring</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>300</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>1,200</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td rowspan="3" class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>
+              <MadCap:variable name="Product-Names.class_5k"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Primary Messaging</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>3,200</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>6,700</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>4,200</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>9,600</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Backup Messaging</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>3,200</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>4,200</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Monitoring</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>300</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>1,200</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <MadCap:variable name="Product-Names.class_10k"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Primary Messaging</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>3,200</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>6,700</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>4,200</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>9,600</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Backup Messaging</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>3,200</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>4,200</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Monitoring</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>300</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>1,200</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <MadCap:variable name="Product-Names.class_50k"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Primary Messaging</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>7,200</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>14,700</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>8,200</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>17,600</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Backup Messaging</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>7,200</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>8,200</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Monitoring</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>300</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>1,200</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <MadCap:variable name="Product-Names.class_100k"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Primary Messaging</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>7,200</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>14,700</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>8,200</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>17,600</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Backup Messaging</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>7,200</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>8,200</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Monitoring</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>300</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>1,200</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3 MadCap:conditions="SAP.SapHideFromOutput">Compute Resources for Developer and Standalone <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</h3>
+    <p class="Note" MadCap:conditions="SAP.SapHideFromOutput">The CPU Request and CPU Limit numbers in the table below include a 200 mCore requirement  for the <a href="../Security/security-centralized-monitoring-service.htm" target="_blank" alt="link to topic about monitoring agents" class="link-internal">monitoring agent</a> that is included with the standalone <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+    <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0" MadCap:conditions="SAP.SapHideFromOutput">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Service Class</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">
+            <span class="Strong">CPU Request<br/>(mCores)</span>
+          </th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">
+            <span class="Strong">CPU Limit<br/>(mCores)</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Developer</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>1,250</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>2,200</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1" MadCap:conditions="">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p><MadCap:variable name="Product-Names.class_250"/> Standalone</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>1,250</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>2,200</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1" MadCap:conditions="">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p><MadCap:variable name="Product-Names.class_1k"/> Standalone</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>1,250</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>2,200</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1" MadCap:conditions="">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p><MadCap:variable name="Product-Names.class_5k"/> Standalone</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>3,200</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>4,200</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1" MadCap:conditions="">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p><MadCap:variable name="Product-Names.class_10k"/> Standalone</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>3,200</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>4,200</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1" MadCap:conditions="">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p><MadCap:variable name="Product-Names.class_50k"/> Standalone</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>7,200</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>8,200</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1" MadCap:conditions="">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p><MadCap:variable name="Product-Names.class_100k"/> Standalone</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>7,200</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>8,200</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2><a name="memory-resources"/>Memory Resource Requirements</h2>
+    <p>The term <i>Allocatable RAM</i> refers to the amounts of memory that the Kubernetes/Openshift clusters must be able to provide to the pods used for <MadCap:variable name="Product-Names.cloud_product_short"/>. For example, an m5.xlarge instance in AWS has 16220452 KiB of RAM capacity. However, only 15069476 KiB of RAM can be allocated toward pods. It is important to account for this when you are planning the capacity for a Kubernetes cluster.</p>
+    <p class="Note">Enabling the Message Retain feature with a 2 GB memory buffer increases the memory requirement of each service class by 2048 MiB.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">The first of the following tables provides the memory resource requirements for high-availability <MadCap:variable name="Product-Names.broker_cloud_short"/>s. The second table provides the memory resource requirements for developer and standalone <MadCap:variable name="Product-Names.broker_cloud_short"/>s. Note that standalone <MadCap:variable name="Product-Names.broker_cloud_short"/>s are not available by default. Contact <MadCap:variable name="Variables.CompanyName"/> for more information.</p>
+    <h3><a name="Memory"/>Memory Resources for <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">High-Availability </MadCap:conditionalText><MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</h3>
+    <div class="Note">
+      <p>The memory request and memory limit numbers in the following table include memory requirements for the <a href="../Security/security-centralized-monitoring-service.htm" target="_blank" alt="link to topic about monitoring agents" class="link-internal">monitoring agent</a>. High-availability <MadCap:variable name="Product-Names.broker_cloud_short"/>s have three monitoring agents, one per broker that compose the service (primary, backup, monitoring).<MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"> The standard service has a single monitoring agent.</MadCap:conditionalText> The monitoring agent requirements are:</p>
+      <ul>
+        <li>
+          <p>Memory request for all versions: 256 MiB</p>
+        </li>
+        <li>
+          <p>Memory limit for versions 10.5 and earlier: 256 MiB</p>
+        </li>
+        <li>
+          <p>Memory limit for versions 10.6 and later: 512 MiB</p>
+        </li>
+      </ul>
+    </div>
+    <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col style="width: 121px;" class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col style="width: 90px;" class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th rowspan="3" class="TableStyle-Table_Num-HeadE-Column1-Header1">Service Class</th>
+          <th rowspan="3" class="TableStyle-Table_Num-HeadE-Column1-Header1">Pod Type<br/>(High-Availability Role)</th>
+          <th colspan="14" class="TableStyle-Table_Num-HeadD-Column1-Header1">Instance Type Without Retain</th>
+        </tr>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th colspan="3" class="TableStyle-Table_Num-HeadE-Column1-Header1">
+            <span class="Strong">Memory Request (MiB)</span>
+          </th>
+          <th colspan="3" class="TableStyle-Table_Num-HeadE-Column1-Header1">
+            <span class="Strong">Total Memory Request (MiB)</span>
+          </th>
+          <th colspan="3" class="TableStyle-Table_Num-HeadE-Column1-Header1">Memory Limit (MiB)</th>
+          <th colspan="3" class="TableStyle-Table_Num-HeadE-Column1-Header1">Total Memory Limit (MiB)</th>
+          <th rowspan="2" class="TableStyle-Table_Num-HeadE-Column1-Header1">Ephemeral<br/>Storage<br/>Request<br/>and Limit per service (GiB) </th>
+          <th rowspan="2" class="TableStyle-Table_Num-HeadD-Column1-Header1"><span class="Strong">Total<br/>Ephemeral<br/>Storage<br/>Request<br/>and Limit (GiB)</span> 
+                    </th>
+        </tr>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version 10.4<br/> and Earlier</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version 10.5</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version 10.6 <br/>and Later</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version 10.4 <br/>and Earlier</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version<br/>10.5</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version 10.6 <br/>and Later</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version<br/>10.4<br/>and Earlier</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version<br/>10.5</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version<br/>10.6<br/>and Later</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version<br/>10.4<br/>and Earlier</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version<br/>10.5</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version<br/>10.6<br/>and Later</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr MadCap:conditions="SAP.SapOnlyOutput" class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Standard</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Messaging</p>
+          </td>
+          <td colspan="2" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">6,912.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>7,471.0</p>
+          </td>
+          <td colspan="2" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">6,912.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>7,471.0 </p>
+          </td>
+          <td colspan="2" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p colspan="2" style="text-align: center;">6,912.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">7,727.0 </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" colspan="2">
+            <p colspan="2" style="text-align: center;">6,912.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">7,727.0</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">2.25 </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>2.25</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <MadCap:variable name="Product-Names.class_250"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Primary Messaging</p>
+          </td>
+          <td colspan="2" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">6,912.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>7,471.0</p>
+          </td>
+          <td rowspan="3" colspan="2" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">16,128</p>
+          </td>
+          <td rowspan="3" style="text-align: center;" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p rowspan="3">17,246.0</p>
+          </td>
+          <td colspan="2" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">6,912.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>7,727.0</p>
+          </td>
+          <td colspan="2" rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p colspan="2" rowspan="3" style="text-align: center;">16,128</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>18,014.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">2.25 </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>6.75
+ 					</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Backup Messaging</p>
+          </td>
+          <td colspan="2" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">6,912.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: left;">7,471.0</p>
+          </td>
+          <td colspan="2" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p colspan="2" style="text-align: center;">6,912.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>7,727.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>2.25 </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Monitoring</p>
+          </td>
+          <td colspan="3" class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p style="text-align: center;">2,304.0</p>
+          </td>
+          <td colspan="2" class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p colspan="2" style="text-align: center;">2,304.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>2,560.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">2.25 </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <MadCap:variable name="Product-Names.class_1k"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Primary Messaging</p>
+          </td>
+          <td colspan="2" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">6,912.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>7,471.0 </p>
+          </td>
+          <td rowspan="3" colspan="2" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">16,128</p>
+          </td>
+          <td rowspan="3" style="text-align: center;" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p rowspan="3">17,246.0</p>
+          </td>
+          <td colspan="2" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p colspan="2" style="text-align: center;">6,912.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>7,727.0</p>
+          </td>
+          <td colspan="2" rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p colspan="2" rowspan="3" style="text-align: center;">16,128</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p rowspan="3">18,014.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">2.25 </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>6.75
+ 					</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Backup Messaging</p>
+          </td>
+          <td colspan="2" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">6,912.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>7,471.0 </p>
+          </td>
+          <td colspan="2" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p colspan="2" style="text-align: center;">6,912.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>7,727.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">2.25 </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Monitoring</p>
+          </td>
+          <td colspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">2,304.0</p>
+          </td>
+          <td colspan="2" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p colspan="2" style="text-align: center;">2,304.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>2,560.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">2.25 </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td rowspan="3" class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>
+              <MadCap:variable name="Product-Names.class_5k"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Primary Messaging</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>14,489.6</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>21,555.2</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>24,985.0 </p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>31,283.2</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>47,871.24</p>
+          </td>
+          <td rowspan="3" style="text-align: center;" class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p rowspan="3">52,274.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>14,489.6</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>21,555.2</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>25,241.0</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p rowspan="3">31,283.2</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p rowspan="3">47,871.24</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p rowspan="3">53,042.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">2.25 </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>6.75
+ 						</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Backup Messaging</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>14,489.6 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>21,555.2 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>24,985.0 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>14,489.6</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>21,555.2</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>25,241.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">2.25 </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Monitoring</p>
+          </td>
+          <td colspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">2,304.0</p>
+          </td>
+          <td colspan="2" style="text-align: center;" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p colspan="2" style="text-align: center;">2,304.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>2,560.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">2.25 </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <MadCap:variable name="Product-Names.class_10k"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Primary Messaging</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>14,489.6</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>21,555.2</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>24,985.0</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>31,283.2 </p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>47,871.24</p>
+          </td>
+          <td rowspan="3" style="text-align: center;" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>52,274.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>14,489.6</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>21,555.2</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>25,241.0</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p rowspan="3">31,283.2</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p rowspan="3">47,871.24</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>53,042.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">2.25 </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>6.75
+ 					</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Backup Messaging</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>14,489.6 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>21,555.2</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>24,985.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>14,489.6</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>21,555.2</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>25,241.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>2.25 </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Monitoring</p>
+          </td>
+          <td colspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">2,304.0</p>
+          </td>
+          <td colspan="2" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p colspan="2" style="text-align: center;">2,304.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>2,560.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>2.25 </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <MadCap:variable name="Product-Names.class_50k"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Primary Messaging</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>31,283.2</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>40,396.8</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>43,475.0</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p rowspan="3">
+64,870.4</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>81,458.4 </p>
+          </td>
+          <td rowspan="3" style="text-align: center;" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p rowspan="3">89,254.0 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>31,283.2</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>40,396.8</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>43,731.0</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p rowspan="3">64,870.4</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p rowspan="3">81,458.4 </p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>90,022.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>2.25 </p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>6.75
+					</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Backup Messaging</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>31,283.2 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>40,396.8</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>43,475.0 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>31,283.2</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>40,396.8</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>43,731.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">2.25 </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Monitoring</p>
+          </td>
+          <td colspan="3" class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p style="text-align: center;">2,304.0</p>
+          </td>
+          <td colspan="2" class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p colspan="2" style="text-align: center;">2,304.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>2,560.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">2.25 </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <MadCap:variable name="Product-Names.class_100k"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Primary Messaging</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>31,283.2 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>40,396.8</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>43,475.0</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p rowspan="3">
+64,870.4 </p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>81,458.4</p>
+          </td>
+          <td rowspan="3" style="text-align: center;" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p rowspan="3">89,254.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>31,283.2</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>40,396.8</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>43,731.0</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p rowspan="3">64,870.4</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p rowspan="3">81,458.4 </p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p rowspan="3">90,022.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">2.25 </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>6.75
+ 					</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Backup Messaging</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>31,283.2</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>40,396.8 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>43,475.0 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>31,283.2</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>40,396.8</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>43,731.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">2.25 </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Monitoring</p>
+          </td>
+          <td colspan="3" class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p style="text-align: center;">2,304.0</p>
+          </td>
+          <td colspan="2" class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p colspan="2" style="text-align: center;">2,304.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>2,560.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">2.25 </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3 MadCap:conditions="SAP.SapHideFromOutput"><a name="Memory2"/>Memory Resources for Developer and Standalone   <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</h3>
+    <div class="Note" MadCap:conditions="SAP.SapHideFromOutput">
+      <p>The memory request and memory limit numbers in the following table include memory requirements for the <a href="../Security/security-centralized-monitoring-service.htm" target="_blank" alt="link to topic about monitoring agents" class="link-internal">monitoring agent</a> that is included with the standalone <MadCap:variable name="Product-Names.broker_cloud_short"/> The monitoring agent requirements are:</p>
+      <ul>
+        <li>
+          <p>Memory request for all versions: 256 MiB</p>
+        </li>
+        <li>
+          <p>Memory limit for versions 10.5 and earlier: 256 MiB</p>
+        </li>
+        <li>
+          <p>Memory limit for versions 10.6 and later: 512 MiB</p>
+        </li>
+      </ul>
+    </div>
+    <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" MadCap:conditions="SAP.SapHideFromOutput" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th rowspan="3" class="TableStyle-Table_Num-HeadE-Column1-Header1">Service Class</th>
+          <th colspan="7" class="TableStyle-Table_Num-HeadD-Column1-Header1">  Instance Type Without Retain</th>
+        </tr>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th colspan="3" class="TableStyle-Table_Num-HeadE-Column1-Header1"> <span class="Strong">Memory Request (MiB)</span></th>
+          <th colspan="3" class="TableStyle-Table_Num-HeadE-Column1-Header1">Memory Limit (MiB)</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">
+            <span class="Strong">Ephemeral<br/>Storage<br/>Request<br/>and Limit (GiB)</span>
+          </th>
+        </tr>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version 10.4 <br/>and Earlier</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version 10.5 </th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version 10.6<br/>and Later</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version 10.4 <br/>and Earlier</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version 10.5 </th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version 10.6<br/>and Later</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1"> </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">Developer</MadCap:conditionalText>
+            </p>
+          </td>
+          <td colspan="2" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">6,912.0 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>7,471.0 </p>
+          </td>
+          <td colspan="2" style="text-align: center;" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p colspan="2" style="text-align: center;">6,912.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>7,727.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>2.25 </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p><MadCap:variable name="Product-Names.class_250"/> Standalone</p>
+          </td>
+          <td colspan="2" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">6,912.0 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>7,471.0 </p>
+          </td>
+          <td colspan="2" style="text-align: center;" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p colspan="2" style="text-align: center;">6,912.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>7,727.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>2.25 </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p><MadCap:variable name="Product-Names.class_1k"/> Standalone</p>
+          </td>
+          <td colspan="2" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">6,912.0 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>7,471.0 </p>
+          </td>
+          <td colspan="2" style="text-align: center;" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p colspan="2" style="text-align: center;">6,912.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>7,727.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>2.25</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p><MadCap:variable name="Product-Names.class_5k"/> Standalone</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>14,489.6 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>21,555.2                         </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>24,985.0 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>14,489.6 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>21,555.2 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>25,241.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>2.25</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p><MadCap:variable name="Product-Names.class_10k"/> Standalone</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>14,489.6 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>21,555.2                         </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>24,985.0 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>14,489.6 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>21,555.2 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>25,241.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>2.25 </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p><MadCap:variable name="Product-Names.class_50k"/> 50K Standalone</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+31,283.2 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>40,396.8                         </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>43,475.0 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+31,283.2 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>40,396.8 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>43,731.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>2.25 </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p><MadCap:variable name="Product-Names.class_100k"/> Standalone</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>
+31,283.2 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>40,396.8                         </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>43,475.0 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>31,283.2 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>40,396.8 </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>43,731.0</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>2.25 </p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2><a name="message-spool-disk-requirement"/>Message Spool Size Requirements</h2>
+    <p>The following table lists the default message spool sizes for each service class and the resulting persistent disk space required:</p>
+    <p class="Note">The <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">Developer</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">Standard</MadCap:conditionalText> service class is a standalone messaging node (requires one pod). The
+            <MadCap:variable name="Product-Names.class_250"/> High Availability and all larger High Availability Service Classes are HA groups, which require <b>two</b> messaging pods (Primary and Backup) and one monitoring pod.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">The first of the following tables provides the message spool size requirements for high availability <MadCap:variable name="Product-Names.broker_cloud_short"/>s. The second table provides the message spool size requirements for standalone <MadCap:variable name="Product-Names.broker_cloud_short"/>s. Note that standalone <MadCap:variable name="Product-Names.broker_cloud_short"/>s are not available by default. Contact <MadCap:variable name="Variables.CompanyName"/> for more information.</p>
+    <h3><a name="persistent-disk-reqs"/>Volume Size for High-Availability <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</h3>
+    <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1" MadCap:conditions="SAP.SapOnlyOutput"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" rowspan="2">Service Class</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" rowspan="2">High-Availability (HA) Redundancy?</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" colspan="2">Message Spool<br/>Size
+                    </th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1" colspan="2">Persistent Disk<br/>Space Requirement</th>
+        </tr>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version 10.6.1 and earlier</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version 10.7.1 and later</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version 10.6.1 and earlier</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Version 10.7.1 and later</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1" MadCap:conditions="SAP.SapOnlyOutput">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Standard</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">No</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">10 GB</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">25 GB</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">40 GB</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">35 GiB</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <MadCap:variable name="Product-Names.class_250"/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Yes</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">25 GB</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">50 GB</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">70 GiB x 2</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">65  GiB x2</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <MadCap:variable name="Product-Names.class_1k"/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Yes</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">50 GB</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">200 GB</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">120 GiB x 2</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">260  GiB x2</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <MadCap:variable name="Product-Names.class_5k"/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">Yes</td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">200 GB</td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">400 GB</td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">420 GiB x 2</td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">520 GiB x2</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <MadCap:variable name="Product-Names.class_10k"/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Yes</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">300 GB</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">600 GB</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">620 GiB x 2</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">780  GiB x2</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <MadCap:variable name="Product-Names.class_50k"/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Yes</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">500 GB</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">800 GB</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">1,020 GiB x 2</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">1040  GiB x2</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <MadCap:variable name="Product-Names.class_100k"/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">Yes</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">500 GB</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">1000 GB</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">1,020 GiB x 2</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">1300 GiB x2</td>
+        </tr>
+      </tbody>
+    </table>
+    <h3 MadCap:conditions="SAP.SapHideFromOutput">Volume Size for Standalone <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</h3>
+    <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0" MadCap:conditions="SAP.SapHideFromOutput">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Service Class</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" colspan="2">Message Spool<br/>Size</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1" colspan="2">Persistent Disk<br/>Space Requirement</th>
+        </tr>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"> </th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version 10.6.1 and earlier</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version 10.7.1 and later</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Version 10.6.1 and earlier</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Version 10.7.1 and later</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Developer</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">20 GB</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">25 GB</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">40 GB</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">35 GiB</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1"><MadCap:variable name="Product-Names.class_250"/> Standalone</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">25 GB</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">50 GB</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">70 GB</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">65  GiB</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1"><MadCap:variable name="Product-Names.class_1k"/> Standalone</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">50 GB</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">200 GB</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">120 GB</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">260  GiB</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1"><MadCap:variable name="Product-Names.class_5k"/> Standalone</td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">200 GB</td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">400 GB</td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">420 GB</td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">520 GiB</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1"><MadCap:variable name="Product-Names.class_10k"/> Standalone</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">300 GB</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">600 GB</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">620 GB</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">780  GiB</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1"><MadCap:variable name="Product-Names.class_50k"/> Standalone</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">500 GB</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">800 GB</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">1,020 GB</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">1040  GiB</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1"><MadCap:variable name="Product-Names.class_100k"/> Standalone</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">500 GB</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">1000 GB</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">1,020 GB</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">1300 GiB</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2><a name="mca-requirements"/><MadCap:variable name="Product-Names.cloud_agent_short"/> Pod</h2>
+    <p>The <MadCap:variable name="Product-Names.cloud_agent_short"/> has the following resource requirements:</p>
+    <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');margin-left: 0;margin-right: auto;" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Type</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Request</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Limit</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">CPU</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">750m</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">750m</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">Memory</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">1024MiB</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">1024MiB</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>Approximately once per week, <MadCap:variable name="Variables.CompanyName"/> upgrades the <MadCap:variable name="Product-Names.cloud_agent_short"/> using a rolling upgrade. The upgrade operation requires double the resources listed above to run successfully. When deployed in an auto-scaling environment, Kubernetes provides these resources as required. Deployments to non-auto-scaling environments must ensure they account for the additional resources required during the upgrade process. This includes ensuring that resource quotas applied to the namespace account for the rolling upgrade requirements.</p>
+    <h2><a name="load-balancer-rules-per-service"/>Load Balancer Rules Per Service  (Default Protocols and Port Configuration)</h2>
+    <p class="Note">If you choose to use NodePort, the port numbers may not map accordingly to the listed ports in the table. To see the ports, you must look at the service's connection information in the <MadCap:variable name="Product-Names.console_ui_long"/></p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/loadbalancerrules.flsnp"/>
+  </body>
+</html>

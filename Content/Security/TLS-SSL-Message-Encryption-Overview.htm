@@ -1,0 +1,580 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>TLS / SSL Encryption</h1>
+    <p>By default, clients use plain text over TCP to exchange data with Solace PubSub+ event brokers, and the data that is exchanged is not compressed.</p>
+    <p>However, clients can use Transport Layer Security (TLS)/ Secure Sockets Layer (SSL)‑encrypted connections to an event broker. This allows an  exchange of uncompressed Solace Message Format (SMF) data or Solace Element Management Protocol (SEMP) data with the event broker using TLS/SSL over single TCP connections instead of plain text over TCP.</p>
+    <p>Using TLS/SSL-encrypted connections to an event broker offers:<br/></p>
+    <ul>
+      <li>Confidentiality—messages can only be received by the intended recipient</li>
+      <li>Message integrity—messages cannot be modified after being sent</li>
+      <li>Server authentication—the connected application is able to verify the server it is communicating with is the server it believes it is</li>
+      <li>Client authentication—optional client certificates can be used as a form of client authentication (for more information, see <MadCap:xref href="Client-Authentication-Overview.htm">Client Authentication Overview</MadCap:xref>)</li>
+    </ul>
+    <p>The following types of applications can establish TLS/SSL-encrypted connections to an event broker:</p>
+    <ul>
+      <li>Client applications that publish and/or receive messages.</li>
+      <p>By default, when a client application connects to an event broker and creates a session, that session is unsecured. However, a client application can optionally create a secure session that requires a trusted server certificate to establish a TLS/SSL-encrypted client connection to an event broker.</p>
+      <p>Client applications can use the Solace messaging APIs  to establish secure connections to an event broker.</p>
+      <li>Network management applications that manage and monitor the event broker through SEMP requests and replies. <ul><li>If the network management application uses SEMP Request Over Message Bus service, which uses a Solace messaging API to establish a client connection through a session, SEMP requests and replies can be sent over the event broker message bus. A secure session can be established in the same manner as that used by a client application.</li><li>If the network management application uses SEMP Request over HTTP service, a TCP connection to a port on the event broker allows the application to send SEMP requests wrapped in HTTP to a management interface on the event broker and receive replies to them. For SEMP Request over HTTP service, a secure connection can be created when a server certificate is set on the event broker, a TLS/SSL-secure port is specified (443 by default), and an HTTPS URL scheme is used.</li></ul></li>
+    </ul>
+    <p>SSL encryption can also be used on Message VPN bridges and bridges established by the Message VPN replication and replication Config-Sync facilities. Using encryption on bridge links helps to ensure that communications between event brokers over bridges are secure.</p>
+    <p class="Note">Because encrypting and decrypting data requires processing power, enabling TLS/SSL encryption may cause a reduction in performance.</p>
+    <h2 class="with-rule"><a name="Cipher"/>Cipher Suites</h2>
+    <p>The following cryptographic algorithms are used throughout the life of a TLS/SSL‑encrypted connection:</p>
+    <ol>
+      <li>Key establishment—This algorithm is used to exchange or agree on the symmetric keys to be used for encrypting and decrypting the data payload during the session. Examples: RSA, Diffie-Hellman (DH), Ephemeral Diffie-Hellman (DHE), and Elliptic Curve Diffie-Hellman (ECDH).</li>
+      <li>Authentication—This algorithm is the digital signature used by the certificates passed between the client application and server. Examples: RSA and Digital Signature Standard (DSS).</li>
+      <li>Encryption—This algorithm encrypts and decrypts payload passed on the secure session. Examples: RC4, 3DES CBC, and Advanced Encryption Standard (AES).</li>
+      <li>Digest—This algorithm is used to maintain message integrity. Tampering with the message would render the digest invalid. Examples: SHA1, MD5.</li>
+    </ol>
+    <p>The combination of these four cryptographic algorithms is known as a cipher suite.</p>
+    <p> For the full list of  cipher suites event brokers support, refer to <MadCap:xref href="#transport_security_and_compression_440573439_213360">Supported Cipher Suites</MadCap:xref>.</p>
+    <h3><a name="Cipher-inbound"/>Cipher Suites for Inbound Connections</h3>
+    <p>Event brokers maintain a separate  cipher suite list for each of the following inbound TLS connection types:</p>
+    <ul>
+      <li>Network management applications using SEMP  to manage the event broker (management connections)</li>
+      <li>Client applications connecting to the event broker to publish or receive messages (message backbone connections)</li>
+    </ul>
+    <p>Cipher suites for all inbound management and message backbone connections are selected according to the priority clients associate with each cipher suite. </p>
+    <h3><a name="Cipher-outbound"/>Cipher Suites for Outbound Connections</h3>
+    <p>Event brokers maintain a separate prioritized cipher suite list  for each of the following outbound TLS connection types:</p>
+    <ul>
+      <li>Message VPN and bridge connections</li>
+      <li>Replication bridge connections</li>
+      <li>Config-sync bridge connections</li>
+      <li>Multi-node routing links</li>
+    </ul>
+    <p>In addition, the event broker uses the same cipher suite list for outbound LDAP connections that it uses for inbound management connections. </p>
+    <p>Cipher suites for all outbound connections (including LDAP connections) are selected according to the priority  configured in each corresponding cipher suite list. </p>
+    <h3><a name="Ciphers"/>Ciphers for SSH Connections </h3>
+    <p>Event brokers maintain a list of ciphers for all SSH, SCP, and SFTP connections. For purposes of encrypted connections, the  cipher list has a similar function to a cipher suite list; however, key establishment, authentication, and digest algorithms are not used. For the full list of ciphers event brokers support, refer to <MadCap:xref href="#Supporte">Supported Ciphers</MadCap:xref>.</p>
+    <p>Ciphers for all SSH connections are selected according to the priority clients associate with each cipher.</p>
+    <h2 class="with-rule"><a name="transport_security_and_compression_440573439_213360"/>Supported Cipher Suites</h2>
+    <p>The following table shows the full list of cipher suites event brokers support for inbound and outbound connections.</p>
+    <p>Supported Cipher Suites (strongest to weakest)</p>
+    <table class="TableStyle-Table_Num" style="mc-table-style: url('../Resources/TableStyles/Table_Num.css');margin-left: 0;margin-right: auto;caption-side: top;" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 30%;"/>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 30%;"/>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 20%;"/>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 20%;"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">OpenSSL name </th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">IANA name</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Default Security Policy</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">FIPS Compliant Security Policy</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">ECDHE-RSA-AES256-GCM-SHA384</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Supported</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">ECDHE-RSA-AES256-SHA384</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Supported</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">ECDHE-RSA-AES256-SHA</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Supported</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">AES256-GCM-SHA384</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>TLS_AES_256_GCM_SHA384</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Not Supported</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">AES256-SHA256</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>TLS_RSA_WITH_AES_256_CBC_SHA256</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Not Supported</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">AES256-SHA</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>TLS_RSA_WITH_AES_256_CBC_SHA</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Not Supported</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">ECDHE-RSA-DES-CBC3-SHA</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Not Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Not Supported</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">DES-CBC3-SHA</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>SSL_RSA_WITH_3DES_EDE_CBC_SHA</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">Not Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Not Supported</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">ECDHE-RSA-AES128-GCM-SHA256</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Supported</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">ECDHE-RSA-AES128-SHA256</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Supported</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">ECDHE-RSA-AES128-SHA</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Supported</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">AES128-GCM-SHA256</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>TLS_RSA_WITH_AES_128_GCM_SHA256</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Not Supported</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">AES128-SHA256</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>TLS_RSA_WITH_AES_128_CBC_SHA256</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Not Supported</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">AES128-SHA</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>TLS_RSA_WITH_AES_128_CBC_SHA</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Not Supported</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="Note">When using TLS 1.2, certificate keys must be at least 1024 bits in length. When using keys shorter than 1024 bits, you may receive a “digest too big for RSA key” error.</p>
+    <h2 class="with-rule"><a name="Supporte"/>Supported Ciphers</h2>
+    <p>The following table shows the full list of ciphers event brokers support for SSH connections.</p>
+    <table style="border-left-style: solid;border-left-width: 2px;border-left-color: #e1e1e1;border-right-style: solid;border-right-width: 2px;border-right-color: #e1e1e1;border-top-style: solid;border-top-width: 2px;border-top-color: #e1e1e1;border-bottom-style: solid;border-bottom-width: 2px;border-bottom-color: #e1e1e1;width: 40%;margin-left: 0;margin-right: auto;caption-side: top;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <caption>
+        <p class="TblCaption">Supported Ciphers</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Ciphers <br/></th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Default Security Policy</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">FIPS Compliant Security Policy</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>aes128-ctr</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Supported</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>aes192-ctr</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Supported</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>aes256-ctr</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Supported</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>aes128-gcm@openssh.com</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>Not Supported</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>aes256-gcm@openssh.com</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>Not Supported</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="Configur"/>Configuring Cipher and Cipher Suite Lists</h2>
+    <p>You can configure  each  default cipher and cipher suite list to avoid using specified ciphers or cipher suites, or you can reorder each list to change the priority associated with a given cipher or cipher suite. </p>
+    <p>To configure cipher suite lists for inbound connections, refer to <MadCap:xref href="Configuring-Cipher-Suites-for-Inbound-Connections.htm">Configuring Cipher Suites for Inbound Connections</MadCap:xref>.</p>
+    <p>To configure cipher suite lists for outbound connections, refer to the following sections:</p>
+    <ul>
+      <li>For Message VPN and bridge connections, refer to <MadCap:xref href="../Features/VPN/Configuring-VPN-Bridges.htm">Configuring VPN Bridges</MadCap:xref>.</li>
+      <li>For replication bridge and replication Config-Sync connections, refer to <MadCap:xref href="../Features/DR-Replication/Replication-Sys-Level-Settings.htm">Configuring System-Level Replication Settings</MadCap:xref>.</li>
+      <li>For LDAP connections, refer to <MadCap:xref href="Configuring-Cipher-Suites-for-Inbound-Connections.htm#Configur">Configuring   Cipher Suites for Management Connections</MadCap:xref>. The event broker uses the same cipher suite list for LDAP and management connections.</li>
+      <li>For multi-node routing links, refer to <MadCap:xref href="../Features/MNR/Managing-Multi-Node-Routing-Links.htm">Managing Multi-Node Routing</MadCap:xref>.</li>
+    </ul>
+    <p>To configure ciphers for SSH connections, refer to <MadCap:xref href="Configuring-Cipher-Suites-for-Inbound-Connections.htm#Configur3">Configuring   Ciphers for SSH Connections</MadCap:xref>.  </p>
+    <h2 class="with-rule"><a name="transport_security_and_compression_440573439_226045"/>Supported Signature Algorithms</h2>
+    <p>An event broker can validate a certificate chain if all certificates in the chain are signed with one of the following signature algorithms:</p>
+    <table style="width: 40%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');margin-left: 0;margin-right: auto;" class="TableStyle-Table_Num" cellspacing="0">
+      <caption>
+        <p class="TblCaption">Supported Signature Algorithms</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Signature Algorithm</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Default Security Policy</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">FIPS Compliant Security Policy</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>md2withRSAEncryption</p>
+            <p>md4withRSAEncryption</p>
+            <p>md5withRSAEncryption</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Not Supported</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>shawithRSAEncryption</p>
+            <p>sha1withRSAEncryption</p>
+            <p>sha1withDSAEncryption</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Not Supported</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>sha224withRSAEncryption</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Supported (key must be greater than or equal to 2048 bits)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>sha224withDSAEncryption</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>Not Supported</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>sha256withRSAEncryption</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Supported (key must be greater than or equal to 2048 bits)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>sha256withDSAEncryption</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Not Supported</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>sha384withRSAEncryption</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Supported (key must be greater than or equal to 2048 bits)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>sha512withRSAEncryption</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Supported</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>Supported (key must be greater than or equal to 2048 bits)</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="transport_security_and_compression_440573439_214469"/>Server Certificates Authentication Process</h2>
+    <p>The following process is used when a client or management application connects to an event broker and requires certificate validation to establish a secure connection.</p>
+    <p class="GraphicCaption">Certificate Validation Process Using TLS/SSL</p>
+    <p class="GraphicCaption">
+      <img src="../Resources/Images/Broker-Security/ssl_connect_process.jpg" alt=""/>
+    </p>
+    <ol>
+      <li>The client or management application connects to the event broker’s TLS/SSL listening port.</li>
+      <li>The event broker responds to the client or management application with its server certificate.</li>
+      <p>If an Active/Active redundancy configuration is used, each event broker in the redundant pair should have its own server certificate with its own common name. If an Active/Standby redundancy configuration is used, the two mates can share a server certificate that uses the name of the primary event broker as the common name.</p>
+      <li>The client or management application verifies that the server certificate is valid, is named as expected, and that it was issued by a trusted root certificate.</li>
+      <li>If the validation succeeds, the client or management application will respond and continue to complete the handshake.</li>
+    </ol>
+    <h2 class="with-rule"><a name="Certific"/>Certificate Authorities</h2>
+    <p>Prior to version 9.8.0, PubSub+ event brokers used a single certificate authority (CA) list for both incoming and outgoing TLS connections as well as CRLs and OCSP. This list was not pre-populated, meaning you needed to configure the list and the corresponding CA certificates before enabling TLS encryption on incoming or outgoing connections.</p>
+    <p>In version 9.8.0+ PubSub+ event brokers use  three lists of CAs:</p>
+    <ul>
+      <li>The standard domain validation list— A pre-populated  list of standard, trusted domain validation root certificates used to verify the server name for all outgoing TLS connections, including TLS connections for OCSP requests and to obtain CRLs. Event brokers use a combination of this list and the domain validation list during domain validation. This list cannot be modified, however, you can  disable it and use only the domain validation list.</li>
+      <li>The domain validation  list— Used to verify the server name for all outgoing TLS connections, including TLS connections for OCSP requests and to obtain CRLs. You can modify the CAs in this list to suit your deployment.</li>
+      <li>The client authentication list— Used to validate client certificates on incoming TLS connections, CRLs, and OCSP responses.</li>
+    </ul>
+    <p>To configure CA lists, refer to <MadCap:xref href="Managing-Certificate-Authorities.htm">Certificate Authorities</MadCap:xref>. </p>
+    <h3><a name="Certific2"/>Certificate Revocation Checking</h3>
+    <p>Checking the revocation status of client certificates is supported for Solace PubSub+ appliances as of version 8.2.0, and is supported by the Solace PubSub+ software event brokers as of version 8.7.0. Before these releases, while validating the client certificates, the event broker did not check the revocation status of the certificates. </p>
+    <p>An event broker can check the revocation status of the certificate that clients use when attempting to authenticate. The certificate revocation is configurable on a per-event broker basis with override options per-Message VPN. You can configure Message VPN overrides to ignore the results of the revocation check or to allow authentication of certificates with unknown revocation status. For more information, see <MadCap:xref href="../Features/VPN/Configuring-VPNs.htm#Configur">Configuring Message VPN Overrides</MadCap:xref>.</p>
+    <p>The revocation status of a certificate chain can have one of the following states:</p>
+    <ul>
+      <li>Valid—All certificates in the chain have been checked for revocation and for whether they are valid.</li>
+      <li>Unknown—One or more certificate in the chain cannot be verified. It is, however, possible for OCSP to return unknown if the certificate is not revoked and not known to the CA.</li>
+      <li>Revoked—One or more certificate in the chain have been revoked.</li>
+    </ul>
+    <p>With the certificate revocation checking enabled, there are several potential conditions that may lead to the status of a certificate chain to be unknown. The information below describe those conditions when CRL, OCSP, or OCSP-CRL certificate revocation check is enabled:</p>
+    <ul>
+      <li>
+        <p>CRL—If a cached copy of the CRL is not available or if the CRL has expired.</p>
+      </li>
+      <li>
+        <p>OCSP—If the event broker does not receive a response from the OCSP responder within the default timeout, or if the response signer is not recognized as a genuine responder. The responder is required to sign the OCSP responder with certificates issued to specific common names and must contain appropriate OCSP flags.</p>
+      </li>
+      <li>
+        <p>OCSP-CRL—When using OCSP-CRL, following conditions may lead to the revocation status of a certificate to be unknown:</p>
+        <ul>
+          <li>
+            <p>The OCSP response signer is not recognized as a genuine responder.</p>
+          </li>
+          <li>
+            <p>The event broker does not receive a response from the OCSP responder within the default timeout and a cached copy of the CRL is not available, or if the CRL has expired.</p>
+          </li>
+        </ul>
+      </li>
+    </ul>
+    <p>To learn about CRL, OCSP, OCSP-CRL certficate revocation checking, see<MadCap:xref href="#CRLOCSP"> Certificate Revocation Checking Methods.</MadCap:xref></p>
+    <h4>
+      <b>Clients that Support Certificate Revocation Checking</b>
+    </h4>
+    <p>The table below shows the list of clients that support certificate revocation checking.</p>
+    <p class="TblCaption">Clients that Support Certificate Revocation Checking</p>
+    <table style="width: 66%;margin-left: 0;margin-right: auto;mc-table-style: url('../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 15%;"/>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 15%;"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Authentication Source</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Certificate Revocation Checking Supported</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">SMF client</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Yes                    </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">MQTT client</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Yes</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">REST publisher </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Yes</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">REST subscriber</td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">No</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">Web Messaging client</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">Yes</td>
+        </tr>
+      </tbody>
+    </table>
+    <p> For information on certificate revocation configurations, see <MadCap:xref href="Managing-Certificate-Authorities.htm">Managing Certificate Revocation Checking</MadCap:xref>.</p>
+    <h3><a name="CRLOCSP"/> Certificate Revocation Checking Methods</h3>
+    <p>You can configure event brokers to check the revocation status of client certificates using Certificate Revocation List (CRL), Online Certificate Status Protocol (OCSP), or OCSP-CRL (a combination of both the methods).</p>
+    <h4>
+      <b>CRL</b>
+    </h4>
+    <p>CRL contains a list of certificates that have been revoked by the issuing CA. The URL to the CAs certificate revocation list is embedded in each certificate. The event broker downloads the CRL from the distribution point and keeps a local copy that it refreshes periodically. To authenticate client certificates, the verifying application uses the CRL URL to download a local copy of the CRL, which it then uses for every revocation check that CA needs to make. The revocation status of all the certificates in the chain and its issuing CA is checked—starting from the last issued certificate—to the root CA itself. If the serial numbers of the certificates do not appear in the CRL, then the certificates pass the revocation check. </p>
+    <p class="Note">During CRL revocation check, the root CA gets two counts because it is checking itself once and checking the CA below in the chain once.  All the other CAs get one count because they are only checking the one below them or, in the case of the last CA in the chain, it's checking the client that tried to connect.</p>
+    <p> To enable CRL certificate revocation checking, see <MadCap:xref href="Configuring-CRL-Certificate-Revocation.htm">Configuring CRL Certificate Revocation Checking</MadCap:xref>. </p>
+    <h4>
+      <b>OCSP</b>
+    </h4>
+    <p>OCSP allows an event broker to check the revocation status of a single certificate directly with the CA or through a trusted responder (OCSP responder) inside the firewall. The client certificate contains a URL of the issuer of the certificate, which is used to check the revocation status of the certificate. With the OCSP method, each certificate in the chain is verified by sending a request with the certificate’s serial number to an OCSP responder. The responder must reply to indicate if the certificate has been revoked or whether it is valid or unknown.<br/></p>
+    <p>
+      <p>To enable OCSP certificate revocation checking, see <MadCap:xref href="Configuring-OCSP-Certificate-Revocation.htm">Configuring OCSP Certificate Revocation Checking</MadCap:xref>.</p>
+      <h4>
+        <b>OCSP-CRL</b>
+      </h4>
+      <p>When both the OCSP and CRL certificate revocation checking are used, the revocation status of all the certificates in the chain will be first checked by OCSP. If the result is valid, unknown or revoked, the check is complete. If the OCSP responder returns unknown (response timeout) or unavailable, then the certificate will be checked by the CRL. This process is performed on each certificate in the chain. </p>
+      <p>To enable OCSP-CRL certificate revocation checking, see <MadCap:xref href="Configuring-OCSP-CRL-Certificate-Revocation.htm">Configuring OCSP-CRL Certificate Revocation Checking</MadCap:xref>.</p>
+    </p>
+  </body>
+</html>

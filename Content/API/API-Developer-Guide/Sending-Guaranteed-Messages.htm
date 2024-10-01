@@ -1,0 +1,410 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Sending Guaranteed Messages</h1>
+    <p>When sending a Guaranteed message, client applications must consider the following factors:</p>
+    <ul>
+      <li value="1">When using JCSMP, whether you want to send messages using a streaming or non-streaming mode. Refer to <MadCap:xref href="#publishing_guaranteed_messages_3926332939_604048">Streaming and Non-Streaming Sends in the JCSMP</MadCap:xref>.</li>
+      <li value="2">When using the Java RTO, C, or .NET APIs, whether you want to send messages using a blocking or non-blocking mode. Refer to <MadCap:xref href="#publishing_guaranteed_messages_3926332939_604059">Blocking and Non-Blocking Network I/O in the Java RTO, C, and .NET APIs</MadCap:xref>.</li>
+      <li value="3">The number of messages to publish per send invocation. Refer to <a href="#publishing_guaranteed_messages_3926332939_616965"><MadCap:xref href="#publishing_guaranteed_messages_3926332939_616965">Sending One Message at a Time</MadCap:xref></a> or <MadCap:xref href="#publishing_guaranteed_messages_3926332939_616947">Sending Multiple Messages at Once</MadCap:xref>.</li>
+      <li value="4">Whether you want to send messages that require a reply from the receiver. Refer to <MadCap:xref href="Publishing-Messages-that.htm">Publishing Messages that Request Replies</MadCap:xref>.</li>
+      <li>
+        <p>If you are publishing in a network environment that experiences higher than usual delays, you might need to adjust the Guaranteed Message Publish Window Size (refer to <MadCap:xref href="#publishing_guaranteed_messages_3926332939_617205">Adjusting the Guaranteed Message Publish Window Size</MadCap:xref> ) or acknowledgment timer (refer to <MadCap:xref href="#publishing_guaranteed_messages_3926332939_617242">Adjusting the Guaranteed Message Publish Acknowledgment Timer</MadCap:xref>).</p>
+      </li>
+    </ul>
+    <p style="font-weight: bold;">Related Samples</p>
+    <p>For examples of how to publish and receive Guaranteed messages, refer to the <code>simpleFlowToQueue</code> sample for the Java, Java RTO, C, and .NET APIs, and the <code>QueueProducer</code> sample for the JavaScript and Node.js APIs.</p>
+    <h2 class="with-rule"><a name="publishing_guaranteed_messages_3926332939_604048"/>Streaming and Non-Streaming Sends in JCSMP</h2>
+    <p>JCSMP only supports a blocking network I/O model. However, when publishing messages, JCSMP can use a publish event handler that operates in either a streaming or a non-streaming mode. The mode used by the publish event handler is set when an <code>XMLmessageProducer</code> is acquired. </p>
+    <p>To publish messages using JCSMP, a client must acquire an <code>XMLMessageProducer</code> from the <code>JCSMPSession</code>. Once it is acquired, the <code>JCSMPSession</code> maintains a connection to the event broker and the application can then send messages.</p>
+    <p><code>XMLMessageProducer</code> can also be used to create Session‑dependent messages through the Producer interface (refer to <MadCap:xref href="Creating-Messages-1.htm#Ownership">Message Ownership</MadCap:xref>).</p>
+    <p>The <code>XMLMessageProducer</code> is in an “open” state until the<code> close()</code> method is called on <code>XMLMessageProducer</code>.</p>
+    <p class="Note">A client should cache an acquired instance and close it only when it is no longer required. It is not efficient to acquire a new <code>XMLMessageProducer</code> instance for every message sent.</p>
+    <p>To acquire an <code>XMLMessageProducer</code> instance, call <code>getMessageProducer(JCSMPStreamingPublishEventHandler callback)</code> and set the callback handler. When a non-null instance of the <code>JCSMPStreamingPublishEventHandler</code> parameter is passed in, the send operation uses a <code>JCSMPStreamingPublishEventHandler</code> to asynchronously get confirmation of message delivery failures using a callback mechanism.</p>
+    <h2 class="with-rule"><a name="publishing_guaranteed_messages_3926332939_604059"/>Blocking and Non-Blocking Network I/O in the Java RTO, C, and .NET APIs</h2>
+    <p>The Java RTO, C, and .NET APIs can use a blocking or non‑blocking network I/O model for send operations. This is controlled by the Send Blocking Session property. By default, this property is set to true or ENABLE, so that a blocking mode is used.</p>
+    <p>When the Send Blocking Session property is set to <code>false</code> or <code>DISABLE</code>, a non-blocking mode is used. If the OS/network cannot send the whole message without blocking the calling thread until more buffer space is available, the client application gets a <code>WOULD_BLOCK</code> return code. When a <code>WOULD_BLOCK</code> return code is received, the message is not sent and the client application must wait for a <code>CAN_SEND</code> Session event, which indicates that the network is then ready for the send.</p>
+    <h2 class="with-rule"><a name="publishing_guaranteed_messages_3926332939_617205"/>Adjusting the Guaranteed Message Publish Window Size</h2>
+    <p>The Guaranteed message publish window size can be adjusted, if necessary, to better suit your messaging environment. The valid range is 1 through 255.</p>
+    <p>Although the default value has been proven to provide good performance for most LAN situations, increasing the value might help in a situation where messages are being published over a WAN or a network with higher delay (possibly incurring event broker/switch induced latencies), and the window is experiencing flow control situations.</p>
+    <p class="Note"> Windowed acknowledgment properties have no effect for Direct messages.</p>
+    <table style="caption-side: top;width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Set the Guaranteed Message Publish Window Size</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">JCSMPProperties#PUB_ACK_WINDOW_SIZE</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">SessionHandle.PROPERTIES.PUB_WINDOW_SIZE</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">SOLCLIENT_SESSION_PROP_PUB_WINDOW_SIZE</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">SessionProperties.ADPublishWindowSize</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode">solace.MessagePublisherProperties.windowSize</p>
+            <p class="Tbl_Body">where the <code>solace.MessagePublisherProperties</code> object is assigned to <code>solace.SessionProperties.publisherProperties</code></p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="publishing_guaranteed_messages_3926332939_617242"/>Adjusting the Guaranteed Message Publish Ack Timer</h2>
+    <p>The Guaranteed message publish acknowledgment timer sets the amount of time (in milliseconds) that the publishing API will wait for an acknowledgment from the event broker before resending. Guaranteed messages not acknowledged within the publish acknowledgment time are retransmitted automatically by the API.</p>
+    <p>Although the default Guaranteed message publish acknowledgment timer value has been proven to provide good performance, it can be adjusted, if necessary.</p>
+    <p class="Note">Windowed acknowledgment properties have no effect for Direct messages.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Adjust the Guaranteed Message Publish Acknowledgment Timer</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">JCSMPProperties#PUB_ACK_TIME</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">SessionHandle.PROPERTIES.PUB_ACK_TIMER</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">SOLCLIENT_SESSION_PROP_PUB_ACK_TIMER</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">SessionProperties.ADPublishAckTimerInMsecs</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode">solace.MessagePublisherProperties.acknowledgeTimeoutInMsecs</p>
+            <p class="Tbl_Body">where the <code>solace.MessagePublisherProperties</code> object is assigned to <code>solace.SessionProperties.publisherProperties</code></p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="publishing_guaranteed_messages_3926332939_616965"/>Sending One Message at a Time</h2>
+    <p>To publish a single message per API call, call one of the send methods or functions listed below.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Send Messages</p>
+      </caption>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">XMLMessageProducer.send(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">SessionHandle.send(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">solClient_session_sendMsg(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">ISession.Send(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode">solace.Session.send(...)</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="Note">
+      <p>When using JCSMP, and sending messages created from a <code>Producer</code> (that is Session‑dependent messages), ensure that a client:
+        </p>
+      <ul>
+        <li>Does not send the same message multiple times. Attempting to do this throws an <code>InvalidOperationException</code>.</li>
+        <li>Does not send a <code>Message</code> instance created either in a previous <code>JCSMPSession</code> or by another <code>XMLMessageProducer</code>. Attempting to do this throws an <code>IllegalArgumentException</code>.</li>
+        <li>Calls <code>close()</code> to close the producer when finished publishing. Any further access, such as sending messages, causes an exception to be raised.</li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="publishing_guaranteed_messages_3926332939_616947"/>Sending Multiple Messages at Once</h2>
+    <p>A group of Direct or Guaranteed messages can be sent through a single API call. This allows messages to be sent in a batch or a vector. The messages to be sent are specified as an array; up to fifty messages can be sent through the call.</p>
+    <p>When batch-sending messages through a  send-multiple API call, the same Delivery mode (for example, Direct or Persistent) should be set for all of the messages (refer to <MadCap:xref href="Creating-Messages-1.htm#Delivery-Mode">Setting Delivery Modes</MadCap:xref>).</p>
+    <p style="font-weight: bold;">JCSMP</p>
+    <p>When using JCSMP, an array of <code>{Message, Destination}</code> pairs (each represented by a <code>JCSMPSendMultipleEntry</code> instance) must be passed in. This pairing allows messages to be sent to individual destinations. Each message must be an application‑owned message instance (that is, acquired from <code>JCSMPFactory.createMessage(...)</code>).</p>
+    <p>JCSMP attempts to write all of the messages to the network at once and blocks until completion.</p>
+    <p style="font-weight: bold;">Java RTO, C, JavaScript, Node.js, and .NET APIs</p>
+    <p>When using the Java RTO, C, JavaScript, Node.js, or .NET APIs, an array of messages must be passed in. Unlike JCSMP, message destinations are not set through a send method, rather they are set as a property for each message.</p>
+    <p>When a blocking mode is configured for the Session through the Session properties, the call blocks until all messages can be accepted by the messaging API. If a non‑blocking mode is configured, and the API cannot accept all messages to publish, <code>SOLCLIENT_WOULD_BLOCK</code> is returned, and the number of messages that were accepted is returned in the <code>in_out_howManySent</code>, <code>numberOfMessagesWritten</code>, or <code>messagesSent</code> parameter. The application can reattempt to send the messages that were not accepted or take another action.</p>
+    <p class="Note">When Guaranteed messages are sent, messages are transmitted serially.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">Publishing a Group of Messages</p>
+      </caption>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">
+                        Use
+                    </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">XMLMessageProducer.sendMultiple(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">SessionHandle.send(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">solClient_session_sendMultipleMsg(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">ISession.Send(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">Not applicable</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-weight: bold;">Related Samples</p>
+    <p>For examples of how to publish a group of messages, refer to the <code>PerfTest</code> sample for the appropriate messaging API.</p>
+    <h2 class="with-rule"><a name="publishing_guaranteed_messages_3926332939_689578"/>Message Correlation</h2>
+    <p>When using Guaranteed Messaging, a correlation key or tag is used to correlate a message with its ack or nack. For the JCSMP, Java RTO, and .NET APIs, the correlation key is an object that is passed back to the client during the event broker ack or nack. For the C API, the correlation tag is a pointer that is passed back to the client during the event broker ack or nack.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">Using Correlation Keys</p>
+      </caption>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API
+                    </th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">
+                       Use
+                    </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">To set a correlation key on a message:</p>
+            <ul>
+              <li>
+                <code>msg.setCorrelationKey(...)</code>
+              </li>
+            </ul>
+            <p class="Tbl_Body">The correlation key is passed back to the client through:</p>
+            <ul>
+              <li><code>JCSMPStreamingPublishCorrelatingEventhandler.<br/>responseReceivedEx()</code> (for an ack)</li>
+              <li><code>JCSMPStreamingPublishCorrelatingEventhandler.<br/>handleErrorEx()</code> (for a nack)</li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">To set a correlation key on a message:</p>
+            <ul>
+              <li>
+                <code>MessageHandle.setCorrelationKey(...)</code>
+              </li>
+            </ul>
+            <p class="Tbl_Body"> </p>
+            <p class="Tbl_Body">The correlation key is passed back to the client through the following session events:</p>
+            <ul>
+              <li>
+                <code>ACKNOWLEDGEMENT</code>
+              </li>
+              <li>
+                <code>REJECTED_MSG_ERROR</code>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">To set a correlation tag on a message:</p>
+            <ul>
+              <li>
+                <code>solClient_msg_setCorrelationTagPtr(...)</code>
+              </li>
+            </ul>
+            <p class="Tbl_Body">The correlation tag is passed back to the client in the session event callback for the following session events:</p>
+            <ul>
+              <li>
+                <code>SOLCLIENT_SESSION_EVENT_ACKNOWLEDGEMENT</code>
+              </li>
+              <li>
+                <code>SOLCLIENT_SESSION_EVENT_REJECTED_MSG_ERROR</code>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body">To set the correlation key property of a message:</p>
+            <ul>
+              <li>
+                <code>message.CorrelationKey = myCorrelationKey;</code>
+              </li>
+            </ul>
+            <p class="Tbl_Body">The correlation key is passed back to the client in the <code>HandleSessionEvent</code> callback for the following events:</p>
+            <ul>
+              <li>
+                <code>Session.Acknowledgement</code>
+              </li>
+              <li>
+                <code>Session.RejectedMessageError</code>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>To set the correlation key property of a message:</p>
+            <ul>
+              <li>
+                <p class="Tbl_BodyCode">message.setCorrelationKey(...)</p>
+              </li>
+            </ul>
+            <p>The correlation key is passed back to the client in the listeners for the following events:</p>
+            <ul>
+              <li>
+                <p class="Tbl_BodyCode">solace.SessionEventCode.ACKNOWLEDGED_MESSAGE</p>
+              </li>
+              <li>
+                <p class="Tbl_BodyCode">solace.SessionEventCode.REJECTED_MESSAGE_ERROR</p>
+              </li>
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-weight: bold;">Related Samples</p>
+    <p>For an example of how to use correlation keys, refer to the <code>adPubAck</code> sample for the appropriate messaging API.</p>
+    <p>For the JavaScript and Node.js APIs, refer to the <code>ConfirmedPublish</code> sample.</p>
+  </body>
+</html>

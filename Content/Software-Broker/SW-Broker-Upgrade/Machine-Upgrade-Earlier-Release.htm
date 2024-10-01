@@ -1,0 +1,1101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="Default.HideFromAllOutput">
+  <head>
+    <link href="../../Resources/Stylesheets/Tabbed_Content.css" rel="stylesheet"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Software"/>Machine Upgrade</h1>
+    <p>Here you'll find procedures to upgrade your Solace PubSub+ event broker Machine images to version 9.3.1 or earlier.</p>
+    <ul class="nav tabs">
+      <li>
+        <a class="tab" href="#standlone-850">Standalone from 8.5.0+</a>
+      </li>
+      <li>
+        <a class="tab" href="#redundant-850">HA Group from 8.5.0+</a>
+      </li>
+      <li>
+        <a class="tab" href="#standalone-720-840">Standalone from 7.2.0 - 8.4.0</a>
+      </li>
+      <li>
+        <a class="tab" href="#redundant-800-840">HA Group from 8.0.0 - 8.4.0</a>
+      </li>
+      <li> </li>
+    </ul>
+    <div id="standlone-850">
+      <h2 class="with-rule"><a name="Upgradin"/>Upgrade a Standalone Machine Image from Version 8.5.0+</h2>
+      <p>In R8.5.0, event broker upgrade to a new version preserves the configuration and the spooled messages. The event broker upgrade procedure is performed in place.  When upgrading, the upgrade procedure is performed in the existing virtual machine instead of creating a new virtual machine for the upgraded event broker.  The same upgrade procedure is followed with or without external block devices.</p>
+      <p>The following procedure describes an Enterprise to Enterprise upgrade (supported in R8.5.0+).</p>
+      <p>On non-Enterprise event brokers running R.8.10.0+, the following upgrades are also supported:</p>
+      <ul>
+        <li>from Evaluation to Enterprise</li>
+        <li>from Standard to Standard</li>
+        <li>from Standard to Enterprise</li>
+      </ul>
+      <p>For the upgrades between other editions, some prompts will have a different edition included and one must take care to change the file name and the docker create command (search for the word ‘enterprise’ and change as needed).</p>
+      <p>User accounts (username/passwords) for support/root container users are not transferred during the upgrade procedure and must be manually applied to the new event broker instance.</p>
+      <p>To upgrade a standalone machine image from version 8.5.0+ to version 9.3.1 or earlier:</p>
+      <ol>
+        <li>Log into the event broker as sysadmin.</li>
+        <li>
+          <p>Copy the tar file to the event broker:</p>
+          <pre class="Code">[sysadmin@solace ~]$ <b>scp [&lt;username&gt;@]&lt;ip-addr&gt;:solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz /tmp</b></pre>
+          <p>Where:</p>
+          <p><code>&lt;username&gt;</code>, <code>&lt;ip-addr&gt;</code>, and <code>solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz</code> correspond to the access information of where the new SolOS software is located.</p>
+        </li>
+        <li>
+          <p>Switch to root user:</p>
+          <pre class="Code">[sysadmin@solace ~]$ <b>sudo su -</b></pre>
+          <MadCap:snippetBlock src="../../Resources/Snippets/MQTT_Retain_Standalone.flsnp"/>
+        </li>
+        <li>
+          <p>Stop the solace service:</p>
+          <pre class="Code" xml:space="preserve">[root@solace ~]# <b>solacectl service stop</b></pre>
+        </li>
+        <li>
+          <p>Run the upgrade script:</p>
+          <pre class="Code">[root@solace ~]# <b>solacectl upgrade /tmp/solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz</b></pre>
+        </li>
+        <li>The output of the upgrade command will indicate whether further steps are required.  Follow any additional steps as described in the output of the upgrade command.</li>
+        <li>
+          <p>Restart the event broker:</p>
+          <pre class="Code">[root@solace ~]# <b>reboot</b><![CDATA[
+]]></pre>
+          <p>When the event broker restarts, it will be running the configuration and message-spool from the previous version.</p>
+        </li>
+        <li>
+          <p>Log into solace and confirm that it is running the new version:</p>
+          <pre class="Code">solace&gt; <b>show version</b></pre>
+        </li>
+      </ol>
+      <p>You have completed this procedure.</p>
+    </div>
+    <div id="redundant-850">
+      <h2 class="with-rule"><a name="Upgradin"/>Upgrade a Redundant Machine Image Group from Version 8.5.0+</h2>
+      <p>From R8.5.0, a Redundant event broker Group can be upgraded in-service. This upgrade preserves the configuration, including Redundancy, the spooled messages while providing service. The event broker upgrade procedure is performed in place. When upgrading, the upgrade procedure is performed in the existing virtual machine instead of creating a new virtual machine for the upgraded event broker. The same upgrade procedure is followed with or without external block devices.</p>
+      <p>User accounts (username/passwords) for support/root container users are not transferred during the upgrade procedure and must be manually applied to the new event broker instance.</p>
+      <p>The following procedure describes an Enterprise to Enterprise upgrade (supported in R8.5.0+).</p>
+      <p>On non-Enterprise event brokers running R.8.10.0+, the following upgrades are also supported:</p>
+      <ul>
+        <li>from Evaluation to Enterprise</li>
+        <li>from Standard to Standard</li>
+        <li>from Standard to Enterprise</li>
+      </ul>
+      <p>For the upgrades between other editions, some prompts will have a different edition included and one must take care to change the file name and the docker create command (search for the word ‘enterprise’ and change as needed).</p>
+      <p>For the following procedure, we will refer ‘solace-primary’ as Primary Node, ‘solace-backup’ as Backup Node, and ‘solace-monitor’ as Monitoring Node.</p>
+      <p class="Note">It is important to reboot the three software event brokers one at time. If the Monitoring and Backup Nodes are offline at the same time, the Primary Node will automatically reboot.</p>
+      <p>To upgrade a redundant machine image group from version 8.5.0+ to version 9.3.1 or earlier, perform the following steps:</p>
+      <ul>
+        <li>
+          <a href="#Step" class="link-internal">Step 1: Check the redundancy configuration on each node</a>
+        </li>
+        <li>
+          <a href="#Step2" class="link-internal">Step 2: Upgrade the monitoring node</a>
+        </li>
+        <li>
+          <a href="#Step3" class="link-internal">Step 3: Upgrade the backup node</a>
+        </li>
+        <li>
+          <a href="#Step4" class="link-internal">Step 4: Upgrade the primary node</a>
+        </li>
+      </ul>
+      <h3><a name="Step"/>Step 1</h3>
+      <p>Check the redundancy configuration on each node.</p>
+      <ol>
+        <li>
+          <p>Log into each node as an admin user.</p>
+        </li>
+        <li>
+          <p>Ensure Redundancy Configuration Status is Enabled and Redundancy Status is Up on each node. On solace-primary the Message Spool Status should be AD-Active, and on solace-backup the Message Spool Status should be AD-Standby:</p>
+          <pre class="Code">solace-primary&gt; <b>show redundancy</b> 
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Message Routing Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : Primary
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual    Backup Virtual
+                               Router             Router
+                               ---------------    ---------------
+Activity Status                Local Active       Shutdown
+Routing Interface              intf0:1            intf0:1
+Routing Interface Status       Up                 
+VRRP Status                    Initialize         
+VRRP Priority                  250                
+Message Spool Status           AD-Active          
+Priority Reported By Mate      Standby   
+
+solace-backup&gt; show redundancy 
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Message Routing Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : Backup
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual    Backup Virtual
+                               Router             Router
+                               ---------------    ---------------
+Activity Status                Shutdown           Mate Active
+Routing Interface              intf0:1            intf0:1
+Routing Interface Status                          Up
+VRRP Status                                       Initialize
+VRRP Priority                                     100
+Message Spool Status                              AD-Standby
+Priority Reported By Mate                         Active
+
+solace-monitor&gt; show redundancy
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Monitoring Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+</pre>
+        </li>
+      </ol>
+      <h3><a name="Step2"/>Step 2</h3>
+      <p>Complete the following steps on the monitoring node.</p>
+      <ol>
+        <li>
+          <p>Log out and log back into the monitoring node as sysadmin.</p>
+        </li>
+        <li>
+          <p>Copy the tar file to solace-monitor:</p>
+          <pre class="Code">[sysadmin@solace-monitor ~]$ <b>scp [&lt;username&gt;@]&lt;ip-addr&gt;:solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz /tmp</b></pre>
+          <p>Where:</p>
+          <p><code>&lt;username&gt;</code>, <code>&lt;ip-addr&gt;</code>, and <code>solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz</code> correspond to the access information of where the new SolOS software is located.</p>
+        </li>
+        <li>
+          <p>Switch to root user:</p>
+          <pre class="Code">[sysadmin@solace-monitor ~]$ <b>sudo su –</b></pre>
+        </li>
+        <li>
+          <p>Stop the solace service:</p>
+          <pre class="Code">[root@solace-monitor ~]$ <b>solacectl service stop</b></pre>
+        </li>
+        <li>
+          <p>Run the upgrade script.</p>
+          <pre class="Code">[root@solace-monitor ~]$ <b>solacectl upgrade /tmp/solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz</b></pre>
+        </li>
+        <li>
+          <p>The output of the upgrade command will indicate whether further steps are required.  Follow any additional steps as described in the output of the upgrade command.</p>
+        </li>
+        <li>
+          <p>Restart solace-monitor:</p>
+          <pre class="Code">[root@solace-monitor ~]$ <b>reboot</b></pre>
+          <p>When solace-monitor restarts, it will be running the configuration and message-spool from the previous version.</p>
+        </li>
+        <li>
+          <p>Log into solace-monitor and confirm that it is running the new version:</p>
+          <pre class="Code">solace-monitor&gt; <b>show version</b></pre>
+        </li>
+        <li>
+          <p>Ensure Redundancy Status is Up on the monitoring node:</p>
+          <pre class="Code">solace-monitor&gt; <b>show redundancy</b> 
+Configuration Status     : Enabled
+Redundancy Status        : Up
+</pre>
+        </li>
+        <li>
+          <p>Log into the backup node as an admin user.</p>
+        </li>
+        <li>
+          <p>Ensure Redundancy Configuration Status is Enabled and Redundancy Status is Up on the backup node:</p>
+          <pre class="Code">solace-backup&gt; <b>show redundancy</b> 
+Configuration Status     : Enabled
+Redundancy Status        : Up
+</pre>
+        </li>
+        <li>
+          <p>If using Config-sync, ensure that it is in sync.</p>
+          <pre class="Code" xml:space="preserve">solace-backup&gt; <b>show config-sync</b>
+Admin Status            : Enabled
+Oper Status             : Up
+</pre>
+        </li>
+      </ol>
+      <h3><a name="Step3"/>Step 3</h3>
+      <p>Complete the following steps on the backup node.</p>
+      <ol>
+        <li>
+          <p>Log out and log back into the backup node as sysadmin.</p>
+        </li>
+        <li>
+          <p>Copy the tar file to solace-backup:</p>
+          <pre class="Code">[sysadmin@solace-backup ~]$ <b>scp [&lt;username&gt;@]&lt;ip-addr&gt;:solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz /tmp</b></pre>
+          <p>Where:</p>
+          <p><code>&lt;username&gt;</code>, <code>&lt;ip-addr&gt;</code>, and <code>solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz</code> correspond to the access information of where the new SolOS software is located.</p>
+        </li>
+        <li>
+          <p>Switch to root user:</p>
+          <pre class="Code">[sysadmin@solace-backup ~]$ <b>sudo su –</b></pre>
+        </li>
+        <li>
+          <MadCap:snippetBlock src="../../Resources/Snippets/MQTT_Retain_Redundant.flsnp"/>
+        </li>
+        <li>
+          <p>Stop the solace service:</p>
+          <pre class="Code">[root@solace-backup ~]$ <b>solacectl service stop</b></pre>
+        </li>
+        <li>
+          <p>Run the upgrade script:</p>
+          <pre class="Code">[root@solace-backup ~]$ <b>solacectl upgrade /tmp/solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz</b></pre>
+        </li>
+        <li>
+          <p>The output of the upgrade command will indicate whether further steps are required.  Follow any additional steps as described in the output of the upgrade command.</p>
+        </li>
+        <li>
+          <p>Restart solace-backup.</p>
+          <pre class="Code">root@solace-backup ~]$ <b>reboot</b></pre>
+          <p>When solace-backup restarts, it will be running the configuration and message-spool from the previous version.</p>
+        </li>
+        <li>
+          <p>Log into solace-backup and confirm that it is running the new version:</p>
+          <pre class="Code">solace-backup&gt; <b>show version</b></pre>
+        </li>
+        <li>
+          <p>Ensure Redundancy Status is Up on solace backup node:</p>
+          <pre class="Code" xml:space="preserve">solace-backup&gt; <b>show redundancy</b> 
+Configuration Status     : Enabled
+Redundancy Status        : Up</pre>
+        </li>
+        <li>
+          <p>If using Config-sync, ensure backup node is in sync:</p>
+          <pre class="Code" xml:space="preserve">
+solace-backup&gt; <b>show config-sync</b>
+Admin Status            : Enabled
+Oper Status             : Up
+</pre>
+        </li>
+        <li>
+          <p>If the backup node provides AD service, ensure the Message Spool Status is AD-Standby:</p>
+          <pre class="Code" xml:space="preserve">solace-backup&gt; <b>show redundancy</b> 
+Message Spool Status             AD-Standby
+</pre>
+        </li>
+      </ol>
+      <h3><a name="Step4"/>Step 4</h3>
+      <p>Complete the following steps on the primary node.</p>
+      <ol>
+        <li>
+          <p>Log into the primary node as an admin user.</p>
+        </li>
+        <li>
+          <p>Release activity from the primary node to the backup.</p>
+          <pre class="Code">solace-primary&gt; <b>enable</b>
+solace-primary&gt; <b>configure</b>
+solace-primary&gt; <b>redundancy release-activity</b><![CDATA[
+]]></pre>
+        </li>
+        <li>
+          <p>On the primary, ensure Redundancy Configuration Status is Enabled-Released and Redundancy Status is Down.</p>
+          <pre class="Code" xml:space="preserve">solace-primary&gt; <b>show redundancy</b> 
+Configuration Status     : Enabled-Released
+Redundancy Status        : Down
+</pre>
+        </li>
+        <li>
+          <p>On the backup, ensure Redundancy Configuration Status is Enabled, Redundancy Status is Down and the Activity Status on the Backup Virtual Router is Local Active.</p>
+          <pre class="Code" xml:space="preserve">solace-backup&gt; <b>show redundancy</b> 
+Configuration Status     : Enabled
+Redundancy Status        : Down
+                                  Primary Virtual    Backup Virtual
+                                  Router             Router
+                                  ---------------    ---------------
+Activity Status                   Shutdown           Local Active
+</pre>
+        </li>
+        <li>
+          <p>Log out and log back into the primary node as sysadmin.</p>
+        </li>
+        <li>
+          <p>Copy the tar file to solace-primary:</p>
+          <pre class="Code">[sysadmin@solace-primary ~]$ <b>scp [&lt;username&gt;@]&lt;ip-addr&gt;:solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz /tmp</b></pre>
+          <p>Where:</p>
+          <p><code>&lt;username&gt;</code>, <code>&lt;ip-addr&gt;</code>, and <code>solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz</code> correspond to the access information of where the new SolOS software is located.</p>
+        </li>
+        <li>
+          <p>Switch to root user:</p>
+          <pre class="Code">[sysadmin@solace-primary ~]$ <b>sudo su –</b></pre>
+        </li>
+        <li>
+          <MadCap:snippetBlock src="../../Resources/Snippets/MQTT_Retain_Redundant.flsnp"/>
+        </li>
+        <li>
+          <p>Stop the solace service:</p>
+          <pre class="Code">[root@solace-primary ~]$ <b>solacectl service stop</b></pre>
+        </li>
+        <li>
+          <p>Run the upgrade script.</p>
+          <pre class="Code">[root@solace-primary ~]$ <b>solacectl upgrade /tmp/solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz</b></pre>
+        </li>
+        <li>
+          <p>The output of the <code>upgrade</code> command will indicate whether further steps are required.  Follow any additional steps as described in the output of the <code>upgrade</code> command.</p>
+        </li>
+        <li>
+          <p>Restart solace-primary.</p>
+          <pre class="Code">[root@solace-primary ~]$ <b>reboot</b></pre>
+          <p>When solace-primary restarts, it will be running the configuration and message-spool from the previous version.</p>
+        </li>
+        <li>
+          <p>Log into solace-primary and confirm that it is running the new version:</p>
+          <pre class="Code">solace-primary &gt; <b>show version</b></pre>
+        </li>
+        <li>
+          <p>No release activity from the primary node:</p>
+          <pre class="Code">solace-primary&gt; <b>enable</b>
+solace-primary&gt; <b>configure</b>
+solace-primary&gt; <b>no redundancy release-activity</b><![CDATA[
+]]></pre>
+        </li>
+        <li>
+          <p>Ensure Redundancy Status is Up on solace-primary:</p>
+          <pre class="Code">solace-primary&gt; <b>show redundancy</b> 
+Configuration Status     : Enabled
+Redundancy Status        : Up
+</pre>
+        </li>
+        <li>
+          <p>If using Config-sync, ensure that it is in sync:</p>
+          <pre class="Code">solace-primary&gt; <b>show config-sync</b>
+Admin Status            : Enabled
+Oper Status             : Up
+</pre>
+        </li>
+        <li>
+          <p>If the node provides AD service, ensure the Message Spool Status is AD-Standby:</p>
+          <pre class="Code">solace-primary&gt; <b>show redundancy</b> 
+Message Spool Status             AD-Standby
+</pre>
+        </li>
+      </ol>
+      <p>You have completed this procedure.</p>
+      <p class="Note">The backup is now active and the primary is standby.</p>
+    </div>
+    <div id="standalone-720-840">
+      <h2 class="with-rule"><a name="Upgradin2"/>Upgrade a Standalone Machine Image from Versions 7.2.0 - 8.4.0</h2>
+      <p>In R7.2.0 - 8.4.0, event broker upgrade to a new version preserves the configuration and the spooled messages.</p>
+      <p>The event broker upgrade procedure is performed in place.  When upgrading, the upgrade procedure is performed in the existing virtual machine instead of creating a new virtual machine for the upgraded event broker.  The same upgrade procedure is followed with or without external block devices.</p>
+      <p>User accounts (username/passwords) for support/root container users are not transferred during the upgrade procedure and must be manually applied to the new event broker instance:</p>
+      <p>To upgrade a standalone machine image from versions 7.2.0 - 8.4.0 to version 9.3.1 or earlier:</p>
+      <ol>
+        <li>
+          <p>Log into the event broker as an admin user and shut down the Msg-Backbone service:</p>
+          <pre class="Code">solace&gt; <b>enable</b>
+solace# <b>configure</b>
+solace(config)# <b>service msg-backbone shutdown</b>
+All clients will be disconnected.
+Do you want to continue (y/n)? <b>y</b></pre>
+        </li>
+        <li>
+          <p>Shut down the message spool:</p>
+          <pre class="Code">solace# <b>configure</b> 
+solace(config)# <b>hardware message-spool shutdown</b>
+All message spooling will be stopped.
+Do you want to continue (y/n)? <b>y</b><![CDATA[
+]]></pre>
+        </li>
+        <li>
+          <p>Backup the configuration files and message spool for upgrade:</p>
+          <pre class="Code">solace(config)# <b>end</b>
+solace# <b>backup for-upgrade</b>
+Performing database consolidation
+
+145004 lines processed in 1 seconds... 
+Moving ADB messages to disk  : 100%
+Moving message info to disk  : 100%
+Backing up ADB config to disk: 100%
+
+Backing up router configuration
+solace#
+</pre>
+        </li>
+        <li>
+          <p>Log into the event broker as <code>sysadmin</code>.</p>
+        </li>
+        <li>
+          <p>Copy the tar file to the event broker:</p>
+          <pre class="Code">[sysadmin@solace ~]$ <b>scp [&lt;username&gt;@]&lt;ip-addr&gt;:solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz /tmp</b></pre>
+          <p>Where:</p>
+          <p><code>&lt;username&gt;</code>, <code>&lt;ip-addr&gt;</code>, and <code>solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz</code> correspond to the access information of where the new SolOS software is located.</p>
+        </li>
+        <li>
+          <p>Switch to root user:</p>
+          <pre class="Code">[sysadmin@solace ~]$ <b>sudo su -</b></pre>
+        </li>
+        <li>
+          <p>If you are upgrading from R8.0.0 or older, run the following commands:</p>
+          <ol style="list-style-type: lower-alpha;">
+            <li>
+              <p>Run the upgrade script:</p>
+              <pre class="Code">[root@solace ~]$ <b>upgrade /tmp/solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz</b></pre>
+            </li>
+          </ol>
+          <p>If you are upgrading from R8.1.0 or newer, run the following commands:</p>
+          <ol style="list-style-type: lower-alpha;">
+            <li>
+              <p>Stop the solace service:</p>
+              <pre class="Code">[root@solace ~]$ <b>solacectl service stop</b></pre>
+            </li>
+            <li>
+              <p>Run the upgrade script:</p>
+              <pre class="Code">[root@solace ~]$ <b>solacectl upgrade /tmp/solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz</b></pre>
+            </li>
+          </ol>
+        </li>
+        <li>
+          <p>If the following output appeared when running the upgrade command, execute this step.  Otherwise skip to the next step.</p>
+          <pre class="Code">The following files require manual merging:
+(Compare the rpmnew files and apply any changes desired to the original file)
+/etc/solace/solace-container.user.conf.rpmnew to
+/etc/solace/solace-container.user.conf
+</pre>
+          <p>If the above output is seen, open and edit the file using vi:</p>
+          <pre class="Code">[root@solace ~]$ <b>vi /etc/solace/solace-container.user.conf</b></pre>
+          <ol style="list-style-type: lower-alpha;">
+            <li>
+              <p>Add the following line to the USER_VOLUMES_CREATE data structure:</p>
+              <pre class="Code">
+                <b>'--name=diagnostics'</b>
+              </pre>
+            </li>
+            <li>
+              <p>Add the following line to the USER_VOLUMES data structure:</p>
+              <pre class="Code">
+                <b>'-v diagnostics:/var/lib/solace/diags'</b>
+              </pre>
+            </li>
+          </ol>
+          <p>The <code>/etc/solace/solace-container.user.conf</code> file should look similar to this after editing the file:</p>
+          <pre class="Code">USER_VOLUMES_CREATE=(
+    '--name=jail'
+    '--name=diagnostics'
+    '--name=var'
+    '--name=internalSpool'
+    '--name=adb'
+    '--name=adbBackup'
+)
+
+USER_VOLUMES=(
+    '-v jail:/usr/sw/jail'
+    '-v diagnostics:/var/lib/solace/diags'
+    '-v var:/usr/sw/var'
+    '-v internalSpool:/usr/sw/internalSpool'
+    '-v adbBackup:/usr/sw/adb'
+    '-v adb:/usr/sw/internalSpool/softAdb'
+)
+</pre>
+        </li>
+        <li>
+          <p>The output of the <code>upgrade</code> command will indicate whether any further steps are required.  Follow any additional steps as described in the output of the <code>upgrade</code> command.</p>
+        </li>
+        <li>
+          <p>Restart the event broker:</p>
+          <pre class="Code">[root@solace ~]$ <b>reboot</b></pre>
+          <p>When the event broker restarts, it will be running the configuration and message-spool from the previous version.</p>
+        </li>
+        <li>
+          <p>Log into the event broker CLI as the admin user.</p>
+        </li>
+        <li>
+          <p>Log into the event broker CLI as the admin user and enable the message spool:</p>
+          <pre class="Code">solace&gt; <b>enable</b>
+solace# <b>configure</b> 
+solace(config)# <b>no hardware message-spool shutdown</b></pre>
+        </li>
+        <li>
+          <p>Enable the Msg-Backbone service:</p>
+          <pre class="Code">solace&gt; <b>enable</b>
+solace# <b>configure</b>
+solace(config)# <b>no service msg-backbone shutdown</b></pre>
+        </li>
+        <li>
+          <p>Verify that the diagnostics storage-element is displayed on the event broker:</p>
+          <pre class="Code">solace&gt; <b>show storage-element *</b>
+
+Last Refreshed   : Mar 23 2017 17:34:22
+
+Storage Element    1K-blocks    Used         Available    Use% 
+------------------ ------------ ------------ ------------ -----
+root                 6.0 Mi     938.2 Ki       5.1 Mi     15%
+spool                9.8 Mi       1.4 Mi       8.4 Mi     14%
+var                  9.8 Mi       1.4 Mi       8.4 Mi     14%
+jail                 9.8 Mi       1.4 Mi       8.4 Mi     14%
+diagnostics          9.8 Mi       1.4 Mi       8.4 Mi     14%
+adb-backup           9.8 Mi       1.4 Mi       8.4 Mi     14%
+adb                  9.8 Mi       1.4 Mi       8.4 Mi     14%
+</pre>
+        </li>
+      </ol>
+      <p>You have completed this procedure.</p>
+    </div>
+    <div id="redundant-800-840">
+      <h2 class="with-rule"><a name="Upgradin3"/>Upgrade a Redundant Machine Image Group from Versions 8.0.0 - 8.4.0</h2>
+      <p>In R8.0.0 - 8.4.0, a Redundant event broker Group can be upgraded. This upgrade preserves the configuration, including Redundancy, and the spooled messages. The event broker upgrade procedure is performed in place. When upgrading, the upgrade procedure is performed in the existing virtual machine instead of creating a new virtual machine for the upgraded event broker. The same upgrade procedure is followed with or without external block devices.</p>
+      <p>User accounts (username/passwords) for support/root container users are not transferred during the upgrade procedure and must be manually applied to the new event broker instance.</p>
+      <p>For the following procedure, we will refer to ‘solace-primary’ as Primary Node, ‘solace-backup’ as Backup Node, and ‘solace-monitor’ as Monitoring Node.</p>
+      <p class="Note">It is important to reboot the three software event brokers one at time. If the Monitoring and Backup Nodes are offline at the same time, the Primary Node will automatically reboot.</p>
+      <p>To upgrade a redundant machine image group from versions 8.0.0 - 8.4.0 to version 9.3.1 or earlier, perform the following steps:</p>
+      <ul>
+        <li>
+          <a href="#Step5" class="link-internal">Step 1: Check the redundancy configuration on each node</a>
+        </li>
+        <li>
+          <a href="#Step6" class="link-internal">Step 2: Upgrade the primary node</a>
+        </li>
+        <li>
+          <a href="#Step7" class="link-internal">Step 3: Upgrade the backup node</a>
+        </li>
+        <li>
+          <a href="#Step8" class="link-internal">Step 4: Upgrade the monitoring node</a>
+        </li>
+        <li>
+          <a href="#Step9" class="link-internal">Step 5: Complete the final steps</a>
+        </li>
+      </ul>
+      <h3><a name="Step5"/>Step 1</h3>
+      <p>Check the redundancy configuration on each node, and shut down the message-backbone and message-spool on the primary and backup nodes.</p>
+      <ol>
+        <li>
+          <p>Log into each node as an admin user.</p>
+        </li>
+        <li>
+          <p>Ensure Redundancy Configuration Status is <code>Enabled</code> and Redundancy Status is <code>Up</code> on each node. On solace-primary the Message Spool Status should be <code>AD-Active</code>, and on solace-backup the Message Spool Status should be <code>AD-Standby</code>:</p>
+          <pre class="Code">solace-primary&gt; <b>show redundancy</b> 
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Message Routing Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : Primary
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual    Backup Virtual
+                               Router             Router
+                               ---------------    ---------------
+Activity Status                Local Active       Shutdown
+Routing Interface              intf0:1            intf0:1
+Routing Interface Status       Up                 
+VRRP Status                    Initialize         
+VRRP Priority                  250                
+Message Spool Status           AD-Active          
+Priority Reported By Mate      Standby   
+
+solace-backup&gt; show redundancy 
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Message Routing Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : Backup
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual    Backup Virtual
+                               Router             Router
+                               ---------------    ---------------
+Activity Status                Shutdown           Mate Active
+Routing Interface              intf0:1            intf0:1
+Routing Interface Status                          Up
+VRRP Status                                       Initialize
+VRRP Priority                                     100
+Message Spool Status                              AD-Standby
+Priority Reported By Mate                         Active
+
+solace-monitor&gt; show redundancy
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Monitoring Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+</pre>
+        </li>
+        <li>
+          <p>Shut down the msg-backbone service on solace-primary:</p>
+          <pre class="Code">solace-primary&gt; <b>enable</b>
+solace-primary# <b>configure</b>
+solace-primary(configure)# <b>service msg-backbone shutdown</b>
+All clients will be disconnected.
+Do you want to continue (y/n)? <b>y</b></pre>
+        </li>
+        <li>
+          <p>Shut down the msg-backbone service on solace-backup:</p>
+          <pre class="Code">solace-backup&gt; <b>enable</b>
+solace-backup# <b>configure</b>
+solace-backup(configure)# <b>service msg-backbone shutdown</b>
+All clients will be disconnected.
+Do you want to continue (y/n)? <b>y</b></pre>
+        </li>
+        <li>
+          <p>Shut down the message-spool on solace-primary:</p>
+          <pre class="Code">solace-primary&gt; <b>enable</b>
+solace-primary# <b>configure</b>
+solace-primary(configure)# <b>hardware message-spool shutdown</b> 
+All message spooling will be stopped.
+Do you want to continue (y/n)? <b>y</b></pre>
+        </li>
+        <li>
+          <p>Shut down the message-spool on solace-backup:</p>
+          <pre class="Code">solace-backup&gt; <b>enable</b>
+solace-backup# <b>configure</b>
+solace-backup(configure)# <b>hardware message-spool shutdown</b> 
+All message spooling will be stopped.
+Do you want to continue (y/n)? <b>y</b></pre>
+        </li>
+      </ol>
+      <h3><a name="Step6"/>Step 2</h3>
+      <p>Perform the following steps on the primary node.</p>
+      <ol>
+        <li>
+          <p>Release activity on solace-primary:</p>
+          <pre class="Code">solace-primary&gt; <b>enable</b>
+solace-primary# <b>configure</b>
+solace-primary(configure)# <b>redundancy release-activity</b></pre>
+        </li>
+        <li>
+          <p>Run backup for-upgrade on solace-primary:</p>
+          <pre class="Code">solace-primary&gt; <b>enable</b>
+solace-primary# <b>backup for-upgrade</b> 
+Performing database consolidation
+Moving ADB messages to disk  : 100%
+Moving message info to disk  : 100%
+Backing up ADB config to disk: 100%
+
+Backing up router configuration
+</pre>
+        </li>
+        <li>
+          <p>Log out and log back into solace-primary as sysadmin.</p>
+        </li>
+        <li>
+          <p>Copy the tar file to solace-primary:</p>
+          <pre class="Code">[sysadmin@solace-primary ~]$ <b>scp [&lt;username&gt;@]&lt;ip-addr&gt;:solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz /tmp</b></pre>
+          <p>Where:</p>
+          <p><code>&lt;username&gt;</code>, <code>&lt;ip-addr&gt;</code>, and <code>solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz</code> correspond to the access information of where the new SolOS software is located.</p>
+        </li>
+        <li>
+          <p>Switch to root user:</p>
+          <pre class="Code">[sysadmin@solace-primary ~]$ <b>sudo su -</b></pre>
+        </li>
+        <li>
+          <p>If you are upgrading from R8.0.0, run the following commands:</p>
+          <ol style="list-style-type: lower-alpha;">
+            <li>
+              <p>Run the upgrade script:</p>
+              <pre class="Code">[root@solace-primary ~]$ <b>upgrade /tmp/solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz</b></pre>
+            </li>
+          </ol>
+          <p>If you are upgrading from R8.1.0 or newer, run the following commands:</p>
+          <ol style="list-style-type: lower-alpha;">
+            <li>
+              <p>Stop the solace service:</p>
+              <pre class="Code">[root@solace-primary ~]$ <b>solacectl service stop</b></pre>
+            </li>
+            <li>
+              <p>Run the upgrade script:</p>
+              <pre class="Code">[root@solace-primary ~]$ <b>solacectl upgrade /tmp/solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz</b></pre>
+            </li>
+          </ol>
+        </li>
+        <li>
+          <p>If the following output appeared when running the upgrade command, execute this step.  Otherwise skip to the next step.</p>
+          <pre class="Code">The following files require manual merging:
+(Compare the rpmnew files and apply any changes desired to the original file)
+/etc/solace/solace-container.user.conf.rpmnew to
+/etc/solace/solace-container.user.conf
+</pre>
+          <p>If the above output is seen, open and edit the file using vi:</p>
+          <pre class="Code">[root@solace ~]$ <b>vi /etc/solace/solace-container.user.conf</b></pre>
+          <ol style="list-style-type: lower-alpha;">
+            <li>
+              <p>Add the following line to the USER_VOLUMES_CREATE data structure:</p>
+              <pre class="Code" xml:space="preserve">'--name=diagnostics'</pre>
+            </li>
+            <li>
+              <p>Add the following line to the USER_VOLUMES data structure:</p>
+              <pre class="Code">'-v diagnostics:/var/lib/solace/diags'</pre>
+              <p>The <code>/etc/solace/solace-container.user.conf</code> file should look similar to this after editing the file:</p>
+              <pre class="Code">USER_VOLUMES_CREATE=(
+    '--name=jail'
+    '--name=diagnostics'
+    '--name=var'
+    '--name=internalSpool'
+    '--name=adb'
+    '--name=adbBackup'
+)
+
+
+USER_VOLUMES=(
+    '-v jail:/usr/sw/jail'
+    '-v diagnostics:/var/lib/solace/diags'
+    '-v var:/usr/sw/var'
+    '-v internalSpool:/usr/sw/internalSpool'
+    '-v adbBackup:/usr/sw/adb'
+    '-v adb:/usr/sw/internalSpool/softAdb'
+)
+</pre>
+            </li>
+          </ol>
+        </li>
+        <li>
+          <p>The output of the <code>upgrade</code> command will indicate whether further steps are required.  Follow any additional steps as described in the output of the <code>upgrade</code> command.</p>
+        </li>
+        <li>
+          <p>Restart solace-primary.</p>
+          <pre class="Code" xml:space="preserve">[root@solace-primary ~]$ <b>reboot</b></pre>
+          <p>When solace-primary restarts, it will be running the configuration and message-spool from the previous version.</p>
+        </li>
+        <li>
+          <p>Log into solace-primary and confirm that it is running the new version:</p>
+          <pre class="Code">solace-primary&gt; <b>show version</b></pre>
+        </li>
+        <li>
+          <p>No release activity on solace-primary:</p>
+          <pre class="Code">solace-primary&gt; <b>enable</b>
+solace-primary# <b>configure</b>
+solace-primary(configure)# <b>no redundancy release-activity</b><![CDATA[
+]]></pre>
+        </li>
+        <li>
+          <p>Ensure Redundancy Status is Up on solace-primary and solace-backup:</p>
+          <pre class="Code">solace-primary&gt; <b>show redundancy</b> 
+Configuration Status     : Enabled
+Redundancy Status        : Up
+
+solace-backup&gt; <b>show redundancy</b> 
+Configuration Status     : Enabled
+Redundancy Status        : Up
+</pre>
+        </li>
+      </ol>
+      <h3><a name="Step7"/>Step 3</h3>
+      <p>Perform the following steps on the backup node.</p>
+      <ol>
+        <li>
+          <p>Release activity on solace-backup:</p>
+          <pre class="Code">solace-backup&gt; <b>enable</b>
+solace-backup# <b>configure</b>
+solace-backup(configure)# <b>redundancy release-activity</b></pre>
+        </li>
+        <li>
+          <p>Run backup for-upgrade on solace-backup:</p>
+          <pre class="Code" xml:space="preserve">solace-backup&gt; <b>enable</b>
+solace-backup# <b>backup for-upgrade</b> 
+Performing database consolidation
+Backing up router configuration
+</pre>
+        </li>
+        <li>
+          <p>Log out and log back into solace-backup as sysadmin.</p>
+        </li>
+        <li>
+          <p>Copy the tar file to solace-backup:</p>
+          <pre class="Code">[sysadmin@solace-backup ~]$ <b>scp [&lt;username&gt;@]&lt;ip-addr&gt;:solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz /tmp</b></pre>
+          <p>Where:</p>
+          <p><code>&lt;username&gt;</code>, <code>&lt;ip-addr&gt;</code>, and <code>solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz</code> correspond to the access information of where the new SolOS software is located.</p>
+        </li>
+        <li>
+          <p>Switch to root user:</p>
+          <pre class="Code">[sysadmin@solace-backup ~]$ <b>sudo su -</b></pre>
+        </li>
+        <li>
+          <p>If you are upgrading from R8.0.0, run the following commands:</p>
+          <ol style="list-style-type: lower-alpha;">
+            <li>
+              <p>Run the upgrade script.</p>
+              <pre class="Code">[root@solace-backup ~]$ <b>upgrade /tmp/solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz</b></pre>
+            </li>
+          </ol>
+          <p>If you are upgrading from R8.1.0 or newer, run the following commands:</p>
+          <ol style="list-style-type: lower-alpha;">
+            <li>
+              <p>Stop the solace service:</p>
+              <pre class="Code">[root@solace-backup ~]$ <b>solacectl service stop</b></pre>
+            </li>
+            <li>
+              <p>Run the upgrade script:</p>
+              <pre class="Code">[root@solace-backup ~]$ <b>solacectl upgrade /tmp/solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz</b></pre>
+            </li>
+          </ol>
+        </li>
+        <li>
+          <p>If the following output appeared when running the upgrade command, execute this step.  Otherwise skip to the next step.</p>
+          <pre class="Code">The following files require manual merging:
+(Compare the rpmnew files and apply any changes desired to the original file)
+/etc/solace/solace-container.user.conf.rpmnew to
+/etc/solace/solace-container.user.conf
+</pre>
+          <p>If the above output is seen, open and edit the file using vi:</p>
+          <pre class="Code">[root@solace ~]$ <b>vi /etc/solace/solace-container.user.conf</b></pre>
+          <ol style="list-style-type: lower-alpha;">
+            <li>
+              <p>Add the following line to the USER_VOLUMES_CREATE data structure:</p>
+              <pre class="Code">'--name=diagnostics'</pre>
+            </li>
+            <li>
+              <p>Add the following line to the USER_VOLUMES data structure:</p>
+              <pre class="Code" xml:space="preserve">'-v diagnostics:/var/lib/solace/diags'</pre>
+              <p>The<code> /etc/solace/solace-container.user.conf</code> file should look similar to this after editing the file:</p>
+              <pre class="Code">USER_VOLUMES_CREATE=(
+    '--name=jail'
+    '--name=diagnostics'
+    '--name=var'
+    '--name=internalSpool'
+    '--name=adb'
+    '--name=adbBackup'
+)
+
+
+USER_VOLUMES=(
+    '-v jail:/usr/sw/jail'
+    '-v diagnostics:/var/lib/solace/diags'
+    '-v var:/usr/sw/var'
+    '-v internalSpool:/usr/sw/internalSpool'
+    '-v adbBackup:/usr/sw/adb'
+    '-v adb:/usr/sw/internalSpool/softAdb'
+)
+</pre>
+            </li>
+          </ol>
+        </li>
+        <li>
+          <p>The output of the upgrade command will indicate whether further steps are required.  Follow any additional steps as described in the output of the upgrade command.</p>
+        </li>
+        <li>
+          <p>Restart solace-backup:</p>
+          <pre class="Code">[root@solace-backup ~]$ <b>reboot</b></pre>
+          <p>When solace-backup restarts, it will be running the configuration and message-spool from the previous version.</p>
+        </li>
+        <li>
+          <p>Log into solace-backup and confirm that it is running the new version:</p>
+          <pre class="Code">solace-backup&gt; <b>show version</b></pre>
+        </li>
+      </ol>
+      <h3><a name="Step8"/>Step 4</h3>
+      <p>Perform the following steps on the monitoring node.</p>
+      <ol>
+        <li>
+          <p>Run backup for-upgrade on solace-monitor:</p>
+          <pre class="Code" xml:space="preserve">solace-monitor&gt; <b>enable</b>
+solace-monitor# <b>backup for-upgrade</b> 
+Performing database consolidation
+Backing up router configuration
+</pre>
+        </li>
+        <li>
+          <p>Log into solace-monitor as sysadmin.</p>
+        </li>
+        <li>
+          <p>Copy the tar file to solace-primary:</p>
+          <pre class="Code">[sysadmin@solace-monitor ~]$ <b>scp [&lt;username&gt;@]&lt;ip-addr&gt;:solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz /tmp</b></pre>
+          <p>Where:</p>
+          <p><code>&lt;username&gt;</code>, <code>&lt;ip-addr&gt;</code>, and <code>solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz</code> correspond to the access information of where the new SolOS software is located.</p>
+        </li>
+        <li>
+          <p>Switch to root user:</p>
+          <pre class="Code">[sysadmin@solace-monitor ~]$ <b>sudo su -</b></pre>
+        </li>
+        <li>
+          <p>If you are upgrading from  R8.0.0, run the following commands:</p>
+          <ol style="list-style-type: lower-alpha;">
+            <li>
+              <p>Run the upgrade script:</p>
+              <pre class="Code">[root@solace-monitor ~]$ <b>upgrade /tmp/solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz</b></pre>
+            </li>
+          </ol>
+          <p>If you are upgrading from R8.1.0 or newer, run the following commands:</p>
+          <ol style="list-style-type: lower-alpha;">
+            <li>
+              <p>Stop the solace service:</p>
+              <pre class="Code">[root@solace-monitor ~]$ <b>solacectl service stop</b></pre>
+            </li>
+            <li>
+              <p>Run the upgrade script:</p>
+              <pre class="Code">[root@solace-monitor ~]$ <b>solacectl upgrade /tmp/solace-pubsub-enterprise-&lt;version&gt;-upgrade.tar.gz</b></pre>
+            </li>
+          </ol>
+        </li>
+        <li>
+          <p>If the following output appeared when running the upgrade command, execute this step.  Otherwise skip to the next step.</p>
+          <pre class="Code">The following files require manual merging:
+(Compare the rpmnew files and apply any changes desired to the original file)
+/etc/solace/solace-container.user.conf.rpmnew to
+/etc/solace/solace-container.user.conf
+</pre>
+          <p>If the above output is seen, open and edit the file using vi:</p>
+          <pre class="Code">[root@solace ~]$ <b>vi /etc/solace/solace-container.user.conf</b></pre>
+          <ol style="list-style-type: lower-alpha;">
+            <li>
+              <p>a.	Add the following line to the USER_VOLUMES_CREATE data structure:</p>
+              <pre class="Code">'--name=diagnostics'</pre>
+            </li>
+            <li>
+              <p>b.	Add the following line to the USER_VOLUMES data structure:</p>
+              <pre class="Code">'-v diagnostics:/var/lib/solace/diags'</pre>
+            </li>
+          </ol>
+          <p>The <code>/etc/solace/solace-container.user.conf</code> file should look similar to this after editing the file:</p>
+          <pre class="Code">USER_VOLUMES_CREATE=(
+    '--name=jail'
+    '--name=diagnostics'
+    '--name=var'
+    '--name=internalSpool'
+    '--name=adb'
+    '--name=adbBackup'
+)
+
+
+USER_VOLUMES=(
+    '-v jail:/usr/sw/jail'
+    '-v diagnostics:/var/lib/solace/diags'
+    '-v var:/usr/sw/var'
+    '-v internalSpool:/usr/sw/internalSpool'
+    '-v adbBackup:/usr/sw/adb'
+    '-v adb:/usr/sw/internalSpool/softAdb'
+)
+</pre>
+        </li>
+        <li>
+          <p>The output of the <code>upgrade</code> command will indicate whether further steps are required.  Follow any additional steps as described in the output of the <code>upgrade</code> command.</p>
+        </li>
+        <li>
+          <p>Restart solace- monitor:</p>
+          <pre class="Code" xml:space="preserve">[root@solace-monitor ~]$ <b>reboot</b></pre>
+          <p>When solace- monitor restarts, it will be running the configuration and message-spool from the previous version.</p>
+        </li>
+        <li>
+          <p>Log into solace-monitor and confirm that it is running the new version:</p>
+          <pre class="Code">solace-monitor&gt; <b>show version</b></pre>
+        </li>
+      </ol>
+      <h3><a name="Step9"/>Step 5</h3>
+      <p>Lastly, perform the steps below to complete the upgrade procedure.</p>
+      <ol>
+        <li>
+          <p>Enable message-spool on solace-primary:</p>
+          <pre class="Code" xml:space="preserve">solace-primary&gt; <b>enable</b>
+solace-primary# <b>configure</b> 
+solace-primary(configure)# <b>no hardware message-spool shutdown</b></pre>
+        </li>
+        <li>
+          <p>Enable message-spool on solace-backup:</p>
+          <pre class="Code" xml:space="preserve">solace-backup&gt; <b>enable</b>
+solace-backup# <b>configure</b> 
+solace-backup(configure)# <b>no hardware message-spool shutdown</b></pre>
+        </li>
+        <li>
+          <p>No release activity on solace-backup:</p>
+          <pre class="Code">solace-backup&gt; <b>enable</b>
+solace-backup# <b>configure</b>
+solace-backup(configure)# <b>no redundancy release-activity</b></pre>
+        </li>
+        <li>
+          <p>Enable msg-backbone service on solace-primary:</p>
+          <pre class="Code">solace-primary&gt; <b>enable</b>
+solace-primary# <b>configure</b> 
+solace-primary(configure)# <b>no service msg-backbone shutdown</b></pre>
+        </li>
+        <li>
+          <p>Enable msg-backbone service on solace-backup:</p>
+          <pre class="Code">solace-backup&gt; <b>enable</b>
+solace-backup# <b>configure</b> 
+solace-backup(configure)# <b>no service msg-backbone shutdown</b></pre>
+          <p>Ensure Redundancy Configuration Status is <code>Enabled</code> and Redundancy Status is <code>Up</code> on each node. On solace-primary the Message Spool Status should be <code>AD-Active</code>, and on solace-backup the Message Spool Status should be <code>AD-Standby</code>.</p>
+          <pre class="Code">solace-primary&gt; <b>show redundancy</b> 
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Message Routing Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : Primary
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual    Backup Virtual
+                               Router             Router
+                               ---------------    ---------------
+Activity Status                Local Active       Shutdown
+Routing Interface              intf0:1            intf0:1
+Routing Interface Status       Up                 
+VRRP Status                    Initialize         
+VRRP Priority                  250                
+Message Spool Status           AD-Active          
+Priority Reported By Mate      Standby   
+
+solace-backup&gt; show redundancy 
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Message Routing Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : Backup
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual    Backup Virtual
+                               Router             Router
+                               ---------------    ---------------
+Activity Status                Shutdown                Mate Active
+Routing Interface              intf0:1                 intf0:1
+Routing Interface Status                               Up
+VRRP Status                                            Initialize
+VRRP Priority                                          100
+Message Spool Status                                   AD-Standby
+Priority Reported By Mate                              Active
+</pre>
+        </li>
+        <li>
+          <p>Verify that the diagnostics storage-element is displayed on each event broker:</p>
+          <pre class="Code">solace-primary&gt; <b>show storage-element *</b>
+
+Last Refreshed   : Mar 23 2017 17:34:22
+
+Storage Element    1K-blocks    Used         Available    Use% 
+------------------ ------------ ------------ ------------ -----
+root                 6.0 Mi     938.2 Ki       5.1 Mi     15%
+spool                9.8 Mi       1.4 Mi       8.4 Mi     14%
+var                  9.8 Mi       1.4 Mi       8.4 Mi     14%
+jail                 9.8 Mi       1.4 Mi       8.4 Mi     14%
+diagnostics          9.8 Mi       1.4 Mi       8.4 Mi     14%
+adb-backup           9.8 Mi       1.4 Mi       8.4 Mi     14%
+adb                  9.8 Mi       1.4 Mi       8.4 Mi     14%
+
+solace-backup&gt; show storage-element *
+
+Last Refreshed   : Mar 23 2017 17:34:22
+
+Storage Element    1K-blocks    Used         Available    Use% 
+------------------ ------------ ------------ ------------ -----
+root                 6.0 Mi     938.2 Ki       5.1 Mi     15%
+spool                9.8 Mi       1.4 Mi       8.4 Mi     14%
+var                  9.8 Mi       1.4 Mi       8.4 Mi     14%
+jail                 9.8 Mi       1.4 Mi       8.4 Mi     14%
+diagnostics          9.8 Mi       1.4 Mi       8.4 Mi     14%
+adb-backup           9.8 Mi       1.4 Mi       8.4 Mi     14%
+adb                  9.8 Mi       1.4 Mi       8.4 Mi     14%
+</pre>
+        </li>
+      </ol>
+      <p>You have completed this procedure.</p>
+    </div>
+    <script type="text/javascript" src="../../Resources/Scripts/Tabbed_Content.js">
+        </script>
+  </body>
+</html>

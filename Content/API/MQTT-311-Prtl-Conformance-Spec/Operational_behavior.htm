@@ -1,0 +1,439 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" xml:lang="en-us">
+  <head>
+    <title/>
+    <link href="../../Resources/Stylesheets/mqtt_311_prtcl.css" rel="stylesheet"/>
+  </head>
+  <body>
+    <h1 class="Heading1">4 Operational behavior</h1>
+    <p MadCap:conditions="Default.HideFromAllOutput"><b>***NOTE TO WRITERS:</b> Highlighted content in this topic is that way on purpose. It is intended to show differences in this spec of MQTT. Do not remove the spans.</p>
+    <h2 class="Heading2"><a name="_Ref369188333"/><a name="_Toc430864960"/><a name="_Toc430865170"/>4.1 Storing state</h2>
+    <p>It is necessary for the Client and Server to store Session state in order to provide Quality of Service guarantees. <span class="span_17">The Client and Server MUST store Session state for the entire duration of the Session</span> <span class="span_14">[MQTT-4.1.0-1]</span>. <span class="span_17">A Session MUST last at least as long it has an active Network Connection</span><span class="span_14"> [MQTT-4.1.0-2]</span>.</p>
+    <p>Retained messages do not form part of the Session state in the Server. The Server SHOULD retain such messages until deleted by a Client.</p>
+    <p class="p_21">Non normative comment</p>
+    <p class="p_12">The storage capabilities of Client and Server implementations will of course have limits in terms of capacity and may be subject to administrative policies such as the maximum time that Session state is stored between Network Connections. Stored Session state can be discarded as a result of an administrator action, including an automated response to defined conditions. This has the effect of terminating the Session. These actions might be prompted by resource constraints or for other operational reasons. It is prudent to evaluate the storage capabilities of the Client and Server to ensure that they are sufficient.</p>
+    <p class="p_21">Non normative comment</p>
+    <p class="p_12">It is possible that hardware or software failures may result in loss or corruption of Session state stored by the Client or Server.</p>
+    <p class="p_21">Non normative comment</p>
+    <p class="p_12">Normal operation of the Client of Server could mean that stored state is lost or corrupted because of administrator action, hardware failure or software failure. An administrator action could be an automated response to defined conditions. These actions might be prompted by resource constraints or for other operational reasons. For example the server might determine that based on external knowledge, a message or messages can no longer be delivered to any current or future client.</p>
+    <p class="p_21">Non normative comment</p>
+    <p class="p_12">An MQTT user should evaluate the storage capabilities of the MQTT Client and Server implementations to ensure that they are sufficient for their needs. </p>
+    <h3 class="Heading3"><a name="_Toc430864961"/>4.1.1 Non normative example</h3>
+    <p>For example, a user wishing to gather electricity meter readings may decide that they need to use QoS 1 messages because they need to protect the readings against loss over the network, however they may have determined that the power supply is sufficiently reliable that the data in the Client and Server can be stored in volatile memory without too much risk of its loss.</p>
+    <p>Conversely a parking meter payment application provider might decide that there are no circumstances where a payment message can be lost so they require that all data are force written to non-volatile memory before it is transmitted across the network.</p>
+    <h2 class="Heading2"><a name="_Ref368642907"/><a name="_Toc430864962"/>4.2 Network Connections</h2>
+    <p>The MQTT protocol requires an underlying transport that provides an ordered, lossless, stream of bytes from the Client to Server and Server to Client.</p>
+    <p class="p_21">Non normative comment</p>
+    <p class="p_12">The transport protocol used to carry MQTT 3.1 was TCP/IP as defined in [<a href="Introduction.htm#Postel,"><a href="Introduction.htm#Postel," class="link-internal">RFC793</a></a>].<span class="span_4">TCP/IP can be used for MQTT 3.1.1. </span>The following are also suitable:
+        <ul><li>TLS <li href="Introduction.htm#RFC5246">[RFC5246]</li></li><li>WebSocket <a href="Introduction.htm#RFC6455" class="link-internal">[RFC6455]</a></li></ul></p>
+    <p class="p_21">Non normative comment</p>
+    <p class="p_12">TCP ports 8883 and 1883 are registered with IANA for MQTT TLS and non TLS communication respectively.</p>
+    <p>
+      <div class="div_2">
+        <p>
+          <span class="span_3">Solace Implementation Note</span>
+        </p>
+        <ul>
+          <li>The Solace server supports TCP/IP transport of MQTT.</li>
+          <li>The Solace server supports TLS transport of MQTT.</li>
+          <li>The Solace server supports WebSocket transport of MQTT.</li>
+          <li>The Solace server supports WebSocket Secure transport of MQTT.</li>
+        </ul>
+      </div>
+    </p>
+    <p>Connectionless network transports such as <a href="http://en.wikipedia.org/wiki/User_Datagram_Protocol" title="User Datagram Protocol" target="_blank" alt="User Datagram Protocol" class="link-internal">User Datagram Protocol</a> (UDP) are not suitable on their own because they might lose or reorder data. </p>
+    <h2 class="Heading2"><a name="_Ref363045966"/><a name="_Toc430864963"/>4.3 Quality of Service levels and protocol flows</h2>
+    <p>MQTT delivers Application Messages according to the Quality of Service (QoS) levels defined here. The delivery protocol is symmetric, in the description below the Client and Server can each take the role of either Sender or Receiver. The delivery protocol is concerned solely with the delivery of an application message from a single Sender to a single Receiver. When the Server is delivering an Application Message to more than one Client, each Client is treated independently. The QoS level used to deliver an Application Message outbound to the Client could differ from that of the inbound Application Message.</p>
+    <p>The non-normative flow diagrams in the following sections are intended to show possible implementation approaches.</p>
+    <p>
+      <div class="div_2"><p><span class="span_3">Solace Implementation Note</span></p>The following table summarizes Solace PubSub+ software behavior for all combinations of a message published with one QoS matching a subscription with a second QoS. The behavior shown in the table adheres to the MQTT specification.<p class="TableHeader">Resulting QoS Level of Messages to be Consumed</p><table class="table_1"><col style="width: 95pt;"/><col style="width: 95pt;"/><col style="width: 95pt;"/><col style="width: 95pt;"/><tr><td class="td_8"><p class="p_22"> </p></td><td colspan="3" class="td_2"><p class="p_23">Subscribe QoS</p></td></tr><tr><td class="td_3"><p class="p_6"><span class="span_3">Publish QoS</span></p></td><td class="td_4"><p class="p_23">0</p></td><td class="td_4"><p class="p_23">1</p></td><td class="td_4"><p class="p_23">2</p></td></tr><tr><td class="td_3"><p class="p_23">0</p></td><td class="td_4"><p class="p_24">0</p></td><td class="td_4"><p class="p_24">0</p></td><td class="td_4"><p class="p_24">0</p></td></tr><tr><td class="td_3"><p class="p_23">1</p></td><td class="td_4"><p class="p_24">0</p></td><td class="td_4"><p class="p_24">1</p></td><td class="td_4"><p class="p_24">1</p></td></tr><tr><td class="td_3"><p class="p_23">2</p></td><td class="td_4"><p class="p_24">0</p></td><td class="td_4"><p class="p_24">1</p></td><td class="td_4"><p class="p_24">1</p></td></tr></table><ul><li>Messages published with QoS 0 are not queued on the Solace PubSub+ event broker if not subscribing.</li><li>Messages published with QoS 1 are queued on the Solace PubSub+ event broker  <span class="span_4">even when </span>subscribing clients are not connected. QoS 2 subscriptions are downgraded to QoS 1, and are therefore treated in the same manner.</li></ul></div>
+    </p>
+    <h3 class="Heading3"><a name="_Toc430864964"/>4.3.1 QoS 0: At most once delivery</h3>
+    <p>The message is delivered according to the capabilities of the underlying network. No response is sent by the receiver and no retry is performed by the sender. The message arrives at the receiver either once or not at all.</p>
+    <p>
+      <span class="span_17">In the QoS 0 delivery protocol, the Sender</span>
+    </p>
+    <ul>
+      <li><span class="span_17">MUST send a PUBLISH packet with QoS=0, DUP=0</span><span class="span_14">[MQTT-4.3.1-1]</span>.</li>
+    </ul>
+    <p>In the QoS 0 delivery protocol, the Receiver</p>
+    <ul>
+      <li>Accepts ownership of the message when it receives the PUBLISH packet.</li>
+    </ul>
+    <p class="GraphicCaptionWordIndented"><a name="_Toc430865175"/>Figure 4.1 – QoS 0 protocol flow diagram, non normative example</p>
+    <table class="table_4">
+      <col style="width: 149pt;"/>
+      <col style="width: 135pt;"/>
+      <col style="width: 153pt;"/>
+      <tr>
+        <td class="td_1">
+          <p class="p_5">Sender Action</p>
+        </td>
+        <td class="td_2">
+          <p class="p_5">Control Packet</p>
+        </td>
+        <td class="td_2">
+          <p class="p_5">Receiver Action</p>
+        </td>
+      </tr>
+      <tr>
+        <td class="td_3">
+          <p class="p_6">PUBLISH QoS 0, DUP=0</p>
+          <p> </p>
+        </td>
+        <td class="td_4">
+          <p class="p_6"> </p>
+        </td>
+        <td class="td_4">
+          <p> </p>
+        </td>
+      </tr>
+      <tr>
+        <td class="td_3">
+          <p class="p_6"> </p>
+        </td>
+        <td class="td_4">
+          <p class="p_6">----------&gt;</p>
+        </td>
+        <td class="td_4">
+          <p class="p_6"> </p>
+        </td>
+      </tr>
+      <tr>
+        <td class="td_3">
+          <p class="p_6"> </p>
+        </td>
+        <td class="td_4">
+          <p class="p_6"> </p>
+        </td>
+        <td class="td_4">
+          <p class="p_6">Deliver Application Message to appropriate onward recipient(s) </p>
+        </td>
+      </tr>
+    </table>
+    <h3 class="Heading3"><a name="_Ref384138490"/><a name="_Toc430864965"/>4.3.2 QoS 1: At least once delivery</h3>
+    <p class="p_8">This quality of service ensures that the message arrives at the receiver at least once. A QoS 1 PUBLISH Packet has a Packet Identifier in its variable header and is acknowledged by a PUBACK Packet. Section <a href="MQTT Control Packet format.htm#_Ref363041167" class="link-internal">2.3.1 Packet Identifier</a> provides more information about Packet Identifiers.</p>
+    <p>
+      <span class="span_17">In the QoS 1 delivery protocol, the Sender</span>
+    </p>
+    <ul>
+      <li>
+        <span class="span_17">MUST assign an unused Packet Identifier each time it has a new Application Message to publish. </span>
+      </li>
+      <li>
+        <span class="span_17">MUST send a PUBLISH Packet containing this Packet Identifier with QoS=1, DUP=0.</span>
+      </li>
+      <li>
+        <span class="span_17">MUST treat the PUBLISH Packet as “unacknowledged” until it has received the corresponding PUBACK packet from the receiver. See Section </span>
+        <MadCap:xref href="#_Ref383618483" class="ParaTextOnly">Message delivery retry</MadCap:xref>
+        <span class="span_17"> for a discussion of unacknowledged messages.</span>
+      </li>
+    </ul>
+    <p>
+      <span class="span_14">[MQTT-4.3.2-1]</span>
+    </p>
+    <p class="p_25">The Packet Identifier becomes available for reuse once the Sender has received the PUBACK Packet. </p>
+    <p class="p_8">Note that a Sender is permitted to send further PUBLISH Packets with different Packet Identifiers while it is waiting to receive acknowledgements.</p>
+    <p>
+      <span class="span_17">In the QoS 1 delivery protocol, the Receiver</span>
+    </p>
+    <ul>
+      <li>
+        <span class="span_17">MUST respond with a PUBACK Packet containing the Packet Identifier from the incoming PUBLISH Packet, having accepted ownership of the Application Message </span>
+      </li>
+      <li>
+        <span class="span_17">After it has sent a PUBACK Packet the Receiver MUST treat any incoming PUBLISH packet that contains the same Packet Identifier as being a new publication, irrespective of the setting of its DUP flag.</span>
+      </li>
+    </ul>
+    <p class="p_25"><span class="span_14">[MQTT-4.3.2-2]</span>.</p>
+    <p class="GraphicCaptionWordIndented"><a name="_Toc430865177"/>Figure 4.2 – QoS 1 protocol flow diagram, non normative example</p>
+    <table class="table_4">
+      <col style="width: 149pt;"/>
+      <col style="width: 135pt;"/>
+      <col style="width: 153pt;"/>
+      <tr>
+        <td class="td_1">
+          <p class="p_5">Sender Action</p>
+        </td>
+        <td class="td_2">
+          <p class="p_5">Control Packet</p>
+        </td>
+        <td class="td_2">
+          <p class="p_5">Receiver action</p>
+        </td>
+      </tr>
+      <tr>
+        <td class="td_3">
+          <p>Store message</p>
+        </td>
+        <td class="td_4">
+          <p class="p_6"> </p>
+        </td>
+        <td class="td_4">
+          <p> </p>
+        </td>
+      </tr>
+      <tr>
+        <td class="td_3">
+          <p>Send PUBLISH QoS 1, DUP 0,<br/> &lt;Packet Identifier&gt;</p>
+        </td>
+        <td class="td_4">
+          <p class="p_6">----------&gt;</p>
+        </td>
+        <td class="td_4">
+          <p> </p>
+        </td>
+      </tr>
+      <tr>
+        <td class="td_3">
+          <p> </p>
+        </td>
+        <td class="td_4">
+          <p> </p>
+        </td>
+        <td class="td_4">
+          <p>Initiate onward delivery of the Application Message<sup>1</sup></p>
+        </td>
+      </tr>
+      <tr>
+        <td class="td_3">
+          <p> </p>
+        </td>
+        <td class="td_4">
+          <p class="p_6">&lt;----------</p>
+        </td>
+        <td class="td_4">
+          <p class="p_6">Send PUBACK &lt;Packet Identifier&gt;</p>
+        </td>
+      </tr>
+      <tr>
+        <td class="td_3">
+          <p>Discard message</p>
+        </td>
+        <td class="td_4">
+          <p class="p_6"> </p>
+        </td>
+        <td class="td_4">
+          <p class="p_6"> </p>
+        </td>
+      </tr>
+    </table>
+    <p class="p_12"><sup>1</sup> The receiver is not required to complete delivery of the Application Message before sending the PUBACK. When its original sender receives the PUBACK packet, ownership of the Application Message is transferred to the receiver.</p>
+    <h3 class="Heading3"><a name="_Ref384138602"/><a name="_Toc430864966"/>4.3.3 QoS 2: Exactly once delivery</h3>
+    <p>This is the highest quality of service, for use when neither loss nor duplication of messages are acceptable. There is an increased overhead associated with this quality of service.</p>
+    <p>
+      <div class="div_2">
+        <p>
+          <span class="span_3">Solace Implementation Note</span>
+        </p>
+        <p>
+          <span class="span_4">QoS 2 messages from clients are accepted but are treated as QoS 1 messages. QoS 2 subscriptions from clients are accepted but are downgraded to QoS 1. Both of these behaviors are allowed by the specification.</span>
+        </p>
+      </div>
+    </p>
+    <p>A QoS 2 message has a Packet Identifier in its variable header. Section <MadCap:xref href="MQTT Control Packet format.htm#_Ref363041167" class="ParaTextOnly">Packet Identifier</MadCap:xref> provides more information about Packet Identifiers. The receiver of a QoS 2 PUBLISH Packet acknowledges receipt with a two-step acknowledgement process. </p>
+    <p>
+      <span class="span_17">In the QoS 2 delivery protocol, the Sender</span>
+    </p>
+    <ul>
+      <li>
+        <span class="span_17">MUST assign an unused Packet Identifier when it has a new Application Message to publish.</span>
+      </li>
+      <li>
+        <span class="span_17">MUST send a PUBLISH packet containing this Packet Identifier with QoS=2, DUP=0.</span>
+      </li>
+      <li>
+        <span class="span_17">MUST treat the PUBLISH packet as “unacknowledged” until it has received the corresponding PUBREC packet from the receiver. See Section </span>
+        <MadCap:xref href="#_Ref383618483" class="ParaTextOnly">Message delivery retry</MadCap:xref>
+        <span class="span_17"> for a discussion of unacknowledged messages.</span>
+      </li>
+      <li>
+        <span class="span_17">MUST send a PUBREL packet when it receives a PUBREC packet from the receiver. This PUBREL packet MUST contain the same Packet Identifier as the original PUBLISH packet.</span>
+      </li>
+      <li>
+        <span class="span_17">MUST treat the PUBREL packet as “unacknowledged” until it has received the corresponding PUBCOMP packet from the receiver.</span>
+      </li>
+      <li>
+        <span class="span_17">MUST NOT re-send the PUBLISH once it has sent the corresponding PUBREL packet.</span>
+      </li>
+    </ul>
+    <p><span class="span_14">[MQTT-4.3.3-1]</span>.</p>
+    <p>The Packet Identifier becomes available for reuse once the Sender has received the PUBCOMP Packet. </p>
+    <p>Note that a Sender is permitted to send further PUBLISH Packets with different Packet Identifiers while it is waiting to receive acknowledgements.</p>
+    <p class="p_26">
+      <span class="span_17">In the QoS 2 delivery protocol, the Receiver</span>
+    </p>
+    <ul>
+      <li>
+        <span class="span_17">MUST respond with a PUBREC containing the Packet Identifier from the incoming PUBLISH Packet, having accepted ownership of the Application Message.</span>
+      </li>
+      <li>
+        <span class="span_17">Until it has received the corresponding PUBREL packet, the Receiver MUST acknowledge any subsequent PUBLISH packet with the same Packet Identifier by sending a PUBREC. It MUST NOT cause duplicate messages to be delivered to any onward recipients in this case. </span>
+      </li>
+    </ul>
+    <p class="p_12">
+      <div class="div_2">
+        <p>
+          <span class="span_3">Solace Implementation Note</span>
+        </p>
+        <p class="p_27">In this case the Solace server MAY cause duplicate messages to be delivered onward to QoS 1 subscribers.</p>
+      </div>
+    </p>
+    <ul>
+      <li>
+        <span class="span_17">MUST respond to a PUBREL packet by sending a PUBCOMP packet containing the same Packet Identifier as the PUBREL.</span>
+      </li>
+      <li>
+        <span class="span_17">After it has sent a PUBCOMP, the receiver MUST treat any subsequent PUBLISH packet that contains that Packet Identifier as being a new publication.</span>
+      </li>
+    </ul>
+    <p><span class="span_14">[MQTT-4.3.3-2]</span>.</p>
+    <p class="GraphicCaptionWordIndented"><a name="_Figure_4.3_–"/>Figure 4.3 – QoS 2 protocol flow diagram, non normative example</p>
+    <p class="p_12"><sup>1</sup> The receiver is not required to complete delivery of the Application Message before sending the PUBREC or PUBCOMP. When its original sender receives the PUBREC packet, ownership of the Application Message is transferred to the receiver. </p>
+    <p class="p_15"><a href="#_Figure_4.3_–" class="link-internal"><span class="Hyperlink">Figure 4.3</span></a> shows that there are two methods by which QoS 2 can be handled by the receiver. They differ in the point within the flow at which the message is made available for onward delivery. The choice of Method A or Method B is implementation specific. As long as an implementation chooses exactly one of these approaches, this does not affect the guarantees of a QoS 2 flow.</p>
+    <h2 class="Heading2"><a name="_Ref383618483"/><a name="_Toc430864967"/>4.4 Message delivery retry</h2>
+    <p><span class="span_17">When a Client reconnects with CleanSession set to 0, both the Client and Server MUST re-send any unacknowledged PUBLISH Packets (where QoS &gt; 0) and PUBREL Packets using their original Packet Identifiers</span><span class="span_14">[MQTT-4.4.0-1]</span>. This is the only circumstance where a Client or Server is REQUIRED to redeliver messages.</p>
+    <p class="p_15"><br/><span class="Refterm">Non normative comment</span><br/>Historically retransmission of Control Packets was required to overcome data loss on some older TCP networks. This might remain a concern where MQTT 3.1.1 implementations are to be deployed in such environments.</p>
+    <h2 class="Heading2"><a name="_Toc430864968"/>4.5 Message receipt</h2>
+    <p><span class="span_17">When a Server takes ownership of an incoming Application Message it MUST add it to the Session state of those clients that have matching Subscriptions. Matching rules are defined in Section </span><a href="#_Ref374621403" class="link-internal">4.7 Topic Names and Topic Filters</a><span class="span_14">[MQTT-4.5.0-1]</span>.</p>
+    <p>Under normal circumstances Clients receive messages in response to Subscriptions they have created. A Client could also receive messages that do not match any of its explicit Subscriptions. This can happen if the Server automatically assigned a subscription to the Client. A Client could also receive messages while an UNSUBSCRIBE operation is in progress. <span class="span_17">The Client MUST acknowledge any Publish Packet it receives according to the applicable QoS rules regardless of whether it elects to process the Application Message that it contains</span> <span class="span_14">[MQTT-4.5.0-2]</span>.</p>
+    <h2 class="Heading2"><a name="_Toc430864969"/>4.6 Message ordering</h2>
+    <p>
+      <span class="span_17"> A Client MUST follow these rules when implementing the protocol flows defined elsewhere in this chapter:</span>
+    </p>
+    <ul>
+      <li>
+        <span class="span_17">When it re-sends any PUBLISH packets, it MUST re-send them in the order in which the original PUBLISH packets were sent (this applies to QoS 1 and QoS 2 messages)</span>
+        <span class="span_14">[MQTT-4.6.0-1]</span>
+      </li>
+      <li>
+        <span class="span_17">It MUST send PUBACK packets in the order in which the corresponding PUBLISH packets were received (QoS 1 messages)</span>
+        <span class="span_14">[MQTT-4.6.0-2]</span>
+      </li>
+      <li>
+        <span class="span_17">It MUST send PUBREC packets in the order in which the corresponding PUBLISH packets were received (QoS 2 messages)</span>
+        <span class="span_14">[MQTT-4.6.0-3]</span>
+      </li>
+      <li>
+        <span class="span_17">It MUST send PUBREL packets in the order in which the corresponding PUBREC packets were received (QoS 2 messages)</span>
+        <span class="span_14">[MQTT-4.6.0-4]</span>
+      </li>
+    </ul>
+    <p><span class="span_17">A Server MUST by default treat each Topic as an "Ordered Topic". It MAY provide an administrative or other mechanism to allow one or more Topics to be treated as an "Unordered Topic"</span><span class="span_14">[MQTT-4.6.0-5]</span>.</p>
+    <p><span class="span_17">When a Server processes a message that has been published to an Ordered Topic, it MUST follow the rules listed above when delivering messages to each of its subscribers. In addition it MUST send PUBLISH packets to consumers (for the same Topic and QoS) in the order that they were received from any given Client</span><span class="span_14">[MQTT-4.6.0-6]</span>.</p>
+    <p class="p_12">
+      <span class="Refterm">Non normative comment</span>
+    </p>
+    <p class="p_12">The rules listed above ensure that when a stream of messages is published and subscribed to with QoS 1, the final copy of each message received by the subscribers will be in the order that they were originally published in, but the possibility of message duplication could result in a re-send of an earlier message being received after one of its successor messages. For example a publisher might send messages in the order 1,2,3,4 and the subscriber might receive them in the order 1,2,3,2,3,4.</p>
+    <p class="p_12">If both Client and Server make sure that no more than one message is “in-flight” at any one time (by not sending a message until its predecessor has been acknowledged), then no QoS 1 message will be received after any later one - for example a subscriber might receive them in the order 1,2,3,3,4 but not 1,2,3,2,3,4. Setting an in-flight window of 1 also means that order will be preserved even if the publisher sends a sequence of messages with different QoS levels on the same topic.</p>
+    <h2 class="Heading2"><a name="_Ref374621403"/><a name="_Toc430864970"/>4.7 Topic Names and Topic Filters</h2>
+    <h3 class="Heading3"><a name="_Topic_wildcards"/><a name="_Toc430864971"/>4.7.1 Topic wildcards</h3>
+    <p>The topic level separator is used to introduce structure into the Topic Name. If present, it divides the Topic Name into multiple “topic levels”.</p>
+    <p>A subscription’s Topic Filter can contain special wildcard characters, which allow you to subscribe to multiple topics at once.</p>
+    <p><span class="span_17">The wildcard characters can be used in Topic Filters, but MUST NOT be used within a Topic Name </span><span class="span_14">[MQTT-4.7.1-1]</span>. <div class="div_2"><p><span class="span_3">Solace Implementation Note</span></p><p class="p_1">The Solace server allows wildcard characters to be used in Topic Names. However, it will treat them as literal characters with no special meaning.</p></div></p>
+    <h4 class="Heading4">4.7.1.1 Topic level separator</h4>
+    <p>The forward slash (‘/’ U+002F) is used to separate each level within a topic tree and provide a hierarchical structure to the Topic Names. The use of the topic level separator is significant when either of the two wildcard characters is encountered in Topic Filters specified by subscribing Clients. Topic level separators can appear anywhere in a Topic Filter or Topic Name. Adjacent Topic level separators indicate a zero length topic level.</p>
+    <h4 class="Heading4">4.7.1.2 Multi-level wildcard</h4>
+    <p>The number sign (‘#’ U+0023) is a wildcard character that matches any number of levels within a topic. The multi-level wildcard represents the parent and any number of child levels. <span class="span_17">The multi-level wildcard character MUST be specified either on its own or following a topic level separator. In either case it MUST be the last character specified in the Topic Filter</span> <span class="span_14">[MQTT-4.7.1-2]</span>.</p>
+    <p class="p_21">Non normative comment</p>
+    <p class="p_12">For example, if a Client subscribes to “sport/tennis/player1/#”, it would receive messages published using these topic names:</p>
+    <ul class="ul_2">
+      <li class="li_3">“sport/tennis/player1”</li>
+      <li class="li_3">“sport/tennis/player1/ranking”</li>
+      <li class="li_3">“sport/tennis/player1/score/wimbledon”</li>
+    </ul>
+    <p class="p_21">Non normative comment</p>
+    <ul class="ul_2">
+      <li class="li_3">“sport/#” also matches the singular “sport”, since # includes the parent level. </li>
+      <li class="li_3">“#” is valid and will receive every Application Message</li>
+      <li class="li_3">“sport/tennis/#” is valid </li>
+      <li class="li_3">“sport/tennis#” is not valid</li>
+      <li class="li_3">“sport/tennis/#/ranking” is not valid</li>
+    </ul>
+    <h4 class="Heading4"><a name="_Toc430865187"/>4.7.1.3 Single level wildcard</h4>
+    <p>The plus sign (‘+’ U+002B) is a wildcard character that matches only one topic level. </p>
+    <p><span class="span_17">The single-level wildcard can be used at any level in the Topic Filter, including first and last levels. Where it is used it MUST occupy an entire level of the filter</span><span class="span_14">[MQTT-4.7.1-3]</span>. It can be used at more than one level in the Topic Filter and can be used in conjunction with the multilevel wildcard.</p>
+    <p>
+      <div class="div_2">
+        <p>
+          <span class="span_3">Solace Implementation Note</span>
+        </p>
+        <p>
+          <span class="span_4">A Solace server allows the single-level wildcard to be used to do prefix matching within a level in a Topic Filter. For example, “sport/bas+” matches both “sport/basketball” and “sport/baseball”, but not “sport/badminton”. If any string follows the single-level wildcard it is treated as a literal ‘+’ character.</span>
+        </p>
+      </div>
+    </p>
+    <p class="p_21">Non normative comment</p>
+    <p class="p_12">For example, “sport/tennis/+” matches “sport/tennis/player1” and “sport/tennis/player2”, but not “sport/tennis/player1/ranking”. Also, because the single-level wildcard matches only a single level, “sport/+” does not match “sport” but it does match “sport/”.</p>
+    <p class="p_21">Non normative comment</p>
+    <ul class="ul_2">
+      <li>“+” is valid</li>
+      <li>“+/tennis/#” is valid</li>
+      <li>“sport+” is not valid</li>
+      <li>“sport/+/player1” is valid                                                                                                                                            </li>
+      <li>“/finance” matches “+/+” and “/+”, but not “+”</li>
+    </ul>
+    <h3 class="Heading3"><a name="_Toc430864972"/>4.7.2 Topics beginning with $</h3>
+    <p><span class="span_17">The Server MUST NOT match Topic Filters starting with a wildcard character (# or +) with Topic Names beginning with a $ character</span><span class="span_14">[MQTT-4.7.2&gt;-1]</span>. The Server SHOULD prevent Clients from using such Topic Names to exchange messages with other Clients. Server implementations MAY use Topic Names that start with a leading $ character for other purposes.</p>
+    <p>
+      <div class="div_2">
+        <p>
+          <span class="span_3">Solace Implementation Note</span>
+        </p>
+        <p>A Solace server will reject subscriptions beginning with $ unless the server has a defined meaning for the subscription. Refer to <MadCap:xref href="../MQTT/MQTT-Topics.htm#Special">Special Solace MQTT Topics</MadCap:xref> for a list of subscriptions beginning with $ that are understood by the Solace server.</p>
+      </div>
+    </p>
+    <p class="p_21">Non normative comment</p>
+    <ul class="ul_2">
+      <li class="li_3">$SYS/ has been widely adopted as a prefix to topics that contain Server-specific information or control APIs</li>
+      <li class="li_3">Applications cannot use a topic with a leading $ character for their own purposes</li>
+    </ul>
+    <p class="p_21">Non normative comment</p>
+    <ul class="ul_2">
+      <li class="li_3">A subscription to “#” will not receive any messages published to a topic beginning with a $</li>
+      <li class="li_3">A subscription to “+/monitor/Clients” will not receive any messages published to “$SYS/monitor/Clients”</li>
+      <li class="li_3">A subscription to “$SYS/#” will receive messages published to topics beginning with “$SYS/”</li>
+      <li class="li_3">A subscription to “$SYS/monitor/+” will receive messages published to “$SYS/monitor/Clients”</li>
+      <li class="li_3">For a Client to receive messages from topics that begin with $SYS/ and from topics that don’t begin with a $, it has to subscribe to both “#” and “$SYS/#”</li>
+    </ul>
+    <h3 class="Heading3"><a name="_Toc430864973"/>4.7.3 Topic semantic and usage</h3>
+    <p>The following rules apply to Topic Names and Topic Filters:</p>
+    <ul class="ul_5">
+      <li class="li_3">
+        <span class="span_17">All Topic Names and Topic Filters MUST be at least one character long</span>
+        <span class="span_14">[MQTT-4.7.3-1]</span>
+      </li>
+      <li class="li_3">Topic Names and Topic Filters are case sensitive </li>
+      <li class="li_3">Topic Names and Topic Filters can include the space character</li>
+      <li class="li_3">A leading or trailing ‘/’ creates a distinct Topic Name or Topic Filter </li>
+      <li class="li_3">A Topic Name or Topic Filter consisting only of the ‘/’ character is valid </li>
+      <li class="li_3"><span class="span_17">Topic Names and Topic Filters MUST NOT include the null character (Unicode U+0000)</span><![CDATA[  ]]><span class="span_14">[MQTT-4.7.3-2]</span></li>
+      <li class="li_3"><span class="span_17">Topic Names and Topic Filters are UTF-8 encoded strings, they MUST NOT encode to more than 65535 bytes</span><span class="span_14">[MQTT-4.7.3-3]</span>. See Section <MadCap:xref href="Introduction.htm#_Ref374438163" class="ParaTextOnly">UTF-8 encoded strings</MadCap:xref></li>
+    </ul>
+    <p>There is no limit to the number of levels in a Topic Name or Topic Filter, other than that imposed by the overall length of a UTF-8 encoded string.</p>
+    <p>
+      <div class="div_2">
+        <p>
+          <span class="span_3">Solace Implementation Note</span>
+        </p>
+        <p>Topics must comply with the limits discussed in <MadCap:xref href="../../Messaging/SMF-Topics.htm">SMF Topics</MadCap:xref>.</p>
+      </div>
+    </p>
+    <p><span class="span_17">When it performs subscription matching the Server MUST NOT perform any normalization of Topic Names or Topic Filters, or any modification or substitution of unrecognized characters</span><span class="span_14">[MQTT-4.7.3-4]</span>. Each non-wildcarded level in the Topic Filter has to match the corresponding level in the Topic Name character for character for the match to succeed.</p>
+    <p class="p_12">
+      <span class="Refterm">Non normative comment</span>
+    </p>
+    <p class="p_12">The UTF-8 encoding rules mean that the comparison of Topic Filter and Topic Name could be performed either by comparing the encoded UTF-8 bytes, or by comparing decoded Unicode characters </p>
+    <p class="p_21">Non normative comment</p>
+    <ul class="ul_2">
+      <li>“ACCOUNTS” and “Accounts” are two different topic names</li>
+      <li>“Accounts payable” is a valid topic name</li>
+      <li>“/finance” is different from “finance”</li>
+    </ul>
+    <p>An Application Message is sent to each Client Subscription whose Topic Filter matches the Topic Name attached to an Application Message. The topic resource MAY be either predefined in the Server by an administrator or it MAY be dynamically created by the Server when it receives the first subscription or an Application Message with that Topic Name. The Server MAY also use a security component to selectively authorize actions on the topic resource for a given Client.</p>
+    <h2 class="Heading2"><a name="_Ref381955543"/><a name="_Toc430864974"/>4.8 Handling errors</h2>
+    <p><span class="span_17">Unless stated otherwise, if either the Server or Client encounters a protocol violation, it MUST close the Network Connection on which it received that Control Packet which caused the protocol violation</span><span class="span_14">[MQTT-4.8.0-1]</span>. </p>
+    <p>A Client or Server implementation might encounter a Transient Error (for example an internal buffer full condition) that prevents successful processing of an MQTT packet.</p>
+    <p><span class="span_17">If the Client or Server encounters a Transient Error while processing an inbound Control Packet it MUST close the Network Connection on which it received that Control Packet</span><span class="span_14">[MQTT-4.8.0-2]</span>. If a Server detects a Transient Error it SHOULD NOT disconnect or have any other effect on its interactions with any other Client.</p>
+  </body>
+</html>

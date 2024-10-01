@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Configuring Appliance IP Interfaces</h1>
+    <p>To create a physical interface instance on the Solace PubSub+ appliance, enter the following Global CONFIG command:
+                <p class="Code">solace(configure)# create interface &lt;phy-interface&gt; &lt;mode&gt;</p></p>
+    <p>To modify an existing physical interface instance on the Solace PubSub+ appliance, enter the following Global CONFIG command:
+                <p class="Code">solace(configure)# interface &lt;phy-interface&gt; [&lt;mode&gt;]</p></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;phy-interface&gt;</code> is an ASCII string specifying the Ethernet interface port or LAG to be configured. Valid values are chassis/lag1/eth&lt;port&gt; (for example, <code>eth1</code>); &lt;cartridge&gt;/&lt;slot&gt;/&lt;port&gt; (for example, <code>1/1/8</code>); &lt;cartridge&gt;/&lt;slot&gt;/lag&lt;N&gt; (for example, <code>1/1/lag1</code>). There is no default value.</p>
+    <p><code>&lt;mode&gt;</code> is the LAG mode. The possible values are:</p>
+    <ul>
+      <li><code>LACP</code>—multiple physical Ethernet interfaces are bundled into a single virtual interface</li>
+      <li><code>active-backup</code>—one physical interface is active, and the other interface is standby</li>
+    </ul>
+    <p>The no version of this command, <code>no interface</code> will delete the given interface.</p>
+    <div class="Note" MadCap:autonum="&lt;b&gt;Note  &lt;/b&gt;">
+      <ul>
+        <li>A LAG cannot be created on a slot which does not contain a NAB.</li>
+        <li>A LAG can not be deleted if IP interfaces reference it.</li>
+      </ul>
+    </div>
+    <div class="Caution">
+      <p class="Tbl_Body">When configuring mated Solace PubSub+ appliances for active/active redundancy, both appliances in the active/active pair <u>must</u> be configured identically; the only exception is identifying whether a client’s configuration is considered to be backup. For example, configuring independent IP interfaces for the eight NAB ports on the primary appliance and pairing it with a single Link Aggregation Group (LAG) interface for the NAB ports on the mate appliance results in unpredictable behavior. This requirement is not enforced by appliances, but operation is unpredictable if the redundant configuration is mismatched on mated appliances. Refer to <MadCap:xref href="../../Features/HA-Redundancy/Managing-Appliance-Redundancy.htm">Managing Appliance Redundancy</MadCap:xref> for details on configuring IP interfaces for system redundancy.</p>
+    </div>
+    <h2 class="with-rule"><a name="Adding-Members"/>Adding Members</h2>
+    <p>To add physical interface members to a LAG on a member by member basis, enter the following Interface CONFIG command:</p>
+    <p class="Code">solace(configure/interface)# member &lt;phy-interface&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;phy-interface&gt;</code> is an ASCII string specifying the physical interface port on the Management or NAB network interface. Valid values are<code> eth&lt;port&gt; | &lt;cartridge&gt;/&lt;slot&gt;/&lt;port&gt; | &lt;cartridge&gt;/&lt;slot&gt;/lag&lt;N&gt;</code> (for example: <code>eth1</code>, <code>chassis/lag1</code>, <code>1/5/2</code>, <code>1/6/lag1</code>). There is no default value.</p>
+    <p>The no version of this command, <code>no member</code>, removes a member port from a LAG.</p>
+    <div class="Caution">
+      <p class="Tbl_Body"> Executing the <code>no member</code> Interface CONFIG command may cause a short disruption in customer service to the NAB. CLI and management sessions are unaffected.</p>
+    </div>
+    <h2 class="with-rule"><a name="Config-Primary-Members"/>Configuring Primary Members</h2>
+    <p>To configure the primary member for active-backup mode, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/interface)# primary-member &lt;phy-interface&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;phy-interface&gt;</code> is an ASCII string specifying the physical interface port on the Management or NAB network interface. Valid values are eth&lt;port&gt; | &lt;cartridge&gt;/&lt;slot&gt;/&lt;port&gt; | &lt;cartridge&gt;/&lt;slot&gt;/lag&lt;N&gt; (for example: <code>eth1</code>, <code>chassis/lag1</code>, <code>1/5/2</code>, <code>1/6/lag1</code>). There is no default value.</p>
+    <p>The no version of this command, <code>no primary-member</code>, removes a primary member for active-backup mode.</p>
+    <h2 class="with-rule"><a name="Egress-Shaping"/>Configuring Egress Traffic Shaping</h2>
+    <p>To potentially increase the application-level throughput (that is, goodput) rate of messages from an appliance, you can use traffic shaping on physical interfaces. This allows you to adjust the egress data bit rate from the NAB to better match the capabilities of network equipment and applications.</p>
+    <p>The egress traffic shaping facility is only available for interfaces configured on the following NABs: NAB-0610EM, NAB-0210EM-04, NAB-0401ET-04, NAB‑0801ET‑04<MadCap:conditionalText MadCap:conditions="Default.ADB_NAB_4">, and NAB-0810EM-01</MadCap:conditionalText>. If egress traffic shaping is configured for an interface,  but your appliance does not use one of the listed NABs, the configuration will not affect egress traffic rates.</p>
+    <p>To configure egress traffic shaping for the given physical interface, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/interface)# traffic-shaping<br/>solace(configure/interface/traffic-shaping)# egress<br/>solace (...gure/interface/traffic-shaping/egress)# rate-limit &lt;mbps&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;mbps&gt;</code> is the maximum sustained egress rate in Mbps</p>
+    <p>Operational rates will not exactly match the configured rate. The operational rate limit is a product of CPU timing limitations, and it will reflect the best available match without exceeding the configured value.</p>
+    <h3><a name="Enable-Egress-Shaping"/>Enabling Egress Traffic Shaping</h3>
+    <p>To enable egress traffic shaping on the given physical interface, enter the following CONFIG commands: </p>
+    <p class="Code">solace(configure/interface)# traffic-shaping<br/>solace(configure/interface/traffic-shaping)# egress<br/>solace (...gure/interface/traffic-shaping/egress)# no shutdown</p>
+    <p>To disable egress traffic shaping on the given physical interface, enter the following Interface CONFIG commands:</p>
+    <p class="Code">solace(configure/interface)# traffic-shaping<br/>solace(configure/interface/traffic-shaping)# egress<br/>solace (...gure/interface/traffic-shaping/egress)# shutdown</p>
+    <h2 class="with-rule"><a name="Config-LACP-Rate"/>Configuring Ingress LACP Control Packet Rates</h2>
+    <p>You can configure the rate at which each LACP LAG interface expects to receive control packets from its peer. </p>
+    <p>When receiving packets, the NAB uses a <code>fast</code> or <code>slow</code> timeout, depending on the rate you configured for each LAG. It times out any LACP state received from the peer ports three seconds after its reception if the rate is set to <code>fast</code>, or 90 seconds if set to <code>slow</code>. The default is <code>fast</code>,  to enable early detection of expired peer LACP state and minimize packet loss. </p>
+    <p>Configuring the LACP rate has no impact on the rate at which the NAB sends packets to the peer. This rate  is determined by the peer. 
+</p>
+    <p>To configure the ingress LACP control packet rate, enter the following CONFIG commands:</p>
+    <pre class="Code" xml:space="preserve">
+solace(configure/interface)# lacp rate {fast | slow}</pre>
+    <p><u>Where</u>:</p>
+    <p><code>fast</code> configures the interface to expect LACP packets from the peer once every second . This is the default value. </p>
+    <p><code>slow</code> configures the interface to expect LACP packets from the peer once every 30 seconds . </p>
+    <p>The no form of this command <code>no lacp rate</code> sets the rate to the default value.</p>
+    <h2 class="with-rule"><a name="Start-Interfaces"/>Starting / Stopping Interfaces</h2>
+    <p>To start the given interface, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/interface)# no <b style="font-weight: normal;">shutdown</b></p>
+    <p>To stop the given interface, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure/interface)# <b style="font-weight: normal;">shutdown</b></p>
+  </body>
+</html>

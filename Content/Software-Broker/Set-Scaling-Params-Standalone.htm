@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><MadCap:concept term="Software"/>Scaling Up an Existing Single Software Event Broker</h1>
+    <p>This section shows you the steps to increase the scaling parameters for a standalone software event broker using the <MadCap:variable name="Product-Names.solace_cli"/>. </p>
+    <p>This procedure changes system-wide scaling parameters. Upon completion, you may need to modify other parameters for individual Message VPNs. For example, you may need to modify the maximum number of client connections permitted for a specific Message VPN (<MadCap:xref href="../Features/VPN/Configuring-VPNs.htm#Max-Connections">Configuring Maximum Connections</MadCap:xref>) or for a specific client profile (see <MadCap:xref href="../Security/Configuring-Client-Profiles.htm#Config-Max-Connects-Username">Configuring Max Connections Per Username</MadCap:xref>). For more information, see <MadCap:xref href="../Features/VPN/Configuring-VPNs.htm">Configuring Message VPNs</MadCap:xref>.</p>
+    <p class="Note">System scaling parameters can only be increased.</p>
+    <p class="Caution">This procedure is service affecting. To change system scaling parameters other than <code>max-subscriptions</code> or the Kafka scaling parameters (Kafka bridges or Kafka broker connections), you must shut down the <code>message backbone</code> and <code>message spool</code>.</p>
+    <p>The following steps show you how to increase the scaling parameters for a standalone event broker: </p>
+    <p>
+      <MadCap:xref href="#Review_System_Resource_Requirements">Step 1: Review the System Resource Requirements</MadCap:xref>
+    </p>
+    <p>
+      <MadCap:xref href="#Increasing_the_Connection_Scaling_Tier">Step 2: Increase the Value of the Scaling Parameter(s)</MadCap:xref>
+    </p>
+    <h2 class="with-rule"><a name="Review_System_Resource_Requirements"/>Step 1: Review the System Resource Requirements</h2>
+    <p>Before changing scaling parameters, review the system resources that are required and ensure that your system is adequately provisioned for the new values you plan to set. When you set the maximum connections for containers, you may also need to set some <code>docker create</code> options in accordance with the new value. For details, see <MadCap:xref href="System-Resource-Requirements.htm">System Resource Requirements</MadCap:xref> and <MadCap:xref href="System-Scaling-Parameters.htm">Modifying System Limits using System Scaling Parameters</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Increasing_the_Connection_Scaling_Tier"/>Step 2: Increase the Value of the Scaling Parameters</h2>
+    <ol>
+      <li>In the <a href="Access-Solace-CLI.htm" class="link-internal"><MadCap:variable name="Product-Names.solace_cli"/></a>, enter the <code>show system detail</code> command to review the current scaling values. You can also review the memory, cores, and storage requirements that correspond to the requirements output from the system resource calculator (see <MadCap:xref href="System-Resource-Calculator.htm">System Resource Calculator</MadCap:xref>). This command helps you evaluate if additional resources must be added:           <pre xml:space="preserve">solace&gt; show system detail
+
+System Uptime: 0d 5h 21m 11s
+Last Restart Reason: User request
+
+<span style="color: #ff0000;">Scaling:
+   Max Bridges: 25
+   Max Connections: 100
+   Max Queue Messages: 100M
+   Max Kafka Bridges: 0
+   Max Kafka Broker Connections: 0
+   Max Subscriptions: 500000</span>
+
+Topic Routing:
+   Subscription Exceptions: Enabled
+   Subscription Exceptions Defer: Enabled
+
+System Resources for Virtual Machine
+
+System Resource                   Available    Required     Units
+--------------------------------- ------------ ------------ ----------
+CPU
+  Cores                           2            2
+Memory
+---Press any key to continue, or `q' to quit---
+  RAM                             5.0          4.0          GiB
+Storage Devices
+  /dev/dm-0                       9.8 Mi       12.9 Mi      1K-Blocks
+    contains: spool-cache
+    contains: spool-cache-backup
+    contains: config
+    contains: diagnostics
+    contains: jail
+    contains: spool
+    contains: var
+  /dev/dm-6                       6.0 Mi       1.4 Mi       1K-Blocks
+    contains: root
+</pre></li>
+      <li>Shut down the <code>msg-backbone</code> service and <code>message-spool</code>.
+<p class="Note">If you are increasing <code>max-subscriptions</code> or the Kafka scaling parameters (Kafka bridges or Kafka broker connections), you do not need to shut down the <code>msg-backbone</code> or <code>message-spool</code>.</p><pre class="Code">solace&gt; enable
+solace# configure
+solace(configure)# service msg-backbone shutdown
+All clients will be disconnected.
+Do you want to continue (y/n)? y
+solace(configure)# hardware message-spool shutdown
+All message spooling will be stopped.
+Do you want to continue (y/n)? y
+</pre></li>
+      <li>Increase the required scaling parameter value. 
+            <MadCap:snippetBlock src="../Resources/Snippets/system-scaling-commands.flsnp"/><p>For example, Step 1 shows that the initial value of the client connection limit is 100. To increase the connection limit to 1,000, enter the following commands:</p><pre>solace(configure)# system
+solace(configure/system)# scaling
+solace(configure/system/scaling)# max-connections 1000
+This command causes a reload of the system.
+Do you want to continue (y/n)? y
+
+Moving ADB messages to disk  : 100%
+Backing up ADB config to disk: 100%
+
+Performing database consolidation</pre></li>
+      <MadCap:snippetBlock src="../Resources/Snippets/chg-scaling-pararms-reload-note.flsnp"/>
+      <li>Restart the container if required, then enter the <MadCap:variable name="Product-Names.solace_cli"/> again and confirm the new parameter has been applied.
+In this example, the maximum number of client connections has been increased to 1,000.<pre xml:space="preserve">solace&gt; show system
+
+System Uptime: 0d 5h 27m 43s
+Last Restart Reason: User request
+
+Scaling:
+   Max Bridges: 25
+   <span style="color: #ff0000;">Max Connections: 1000</span>
+   Max Queue Messages: 100M
+   Max Kafka Bridges: 0
+   Max Kafka Broker Connections: 0
+   Max Subscriptions: 500000
+
+Topic Routing:
+   Subscription Exceptions: Enabled
+   Subscription Exceptions Defer: Enabled
+</pre></li>
+      <li>Optionally, repeat the preceding two steps to increase another scaling parameter.</li>
+      <li>To resume messaging you must restart the <code>msg-backbone</code> service and <code>message-spool</code>.
+<p class="Note">If you are increasing <code>max-subscriptions</code> or the Kafka scaling parameters (Kafka bridges or Kafka broker connections), you do not need to shut down the <code>msg-backbone</code> or <code>message-spool</code>.</p><pre class="Code">solace&gt; enable
+solace# config
+solace(configure)# no hardware message-spool shutdown
+solace(configure)# no service msg-backbone shutdown</pre></li>
+    </ol>
+  </body>
+</html>

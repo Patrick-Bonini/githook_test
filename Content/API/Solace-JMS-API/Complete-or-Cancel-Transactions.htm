@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Completing or Canceling Transactions</h1>
+    <p>Messages that are published and received on a transaction are staged on the Solace PubSub+ event broker. The transaction can either be:</p>
+    <ul>
+      <li>completed through a commit operation (refer to <MadCap:xref href="#using_transacted_sessions_286557732_304253">Committing Transactions</MadCap:xref>)</li>
+      <li>canceled through a rollback operation (refer to <MadCap:xref href="#using_transacted_sessions_286557732_304291">Rolling Back Transactions</MadCap:xref>)</li>
+    </ul>
+    <h2 class="with-rule"><a name="using_transacted_sessions_286557732_304253"/>Committing Transactions</h2>
+    <p>When a <code>commit()</code> is successfully invoked for a transaction, the following occurs:</p>
+    <ul>
+      <li>for publish operations, the staged messages are sent to their destinations</li>
+      <li>for receive operations, the received messages are acknowledged by the consumers and then removed from the endpoints they were spooled to</li>
+    </ul>
+    <p>Commits are blocking operations. After these actions, the transaction is completed, and the next transaction automatically begins.</p>
+    <p>If a commit fails for any reason, a rollback of the entire transaction occurs, and a <code>TransactionRolledBackException</code> is thrown to indicate the failure cause.</p>
+    <h2 class="with-rule"><a name="using_transacted_sessions_286557732_304291"/>Rolling Back Transactions</h2>
+    <p>Instead of completing an active transaction through a commit, a client application can call <code>rollback()</code> to rollback the transaction. When a rollback is performed, the following occurs:</p>
+    <ul>
+      <li>staging information for the active transaction is removed, so that:<ul><li>for publish operations, the published messages are deleted</li><li>for consume operations, messages remain on the endpoints they were spooled to</li></ul></li>
+      <li>a new transaction is automatically generated</li>
+    </ul>
+    <p>Rollbacks are blocking operations. </p>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">If a transacted Session fails due to a network failure or an event broker reset, the client can immediately reconnect (this is automatic if the number of reconnect retries for the client connection is greater than zero), and, if possible, the API reestablishes the transaction that was in progress. If the Session and transaction are not reestablished within three minutes, the event broker automatically rolls back the transaction that was in progress. (For information on setting client reconnect properties, refer to <MadCap:xref href="Managing-Sessions.htm#establishing_connections_577400906_329588">Configuring Connection Time-Outs and Retries</MadCap:xref>.)</p>
+    <h2 class="with-rule"><a name="using_transacted_sessions_286557732_304334"/>Closing Transacted Sessions</h2>
+    <p>To cleanly terminate a transacted Session, the client application should commit the current transaction, and then call<code> close()</code> to close the transacted Session.</p>
+    <p>If a client application closes a transacted Session without first committing the current transaction, the API rolls back that transaction, and it does not automatically reattempt the transaction.</p>
+  </body>
+</html>

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Migrating Appliances from Internal to External Disk</h1>
+    <p>This section describes how to migrate a standalone Guaranteed Messaging appliance from using the internal disk for spooling to using an external disk. The new external disk LUN must be present in the system before migrating the internal disk spool files to the new LUN.</p>
+    <div class="Caution">
+      <p>Migrating from internal to external disk is service affecting. For example, the <b>shutdown</b>  Service CONFIG commands used in this procedure will cause a disruption in customer service when run. You should do this during a maintenance window to reduce service interruption for clients.</p>
+      <p>If you require assistance, or if you have questions about any steps in this procedure, <a href="../../get-support.htm" class="link-internal">contact Solace</a>.</p>
+    </div>
+    <div class="Note">
+      <ul>
+        <li>The procedure discussed in this section is only applicable to Solace PubSub+ appliances.</li>
+        <li>This procedure does not apply to appliance releases older than 7.2.2.</li>
+        <li>Operations below that state they can only be performed by root can now also be performed by a Sysadmin User. For information on configuring Sysadmin Users, refer to <MadCap:xref href="../../Admin/Configuring-Multiple-Shell-Users.htm">Configuring Multiple Linux Shell Users</MadCap:xref>.</li>
+      </ul>
+    </div>
+    <h4><a name="Procedure"/>Steps</h4>
+    <p>To migrate from internal to external disk for Guaranteed Messaging spooling, do the following:</p>
+    <ol>
+      <li>Enter the following command to ensure that message-spool defragmentation is not active:
+            <pre class="Code">solace1&gt; show message-spool
+
+. . .
+
+Defragmentation Status:                   Idle
+
+. . .</pre><p class="Note" MadCap:autonum="&lt;b&gt;:  &lt;/b&gt;">If the message spool defragmentation status is not <code>Idle</code>, wait for the defragmentation process to complete before proceeding.</p></li>
+      <li>Register the appliance HBA with the external array. For details, refer to <MadCap:xref href="Configuring-External-Disk-Arrays.htm">Configuring External Disk Arrays for Guaranteed Messaging</MadCap:xref>.</li>
+      <li>After  registering the appliance HBA with the external array, you must restart the appliance to ensure all changes are detected correctly. Enter the following commands to restart the appliance and update it with the new LUN configuration:
+<pre class="Code">solace1&gt; enable
+solace1# reload
+This command causes a reload of the system.
+Do you want to continue (y/n)? y
+
+solace1#</pre><p class="Note" MadCap:autonum="&lt;b&gt;:  &lt;/b&gt;">After restarting the appliance, do not make any further changes to the external array until you have completed this procedure.</p></li>
+      <li>Enter the <code>show hardware details</code> command to confirm that the new external disk LUN is available according to the new WWN.
+        <p> Obtain the WWN of the new LUN from your storage administrator.</p><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example <code>show hardware details</code> Command Output:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code" xml:space="preserve">solace1&gt; show hardware details
+
+. . .
+
+  Slot 1/4: Host Bus Adapter Blade
+  Product #:                HBA-0204FC-02-A
+  Serial #:                 RFC0609G02361
+  Model Name:               QLE2462
+  Model Description:        PCI-Express Dual Channel 4Gb Fibre Channel HBA
+  Driver Version:           8.04.00.03-k
+
+. . .
+
+  Attached devices
+  LUN 0
+    State:          Ready
+    Size:           22G
+    WWN  :          60:06:01:60:e8:60:1c:00:4e:32:ab:65:55:df:e2:11</pre></MadCap:dropDownBody></MadCap:dropDown></p><p class="Note" MadCap:autonum="&lt;b&gt;:  &lt;/b&gt;">The examples in this procedure use 60:06:01:60:e8:60:1c:00:4e:32:ab:65:55:df:e2:11 as the WWN of the new LUN.</p><p class="Note" MadCap:autonum="&lt;b&gt;:  &lt;/b&gt;">Don't proceed further until the new LUN is visible. </p></li>
+      <li>
+        <p>Partition and create the file system on the new LUN. For details on how to do this, see <MadCap:xref href="Configuring-External-Disk-Arrays.htm">Configuring External Disk Arrays for Guaranteed Messaging</MadCap:xref>.</p>
+      </li>
+      <li>Shut down the message spool on the event broker to stop Guaranteed Messaging:
+        <pre class="Code">solace1(configure)# hardware message-spool
+solace1(configure/hardware/message-spool)# shutdown</pre></li>
+      <li>Using root access to the event broker, mount the <code>p1</code> partition of the new external disk LUN to <code>/usr/sw/externalSpool/p1</code>. 
+        <p>This partition is located in <code>/dev/mapper/</code> and is named <code>&lt;wwn&gt;&lt;p#&gt;</code>.</p><pre class="Code">mount /dev/mapper/360060160e8601c004e32ab6555dfe211p1  /usr/sw/externalSpool/p1</pre></li>
+      <li>Copy all directories and files from the internal spool directory to the external spool p1 directory.<pre class="Code">cp -a /usr/sw/internalSpool/* /usr/sw/externalSpool/p1</pre></li>
+      <li>Unmount the <code>p1</code> partition of the new external LUN.<pre class="Code">umount /usr/sw/externalSpool/p1</pre></li>
+      <li>Enter the following commands on the event broker to configure the message spool to use the new external disk LUN, using the WWN of the new LUN as displayed in step 4.<pre class="Code">solace1# configure
+solace1(configure)# hardware message-spool
+solace1(configure/hardware/message-spool)# no internal-disk
+solace1(configure/hardware/message-spool)# disk-array wwn 60:06:01:60:e8:60:1c:00:4e:32:ab:65:55:df:e2:11</pre></li>
+      <li>Enter the following CONFIG commands to start Guaranteed Messaging and message spooling:<pre class="Code">solace1# configure
+solace1(configure)# no hardware message-spool shutdown primary</pre></li>
+    </ol>
+  </body>
+</html>

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Configuring CRL Certificate Revocation Checking</h1>
+    <p>To configure a Solace PubSub+ event broker to use a certificate authority (CA) with Certificate Revocation List (CRL) revocation checking, complete the following steps:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Step1">Step 1: Review Prerequisites </MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Step2">Step 2: Configure Certificate Authorities</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Step3">Step 3: Configure CRL Parameters</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Step4">Step 4: Enable CA Revocation Checking </MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Step5">Step 5: Configure Message VPN Overrides</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Step6">Step 6: Enable CRL Certificate Revocation Checking</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Step1"/>Step 1: Review Prerequisites </h2>
+    <MadCap:snippetBlock src="../Resources/Snippets/Prereq-Cert-Revocation.flsnp"/>
+    <h2 class="with-rule"><a name="Step2"/>Step 2: Configure Certificate Authorities</h2>
+    <p>To configure a CA, see <MadCap:xref href="Managing-Certificate-Authorities.htm#configure-client-ca-list">Configuring Certificate Authorities</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Step3"/>Step 3: Configure CRL Parameters</h2>
+    <p>The URL for the CRL source must be configured for the event broker to download the CRL. Optionally, you can configure a specific refresh schedule for the CRL, after which the event broker will attempt to download a new copy of the CRL.</p>
+    <ul>
+      <li>
+        <p>To configure the URL, enter the following commands:</p>
+        <p class="Code">solace(configure/authentication/client-certificate-authority)# revocation-check crl<br/>solace(configure/authentication/client-certificate-authority/revocation-check/crl)# url &lt;url&gt;<br/></p>
+        <p><u>Where</u>:</p>
+        <p><code>url</code> indicates the location of the CRL source. A maximum of 2048 characters can be used for the <code>&lt;url&gt;</code>. The <code>url</code> must be a complete URL including the <code>http://</code>. Only HTTP URLs are supported.</p>
+        <p class="Note">A shutdown of the revocation checking is required before changing the CRL URL.			
+			</p>
+      </li>
+      <li>
+        <p>To configure the CRL refresh schedule, enter the following commands:</p>
+        <p class="Code">solace(configure/authentication/client-certificate-authority)# revocation-check crl<br/>solace(configure/authentication/client-certificate-authority/revocation-check/crl)# refresh-schedule [days &lt;days-of-week] times &lt;times-of-day&gt;
+						</p>
+        <p><u>Where</u>:</p>
+        <p><code>&lt;days-of-week&gt;</code> is either the entry “daily”, or a list of named days from Sunday to Saturday separated by commas with no spaces, or a list of numbers from 0 to 6 representing the named days separated by commas with no spaces, where 0 is Sunday, 1 is Monday, on through to 6 for Saturday. Default is “daily”.</p>
+        <p><code>&lt;times-of-day&gt;</code> is either the entry “hourly”, or a list of up to four times of day in the format hh:mm separated by commas without spaces, where hh is 0 to 23 representing hours, and mm is 0 to 59 representing minutes.</p>
+        <p class="Tip">To trigger an immediate attempt to download the CRL, enter the following Admin command:</p>
+        <p class="Code">solace(admin)# client-certificate-authority &lt;ca-name&gt;<br/>solace(admin/client-certificate-authority)# refresh-crl</p>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Step4"/>Step 4: Enable CA Revocation Checking </h2>
+    <p>For the event broker to successfully use the CA, enable the revocation checking:</p>
+    <p class="Code">solace(configure/authentication/client-certificate-authority/revocation-check/crl)# exit<br/>solace(configure/authentication/client-certificate-authority/revocation-check)# no shutdown</p>
+    <h2 class="with-rule"><a name="Step5"/>Step 5: Configure Message VPN Overrides</h2>
+    <p>You can optionally configure revocation overrides for specific Message VPNs, based on the revocation status of the client certificates.</p>
+    <p>To configure the revocation checking overrides, see <MadCap:xref href="../Features/VPN/Configuring-VPNs.htm#Configur">Configuring Message VPN Overrides</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Step6"/>Step 6: Enable CRL Certificate Revocation Checking</h2>
+    <p>Once CA and CRL configurations are completed, certificate revocation checking can be enabled for the event broker.</p>
+    <ol>
+      <li>Enable CRL certificate revocation checking for the event broker:<p class="Code">solace(configure)# authentication<br/>solace(configure/authentication)# client-certificate-revocation-checking crl</p></li>
+      <li>Verify if the CRL certificate revocation checking has been enabled:
+
+			<p class="Code">solace (configure/authentication)# show authentication</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p class="Code">CLI and SEMP user class:<br/>    radius-domain:<br/>    auth-type: Internal database authentication <br/>    profile-name:crea<br/><br/>Replace Duplicate Client Connections:   yes<br/>Client Certificate Revocation Checking: crl<br/><br/>Shell Users                                            Direct shell login enabled<br/>=====================================================  ==========================<br/>support                                                                       Yes<br/></p></MadCap:dropDownBody></MadCap:dropDown></li>
+    </ol>
+  </body>
+</html>

@@ -1,0 +1,464 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <style>
+			img { 
+			mc-thumbnail-max-height: auto;mc-thumbnail-max-width: 500px;mc-thumbnail: popup; padding-top: 10px;
+			padding-bottom: 10px;
+			}
+			
+			.image-inline{
+			mc-thumbnail-max-height: none;mc-thumbnail-max-width: none;mc-thumbnail:none;
+			}
+		
+		</style>
+  </head>
+  <body>
+    <h1>Overview: How Apps Interact with <MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging Components</h1>
+    <p>In this section we'll take you on a tour of the <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker's messaging components, and explain at a high level how they make data move from producers to the event broker, and from the event broker to consumers.  </p>
+    <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker provides a foundation for multi-protocol and standards eventing including <MadCap:variable name="Variables.CompanyName"/> Message Format (SMF), JMS1.1, MQTT3.11, REST, and AMQP1.0. As events move through the broker, they are translated from an ingress messaging protocol to an egress messaging protocol for each consumer receiving messages. Given the range of protocol support, it's important to keep in mind that each open source protocol your app might make use of adds its own twist on how the broker's messaging components operate. First we'll talk about how the <MadCap:variable name="Variables.CompanyName"/> SMF protocol works, and then we'll discuss variations introduced by others.</p>
+    <p>On our tour, we'll look at how things operate from the perspective of your application. So, let's get started with <MadCap:xref href="#SMF">SMF</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="SMF"/>SMF</h2>
+    <p>We're going to show you how the <MadCap:variable name="Product-Names.pubsub_brand_only"/> SMF protocol makes use of the <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker's messaging components to move data from producers to the broker, and from the broker to consumers, all from the point-of-view of your app. There are a couple of ways we're going to do this:</p>
+    <ul>
+      <li>
+        <p>The <MadCap:xref href="#Message">SMF Process Flow</MadCap:xref> section contains a diagram that illustrates the steps from establishing a connection through to getting data flowing. This diagram begins with your app and moves through the broker's components</p>
+      </li>
+      <li>
+        <p>The <MadCap:xref href="#Message2">SMF Component Operations</MadCap:xref> section has more details about the steps described in the process flow.</p>
+      </li>
+    </ul>
+    <h3><a name="Message"/>SMF Process Flow</h3>
+    <p>In the diagram below, follow the steps from establishing a connection to the event broker through to starting the message flow.</p>
+    <div class="responsive-maps">
+      <img src="../Resources/Images/API/Component-Map-SMF.png" class="center" alt=""/>
+    </div>
+    <p>The circled numbers in the diagram correspond to the numbered steps described in detail as follows:</p>
+    <h4><a name="Steps"/>Steps 1 - 5</h4>
+    <p>These steps deal with the operations the application and event broker undergo to establish a connection and get ready for event messaging.</p>
+    <ol>
+      <li>Application initiates <MadCap:variable name="Variables.CompanyName"/> API and <MadCap:variable name="Variables.CompanyName"/> Context (Optional, can use default).
+            </li>
+      <li>Application Create and config session, Username, password, broker DNS:Port, TLS, Compression
+                <ol style="list-style-type: lower-alpha;"><li>session = JCSMPFactory.onlyInstance().createSession(properties)</li></ol></li>
+      <li>Application connect session:
+                <ol style="list-style-type: lower-alpha;"><li>session.connect(); </li><li>Host initiates TCP session </li><li>Session sends CONNECT message</li></ol></li>
+      <li>Broker authenticates connection (happens automatically after step 3)
+            </li>
+      <li>Broker authorizes connection (happens automatically after step 4): an event broker sends CONNECT ACK
+            </li>
+    </ol>
+    <h4><a name="Steps2"/>Steps 6, 7, 9 and 10</h4>
+    <p>These steps focus on operations associated with sending and receiving event messages</p>
+    <ol start="6">
+      <li>Application SDK creates publisher flow:
+                <ol style="list-style-type: lower-alpha;"><li> prod = session.getMessageProducer(..) </li><li> SDK sends last messageID sent and last messageID ACK received </li><li>Broker sends last MessageID received and last messageID ACK sent </li><li> Application maintains this state as message flow to allow for correct re-transmissions as required on reconnects.</li></ol></li>
+      <li>When a message is published:
+                <ol style="list-style-type: lower-alpha;"><li> prod.send(msg,topic) </li><li>Application sdk sends message and decrements available window by one </li><li>Event broker receives, routes, and persists message </li><li>Event broker sends ACK </li><li>Application SDK receives ACK and increments available window by one.</li></ol></li>
+      <li value="9">Application creates consumer flow, endpoint name, windowing sizes:
+                <ol style="list-style-type: lower-alpha;"><li> cons = session.createFlow(listener, flow_prop) </li><li> Application connect flow </li><li>Application API handshakes flow and binds to Queue/Endpoint </li><li> Messages are then able to move from broker to subscriber client.</li></ol></li>
+      <li>Application starts flow:
+                <ol style="list-style-type: lower-alpha;"><li> cons.start() </li><li>Broker sends message and decrements available window by one </li><li>Client API receives message and passes to application </li><li> Client SDK sends transport ACK </li><li> Broker receives ACK and increments available window by one </li><li> Application sends Application ACK when finished with message </li><li>Broker receives Application ACK and deletes message from queue.</li></ol></li>
+    </ol>
+    <h4>
+      <b>Step 8</b>
+    </h4>
+    <p>This step deals with the establishment of application subscriptions.</p>
+    <ol>
+      <li value="8">(Optional, can be admin or direct subn) Application Subscribes by adding subscription to queue:
+                	<ol style="list-style-type: lower-alpha;"><li>session.addSubscription(queue, topic,...)</li><li>Application sends SUBSCRIBE message with topic and endpoint</li><li>API sends message </li><li>Broker adds subscription to connection or backing queue based on subscription endpoint </li><li>Broker can send SUBACK.</li></ol></li>
+    </ol>
+    <p>
+      <u>Find out more about the <MadCap:variable name="Product-Names.pubsub_brand_only"/> components that are involved</u>
+    </p>
+    <ul>
+      <li><a href="Core-Concepts-Solace-API-Concepts.htm" class="link-internal">Solace API</a>: An overview of Solace API fundamentals.</li>
+      <li><a href="API-Developer-Guide/Publishing-Guaranteed-Messages.htm" class="link-internal">Producer AD Flow</a>: A client application can publish Guaranteed messages, that is, messages that the client application assigns a Persistent or Non‑Persistent delivery mode to Queue or Topic destinations.</li>
+      <li><a href="API-Developer-Guide/Receiving-Guaranteed-Messages.htm" class="link-internal">Consumer AD Flow</a>: To receive Guaranteed messages, a client must create a consumer Flow within a Session, and bind that flow to an endpoint on an event broker that messages are published or attracted to.</li>
+      <li><a href="../Security/Configuring-Client-Profiles.htm" class="link-internal">Client Profile</a>: Client profiles are associated with client username accounts so that you can easily apply common configurations to groups of clients.</li>
+      <li><a href="../Security/ACL-Overview.htm" class="link-internal">ACL Profile</a>: After a client is successfully authenticated, the ACL profile assigned to the client username used by the client, or the LDAP the authorization groups that the client belongs to (when LDAP authorization is used), is checked.</li>
+      <li><MadCap:xref href="../Get-Started/message-vpn.htm">Message VPNs</MadCap:xref>: Message Virtual Private Networks (VPNs) are managed objects on <MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers that allow for the segregation of topic space and clients.</li>
+      <li><a href="../Get-Started/what-are-topics.htm" class="link-internal">Route</a>: Understand the fundamentals of publishing and subscribing to topics.</li>
+      <li><a href="../Security/Configuring-Client-Usernames.htm" class="link-internal">Client Username</a>: A client is only authorized to connect to a Message VPN that is associated with a client username that that client has been assigned.</li>
+      <li><a href="../Messaging/Guaranteed-Msg/Basic-Guaranteed-Messsaging-Operation.htm" class="link-internal">Queue</a>: Basic operation of guaranteed messaging.</li>
+    </ul>
+    <h3><a name="Message2"/>SMF Component Operations</h3>
+    <p>In this section we're going to elaborate on the steps shown in the process flow diagram. </p>
+    <p>As we previously noted, <MadCap:xref href="#Steps">Steps 1 through 5</MadCap:xref> deal with the operations the application and event broker go through to establish a connection and get ready for event messaging. The following sections provide more information on those steps:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Instanti">Instantiating Solace API and creating a Solace Session</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#TCP">TCP Session properties</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#TCP2">TCP Connection</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Broker">Broker authorizes connection</MadCap:xref>
+      </li>
+    </ul>
+    <h4><a name="Instanti"/>Instantiating the <MadCap:variable name="Variables.CompanyName"/> API and creating a <MadCap:variable name="Variables.CompanyName"/> Session </h4>
+    <p>Your client applications instantiate the <MadCap:variable name="Variables.CompanyName"/> API.  From here they can create <MadCap:variable name="Variables.CompanyName"/> Contexts (which create a worker thread for event processing), and, subsequently, a Solace Session to connect to the  broker.  You have the flexibility to control the threading model by deciding how many sessions to add to a context.  You can have multiple sessions per context, but only one context per session.  If you need more threads to handle a single session, you'll need to pass event processing into an application worker thread pool.  Also, a single session can only connect to a single broker instance at a time. </p>
+    <p>The Solace Session connection opens a TCP flow-controlled, bi-directional, connection from your application to the broker.  This bi-directional session is the foundation of all communications for producers and consumers to send and receive messages for all Message Exchange Patterns (MEPs).</p>
+    <h4><a name="TCP"/>TCP Session properties</h4>
+    <p>Fundamental properties of the TCP session are controlled via API session properties. This includes properties such as TCP (and possibly application) buffer sizes, and connection and reconnection behaviors.  The session properties dictate the type of connection, be it plain-text, compressed , or encrypted. Finally, session properties can control application keep-alives from the client to the broker, which are used to detect connection failures.</p>
+    <h4><a name="TCP2"/>TCP Connection</h4>
+    <p>Now that we've discussed how an application connects, let's talk about the connection itself and its behavior.  </p>
+    <p>As previously mentioned, every connection that sends or receives data is a stateful bi-directional TCP connection.  On top of the TCP connection is a messaging layer session, which begins with a connect message, or a data message that contains credential headers that are used during authentication, which is discussed in <MadCap:xref href="../Security/Client-Authentication.htm">Client Authentication</MadCap:xref>.  Based on destination port and connection header properties in the connection request, the broker will expect Session properties such as compression, encryption, and so on.</p>
+    <h4><a name="Broker"/>Broker authorizes connection</h4>
+    <p>Once a session is connected to the required services and authenticated, we move on to the authorization stage.  Based on the client-username in the connection credentials, two profiles are applied: the Client Profile and the ACL Profile.</p>
+    <ul>
+      <li>The Client Profile sets the broker resources the client can access. This includes configuration options like the ability to send and receive persistent messages, the ability to create queues, and set how many system resource buffers the client’s connection can consume. For more information, refer to <MadCap:xref href="../Security/Configuring-Client-Profiles.htm">Client Profile Configuration</MadCap:xref>.</li>
+      <li>The ACL Profile defines which data events the client can produce and consume. For more information refer to <MadCap:xref href="../Security/Granting-Clients-Access.htm">Controlling Client Access with ACL Profiles</MadCap:xref>.</li>
+    </ul>
+    <p><MadCap:xref href="#Steps2">Steps 6, 7, 9 and 10</MadCap:xref> focus on operations associated with sending and receiving event messages. You can find background information about those steps discussed below in <MadCap:xref href="#Event">Event processing: A Little More Detail</MadCap:xref>.</p>
+    <h4><a name="Event"/>Event processing Detail</h4>
+    <p>Now that we have an authenticated and authorized client connection, we're ready to send and receive messages. </p>
+    <p>For Direct event messaging this is quite simple, the client API contains a publish method to publish directly over the messaging session to send events and a subscribe directly to the messaging session connection to receive events.  There are no messaging layer acknowledgments, timers, or re-transmissions, there are only TCP layer acknowledgments and retransmissions.  If the TCP connection fails, and the messaging session is lost, then the events are also lost.</p>
+    <p>For Persistent event messaging things are a bit different in that there is messaging layer windowing, timers, acknowledgments, and retransmissions. This implies there's another layer of statefulness associated with persistent event publish and consumption. Each consumer state machine encapsulates an endpoint flow in the client API, and a Queue / Endpoint binding on the broker. These flows contain an endpoint, window, available window, last message sent, and last message acknowledged. This information allows the client to reconnect across sessions, and continue publish / consumption where the last session left off. If the Client-Profile allows for publishing persistent messages, there's at least one producer flow to allow publishing clients to send persistent message. If the Client-Profile allows for consuming persistent messages, there's a consumer flow per endpoint.</p>
+    <h2 class="with-rule"><a name="MQTT"/>MQTT</h2>
+    <p> Based on our understanding of <a href="#SMF" class="link-internal">SMF's</a> operation, let's now look at how the MQTT service makes use of the PubSub+ event broker's messaging components to move data from an MQTT producer to the broker, and from the broker to MQTT consumers. First, we'll look at the <MadCap:xref href="#Differen2">Differences between MQTT and SMF</MadCap:xref>, and then examine the <MadCap:xref href="#MQTT2">MQTT Component Flow Map</MadCap:xref>.</p>
+    <h3><a name="Differen2"/>Differences between MQTT and SMF</h3>
+    <ul>
+      <li>
+        <b>VPN</b>
+      </li>
+      <p>There is no concept of a message VPN in MQTT, so for each unique message VPN created a new listen port needs to be assigned for each variant of MQTT traffic, MQTT/TCP, MQTT/WS, MQTT/TLS, MQTT/WSS.</p>
+      <li>
+        <b>QoS</b>
+      </li>
+      <p>For QoS0 and QoS1 application publication, the system behaves as it does for SMF direct and persistent messaging, where QoS0 is like direct and QoS1 is like persistent.  Qos2 published messages are processed as QoS1 messages by the broker. For QoS1 subscriptions, a unique, dynamically created queue is created for each MQTT session, and subscriptions are added to that queue. This allows the queue to attract events, and the MQTT consumer can retrieve these events once they connect. Also, there's no handshake between the API and broker to learn the last message, nor is there an ACK received on re-connect, which can lead to additional re-transmissions.</p>
+    </ul>
+    <h3><a name="MQTT2"/>MQTT Process Flow</h3>
+    <p>In the diagram below, follow the steps from establishing a connection to the event broker through to starting the data flow.</p>
+    <div class="responsive-maps">
+      <img src="../Resources/Images/API/Component-Map-MQTT.png" alt=""/>
+    </div>
+    <p>The circled numbers in the diagram correspond to the numbered steps described in detail as follows:</p>
+    <h4>Steps 1 - 4</h4>
+    <p>These steps deal with the operations the application and event broker undergo to establish a connection and get ready for event messaging.</p>
+    <ol>
+      <li>Application initiates MQTT SDK:
+                <ol style="list-style-type: lower-alpha;"><li>New MqttClient(host, clientName); </li><li>Application Create and config session, broker DNS:Port, TLS, Compression</li></ol></li>
+      <li>Application connect session, Username, password:
+                <ol style="list-style-type: lower-alpha;"><li> mqttClient.connect(connOpts);</li><li> Host initiates TCP session </li><li>c. Broker receives messaging layer connect.</li></ol></li>
+      <li>
+        <p>Broker authenticates connections</p>
+      </li>
+      <li>
+        <p>Broker authorizes connection</p>
+      </li>
+    </ol>
+    <h4>Steps 5 and 7</h4>
+    <p>These steps focus on operations associated with sending and receiving event messages</p>
+    <ol>
+      <li value="5">
+        <p>When a message is published: </p>
+        <ol style="list-style-type: lower-alpha;">
+          <li>mqttClient.publish(topic, message);</li>
+          <li>Application sends PUBLISH message</li>
+          <li>SDK store message in memory or to disk</li>
+          <li>SDK sends message</li>
+          <li>Broker receives message, routes and persists according to QoS</li>
+          <li> Broker sends PUBACK</li>
+          <li> SDK deletes message</li>
+        </ol>
+      </li>
+      <li value="7">
+        <p>When Broker sends a message:</p>
+        <ol style="list-style-type: lower-alpha;">
+          <li>Broker sends PUBLISH message and decrements available window</li>
+          <li>Client SDK receives message and passes to application</li>
+          <li>Application sends PUBACK when finished with message</li>
+          <li>Broker receives PUBACK and deletes message from queue</li>
+        </ol>
+      </li>
+    </ol>
+    <h4>Step 6</h4>
+    <p>This step deals with the establishment of application subscriptions.</p>
+    <ol>
+      <li value="6">
+        <p>When Applications subscribe:</p>
+        <ol style="list-style-type: lower-alpha;">
+          <li>mqttClient.subscribe(topic, 1);</li>
+          <li>Application sends SUBSCRIBE message</li>
+          <li>SDK sends message</li>
+          <li> Broker adds subscription to connection or backing queue based on subscription QoS</li>
+          <li>Broker sends SUBACK</li>
+        </ol>
+      </li>
+    </ol>
+    <p style="font-weight: bold;">
+      <u style="font-weight: normal;">Find out more about the <MadCap:variable name="Product-Names.pubsub_brand_only"/> components that are involved</u>
+    </p>
+    <ul>
+      <li><a href="../Security/Configuring-Client-Profiles.htm" class="link-internal">Client Profile</a>: Client profiles are associated with client username accounts so that you can easily apply common configurations to groups of clients.</li>
+      <li><a href="../Security/ACL-Overview.htm" class="link-internal">ACL Profile</a>: After a client is successfully authenticated, the ACL profile assigned to the client username used by the client, or the LDAP the authorization groups that the client belongs to (when LDAP authorization is used), is checked.</li>
+      <li><MadCap:xref href="../Get-Started/message-vpn.htm">Message VPNs</MadCap:xref>: Message Virtual Private Networks (VPNs) are managed objects on <MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers that allow for the segregation of topic space and clients.</li>
+      <li><a href="../Get-Started/what-are-topics.htm" class="link-internal">Route</a>: Understand the fundamentals of publishing and subscribing to topics.</li>
+      <li><a href="../Security/Configuring-Client-Usernames.htm" class="link-internal">Client Username</a>: A client is only authorized to connect to a Message VPN that is associated with a client username that that client has been assigned.</li>
+      <li><a href="../Messaging/Guaranteed-Msg/Basic-Guaranteed-Messsaging-Operation.htm" class="link-internal">Queue</a>: Basic operation of guaranteed messaging.</li>
+      <li><a href="https://www.eclipse.org/paho/files/javadoc/index.html" target="_blank" class="link-offsite">MQTT Client</a>: Learn more about MQTT Client at the Eclipse Paho JAVA documentation.</li>
+    </ul>
+    <h3><a name="Next"/>Next Steps</h3>
+    <p>For more information on how to use MQTT with <MadCap:variable name="Product-Names.pubsub_brand_only"/>, refer to the <MadCap:xref href="MQTT/MQTT-get-started.htm">MQTT</MadCap:xref> pages in the <MadCap:xref href="Open-APIs-Protocols.htm">Open APIs &amp; Protocols</MadCap:xref> section.</p>
+    <h2 class="with-rule"><a name="AMQP"/>AMQP</h2>
+    <p>The walk-through discussed in this section is a little different than that shown in previous ones. Those were based on Java. This one is based on Node.js. For AMQP Java, the JMS2.0 programing interface seems to be standard and would be the preferred option. First, we'll look at the <MadCap:xref href="#Differen4">Differences between AMQP and SMF</MadCap:xref>, and then examine the <MadCap:xref href="#AMQP2">AMQP Component Flow Map</MadCap:xref>.</p>
+    <h3><a name="Differen4"/>Differences between Solace implementation of AMQP and SMF</h3>
+    <ul>
+      <li>
+        <b>Durability</b>
+      </li>
+      <p>Currently PubSub+'s AMQP solution processes only  persistent messages.</p>
+      <li>
+        <b>VPN</b>
+      </li>
+      <p>There's no concept of a Message VPN in AMQP, so for each unique message VPN created, a new listen port needs to be assigned for AMQP/TCP and AMQP/TLS.</p>
+    </ul>
+    <h3><a name="AMQP2"/>AMQP Process Flow</h3>
+    <p>In the diagram below, follow the steps from establishing a connection to the event broker through to starting the data flow.</p>
+    <div class="responsive-maps">
+      <img src="../Resources/Images/API/Component-Map-AMQP.png" alt=""/>
+    </div>
+    <p>The circled numbers in the diagram correspond to the numbered steps described in detail as follows:</p>
+    <h4>Steps 1 - 6</h4>
+    <p>These steps deal with the operations the app and broker undergo to establish a connection and get ready for event messaging.</p>
+    <ol>
+      <li>
+                Application creates an AMQ10 Client:
+                <p> a. new AMQP.Client(AMQP.Policy.merge({defaultSubjects : false}));</p></li>
+      <li>Application connects the client:               <ol style="list-style-type: lower-alpha;"><li>amqpClient.connect(pubsub+broker)</li></ol></li>
+      <li>Application Node initiates TCP session:
+                <ol style="list-style-type: lower-alpha;"><li>Host initiates TCP session                    </li><li>Connect opens incoming and outgoing channels for the client connection                    </li></ol></li>
+      <li>Broker authenticates connection, (Automatically from Step 3).
+            </li>
+      <li>Broker authorizes connection, (Automatic from 4):
+                <ol style="list-style-type: lower-alpha;"><li>Broker sends CONNECT ACK</li></ol></li>
+      <li>Application creates Sender:
+                <ol style="list-style-type: lower-alpha;"><li>amqpClient.createSender(queueName)</li><li>SDK creates a senderSession</li></ol></li>
+    </ol>
+    <h4>Steps 8 and 9</h4>
+    <p>These steps focus on operations associated with sending and receiving event messages.</p>
+    <ol>
+      <li value="8">Application create Receiver.
+                <ol style="list-style-type: lower-alpha;"><li>amqpClient.createReceiver(queueName)</li><li>SDK creates a receiverSession</li></ol></li>
+      <li>Application starts callback for messages and errors:
+                <ol style="list-style-type: lower-alpha;"><li>amqpReceiver.on('message',...)</li><li>data placed in AMQP frame assigned a transferId</li><li> data sent then increment its next-outgoing-id, decrement its remote-incoming-window</li><li>SDK will ack frame with disposition frame</li></ol></li>
+    </ol>
+    <h4>Step 7</h4>
+    <p>This step deals with the establishment of application subscriptions.</p>
+    <ol>
+      <li value="7">When a message is published:
+                <ol style="list-style-type: lower-alpha;"><li> amqpSender.send(message)</li><li> data placed in AMQP frame assigned a transferId</li><li>data sent then increment its next-outgoing-id, decrement its remote-incoming-window</li><li>Broker will ack frame with disposition frame</li></ol></li>
+    </ol>
+    <p>
+      <u>Find out more about the <MadCap:variable name="Product-Names.pubsub_brand_only"/> components that are involved</u>
+    </p>
+    <ul>
+      <li><a href="../Security/Configuring-Client-Profiles.htm" class="link-internal">Client Profile</a>: Client profiles are associated with client username accounts so that you can easily apply common configurations to groups of clients.</li>
+      <li><a href="../Security/ACL-Overview.htm" class="link-internal">ACL Profile</a>: After a client is successfully authenticated, the ACL profile assigned to the client username used by the client, or the LDAP the authorization groups that the client belongs to (when LDAP authorization is used), is checked.</li>
+      <li><MadCap:xref href="../Get-Started/message-vpn.htm">Message VPNs</MadCap:xref>: Message Virtual Private Networks (VPNs) are managed objects on <MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers that allow for the segregation of topic space and clients.</li>
+      <li><a href="../Get-Started/what-are-topics.htm" class="link-internal">Route</a>: Understand the fundamentals of publishing and subscribing to topics.</li>
+      <li><a href="../Security/Configuring-Client-Usernames.htm" class="link-internal">Client Username</a>: A client is only authorized to connect to a Message VPN that is associated with a client username that that client has been assigned.</li>
+      <li><a href="../Messaging/Guaranteed-Msg/Basic-Guaranteed-Messsaging-Operation.htm" class="link-internal">Queue</a>: Basic operation of guaranteed messaging.</li>
+    </ul>
+    <h3><a name="Next2"/>Next Steps</h3>
+    <p>For more information on how to use AMQP with <MadCap:variable name="Product-Names.pubsub_brand_only"/>, refer to the <MadCap:xref href="AMQP/AMQP-get-started.htm">AMQP 1.0</MadCap:xref> pages in the <MadCap:xref href="Open-APIs-Protocols.htm">Open APIs &amp; Protocols</MadCap:xref> section.</p>
+    <h2 class="with-rule"><a name="JMS"/>JMS</h2>
+    <p>Now that we've had a look at <a href="#SMF" class="link-internal">SMF's</a> operation, we're in a position to use that to understand the twist JMS has on the operation of the broker's components. First, we'll look at the <MadCap:xref href="#Differen">Differences between JMS and SMF</MadCap:xref>, and then examine the <MadCap:xref href="#JMS2">JMS Component Flow Map</MadCap:xref>.</p>
+    <p>One other thing we'll point out is that the differences between JMS over SMF documented in this section are also the differences between JMS over AMQP.</p>
+    <h3><a name="Differen"/>Differences between JMS and SMF</h3>
+    <p>You should note that the differences shown here, the differences between JMS over SMF, are also the differences between JMS over AMQP.</p>
+    <ul>
+      <li>
+        <b>Persistent and Non-Persistent publisher flows</b>
+      </li>
+      <p>The JMS specification mandates synchronous and asynchronous data movement.  All messages published as persistent are sent on a publisher flow with window of one and are synchronous; non-persistent messages can be sent within a configurable window on a second publisher flow.</p>
+      <li>
+        <b>JNDI</b>
+      </li>
+      <p>To use a broker as the JNDI server, the JMS API lazily opens a second session to do JNDI lookups.  Although this session isn't used to send data, it could be required to resolve JNDI names of the endpoints, and so on to complete the data send and receive functions.</p>
+      <p>Further Information on JNDI service can found in <MadCap:xref href="Solace-JMS-API/Managing-Solace-JNDI-Objects.htm">Solace JNDI Objects</MadCap:xref>.</p>
+      <li>
+        <b>Topic Endpoints</b>
+      </li>
+      <p>Although SMF supports topic endpoints, its topic-to-queue mapping features are much more powerful and are the recommended approach. JMS doesn't have a programmatic interface for topic-to-queue mapping and therefore recommends topic endpoints.</p>
+      <p> For more information, refer to <MadCap:xref href="../Messaging/Guaranteed-Msg/Topic-Endpoints.htm">Topic Endpoints</MadCap:xref>.</p>
+    </ul>
+    <h3><a name="JMS2"/>JMS Process Flow</h3>
+    <p>In the diagram below, follow the steps from establishing a connection to the event broker through to starting the data flow.</p>
+    <div class="responsive-maps">
+      <img src="../Resources/Images/API/Component-Map-JMS.png" usemap="#map2" alt=""/>
+    </div>
+    <p>The circled numbers in the diagram correspond to the numbered steps described in detail as follows:</p>
+    <h4>Steps 1 - 5 </h4>
+    <p>These steps deal with the operations the app and broker go through to establish a connection and get ready for event messaging.</p>
+    <ol>
+      <li>Application initiates JMS SDK which starts a single Solace Context.
+                <ol style="list-style-type: lower-alpha;"><li> Application Creates initialContext , initialContext(env) with username, password, broker URL</li></ol></li>
+      <li>(Optional, can be programmatically created) Application does JNDI lookups to find context factory information, initialContext.lookup(CONNECTION_FACTORY_JNDI_NAME):              <ol style="list-style-type: lower-alpha;"><li>This provides information such as messaging credentials and default message QoS, TLS, Compression</li></ol></li>
+      <li>Application connect connection to broker, connectionFactory.createConnection():
+                <ol style="list-style-type: lower-alpha;"><li>Host initiates TCP session</li><li>Broker receives messaging layer connect</li></ol></li>
+      <li>Broker authenticates connection            </li>
+      <li>Broker authorizes connection            </li>
+    </ol>
+    <h4>Steps 6, 7, 8, 10, and 11</h4>
+    <p>These steps focus on operations associated with sending and receiving event messages.</p>
+    <ol>
+      <li value="6">Application does JNDI lookups to find endpoint names, initialContext.lookup(QUEUE_JNDI_NAME).
+            </li>
+      <li>Application SDK creates producer:
+                <ol style="list-style-type: lower-alpha;"><li> session.createProducer(..); </li><li>SDK sends last messageID sent and last messageID ACK received</li><li>Broker sends last MessageID receives and last messageID ACK sent</li><li>Application maintains this state as message flow to allow for correct re-transmissions as required on reconnects</li></ol></li>
+      <li>
+        <p>When producer publishes a message:</p>
+        <ol style="list-style-type: lower-alpha;">
+          <li>producer.send(topic, message, DeliveryMode, Priority, TTL)</li>
+          <li> Application sdk sends message and decrements available window by one</li>
+          <li>Event broker receives, routes and persists message</li>
+          <li>Event broker sends ACK</li>
+          <li> Application SDK receives ACK and increments available window by one</li>
+        </ol>
+      </li>
+      <li value="10">(Optional can poll for message) Application create listener:
+                <ol style="list-style-type: lower-alpha;"><li> consumer.setMessageListener(..)</li></ol></li>
+      <li>
+        <p>Application starts connection, which starts all consumers:</p>
+        <ol style="list-style-type: lower-alpha;">
+          <li>connection.start()</li>
+          <li>Broker sends message and decrements available window by one</li>
+          <li>Client SDK receives message and passes to application</li>
+          <li>Client SDK sends transport ACK</li>
+          <li>Broker receives ACK and increments available window by one</li>
+          <li> Application sends Application ACK when finished with message</li>
+          <li>Broker receives Application ACK and deletes message from queue.</li>
+        </ol>
+      </li>
+    </ol>
+    <h4>Step 9</h4>
+    <p>This step deals with the establishment of application subscriptions.</p>
+    <ol>
+      <li value="9">(Optional for Topic Endpoints only) Application adds subscriptions:
+                <ol style="list-style-type: lower-alpha;"><li>session.createConsumer(topic);</li><li>Application sends SUBSCRIBE message with topic and endpoint</li><li>SDK sends message</li><li> Broker adds subscription to connection or topic endpoint</li><li>Broker can send SUBACK</li></ol></li>
+    </ol>
+    <p>For AMQP, context and queue names are created programmatically, and an example how to create them is shown <a href="https://tutorials.solace.dev/java-amqp-qpid-jms2/publish-subscribe/" class="link-internal" target="_blank">here</a>.</p>
+    <p>
+      <u>Find out more about the <MadCap:variable name="Product-Names.pubsub_brand_only"/> components that are involved</u>
+    </p>
+    <ul>
+      <li><a href="../Security/Configuring-Client-Profiles.htm" class="link-internal">Client Profile</a>: Client profiles are associated with client username accounts so that you can easily apply common configurations to groups of clients.</li>
+      <li><a href="../Security/ACL-Overview.htm" class="link-internal">ACL Profile</a>: After a client is successfully authenticated, the ACL profile assigned to the client username used by the client, or the LDAP the authorization groups that the client belongs to (when LDAP authorization is used), is checked.</li>
+      <li><MadCap:xref href="../Get-Started/message-vpn.htm">Message VPNs</MadCap:xref>: Message Virtual Private Networks (VPNs) are managed objects on <MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers that allow for the segregation of topic space and clients.</li>
+      <li><a href="../Get-Started/what-are-topics.htm" class="link-internal">Route</a>: Understand the fundamentals of publishing and subscribing to topics.</li>
+      <li><a href="../Security/Configuring-Client-Usernames.htm" class="link-internal">Client Username</a>: A client is only authorized to connect to a Message VPN that is associated with a client username that that client has been assigned.</li>
+      <li><a href="../Messaging/Guaranteed-Msg/Basic-Guaranteed-Messsaging-Operation.htm" class="link-internal">Queue</a>: Basic operation of guaranteed messaging.</li>
+      <li><a href="Solace-JMS-API/Creating-Durable-Topic-S.htm" class="link-internal">Topic Endpoint</a>: Creating durable topic subscribers.</li>
+      <li><a href="Solace-JMS-API/Creating-Message-Consume.htm" class="link-internal">Subscription</a>: You can create message consumers to receive messages from a queue or for a specific topic.</li>
+      <li><a href="API-Developer-Guide/Publishing-Guaranteed-Messages.htm" class="link-internal">Producer AD Flow</a>: A client application can publish Guaranteed messages, that is, messages that the client application assigns a Persistent or Non‑Persistent delivery mode to Queue or Topic destinations.</li>
+      <li><a href="https://docs.oracle.com/javaee/7/api/javax/jms/JMSContext.html" target="_blank" class="link-offsite">JMS Context</a>: A JMSContext is the main interface in the simplified JMS API introduced for JMS 2.0.</li>
+      <li><a href="https://docs.oracle.com/javaee/7/api/javax/jms/Connection.html" target="_blank" class="link-offsite">JMS Connection</a>: A Connection object is a client's active connection to its JMS provider. It typically allocates provider resources outside the Java virtual machine (JVM).</li>
+      <li><a href="https://docs.oracle.com/javaee/7/api/javax/jms/Session.html" target="_blank" class="link-offsite">JMS Session</a>: A Session object is a single-threaded context for producing and consuming messages.</li>
+    </ul>
+    <h3><a name="Next3"/>Next Steps</h3>
+    <p>For more information on how to use JMS with <MadCap:variable name="Product-Names.pubsub_brand_only"/>, refer to the <MadCap:xref href="Solace-JMS-API/jms-get-started-open.htm">JMS API</MadCap:xref> pages in the <MadCap:xref href="Open-APIs-Protocols.htm">Open APIs &amp; Protocols</MadCap:xref> section.</p>
+    <h2 class="with-rule"><a name="REST"/>REST</h2>
+    <p>In the previous sections, we looked at <a href="#SMF" class="link-internal">SMF's</a> operation along with <MadCap:xref href="#JMS">JMS</MadCap:xref> and <MadCap:xref href="#MQTT">MQTT</MadCap:xref>, all driven by messaging APIs. We'll now take a look at how REST's standards based HTTP exchange patterns work with the event broker's components. First, we'll look at the <MadCap:xref href="#Differen3">Differences between REST and SMF</MadCap:xref>, and then examine the <MadCap:xref href="#REST2">REST Component Flow Map</MadCap:xref>.</p>
+    <h3><a name="Differen3"/>Differences between REST and SMF</h3>
+    <p>The REST messaging isn't driven by a messaging API, but instead by standards-based HTTP exchange patterns. However, at its core, the event broker treats REST messages exactly the same with respect to authentication, authorization, routing, and persistence. Here are the significant list of differences between the base SMF and REST:</p>
+    <ul>
+      <li>
+        <b>Publish</b>
+      </li>
+      <p>All API publishes are HTTP POSTs with expected ACKs. The POSTs are not pipelined in that each must carry the required authentication header and are individually authenticated. This is different than a messaging-orientated protocol where the connection is authenticated with a connect messages containing authentication credentials and then the messages are pipelined on the connection.</p>
+      <li>
+        <b>Subscription</b>
+      </li>
+      <p>There is no subscription type method in HTTP.  All subscriptions are done by administrative actions.</p>
+      <li>
+        <b>Event delivery to consuming applications</b>
+      </li>
+      <p>A REST delivery endpoint is used to manage the connection from the broker to the application and deliver events via standard web-hooks HTTP.</p>
+    </ul>
+    <h3><a name="REST2"/>REST Process Flow</h3>
+    <p>In the diagram below, follow the steps from establishing a connection to the event broker through to starting the data flow.</p>
+    <div class="responsive-maps">
+      <img src="../Resources/Images/API/Component-Map-REST.png" usemap="#map4" alt=""/>
+    </div>
+    <p>The circled numbers in the diagram correspond to the numbered steps described in detail as follows:</p>
+    <h4>Steps 1 - 6</h4>
+    <p>These steps deal with the operations the app and broker undergo to establish a connection and get ready for event messaging.</p>
+    <ol>
+      <li>
+        <p>Application Creates REST message: </p>
+        <ol style="list-style-type: lower-alpha;">
+          <li>Add Authentication Header</li>
+          <li>Add Content-Type Header</li>
+          <li>Add Solace-Reply-Wait-Time-In-ms if reply is required</li>
+          <li>Add Message Body</li>
+        </ol>
+      </li>
+      <li>
+        <p>Application Sends REST Message:</p>
+        <ol style="list-style-type: lower-alpha;">
+          <li>URI includes Solace broker URI with destination topic or queue</li>
+        </ol>
+      </li>
+      <li>
+        <p>Broker authenticates (Automatic from 2.):</p>
+        <ol style="list-style-type: lower-alpha;">
+          <li> URI includes Solace broker URI with destination topic or queue</li>
+        </ol>
+      </li>
+      <li>
+        <p>Broker authorizes (Automatic from 2.)</p>
+      </li>
+      <li>
+        <p>Broker routes (Automatic from 2.):</p>
+        <ol style="list-style-type: lower-alpha;">
+          <li>Based on URI</li>
+        </ol>
+      </li>
+      <li>
+        <p>Broker persists:</p>
+        <ol style="list-style-type: lower-alpha;">
+          <li>Broker ACKS (200 OK) either empty payload or reply body</li>
+        </ol>
+      </li>
+    </ol>
+    <h4>Steps 8 and 9</h4>
+    <p>These steps focus on operations associated with sending and receiving event messages.</p>
+    <ol>
+      <li value="8">
+        <p>Broker opens connection(s) to application via web-hooks:</p>
+        <ol style="list-style-type: lower-alpha;">
+          <li> Broker opens connection to application. b. Broker send message with HTTP POST</li>
+        </ol>
+      </li>
+      <li>
+        <p>Application API ACK message:</p>
+        <ol style="list-style-type: lower-alpha;">
+          <li>Broker deletes message</li>
+        </ol>
+      </li>
+    </ol>
+    <h4>Step 7</h4>
+    <p>This step deals with the establishment of application subscriptions.</p>
+    <ol>
+      <li value="7">Application Subscribes:<ol style="list-style-type: lower-alpha;"><li>This is not done programmatically. Administrators bind RDP to Queue containing subscriptions</li></ol></li>
+    </ol>
+    <p>
+      <u>Find out more about the <MadCap:variable name="Product-Names.pubsub_brand_only"/> components that are involved</u>
+    </p>
+    <ul>
+      <li><a href="../Security/Configuring-Client-Profiles.htm" class="link-internal">Client Profile</a>: Client profiles are associated with client username accounts so that you can easily apply common configurations to groups of clients.</li>
+      <li><a href="../Security/ACL-Overview.htm" class="link-internal">ACL Profile</a>: After a client is successfully authenticated, the ACL profile assigned to the client username used by the client, or the LDAP the authorization groups that the client belongs to (when LDAP authorization is used), is checked.</li>
+      <li><MadCap:xref href="../Get-Started/message-vpn.htm">Message VPNs</MadCap:xref>: Message Virtual Private Networks (VPNs) are managed objects on <MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers that allow for the segregation of topic space and clients.</li>
+      <li><a href="../Get-Started/what-are-topics.htm" class="link-internal">Route</a>: Understand the fundamentals of publishing and subscribing to topics.</li>
+      <li><a href="../Security/Configuring-Client-Usernames.htm" class="link-internal">Client Username</a>: A client is only authorized to connect to a Message VPN that is associated with a client username that that client has been assigned.</li>
+      <li><a href="../Messaging/Guaranteed-Msg/Basic-Guaranteed-Messsaging-Operation.htm" class="link-internal">Queue</a>: Basic operation of guaranteed messaging.</li>
+    </ul>
+    <h3><a name="Next4"/>Next Steps</h3>
+    <p>For more information on how to use REST with <MadCap:variable name="Product-Names.pubsub_brand_only"/>, refer to the <MadCap:xref href="REST/REST-get-start.htm">REST</MadCap:xref> pages in the <MadCap:xref href="Open-APIs-Protocols.htm">Open APIs &amp; Protocols</MadCap:xref> section.</p>
+  </body>
+</html>

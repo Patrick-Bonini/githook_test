@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Steps for Performing XA Transactions</h1>
+    <p>The following basic steps are required for a client to perform an XA transaction using the Solace JMS implementation. </p>
+    <div class="Note" MadCap:autonum="&lt;b&gt;Note  &lt;/b&gt;">
+      <ul>
+        <li>Depending on the type of operations that are to be attempted in the XA transaction, and the results of those operations, the exact order and sequence of steps may differ.</li>
+        <li>When a JMS client connects to the event broker, it must use a client username account that is assigned a client profile that has the <code>allow‑transacted‑sessions</code> property enabled (by default, this property is not enabled). </li>
+      </ul>
+    </div>
+    <ol>
+      <li>Obtain an XA Connection Factory and use it to create an XA Connection to the event broker.
+        <p>The XA Connection Factory used must have its <code>xa</code> messaging property enabled to allow JMS connections created by the XA Connection Factory to support XA sessions. Its <code>direct‑transport</code> transport property should also be disabled to only allow Guaranteed (that is, messages with a Persistent or Non‑Persistent delivery mode) messages to be published or received.</p><p>For information on how to programmatically create or look up Connection Factories, and how to establish a connection, refer to <MadCap:xref href="Establishing-Connections.htm">Establishing Connections</MadCap:xref>.</p><div class="Note" MadCap:autonum="&lt;b&gt;Note  &lt;/b&gt;"><ul><li>A <code>SolXAConnectionFactory</code>, a Solace-proprietary implementation of the standard JNDI ConnectionFactory is properly configured for performing XA transactions on an event broker.</li><li>To establish a JMS connection that permits transacted sessions and XA transactions, the connection must also use a client username account provisioned on the event broker that is assigned a client profile that has the <code>allow‑transacted‑sessions</code> property enabled (by default, this property is not enabled). For information on how administrators may configure client usernames and the client profiles that are assigned to them, refer to <MadCap:xref href="../../Security/Configuring-Client-Authentication.htm">Managing Client Authentication and Authorization</MadCap:xref>. </li></ul></div></li>
+      <li>Create an XA Session (refer to <MadCap:xref href="Creating-XA-Connections.htm#using_xa_transactions_1775489719_296628">Creating XA Sessions</MadCap:xref>).</li>
+      <li>Within the XA Session, a client can do one or both of the following:</li>
+      <ul>
+        <li>acquire a message producer that can be used to publish messages to a destination topic or queue</li>
+        <li>acquire a message consumer or topic subscriber that can be used to receive messages</li>
+      </ul>
+      <li>Obtain an XA Resource for the XA Session. 
+        <p>The XAResource enables a client to control the state of transactions associated with the XA Session (refer to <MadCap:xref href="Performing-XA-Transactio.htm">Performing XA Transaction Operations</MadCap:xref>).</p><p>Typically, a Transaction Manager within an Application Server uses the methods provided by the XAResource to control the transaction operations.</p></li>
+      <li>Obtain unique Xids to identify each transaction branch created in the XA Session and the global transaction they are associated with. 
+        <p>The combination of the format identifier, global transaction identifier, and branch qualifier must be globally unique for each Xid within the Message VPN the XA Session is connected to. Typically, a Transaction Manager provides the Xids.</p></li>
+      <li>Start a transaction branch within the XA Session (refer to ). Only one transaction can be active associated at a time in an XA Session.
+        <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">After <code>XAResource.start(...)</code> is called, any messages published by a producer in an XA Session are transacted messages.</p></li>
+      <li>Do one or both of the following:
+        <ul><li>Using the acquired publisher, publish messages that you want to include in the transaction branch.  Refer to <MadCap:xref href="Publishing-Messages-in-XA.htm">Publishing Messages in XA Transactions</MadCap:xref>.</li><li>Using the acquired message consumer or topic subscriber, consume messages that you want to include in the transaction branch. Refer to <MadCap:xref href="Consuming-Messages-in-XA.htm">Consuming Messages in XA Transactions</MadCap:xref>.</li></ul><p>Messages that are published and received in a transaction branch are staged on the event broker. Up to 256 messages can be included in a transaction branch. </p></li>
+      <li>Call <code>XAResource.end(...)</code> to end the transaction branch. This ends the work performed on behalf of the transaction branch. The event broker, as the Resource Manager, disassociates the XA Session from the transaction branch, which allows the transaction to complete. 
+        <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;"><code>XAResource.end(...)</code> can also be used to suspend a transaction branch.</p></li>
+      <li>Call <code>XAResource.prepare(...)</code> to prepare the transaction for a commit or rollback.</li>
+      <li>If the transaction is successfully prepared, do one of the following:
+        </li>
+      <ul>
+        <li>Repeat steps 6 through 10 for each additional transaction to be performed in the XA Session.</li>
+        <li>When finished, follow the instructions in <MadCap:xref href="Closing-XA-Sessions.htm">Closing XA Sessions</MadCap:xref> to close the XA Session.</li>
+      </ul>
+    </ol>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">It is also possible for event broker administrators to manually perform the following heuristic operations: to delete an XA Session or to commit, rollback, or delete an XA transaction branch. For more information, refer to <MadCap:xref MadCap:unresolvedLink="import-link:managing_message_vpns_2096211297_92422" href="../../Messaging/Guaranteed-Msg/Performing-Heuristic-Actions.htm">Performing Heuristic Actions on Transactions</MadCap:xref>.</p>
+  </body>
+</html>

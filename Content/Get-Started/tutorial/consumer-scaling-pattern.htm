@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Cloud;Software"/>Step 6: Explore Consumer Scaling Patterns</h1>
+    <p>You've now completed <MadCap:xref href="request-reply-pattern.htm">Step 5: Try a Request-Reply Message Exchange Pattern</MadCap:xref>.</p>
+    <p>In step 6, you'll expand your understanding by setting up three common messaging patterns used for consumer scaling.</p>
+    <p class="with-rule"> As you've learned in the previous steps, <MadCap:variable name="Variables.CompanyName"/> topics give you the flexibility to implement different message exchange patterns, such as publish-subscribe and request-reply, while also allowing each consumer to subscribe to the topics that give them exactly the events they want to receive. In this step, we'll learn how <MadCap:variable name="Variables.CompanyName"/> allows you to further decouple your consumers from your producers by enabling consumer applications to scale in various ways, depending on their individual requirements. For more information about consumer patterns and consumer scalability patterns, see the <MadCap:variable name="Variables.CompanyName"/> <a href="#https://solace.com/event-driven-architecture-patterns/#consumption" target="_blank" class="link-offsite">Ultimate Guide to Event-Driven Architecture Patterns</a>.</p>
+    <p>In this step, we'll focus on three patterns that show consumer scalability options and use the <MadCap:variable name="Product-Names.try-me-cli"/> tool to demonstrate each of these patterns:</p>
+    <ul>
+      <li>Competing consumers</li>
+      <li>High availability</li>
+      <li>Partitioning</li>
+    </ul>
+    <p>The most common way to implement these patterns is using Guaranteed message delivery with a queue. When using queues to implement these scaling patterns,  producers still publish events to topics, and consumers bind to queues that are configured to meet their specific scaling requirements. The queues subscibe  to the topics that the consumers want to receive events for.</p>
+    <h2>Competing Consumers</h2>
+    <p>Competing consumers is a scalability pattern in event-driven architecture that involves distributing the workload of processing events among multiple instances of the same application to improve throughput and reduce processing time.</p>
+    <p>
+      <img src="../../Resources/Images/Getting-Started/competing-consumers.png" alt="Diagram illustrating the concepts described in the surrounding text."/>
+    </p>
+    <p>In this mode, the queue has a non-exclusive access type, which facilitates the delivery of messages to all bound consumer flows in a round-robin fashion. This pattern is commonly used when message order is not important and you need to scale consumers to keep up with the message throughput.</p>
+    <h3>Set Up Competing Consumers</h3>
+    <p>In this exercise, we'll set up three competing consumer applications to share the message processing load. After you complete these steps, you'll have a consumer scaling pattern like the following animation:</p>
+    <p>
+      <img src="../../Resources/Images/Animated/competing-consumer.gif" alt="Animation showing scaling using competing consumers."/>
+    </p>
+    <p>To set up competing consumer instances, perform these steps:</p>
+    <ol>
+      <li>Open a command-line  terminal window and create a non-exclusive queue with a topic subscription for <code>coffeeshop/&gt;</code>.  Enter the following command:</li>
+      <pre>stm manage queue --create NonExclusiveQ --access-type NON-EXCLUSIVE --add-subscriptions "coffeeshop/&gt;"</pre>
+      <p>You should see the following result:</p>
+      <pre>ℹ  info      info: loading 'queue' command from configuration 'stm-cli-config.json'
+✔  success   success: queue 'NonExclusiveQ' created successfully
+✔  success   success: subscription to topic 'coffeeshop/&gt;' added successfully
+✔  success   success: 1 subscription(s) found on queue NonExclusiveQ -coffeeshop/&gt;
+✔  success   success: exiting...</pre>
+      <li>Open three additional command-line  terminal windows and in each one, start a receiver with the following command: </li>
+      <pre>stm receive --queue NonExclusiveQ</pre>
+      <li>In another command-line  terminal window, start a sender that publishes 100 events with an interval of 1 second between each publish using the following command:
+</li>
+      <pre xml:space="preserve">stm send --count 100 --topic 'coffeeshop/order/new/v1'</pre>
+      <p>You should see the messages being received by your 3 receivers in a round-robin, competing consumers fashion. Using a non-exclusive queue allows you to implement the competing consumers pattern and load balance events across different instances of your consumer.</p>
+      <li>
+        <p>You can verify the behavior in <MadCap:variable name="Product-Names.pubsubmanager_long"/> by going to your queue and viewing the <b>Consumers</b> tab. If all of your receivers were bound to the queue before you began sending messages, you’ll see the messages evenly distributed across the receivers.</p>
+        <p>
+          <div class="thumbnail-container">
+            <img src="../../Resources/Images/Getting-Started/coffee-shop-competing.png" alt="Screenshot showing the consumers described in the preceding text." class="solacethumbnail"/>
+          </div>
+        </p>
+      </li>
+    </ol>
+    <h2>High Availability</h2>
+    <p>When you implement a high availability (HA) consumer scaling pattern, you have multiple instances of the same consumer application available to process events. One instance of the consumer  is chosen to be active and receives all events, while the other instances are on standby. If the active instance crashes or goes down, the broker automatically elects another instance to activate and starts sending all events to the new consumer. This pattern ensures that event processing continues as long as you have one instance connected and processing. This pattern is also sometimes referred to as Primary / Secondary or Primary / Secondary / Tertiary depending on how many levels of redundancy are required.</p>
+    <p>
+      <img src="../../Resources/Images/Getting-Started/high-availabilty.png" alt="Diagram illustrating the concepts described in the surrounding text."/>
+    </p>
+    <p>To implement this pattern, the queue has the exclusive access type. This access type allows multiple consumers to connect, but the event broker delivers events to only one of them. If the active consumer disconnects, the next consumer to receive events is randomly selected from the waiting pool of consumers. This pattern is commonly used when all messages in a queue must be processed in order.</p>
+    <h3>Set Up Consumers for High Availability</h3>
+    <p>In this exercise we'll set up three  consumer applications for HA. Two of the consumers are in standby mode and don't receive messages unless the active consumer application becomes unavailable. After you complete these steps you'll have a consumer scaling pattern like the following animation:</p>
+    <p>
+      <img src="../../Resources/Images/Animated/ha-consumer.gif" alt="Animation showing high availablity consumers."/>
+    </p>
+    <p>To set up consumer instances for high availability, perform these steps:</p>
+    <ol>
+      <li>Open a command-line  terminal window and create an exclusive queue with a topic subscription for <code>coffeeshop/&gt;</code>.  Enter the following command:</li>
+      <pre>stm manage queue --create ExclusiveQ --access-type EXCLUSIVE --add-subscriptions "coffeeshop/&gt;"</pre>
+      <p>You should see the following result:</p>
+      <pre>ℹ  info      info: loading 'queue' command from configuration 'stm-cli-config.json'
+✔  success   success: queue 'ExclusiveQ' created successfully
+✔  success   success: subscription to topic 'coffeeshop/&gt;' added successfully
+✔  success   success: 1 subscription(s) found on queue ExclusiveQ -coffeeshop/&gt;
+✔  success   success: exiting...</pre>
+      <li>Open three additional command-line  terminal windows, and in each one start a receiver with the following command: </li>
+      <pre xml:space="preserve">stm receive --queue ExclusiveQ</pre>
+      <li>In another command-line  terminal window, start a sender that publishes 100 events with an interval of 1 second between each publish using the following command: </li>
+      <pre>stm send --count 100 --topic 'coffeeshop/order/new/v1'</pre>
+      <p>You should see the messages all being received by the first receiver that you started because you are using an exclusive queue.</p>
+      <li>
+        <p>You can verify the behavior in <MadCap:variable name="Product-Names.pubsubmanager_long"/> by going to your queue and looking at the <b>Consumers</b> tab .You should see that one of the three consumers received all the messages.</p>
+        <p>
+          <div class="thumbnail-container">
+            <img src="../../Resources/Images/Getting-Started/coffee-shop-ha.png" alt="Screenshot showing the consumers described in the preceding text." class="solacethumbnail"/>
+          </div>
+        </p>
+      </li>
+      <li>If the currently active consumer disconnects from the queue, one of the remaining two consumers starts receiving events. If you want to see the change in action,  restart the publisher and, while the publish is in progress, stop the currently active consumer by pressing Control+C (on Windows and Linux) or Command+C (on Mac). You can see that one pf the standby consumers starts receiving messages.
+            </li>
+    </ol>
+    <h2>Partitioning</h2>
+    <p>Partitioning is a design pattern in event-driven architecture that helps to improve scalability while also maintaining message order where it’s required. You effectively split up a stream of events into partitions, which can then be processed in parallel. Order is maintained by partition instead of across the entire event stream. This pattern is common when you need to scale your consumers, but you also care about message order.</p>
+    <p>In <MadCap:variable name="Product-Names.pubsub_brand_only"/>, this pattern is implemented using partitioned queues. Partitioned queues are a type of non-exclusive queue that delivers to many consumers at once to enable scaling. Partitioned queues use a partition key to split ingress events into partitions. All events within a partition are always delivered to the same consumer, thus enabling scalability while maintaining the message order. For more information, see <MadCap:xref href="../../Messaging/Guaranteed-Msg/Queues.htm#partitioned-queues" target="_blank">Partitioned Queues</MadCap:xref>.</p>
+    <p>You can also watch our <MadCap:variable name="Variables.CompanyName"/> Developer Advocate demonstrate partitioned queues.</p>
+    <div class="vid-wrapper">
+      <div class="vid-container">
+        <iframe width="560" height="315" src="https://www.youtube.com/embed/CZC1wfHyABM?si=_O1KZoRMdn1Jvj01 modestbranding=1&amp;showinfo=0&amp;rel=0&amp;cc_lang_pref=en&amp;cc_load_policy=1" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen="allowfullscreen"/>
+      </div>
+      <div>Solace Partitioned Queues in Action!</div>
+    </div>
+    <h3>Set Up a Partitioned Queue</h3>
+    <p>For this exercise, we'll set up  partition keys and create a partitioned queue. You can set partition keys using the <MadCap:variable name="Product-Names.try-me-cli"/> using these parameters:</p>
+    <ul>
+      <li> Use <code>--partition-key &lt;KEY&gt;</code> to set keys based on the message publish time.</li>
+      <li>Use<code> --partition-keys &lt;KEY...&gt;</code> to specify a list of partition keys.</li>
+    </ul>
+    <p>To set up a partitioned queue for the coffee shop, perform these steps:</p>
+    <ol>
+      <li>Open a command-line  terminal window and create an non-exclusive queue with five partitions.  Enter the following command:</li>
+      <pre xml:space="preserve">stm manage queue --create PartitionedQ --access-type NON-EXCLUSIVE --add-subscriptions "coffeeshop/&gt;" --partition-count 5</pre>
+      <p>You should see the following result:</p>
+      <pre>ℹ  info      info: loading 'queue' command from configuration 'stm-cli-config.json'
+✔  success   success: queue 'PartitionedQ' created successfully
+✔  success   success: subscription to topic 'coffeeshop/&gt;' added successfully
+✔  success   success: 1 subscription(s) found on queue PartitionedQ -coffeeshop/&gt;
+✔  success   success: exiting...</pre>
+      <li>Open three additional command-line  terminal windows and in each one, start a receiver with the following command: </li>
+      <pre xml:space="preserve">stm receive --queue PartitionedQ --output-mode props </pre>
+      <li>Open an additional command-line  terminal window and start a sender that publishes 100 events with an interval of 1 second between each publish and passes a list of partition keys using the <code>--partition-keys</code> parameter.</li>
+      <pre>stm send --partition-keys ESPRESSO DOPPIO AMERICANO LATTE CORTADO CAPPUCCINO MACCHIATO FLATWHITE BLACKEYE --count 100 --interval 1000 --topic 'coffeeshop/order/new/v1'</pre>
+      <p>You should now see the messages being received by your three receivers. Notice that messages with the same partition key, such as ESPRESSO, are always delivered to the same consumer. The partition key appears as the JMSXGroupId user-attribute, which is displayed in the <MadCap:variable name="Product-Names.try-me-cli"/> tool when you use <code>--output-mode props</code>. </p>
+      <li>
+        <p>You can verify the behavior in <MadCap:variable name="Product-Names.pubsubmanager_long"/> by going to your queue and looking at the <b>Consumers</b> tab .You should see that one of the three consumers received all the messages.</p>
+        <p>
+          <div class="thumbnail-container">
+            <img src="../../Resources/Images/Getting-Started/coffee-shop-partition.png" alt="Screenshot showing the consumers described in the preceding text." class="solacethumbnail"/>
+          </div>
+        </p>
+      </li>
+    </ol>
+    <h2 class="with-rule">Tutorial Steps</h2>
+    <p>You've completed the sixth step in the tutorial. Click <MadCap:xref href="../Next-steps.htm">Next Steps</MadCap:xref> for suggestions to continue your Solace journey.</p>
+    <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');border-left-style: solid;border-left-width: 1px;border-left-color: #e1e1e1;border-right-style: solid;border-right-width: 1px;border-right-color: #e1e1e1;border-top-style: solid;border-top-width: 1px;border-top-color: #e1e1e1;border-bottom-style: solid;border-bottom-width: 1px;border-bottom-color: #e1e1e1;margin-left: 0;margin-right: auto;" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Step</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/num1.png" alt="Step 1"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="font-weight: bold;">Set up Your First Event Broker - Complete</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/num2.png" alt="Step 2"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="font-weight: bold;">Solace EDA Basics - Complete</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/num3.png" alt="Step 3"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="font-weight: bold;">Set up the  <MadCap:variable name="Product-Names.try-me-cli"/> Tool - Complete</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/num4.png" alt="Step 4"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="font-weight: bold;">Try a Publish-Subscribe Message Exchange Pattern - Complete</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/num5.png" alt="Step 5"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="font-weight: bold;">Try a Request-Reply Message Exchange Pattern - Complete</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/num6.png" alt="Step 6"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p style="font-weight: bold;">Try Consumer Scaling Patterns - Complete</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/complete.png" alt=""/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p style="font-weight: bold;">
+              <a href="../Next-steps.htm" class="link-internal">Next Steps</a>
+            </p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>You can return to the main <a href="../Getting-Started-Try-Broker.htm" class="link-internal">Tutorial page</a> at any time.</p>
+  </body>
+</html>

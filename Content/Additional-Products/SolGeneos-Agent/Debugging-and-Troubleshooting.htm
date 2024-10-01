@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Debugging and Troubleshooting</h1>
+    <p>This section provides information on how to debug and troubleshoot operating issues for the Solace Geneos Agent.</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Monitori">Monitoring Solace Geneos Agent Health</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#debugging_and_troubleshooting_3507155501_129079">JMX Support</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#debugging_and_troubleshooting_3507155501_129103">Logging</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Monitori"/>Monitoring Solace Geneos Agent Health</h2>
+    <p>The Solace Geneos Agent’s health and performance depend on the following factors:</p>
+    <ul>
+      <li>the state of the event broker</li>
+      <li>the state of the Netprobes and the number of Netprobes</li>
+      <li>the number of data views</li>
+      <li>the sampling rate of the data views</li>
+      <li>the quantity of data being returned from the event broker to populate the data views</li>
+    </ul>
+    <p>If the agent is not performing due to one or any of these factors, the problem will manifest itself as one of the following:</p>
+    <ul>
+      <li>missed interval—A data view was scheduled to collect and report data but could not because it had not finished its previous collection/reporting cycle.</li>
+      <li>aborted interval—An error occurred during data collecting or reporting.</li>
+    </ul>
+    <p>Two default data views are created to make information such as missed intervals and abort intervals available to administrators, so that the agent’s health can be properly monitored: <code>MonitorStatus</code> and <code>ServiceStatus</code>. By default, these data views are not enabled.</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#debugging_and_troubleshooting_3507155501_129049">MonitorStatus</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#debugging_and_troubleshooting_3507155501_129065">Service Status</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#debugging_and_troubleshooting_3507155501_129072">Enabling Data Views</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="debugging_and_troubleshooting_3507155501_129049"/>MonitorStatus</h3>
+    <p><code>MonitorStatus</code> data view displays statistics collected from all the monitors loaded by the agent. Each monitor shows up as one row in the table. The statistics supported are:</p>
+    <ul>
+      <li>monitor class name, monitor status</li>
+      <li>properties loaded from global and monitor specific property file, such as <code>autoStart</code>, <code>pageSize</code>, <code>samplingRate</code>, <code>statsIntervals</code></li>
+      <li><code>numIntervals</code>, <code>numMissedIntervals</code>, <code>numAbortedIntervals</code>. These statistics represent the successful, missed, and aborted collect/report cycles. When <code>numMissedIntervals</code> and <code>numAbortedIntervals</code> increment for a monitor, it indicates the monitor is not behaving properly.</li>
+      <li><code>collectingQueueAvg</code>, <code>collectingAvg</code>, <code>reportingQueueAvg</code>, <code>reportingAvg</code>, <code>totalAvg</code>. These statistics represent the average time it takes at different stages of a collect/report cycle. The changes in these statistics can effectively indicate whether the monitor is slowing down, falling behind, or performing normally.</li>
+      <li><code>lastErrorMsg</code>. The last error that caused missed interval or aborted interval.</li>
+    </ul>
+    <p>The following snapshots from ActiveConsole show the full span of available statistics collected for each monitor:</p>
+    <p style="text-align: left;">
+      <img src="Images/stats1.png" style="width: 504.5328px;height: 190.2221px;margin-left: 5.99976px;margin-top: 5.99976px;margin-right: 6.800411px;margin-bottom: 5.999752px;" alt=""/>
+    </p>
+    <p style="text-align: left;">
+      <img src="Images/stats2.png" style="width: 508.2538px;height: 191.2205px;margin-left: 4.00968px;margin-top: 5.25096px;margin-right: 5.99975px;margin-bottom: 5.999757px;" alt=""/>
+    </p>
+    <h3><a name="debugging_and_troubleshooting_3507155501_129065"/>ServiceStatus</h3>
+    <p>The <code>ServiceStatus</code> data view displays statistics collected from each service: Event broker service, Netprobe services, and Solace Geneos Agent service. The statistics supported are <code>service name</code>, <code>state</code>, <code>currentTimeInState</code>, <code>lastErrorMsg</code>, and <code>timesDown</code>.</p>
+    <p>The following snapshot from ActiveConsole shows the statistics collected for each Solace Geneos Agent service:</p>
+    <p style="text-align: left;">
+      <img src="Images/stats3.png" style="width: 520.5802px;height: 145.7443px;margin-left: 5.99976px;margin-top: 5.99976px;margin-right: 6.32806px;margin-bottom: 6.000477px;" alt=""/>
+    </p>
+    <h3><a name="debugging_and_troubleshooting_3507155501_129072"/>Enabling Data Views</h3>
+    <p>By default, both the <code>MonitorStatus</code> and <code>ServiceStatus</code> data views are disabled. To enable them, do the following:</p>
+    <ol>
+      <li>In <code>MonitorStatsMonitor.properties</code> or <code>ServiceStatsMonitor.properties</code>, set <code>samplingRate</code> to a value greater than 0, and set <code>autoStart</code> to true.</li>
+      <li>To see how much time a view is taking, set <code>statsIntervals</code> to a value greater than 0 in the specific monitor properties file. For example, for Users view, in <code>UsersMonitor.properties</code>, set <code>statsInterval=1</code>.</li>
+      <li>Restart the Solace Geneos Agent.</li>
+    </ol>
+    <h2 class="with-rule"><a name="debugging_and_troubleshooting_3507155501_129079"/>JMX Support</h2>
+    <p>The Solace Geneos Agent allows registration of services and monitors with the JMX agent that is bundled with Java Runtime. Each service and monitor has an MBean associated with it. These MBeans are created and registered with JMX agent’s MBean server automatically when the monitors and services are initialized. Specifically for monitors, the <code>BaseMonitor </code>class’<code> initialize()</code> method creates the monitor’s MBean and registers the MBean with MBean Server. Therefore, user‑developed monitors get JMX support.</p>
+    <p>JMX support is meant as a debugging and performance tuning tool at the development stage. Therefore, it is disabled by default.</p>
+    <p>To enable JMX, do the following:</p>
+    <ol>
+      <li>Edit the <code>servicescript.sh</code> (located in <code>solgeneos/currentload/bin</code>), and add the ‘<code>$JMX_OPTS</code>’ option to the <code>PROG</code> variable.
+        <p>Specifically, in the <code>setenv()</code> function change the line:</p><p class="Code">PROG="$_JAVA_HOME/bin/java -cp $LOCALCLASSPATH $SOLACE_OPTS $MAIN_CLASS"</p><p>To:</p><p class="Code">PROG="$_JAVA_HOME/bin/java -cp $LOCALCLASSPATH $JMX_OPTS $SOLACE_OPTS $MAIN_CLASS"</p></li>
+      <li>Make sure to add the management IP address to hostname mapping to file <code>/etc/hosts</code>; for example:
+                <p class="Code">10.10.10.10    appliance-hostname-10</p><p>To access the JMX agent, launch JConsole provided by the Java Runtime, and point the JConsole to the remote process where JMX is running. In the case of Solace Geneos Agent, it should be <code>managementIP:&lt;jmx remote port&gt;</code>.</p></li>
+    </ol>
+    <p>From a JMX console, you also have the ability to start/stop monitors, start/stop/reset/view statistics, and view/modify certain properties.</p>
+    <p>For example, to change <code>samplingRate</code> for <code>UsersMonitor</code> from JMX, do the following:</p>
+    <p style="text-align: left;">
+      <img src="Images/jmx.png" style="width: 454.7357px;height: 378.9466px;margin-left: 5.99976px;margin-top: 5.99976px;margin-right: 6.000454px;margin-bottom: 5.999752px;" alt=""/>
+    </p>
+    <ol>
+      <li>In the left tree view of the JConsole, select <b>UsersMonitor</b> &gt; <b>Attributes</b>.</li>
+      <li>In the right panel, enter a new value for the <b>samplingRate</b> attribute.</li>
+      <li>In the left tree view, select <b>UsersMonitor</b> &gt; <b>Operations</b>.</li>
+      <li>To restart the monitor, click the <b>Stop</b> button, then the <b>Start</b> button.</li>
+    </ol>
+    <h2 class="with-rule"><a name="debugging_and_troubleshooting_3507155501_129103"/>Logging</h2>
+    <p>The Solace Geneos Agent uses the standard apache commons logging interfaces to support logging functionality. The <code>log4j.properties</code> is bundled with the agent distribution and is placed under <code>/usr/sw/solgeneos/config</code> directory during installation. By default, the agent logs are output to the <code>/usr/sw/solgeneos/logs</code> directory. If custom monitors are deployed, each java package will require a line in the <code>log4j</code> file, of the form:</p>
+    <p class="Code">log4j.category.&lt;package name&gt;</p>
+    <p>or, for example:</p>
+    <p class="Code">log4j.category.com.solacesystems.solgeneos.sample=INFO</p>
+    <p>For information on how to modify log4j.properties, refer to <a href="https://logging.apache.org/log4j/2.x/javadoc.html" class="link-internal">https://logging.apache.org/log4j/2.x/javadoc.html</a>.</p>
+  </body>
+</html>

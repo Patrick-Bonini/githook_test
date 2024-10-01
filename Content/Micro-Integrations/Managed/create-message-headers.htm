@@ -1,0 +1,839 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Configuring Message Headers</h1>
+    <p>In general, the source  message header is propagated through the <MadCap:variable name="Manifest-Products-Connectors.cloud_managed_connector_flow"/> to the target message header. When you configure the <MadCap:variable name="Manifest-Products-Connectors.cloud_managed_connector_flow"/>, you can optionally configure mappings for the header information between the external system and the <MadCap:variable name="Product-Names.pubsub_brand_only"/><MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+    <p> If you want to map the source message header to a target message header, you do so using the Target Header Mappings step when you create a <MadCap:variable name="Manifest-Products-Connectors.cloud_managed_connector_flow"/> or modify them after. </p>
+    <p>To specify the mappings, you must use the Spring Expression Language (SpEL).  For examples to use SpEL expressions, see <MadCap:xref href="#spel-examples">SpEL Examples for Target Header Mappings</MadCap:xref>.</p>
+    <p>It's important to recognize that there are a set of common source and target message headers that you can use that are available for all <MadCap:variable name="Manifest-Products-Connectors.cloud_managed_connector_flow"/> Types as well as  specific message headers depending on the <MadCap:variable name="Manifest-Products-Connectors.cloud_managed_connector_flow"/> Type you are using. For information about the message headers that are available, see:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#common-reserved-message-headers">Common Reserved Message Headers</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#dynamic-producer-destinations">Common and Vendor-Specific Dynamic Producer Destinations </MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#aws-sns">[%=Manifest-Products-Connectors.pubsub_self_contained_connector_for_AWS_SNS%] Message Headers</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#aws-sqs">[%=Manifest-Products-Connectors.pubsub_self_contained_connector_for_aws_sqs%] Message Headers</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#azure-service-bus">[%=Manifest-Products-Connectors.pubsub_self_contained_connector_for_azure_service_bus%] Message Headers</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#googlepubsub">[%=Manifest-Products-Connectors.pubsub_self_contained_connector_for_google_pubsub%] Message Headers</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#ibm-mq">[%=Manifest-Products-Connectors.pubsub_self_contained_connector_for_IBM_MQ%] Message Headers</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#solace">[%=Variables.CompanyName%] Message Headers</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="spel-examples"/>SpEL Examples for Target Header Mappings</h3>
+    <p>The following are examples that show how to use a SpEL expression in the fields for the Target Header Mappings step when you create a mapping between the source message header and the target message header. To fully utilize the mappings, you should have a good understanding of how to use SpEL expressions. For example, to access the header attributes or payload, you use the <code>headers</code>  properties.</p>
+    <p>For more information about using Spring Expression Language (SpEL) expressions, see <a href="https://docs.spring.io/spring-framework/docs/current/reference/html/core.html#expressions" class="link-offsite">Spring Expression Language (SpEL)</a>. The following are how you would perform some header mapping operations:</p>
+    <ul>
+      <li>On the  <b>Target Header Mappings</b> step, enter the following values to the following fields to map the Solace Correlation ID to the JMS correlation ID:</li>
+      <ul>
+        <li><b>Target Header Name</b>:<code>jms_correlationId</code></li>
+        <li><b>Header Expression</b>: <code>headers.solace_correlationId</code></li>
+      </ul>
+      <li>
+        <p>On the  <b>Target Header Mappings</b> step, enter the following values to map the  to the following fields header ID with custom prefix called <code>myprefix-</code> to a custom header name called <code>custom-message-id</code>:</p>
+        <ul>
+          <li><b>Target Header Name</b>: <code>custom-message-id</code><li><b>Header Expression</b>: <code>'myprefix-' + headers.id</code></li></li>
+        </ul>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="common-reserved-message-headers"/>Common Reserved Message Headers</h2>
+    <p>The following are reserved header spaces that are common to configure all <MadCap:variable name="Manifest-Products-Connectors.cloud_managed_connector_flow"/>s:</p>
+    <ul>
+      <li>
+        <p>
+          <code>solace_</code>
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>scst_</code>
+        </p>
+      </li>
+      <li>
+        <p>Any headers defined by the core Spring messaging framework. For more information, see <a href="https://docs.spring.io/spring-integration/reference/html/message.html#message-headers" target="_blank" class="link-offsite">Spring Integration: Message Headers</a>.</p>
+      </li>
+    </ul>
+    <p>Any headers with these prefixes (that are not defined by the <MadCap:variable name="Manifest-Products-Connectors.cloud_managed_connector_flow"/> or any technology used by the <MadCap:variable name="Manifest-Products-Connectors.cloud_managed_connector_flow"/>) may not be backwards compatible in future releases of this <MadCap:variable name="Manifest-Products-Connectors.cloud_managed_connector_flow"/>.</p>
+    <MadCap:pageBreak/>
+    <h2 class="with-rule"><a name="dynamic-producer-destinations"/>Common and Vendor-Specific Dynamic Producer Destinations </h2>
+    <p>To route messages to dynamic destinations at runtime, use the <MadCap:xref href="#user-configured-header-transforms">Common User-Configured Header Transforms</MadCap:xref> described above to set the following headers. The following table contains both common and vendor-specific dynamic producer destinations.</p>
+    <table style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 20%;"/>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 20%;"/>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 20%;"/>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 20%;"/>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 20%;"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Header Name</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Type</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Values</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Applies To</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>scst_targetDestination</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>string</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Any valid destination name</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p><MadCap:variable name="Variables.CompanyName"/> (<MadCap:variable name="Product-Names.pubsub_brand_only"/>)</p>
+            <p>
+              <MadCap:variable name="Manifest-Products-Connectors.connector-jms-product-name"/>
+            </p>
+            <p>
+              <MadCap:variable name="Manifest-Products-Connectors.connector-ibmmq-product-name"/>
+            </p>
+            <p>
+              <MadCap:variable name="Manifest-Products-Connectors.connector-awssqs-product-name"/>
+            </p>
+            <p>
+              <MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-product-name"/>
+            </p>
+            <p>
+              <MadCap:variable name="Manifest-Products-Connectors.connector-mqtt-product-name"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies the name of the dynamic destination to publish to. Setting this header overrides the configured destination.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>solace_scst_targetDestinationType</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>string</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>(queue|topic)</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <MadCap:variable name="Variables.CompanyName"/>
+            </p>
+            <p>
+              <MadCap:variable name="Manifest-Products-Connectors.connector-awssqs-product-name"/>
+            </p>
+            <p>
+              <MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-product-name"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies the destination type of the dynamic destination. When unspecified, the configured or default destination type is used.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>solace_connector_scst_targetDestinationType</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>string</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>(queue|topic)</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <MadCap:variable name="Manifest-Products-Connectors.connector-jms-product-name"/>
+            </p>
+            <p>
+              <MadCap:variable name="Manifest-Products-Connectors.connector-ibmmq-product-name"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies the destination type of the dynamic destination. When unspecified, the configured or default destination type is used.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>
+              <code>gcp_pubsub_topic</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>
+              <code>string</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Any valid destination name</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-product-name"/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>Specifies the name of the dynamic destination to publish to. Setting this header overrides the configured destination.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <MadCap:pageBreak/>
+    <h2 class="with-rule"><a name="aws-sns"/><MadCap:variable name="Manifest-Products-Connectors.connector-awssns-product-name"/> Message Headers</h2>
+    <MadCap:snippetBlock src="../../Resources/Snippets/API/Connectors/common/managed-connectors-common-headers.flsnp"/>
+    <h2 class="with-rule"><a name="aws-sqs"/><MadCap:variable name="Manifest-Products-Connectors.connector-awssqs-product-name"/> Message Headers</h2>
+    <MadCap:snippetBlock src="../../Resources/Snippets/API/Connectors/common/managed-connectors-common-headers.flsnp"/>
+    <h2 class="with-rule"><a name="azure-service-bus"/><MadCap:variable name="Manifest-Products-Connectors.connector-azureservicebus-product-name"/> Message Headers</h2>
+    <p>You can configure <MadCap:variable name="Manifest-Products-Connectors.connector-azureservicebus-product-name"/> vendor-specific message headers using the following lists: </p>
+    <ul>
+      <li>
+        <p>
+          <MadCap:xref href="#dynamic-headers">Dynamic Headers for [%=Manifest-Products-Connectors.connector-azureservicebus-product-name%]</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#header-mapping">Header Mapping Between [%=Variables.CompanyName%] and [%=Manifest-Products-Connectors.connector-azureservicebus-product-name%]</MadCap:xref>
+        </p>
+      </li>
+    </ul>
+    <h3><a name="dynamic-headers"/>Dynamic Headers for <MadCap:variable name="Manifest-Products-Connectors.connector-azureservicebus-product-name"/></h3>
+    <p><MadCap:variable name="Manifest-Products-Connectors.connector-azureservicebus-product-name"/> supports <MadCap:variable name="Manifest-Products-Connectors.connector-azureservicebus-product-name"/> partitioning and message sessions of the <MadCap:variable name="Manifest-Products-Connectors.connector-azureservicebus-product-name"/> by setting the following headers:</p>
+    <table style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 25%;">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 25%;">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 25%;">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 25%;">
+            </col>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Header Name</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Type</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Access</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>azure_session_id</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>string</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Read</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Sets a session ID of a message in the message header.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>
+              <code>azure_partition_key</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>
+              <code>string</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Read</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>Sets a partition key  in the message header.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>The session ID has higher priority than the partition key. When both <code>azure_partition_key</code> and <code>azure_session_id</code>  headers are set, the value of the session ID overwrites the value of the partition key.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/API/Connectors/common/managed-connectors-common-headers.flsnp"/>
+    <MadCap:pageBreak/>
+    <h2 class="with-rule"><a name="googlepubsub"/><MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-product-name"/> Message Headers</h2>
+    <p>You can configure <MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-product-name"/> vendor-specific message headers using the following lists:</p>
+    <ul>
+      <li>
+        <p>
+          <MadCap:xref href="#message-header-mappings">Message Header Mappings for [%=Manifest-Products-Connectors.connector-gcppubsub-product-name%]</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#gcp-reserved-message-headers">Reserved Message Headers for [%=Manifest-Products-Connectors.connector-gcppubsub-product-name%]</MadCap:xref>
+        </p>
+      </li>
+    </ul>
+    <h2><a name="message-header-mappings"/>Message Header Mappings for <MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-product-name"/></h2>
+    <p>The following <MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-product-name"/>  <code>PubsubMessage</code> attributes are mapped to the following message properties: </p>
+    <table style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 25%;">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 25%;">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 25%;">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 25%;">
+            </col>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Header Name</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Type</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Access</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>gcp_pubsub_message_id</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>string</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Read</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The ID of the message, assigned by the <MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-product-name"/> service when the message is published. See <a href="https://cloud.google.com/java/docs/reference/google-cloud-pubsub/latest/com.google.pubsub.v1.PubsubMessage#com_google_pubsub_v1_PubsubMessage_getMessageId__" target="_blank" class="link-offsite"><MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-product-name"/> PubsubMessage.getMessageId()</a>. </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>gcp_pubsub_publish_time</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>long(seconds)</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Read</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The time at which the message was published, populated by the <MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-product-name"/> service when it receives the Publish call.</p>
+            <p>See <a href="https://cloud.google.com/java/docs/reference/google-cloud-pubsub/latest/com.google.pubsub.v1.PubsubMessage#com_google_pubsub_v1_PubsubMessage_getPublishTime__" target="_blank" class="link-offsite"><MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-product-name"/> PubsubMessage.getPublishTime()</a>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>
+              <code>gcp_pubsub_ordering_key</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>
+              <code>string</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Read</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>The <MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-product-name"/> message’s ordering key. See <a href="https://cloud.google.com/java/docs/reference/google-cloud-pubsub/latest/com.google.pubsub.v1.PubsubMessage#com_google_pubsub_v1_PubsubMessage_getOrderingKey__" target="_blank" class="link-offsite"><MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-product-name"/> PubsubMessage.getOrderingKey()</a>.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>The following <MadCap:variable name="Variables.CompanyName"/> message headers marked with <code>Read</code> access are automatically forwarded to <MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-product-name"/> messages, while headers with <code>Write</code> access can be set using transformations.</p>
+    <table style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 25%;">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 25%;">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 25%;">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 25%;">
+            </col>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Header Name</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Type</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Access</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>solace_applicationMessageId</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>string</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Read/Write</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The application provided message ID.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>solace_applicationMessageType</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>string</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Read/Write</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The application provided message type. This value is used by applications only.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>solace_correlationId</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>string</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Read/Write</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The correlation ID for the message.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <code>solace_dmqEligible</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <code>boolean</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">Write</td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">Set the Solace message’s <code>dmqEligible
+</code>header.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>solace_expiration</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>long</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Write</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Set the time at which the Solace message
+is set to expire.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>solace_priority</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>int</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Write</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Set the Solace message’s priority.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>solace_senderId</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>string</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Read</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The <code>Sender ID</code> for the Solace message.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <code>solace_senderTimestamp</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <code>long </code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">Read</td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">The time at which the Solace message
+was published.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <code>solace_sequenceNumber</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <code>string</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">Read</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">The application-defined sequence
+number set on the Solace message.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2><a name="gcp-reserved-message-headers"/>Reserved Message Headers for <MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-product-name"/></h2>
+    <p>The following is a reserved header space that can be used with <MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-product-name"/>:</p>
+    <ul>
+      <li>
+        <p>gcp_pubsub|goog</p>
+      </li>
+    </ul>
+    <MadCap:snippetBlock src="../../Resources/Snippets/API/Connectors/common/managed-connectors-common-headers.flsnp"/>
+    <MadCap:pageBreak/>
+    <h2 class="with-rule"><a name="ibm-mq"/><MadCap:variable name="Manifest-Products-Connectors.connector-ibmmq-product-name"/> Message Headers</h2>
+    <p>You can configure <MadCap:variable name="Manifest-Products-Connectors.connector-ibmmq-product-name"/> vendor-specific message headers using the following lists:</p>
+    <ul>
+      <li>
+        <p>
+          <MadCap:xref href="#jms-headers">JMS Message Headers</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#jms-binder-headers">JMS Binder Headers</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#ibm-reserved-message-headers">Reserved Message Headers for [%=Manifest-Products-Connectors.connector-ibmmq-product-name%]</MadCap:xref>
+        </p>
+      </li>
+    </ul>
+    <h3><a name="jms-headers"/>JMS Message Headers</h3>
+    <p>You can use the following message headers to get and set JMS message properties for <MadCap:variable name="Manifest-Products-Connectors.connector-ibmmq-product-name"/>.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p> </p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Header Name</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Type</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Access</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>jms_correlationId</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>String</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Read/Write</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The correlation ID for the message.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>jms_deliveryMode</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>int</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Read</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The delivery mode value specified for this message.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>jms_destination</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>jakarta.jms.Destination</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Read</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The destination to which the message is being sent.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>
+              <code>jms_expiration</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>
+              <code>long</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Read</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>The time at which the JMS message is set to expire.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>jms_messageId</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>String</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Read</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>A value that uniquely identifies each message sent by a provider.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>jms_priority</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>int</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Read/Write</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies the message’s priority set on the send.</p>
+            <p>When header is absent, JMS message is sent with default priority of 4.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>jms_redelivered</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>boolean</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Read</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>An indication of whether this message is being redelivered.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>
+              <code>jms_replyTo</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>
+              <code>jakarta.jms.Destination</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Read/Write</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>The Destination object to which a reply to this message should be sent.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>jms_timestamp</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>long</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Read</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The time a message was handed off to a provider to be sent.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>jms_timeToLive</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>long</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Write</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Specifies the message’s time to live set on the send.</p>
+            <p>When header is absent, JMS message is sent with default timeToLive of 0 (zero means that a message never expires).</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>
+              <code>jms_type</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>
+              <code>String</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Read/Write</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>The message type identifier supplied by the client when the message was sent.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="jms-binder-headers"/>JMS Binder Headers</h3>
+    <p>The following are JMS Binder Headers.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p> </p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Header Name</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Type</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Access</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>
+              <code>jms_scst_nullPayload</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>
+              <code>boolean</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Read</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>Specifies when the
+JMS message payload is null.
+</p>
+            <p>Two cases exist:
+</p>
+            <ul>
+              <li>
+                <p>A <code>JMS TextMessage</code> with no message
+payload is received: The payload is
+converted to an empty String, and the
+<code>jms_scst_nullPayload</code> header is
+added.</p>
+              </li>
+              <li>
+                <p>A JMS <code>Message</code> with no message
+payload is received: The payload is
+converted to an empty byte array, and
+the <code>jms_scst_nullPayload</code> header is
+added.</p>
+              </li>
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="ibm-reserved-message-headers"/>Reserved Message Headers for <MadCap:variable name="Manifest-Products-Connectors.connector-ibmmq-product-name"/></h3>
+    <p>The following is a reserved header space that can be used with <MadCap:variable name="Manifest-Products-Connectors.connector-ibmmq-product-name"/>:</p>
+    <ul>
+      <li>
+        <p><code>jms_</code>|<code>JMS_</code>|<code>JMSX</code></p>
+      </li>
+    </ul>
+    <MadCap:snippetBlock src="../../Resources/Snippets/API/Connectors/common/managed-connectors-common-headers.flsnp"/>
+    <MadCap:pageBreak/>
+    <h2 class="with-rule"><a name="solace"/><MadCap:variable name="Variables.CompanyName"/> Message Headers</h2>
+    <p><MadCap:variable name="Variables.CompanyName"/> headers exposed to the <MadCap:variable name="Manifest-Products-Connectors.cloud_managed_connector_flow"/> are documented in the <a href="https://github.com/SolaceDev/solace-spring-cloud/tree/master/solace-spring-cloud-starters/solace-spring-cloud-stream-starter#solace-message-headers" class="link-offsite">Spring Cloud Stream Binder for <MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/></a> documentation.</p>
+  </body>
+</html>

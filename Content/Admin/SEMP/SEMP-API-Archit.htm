@@ -1,0 +1,701 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+    <title/>
+  </head>
+  <body>
+    <h1>SEMP API Architecture</h1>
+    <p>SEMP v2 is composed of three separate APIs that each serve a different purpose.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/Admin/SEMP/SEMP-API-Description-Table.flsnp"/>
+    <p>The sections that follow describe the structure of the SEMP API in more detail. These sections include:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Reserved">Reserved Characters</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Resource">SEMP Resources</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Query">Query Parameters</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Collection-Counts">Collection Counts</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#HTTP">HTTP Methods</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#HTTP2">HTTP Response Codes</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#HTTP4">HTTP Content</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Reserved"/>Reserved Characters</h2>
+    <p>The following are considered "data" within a SEMPv2 URL:</p>
+    <ul>
+      <li>
+        <p>the identifying attributes of a resource; and</p>
+      </li>
+      <li>
+        <p>the values of query parameters.</p>
+      </li>
+    </ul>
+    <p>When these data portions of the URL contain characters outside the RFC 3986 "unreserved" character set (A-Z, a-z, 0-9, -, _, ., and ~), then these characters must be percent-encoded.</p>
+    <p>However, when commas are used as delimiters for a resource with multiple identifying attributes or for a query parameter with multiple values, they must not be percent-encoded.</p>
+    <h2 class="with-rule"><a name="Resource"/>SEMP Resources</h2>
+    <p>SEMP v2 uses URIs to address manageable <i>resources</i> of the <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker. Resources are individual objects, collections of objects, or (exclusively in the Action API) actions.</p>
+    <p>Resources are always nouns, with individual objects being singular and collections being plural. Objects within a collection are identified by an object ID (<code>obj-id</code>), which follows the collection name with the form <code>collection-name/obj-id</code>. An <code>obj-id</code> consists of one or more identifying attributes, separated by commas. Commas that appear in the identifying attribute itself must be percent-encoded.</p>
+    <p>Objects are composed of attributes, actions, collections, and other objects, which are in turn described by JSON objects as name/value pairs. The collections and actions of an object are not contained directly in the object's JSON content; rather the content includes an attribute containing a URI which points to the collections and actions. These contained resources must be managed through this URI. </p>
+    <p>At a minimum, every object has a <code>uri</code> attribute containing the URI pointing to itself. Objects in collections also have at least one identifying attribute. These attributes can have properties—see <MadCap:xref href="#Attributes">Attribute Properties</MadCap:xref> below for details.</p>
+    <p>Collections are unordered lists of objects (unless described as otherwise), and are described by JSON arrays. Each item in the array represents an object in the same manner as the individual object would normally be represented.</p>
+    <p>Actions within an object are identified by an <code>action-id</code>, which follows the object name with the form <code>obj-id/action-id</code>.</p>
+    <p>Actions are also composed of attributes, and are described by JSON objects as name/value pairs. Unlike objects, however, they are not members of a collection and cannot be retrieved, only performed. Actions only exist in the action API.</p>
+    <p>Some examples are as follows:</p>
+    <pre xml:space="preserve">/SEMP/v2/config/msgVpns                        ; MsgVpn collection
+/SEMP/v2/config/msgVpns/a                      ; MsgVpn object named "a"
+/SEMP/v2/config/msgVpns/a/queues               ; Queue collection in MsgVpn "a"
+/SEMP/v2/config/msgVpns/a/queues/b             ; Queue object named "b" in MsgVpn "a"</pre>
+    <pre xml:space="preserve">/SEMP/v2/config/msgVpns/a/bridges              ; Bridge collection in MsgVpn "a"
+/SEMP/v2/config/msgVpns/a/bridges/b,auto       ; Bridge object named "b" with virtual router "auto" in MsgVpn "a"</pre>
+    <pre xml:space="preserve">
+/SEMP/v2/action/msgVpns/a/queues/b/startReplay ; Action that starts a replay on Queue "b" in MsgVpn "a"</pre>
+    <pre xml:space="preserve">
+/SEMP/v2/monitor/msgVpns/a/clients             ; Client collection in MsgVpn "a"
+/SEMP/v2/monitor/msgVpns/a/clients/c           ; Client object named "c" in MsgVpn "a"
+</pre>
+    <p>These examples illustrate cases where the object ID of the resource is composed of a single part (commonly a name). Some objects in the event broker are uniquely identified by more than one string, in which case you concatenate the strings together with the "," (comma) character to form the object's ID. For example:</p>
+    <pre class="Code" xml:space="preserve">
+/SEMP/v2/config/msgVpns/finance/bridges/ny-to-ldn,primary</pre>
+    <p>In the example above, there is a collection of bridges within the <code>finance</code> Message VPN, one of which is called <code>ny-to-ldn</code> belonging to the <code>primary</code> virtual-router.</p>
+    <p>As a general rule, resource paths in the SEMP API are composable. That is, the client application, by following well understood patterns, can build the URI itself. In particular, SEMP does not make use of obfuscated or generated UUIDs or any other scheme for generating unique URIs for each resource. The <MadCap:xref href="SEMP-API-Ref.htm">SEMP API Reference</MadCap:xref> shows the resource URI for each event broker configuration resource.</p>
+    <h3><a name="Attributes"/>Attribute Properties</h3>
+    <p>Attributes in an object or action may have any combination of the following properties:</p>
+    <table style="margin-left: 0;margin-right: auto;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 100%;" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 15%;"/>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 85%;"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Property</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Meaning</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Identifying</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The attribute is involved in unique identification of the object, and appears in its URI.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Const</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The attribute value can be chosen only during object creation.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Required</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The attribute must be provided in the request.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Read-Only</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>The attribute value cannot be changed. Read-only attributes may appear in POST and PUT/PATCH requests. However, if a read-only attribute is not marked as identifying, it will be ignored.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Write-Only</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The attribute can only be written, not read. This attribute will not be returned in GET requests.</p>
+            <p>Opaque attributes can be retrieved in opaque form even if they are write-only.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Requires-Disable</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The attribute cannot be changed while the object (or the relevant part of the object) is administratively enabled.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Auto-Disable</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Modifying this attribute while the object (or the relevant part of the object) is administratively enabled causes the event broker to temporarily disable one or more attributes to apply the change. </p>
+            <p class="Note">This action may be service impacting.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Deprecated</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>The attribute is deprecated and may be eliminated in a subsequent SEMP version.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Opaque</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>The attribute can be set or retrieved in opaque form when the <code>opaquePassword</code> query parameter is present. See <MadCap:xref href="SEMP-Features.htm#OpaquePassword">Opaque Password</MadCap:xref> for details.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>In some requests, certain attributes may only be provided in certain combinations with other attributes:</p>
+    <table style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Relationship</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Meaning</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Requires</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>The attribute may only be changed by a request if a particular attribute or combination of attributes is also provided in the request.</p>
+            <p>The <code>requires</code> property will not be enforced for an attribute when all of the following conditions are met:</p>
+            <ol style="list-style-type: lower-alpha;">
+              <li>
+                <p> the attribute is not write-only; </p>
+              </li>
+              <li>
+                <p>the value provided for the attribute is the same as its current (or, on object creation, its default) value; and</p>
+              </li>
+              <li>
+                <p> the attribute requires a write-only attribute. </p>
+              </li>
+            </ol>
+            <p>In addition, the <code>requires</code> property may not be enforced even if only conditions (a) and (b) are met.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Conflicts</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>The attribute may only be provided in a request if a particular attribute or combination of attributes is <b>not</b> also provided in the request.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>In the monitoring API, any non-identifying attribute may not be returned in a GET.</p>
+    <p>
+            The <MadCap:xref href="SEMP-API-Ref.htm">SEMP API Reference</MadCap:xref> identifies all attribute properties for each resource so that it is clear which attributes of an object have assigned properties.</p>
+    <h2 class="with-rule"><a name="HTTP"/>HTTP Methods</h2>
+    <p>The HTTP methods of POST, PUT, PATCH, DELETE, and GET manipulate resources according to the following general principles. Note that some methods are only used in certain APIs:</p>
+    <table style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Method</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Resource</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Description</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Request Body</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Response Body</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">POST</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Collection</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Creates a new object</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Initial attribute values</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Object attributes and metadata</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Absent attributes are set to default. If the object already exists, the event broker returns a 400 error.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">PUT</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Object</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Updates an existing object</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">New attribute values</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Object attributes and metadata</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>If the object does not exist, the event broker creates it. Absent attributes are set to default, except if the if the SEMP user is not authorized to modify the attribute. In this case, its value is left unchanged rather than set to default. </p>
+            <p>In addition, the values of write-only attributes are not set to their defaults on a PUT, except in the following two cases: there is a mutual requires relationship with another non-write-only attribute, both attributes are absent from the request, and the non-write-only attribute is not currently set to its default value; or the attribute is also opaque and the <code>opaquePassword</code> query parameter is provided in the request.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">PUT</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Action</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Performs an action</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Action arguments</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Action metadata</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1"> </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">PATCH</td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">Object</td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">Updates an existing object</td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">New attribute values</td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>Object attributes and metadata</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>Absent attributes are left unchanged. If the object does not exist, the event broker returns a 400 error.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">DELETE</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Object</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Destroys an existing object</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Empty</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Object metadata</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>If the object does not exist, the event broker returns a 400 error.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">GET</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Object</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Retrieves an object</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Empty</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Object attributes and metadata</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>If the object does not exist, the event broker returns a 400 error.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">GET</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">Collection</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">Retrieves a collection of  objects</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">Empty</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Object attributes and collection metadata</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>If the collection is empty, the event broker returns the empty collection with a 200 code.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="Method"/>Method Override</h3>
+    <p>If you're using a client that doesn't support all of the HTTP methods, or you're passing requests through a proxy that limits HTTP methods, you can override the HTTP method by using a POST and setting the <code>X-Http-Method-Override</code> header to the desired method. For instance, to do a PATCH request, do a POST with header <code>X-Http-Method-Override: PATCH</code>.</p>
+    <h2 class="with-rule"><a name="Query"/>Query Parameters</h2>
+    <p>Query parameters are used with all HTTP methods for various purposes. </p>
+    <p>Multiple query parameters can be used together in a single URI, separated by the ampersand character. For example:</p>
+    <pre>; Request for the MsgVpns collection using two hypothetical query parameters
+; "q1" and "q2" with values "val1" and "val2" respectively
+/SEMP/v2/config/msgVpns?q1=val1&amp;q2=val2
+</pre>
+    <p>The API reference lists the query parameters for each endpoint. </p>
+    <h3><a name="Common-Query-Params"/>Common Query Parameters</h3>
+    <p>There are a handful of query parameters that are common to many URIs because they allow for advanced manipulation of query results such as filtering and pagination. These parameters are listed in the following table.</p>
+    <table style="width: 95%;margin-left: 0;margin-right: auto;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 109px;"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" rowspan="2">
+                        Parameter
+                                        </th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" rowspan="2">
+                        Meaning
+                                        </th>
+          <th colspan="2" class="TableStyle-Table_Num-HeadE-Column1-Header1" style="text-align: center;">
+                        Applies To
+                    </th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1" rowspan="2">For Details, See...</th>
+        </tr>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Object</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Collection</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">select=<i>list-of-attrs</i></p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Include in the response or exclude from the response the specified data attributes.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">
+              <img src="../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt=""/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">
+              <img src="../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt=""/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>
+              <MadCap:xref href="SEMP-Features.htm#Select">Returning Selected Data Fields</MadCap:xref>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">where=<i>list-of-exprs</i></p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Include in response objects where all listed expressions are true.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body"> </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">
+              <img src="../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt=""/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>
+              <MadCap:xref href="SEMP-Features.htm#Filtering">Filtering</MadCap:xref>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">cursor=<i>opaque-value</i></p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">The current position in a paged GET request.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body"> </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">
+              <img src="../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt=""/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>
+              <MadCap:xref href="SEMP-Features.htm#Paging">Paging</MadCap:xref>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">count=<i>number</i></p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">Include at most this many objects in the response.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body"> </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">
+              <img src="../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt=""/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p>
+              <MadCap:xref href="SEMP-Features.htm#Paging">Paging</MadCap:xref>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>opaquePassword=<i>password</i></p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>Provides a mechanism to return write-only attributes in the response.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <img src="../../Resources/Images/Cloud/reusable-icons/check-mark-brand.png" alt=""/>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1"> </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>
+              <MadCap:xref href="SEMP-Features.htm#OpaquePassword">Opaque Password</MadCap:xref>
+            </p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="Collection-Counts"/>Collection Counts</h2>
+    <p>Counts are supported for only certain collections. For details, see <MadCap:xref href="SEMP-Features.htm#Count">Retrieving the Number of Objects in a Collection</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="HTTP2"/>HTTP Response Codes</h2>
+    <p>The API returns an HTTP response code in each response. These codes represent three families of responses: success (200), client error (4xx), and server error (5xx).</p>
+    <table style="width: 95%;margin-left: 0;margin-right: auto;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Code</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Status</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Meaning</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">200</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1"> OK</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The request was successful.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">400</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Bad Request</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Something is wrong with the request. For example, there is a typo or the requested object cannot be found.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">401</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Unauthorized</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Something is wrong with the client authentication. For example, the password is incorrect or the user does not exist.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">500</td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">	Internal Server Error</td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">Something went wrong on the event broker.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">529</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">No SEMP Session Available</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">The event broker cannot create the requested <a href="SEMP-Security.htm#Sessions" class="link-internal">session</a> because there are too many SEMP clients or <MadCap:variable name="Product-Names.pubsubmanager_short"/> users connected.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p> 500-level errors indicate that there is a problem with the event broker, such as a system overload, that is preventing the request from completing successfully.  On the other hand, 400-level errors may be something that the client can correct and retry. A 401 error is returned on API authentication failures for compatibility with some applications (such as Web browsers) that use this HTTP response code to prompt clients to authenticate.</p>
+    <p>In the case of errors, the body of the HTTP response contains more detailed information about the nature of the error and contains additional information about the request. This is described in <MadCap:xref href="SEMP-Error-Handling.htm">Error Handling</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="HTTP4"/>HTTP Content</h2>
+    <p>SEMP uses JSON to encode the payload for requests and responses. </p>
+    <p>You can include a <code>Content-Encoding</code> header with the value of <code>gzip</code> to compress requests. Similarly, specify an <code>Accept-Encoding </code>header of <code>gzip</code> to ask the event broker to compress its responses.</p>
+    <p>A <code>Content-Type</code> header value of <code>application/json</code> is required for requests with bodies.</p>
+    <p>The format for the requests and responses is URI-dependent and fully documented in the <MadCap:xref href="SEMP-API-Ref.htm">SEMP API Reference</MadCap:xref>.</p>
+    <p>One of the goals for object payloads is to enable the get, update, modify usage pattern (where you GET an object, make some change to it, and then PUT the object to save the change). SEMP is designed with this type of use in mind, meaning, for example:</p>
+    <ul>
+      <li>The API harmonizes the format for objects between the GET, POST, PUT, and PATCH methods.</li>
+      <li>The PUT and PATCH methods ignore non-identifying read-only attributes in HTTP content objects.</li>
+      <li>The schemas for objects returned on a GET contain write-only attributes, like <code>password</code>, because they are needed for creating objects. However, these attributes are absent from the actual responses.</li>
+    </ul>
+    <p>Currently, SEMP only supports UTF-8 encoding for HTTP content.</p>
+    <h3><a name="Response"/>Responses</h3>
+    <p>All SEMP requests have a non-empty response. All responses are divided into two sections: data (what was requested) and metadata (information about the response).  If the corresponding request contains an <code>Accept-Encoding</code> header allowing for compression, the event broker compresses the response body appropriately.</p>
+    <p>The basic JSON structure of a SEMP response is as follows:</p>
+    <pre class="Code" xml:space="preserve">
+{
+  "collections": [
+    {
+      "&lt;collection-name&gt;": {
+        "count": &lt;number&gt;
+      },
+      "&lt;collection-name&gt;": {
+        "count": &lt;number&gt;
+      }
+    }
+  ],
+  "data": {
+    // data attributes
+  },
+  "links": {
+    // links to XXXX
+  },
+  "meta": {
+    "count": &lt;number&gt;,
+    "error": {
+      "code": &lt;number&gt;,
+      "description": &lt;string&gt;,
+      "status": &lt;string&gt;
+    },
+    "paging": {
+      "cursorQuery": &lt;string&gt;
+      "nextPageUri": &lt;string&gt;
+    },
+    "request": {
+      "method": &lt;string&gt;,
+      "uri": &lt;string&gt;
+    },
+    "responseCode": &lt;number&gt;
+  }
+}</pre>
+    <h4>Collections Field</h4>
+    <p>If a GET is performed on a supported collection, the count of the objects in its child collections is returned in the <code>collections</code> section. For details, see <MadCap:xref href="SEMP-Features.htm#Retrieving_Msgs_Counts_Queues">Retrieving Message Counts from Queues or Replay Logs</MadCap:xref>.</p>
+    <h4>Data Field</h4>
+    <p>The <code>data</code> field is optional. If present, its value is a JSON object or array. The content returned in this field is URI dependent.</p>
+    <h4>Links Field</h4>
+    <p>The <code>links</code> field is optional. As described in <MadCap:xref href="#Resource">SEMP Resources</MadCap:xref>, above, objects are composed of attributes, actions, collections, and other objects. If present in the response, the <code>links</code> field contains the list of URIs that point to the collections and actions. You must use these URIs to manage the contained resources.</p>
+    <h4>Meta Field</h4>
+    <p>The <code>meta</code> field is mandatory. Its value is a JSON object, and it has a common definition across all URIs. The following table summarizes the  information in the <code>meta</code> field.</p>
+    <table style="width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">
+                        Field
+                    </th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">
+                        Sub-Field
+                    </th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">
+                        Description
+                    </th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">
+                        Optional?
+                    </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>
+              <code>count</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1"> </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>The total <a href="SEMP-Features.htm#Count" class="link-internal">number of objects requested</a>, irrespective of page size. This may be a count of all objects in a collection or a filtered subset. It represents a snapshot in time and may change when paging through results.</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Yes</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">
+              <code>responseCode</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body"> </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>The HTTP response code, one of 200 (success), 4xx (client error), or 5xx (server error).</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">No</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td rowspan="2" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">
+              <code>request</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">
+              <code>method</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>The HTTP method of the request which resulted in this response.</p>
+          </td>
+          <td rowspan="2" class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">No</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">
+              <code>uri</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>The URI of the request which resulted in this response. The URI may be normalized.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td rowspan="3" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">
+              <code>error</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">
+              <code>code</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>The error code which uniquely identifies the error that has occurred.</p>
+          </td>
+          <td rowspan="3" class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Yes–only provided on errors.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">
+              <code>description</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>The verbose description of the problem.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">
+              <code>status</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>The terse status string associated with <code>code</code>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td rowspan="2" class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">
+              <code>paging</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">
+              <code>cursorQuery</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p>The cursor, or position, for the next page of objects. Use this as the <code>cursor</code> query parameter of the next request.</p>
+          </td>
+          <td rowspan="2" class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body">Yes–only provided if there are more pages in a collection.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">
+              <code>nextPageUri</code>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>The URI of the next page of objects. The <code>cursorQuery</code> field is already embedded within this URI.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

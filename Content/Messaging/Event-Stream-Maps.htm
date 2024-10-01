@@ -1,0 +1,316 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <style>
+			img { 
+			mc-thumbnail-max-height: auto;mc-thumbnail-max-width: 500px;mc-thumbnail: popup; padding-top: 10px;
+			padding-bottom: 10px;
+			}
+			
+			.image-inline{
+			mc-thumbnail-max-height: none;mc-thumbnail-max-width: none;mc-thumbnail:none;
+			}
+		
+		</style>
+  </head>
+  <body>
+    <h1>Event Streaming Flows</h1>
+    <p><MadCap:variable name="Product-Names.pubsub_brand_only" MadCap:conditions="SAP.SapHideFromOutput"/><MadCap:variable name="Product-Names.cloud_product_firstuse" MadCap:conditions="SAP.SapOnlyOutput"/> separates incoming events into two separate streams depending on the Quality of Sevice (QoS) required for the events (as defined by the producer) as they are moved from producers to consumers. These <MadCap:xref href="#non-persistent-event-streams">Non-Persistent Event Streams</MadCap:xref> and <MadCap:xref href="#persisten-event-streams">Persistent Event Streams</MadCap:xref> process events using different paths. The following sections show you how that processing happens.</p>
+    <h2 class="with-rule"><a name="non-persistent-event-streams"/>Non-Persistent Event Streams</h2>
+    <p>Non-persistent events are ephemeral. These events provide a QoS for consumers where loss of messages is acceptable, and use a design pattern where consumers only receive messages starting from the time of connection. This allows for extremely high throughput and ultra-low latency as a trade-off against longevity. This QoS is also commonly used for <MadCap:xref href="../Get-Started/message-exchange-patterns.htm">Message Exchange Patterns</MadCap:xref>  such as Request-Reply or Publish-Subscribe in applications like market data.</p>
+    <h4>Message arrival</h4>
+    <p>When event messages arrive at the broker with <code>Delivery Mode</code> set to <code>Direct</code>, the message is placed at the tail of the Non-Persistent Event Stream.</p>
+    <h4>Consuming messages</h4>
+    <p>Non-durable consumers receive messages from the Non-Persistent Event Stream by attracting topic messages on a subscription basis. As new event messages arrive at the broker, they are placed in the consumer’s egress queue if they correspond to the client’s subscription request.</p>
+    <h4>Message priority</h4>
+    <p>Each <code>Direct</code> message has an assigned priority. The consumer’s egress queue ensures higher priority <code>Direct</code> messages are processed before lower priority ones. Messages of the same priority are processed in the order they arrive at the broker.</p>
+    <h4>Non-persistent event processing</h4>
+    <p>In the diagram below, you can follow a non-persistent event as it is processed by the PubSub+ event broker.</p>
+    <div class="responsive-maps">
+      <img src="../Resources/Images/Event-Stream/New-Non-Persistent7.png" alt=""/>
+    </div>
+    <p>The detailed steps of this process flow (corresponding to the numbers in the diagram) are as follows:</p>
+    <ol>
+      <li>Message producers send events with the header's Persistent Delivery Mode set to Direct. The messages are written to the tail of the Non-Persistent Event Stream based on the order they arrive at the broker. Suppose a message is sent with the Persistent Delivery Mode set to Persistent. In that case, it will also be added to the Non-Persistent Event Stream for those consumers who are subscribed to the topic but don't require message persistence. </li>
+      <li>The arrival of messages in the Non-Persistent Event Stream causes the Data Plane to determine which Non-Durable Consumers are interested in the message. </li>
+      <li>A reference to the message is moved to the appropriate Consumer Egress Queues for all consumers whose topic subscriptions match the message's topic. Based on the priority of the messages, the messages are then queued in TCP for delivery to the appropriate consumer. Refer to <MadCap:xref href="Managing-Event-Delivery-Resources.htm#Client">Client Egress Queue Structure Overview</MadCap:xref> for more information.</li>
+      <li>Once all consumers that have registered interest in the same topic message, and their Egress Queue schedulers have moved the message to the TCP output queue, the message is deleted from the Non-Persistent Event Stream. See <MadCap:xref href="Direct-Msg/Direct-Messages.htm">Direct Messages</MadCap:xref> for more information.</li>
+    </ol>
+    <p>To find out more about the  components that are involved, see the following:</p>
+    <ul>
+      <li><a href="../API/API-Developer-Guide/Publishing-Direct-Messages.htm" class="link-internal">Non-persistent Producer</a>: Further discussion on publishing Direct messages.</li>
+      <li><a href="../Get-Started/what-are-topics.htm" class="link-internal">Topics</a>: Understand the role played by topics in the message flow from producers to consumers.</li>
+      <li><a href="Managing-Event-Delivery-Resources.htm#Client" class="link-internal">Client Egress Queue</a>: A description of how the egress queue manages messages of different priorities.</li>
+      <li><a href="../API/API-Developer-Guide/Receiving-Direct-Messages.htm" class="link-internal">Non-Durable Consumer</a>: Learn more about receiving and managing Direct messages using messaging APIs.		</li>
+    </ul>
+    <h3><a name="data-plane-incoming-tcp"/>Data Plane Tasks for Incoming TCP Events</h3>
+    <p>All messages enter a Solace PubSub+ broker via custom ingress TCP buffers. The arrival of new TCP event messages cause the Data Plane to move the TCP data to the Non-Persistent Event Stream for further processing. However, it should be noted that messages are only moved to the event stream if they pass ingress ACL processing.</p>
+    <p> Messages in the Non-Persistent Event Stream are ephemeral, and message discard is acceptable. All messages, including messages that are flagged with a <code>Persistent Delivery Mode</code> set to <code>Persistent</code> or <code>Direct</code> are first placed into the Non-Persistent Event Stream when they arrive over TCP/IP. The Data Plane immediately moves messages flagged as <code>Direct</code> to the consumer's egress queue where the consumer has a matching topic subscription. </p>
+    <p>Messages flagged as <code>Persistent</code> are immediately placed into the Persistent Event Stream. If the persisted mode messages are discarded before they are processed into the Persistent Event Stream, the producer API ensures redelivery to the broker, and the Persisted Event Stream will automatically discard redelivered duplicates.</p>
+    <h4>Operations the Data Plane Performs on Messages Arriving over TCP</h4>
+    <p>Once the messages pass the ingress ACL check, they are placed in the Non-Persistent Event Stream, and are further processed by the Data Plane, as follows:</p>
+    <ul>
+      <li>
+        <u>Promotion</u>
+      </li>
+      <p>Some messages will have arrived with the <code>Persistent Delivery Mode</code> set to <code>Direct</code>, but a queue may have a topic subscription for those messages. Topic messages subscribed to from queues are promoted to <code>Persistent</code>, and moved to the Persistent Event Stream, but no <code>ACK</code> is sent to the producer.</p>
+      <p>For more information about promotion, see <MadCap:xref href="../API/API-Developer-Guide/Message-Delivery-Modes.htm#Message">Message Promotion and Demotion</MadCap:xref>.</p>
+      <li>
+        <u>Demotion</u>
+      </li>
+      <p>Some messages will arrive in the Non-Persistent Event Queue that have the <code>Persistent Delivery Mode</code> set to <code>Persistent</code>. However, there may be topic subscribers who want the same message while it's being moved to the Persistent Event Stream. This message is demoted to <code>Direct</code> for delivery directly to the consumer egress queue for ultra-low latency and high throughput processing for consumers who don't require guaranteed delivery.</p>
+      <p>Further information about demotion can also be found at <MadCap:xref href="../API/API-Developer-Guide/Message-Delivery-Modes.htm#Message">Message Promotion and Demotion</MadCap:xref>.</p>
+      <li>
+        <u>Prioritization</u>
+      </li>
+      <p>Based on an indication from the producer, the message is placed into one of three consumer egress queue priority streams.</p>
+      <p>For more information refer to <MadCap:xref href="Managing-Event-Delivery-Resources.htm#Client">Client Egress Queue Structure Overview</MadCap:xref>.</p>
+      <li>
+        <u>Shared Subscriptions</u>
+      </li>
+      <p>Messages can be delivered in a round-robin fashion to a group of topic consumers to provide load balancing similar to non-exclusive queue processing.</p>
+      <p>More information can be found at <MadCap:xref href="Direct-Msg/Direct-Messages.htm#Shared">Shared Subscriptions</MadCap:xref>.</p>
+      <li>
+        <u>Persisted Message moved to Persistent Event Stream</u>
+      </li>
+      <p>All messages from the TCP network are placed directly into the Non-Persistent Event Stream. If the message's <code>Persistent Delivery Mode</code> is set to <code>Persistent</code>, the message is moved and persisted against the Persistent Event Stream.</p>
+      <li>
+        <u>Logging</u>
+      </li>
+      <p>Event messages are logged in real-time based on multiple conditions ranging from threshold settings to messages arriving without any subscribers. This is a log of message activity, not tracing of the full message.</p>
+      <p>Information about configuring logging for various APIs can be found in <MadCap:xref href="../API/API-Developer-Guide/Configuring-Logging.htm">Configuring Logging</MadCap:xref>.</p>
+      <li>
+        <u>Subscription Binding</u>
+      </li>
+      <p>When consumers indicate they want specific topic messages for <code>Direct</code> mode delivery (including demoted messages), the attracted topic messages are now referenced in the consumer’s egress queue for processing to the TCP outbound buffers.</p>
+      <li>
+        <u>Consumer Egress Queue</u>
+      </li>
+      <p>A reference to the messages in the Non-Persistent Event Queue that are scheduled for TCP delivery to specific consumers. The reference will only be added to the egress queue if the consumer’s security ACL profile allows the delivery.</p>
+      <p>For more information refer to <MadCap:xref href="Managing-Event-Delivery-Resources.htm#Client">Client Egress Queue Structure Overview</MadCap:xref>.</p>
+    </ul>
+    <h4>Data Plane Tasks</h4>
+    <p>The following diagram illustrates the tasks performed by the Data Plane:</p>
+    <div class="responsive-maps">
+      <img src="../Resources/Images/Event-Stream/Non-P-Data-PlaneTasks3.png" alt=""/>
+    </div>
+    <p>The following discussion and links provide information about the components illustrated in the diagram.</p>
+    <ul>
+      <li><a href="Managing-Event-Delivery-Resources.htm" class="link-internal">Consumer Egress Queue</a>: Learn more about egress per-client priority queues on brokers, and the commands that you can use to configure them.</li>
+      <li><a href="../Security/Managing-Access-Control-Lists.htm#Config-Topics-May-Sub-To" class="link-internal">Egress Topic ACL</a>: Learn more about egress topic ACLs.</li>
+      <li><a href="../Security/Managing-Access-Control-Lists.htm#Config-Topics-May-Pub-To" class="link-internal">Ingress Topic ACL</a>: You can use ACLs to control the topics to which clients are allowed to publish.</li>
+      <li><a href="../API/API-Developer-Guide/Message-Delivery-Modes.htm#Message" class="link-internal">Promotion</a>: Message promotion is the situation where a producer sends Direct messages, and the consumer receives these message from a Guaranteed messaging endpoint.</li>
+      <li><a href="../API/API-Developer-Guide/Message-Delivery-Modes.htm#Message" class="link-internal">Demotion</a>: Message demotion is the situation where the producer sends Persistent messages, and there are consumers that want to receive these messages, but can tolerate lost messages.</li>
+      <li><a href="https://docs.solace.com/API-Developer-Online-Ref-Documentation/net/html/1acf46f0-c62d-3c80-9b6b-6f15b3f0bf9c.htm#TopicContent" class="link-internal">Prioritization</a>: When you enable an endpoint to respect message priority, the priority field in messages from producers are respected for all guaranteed and promoted direct messages.</li>
+      <li><a href="Direct-Msg/Direct-Messages.htm#Shared" class="link-internal">Shared Subscriptions</a>: Shared subscriptions can be used to load balance large volumes of client data across multiple instances of back end data center applications. </li>
+      <li><a href="#persisten-event-streams" class="link-internal">Persistent Message moved to Persisted Event Stream</a>: All messages from the TCP network are placed into the Non-Persistent Event Stream directly. Based on the Delivery Mode in the message set to Persistent, the message is moved and persisted against the Persistent Event Stream.</li>
+      <li><a href="../Monitoring/Monitoring-and-Management.htm" class="link-internal">Logging</a>: Learn how to use messaging APIs for logging.</li>
+      <li><a href="../API/API-Developer-Guide/Adding-Topic-Subscriptio.htm#Adding2" class="link-internal">Subscription Binding</a>: Typically, messages are published to a Queue when it's set as the destination of the message. However, you can also add a topic subscription to a Queue so that it receives any messages that are published to a matching topic destination.</li>
+    </ul>
+    <h3><a name="non-durable-temp"/>Non-Durable Temporary Queues</h3>
+    <p>There are several message exchange patterns (MEP)s where there's no requirement for a persistent queue to exist beyond the life of a durable consumer. These queues are called temporary queues; this type of queue is active only while the consumer that created it is active.</p>
+    <p>Temporary queues are very often used for producers that make use of the Request / Reply MEP, where the reply messages are only relevant while the producer exists.</p>
+    <p>In the following diagram, you can follow a message as it's processed on a Non-Durable Temporary Queue:</p>
+    <div class="responsive-maps">
+      <img src="../Resources/Images/Event-Stream/NonDurable_Temp_Queues.png" alt=""/>
+    </div>
+    <p>The detailed steps of this process flow (corresponding to the numbers in the diagram) are as follows:</p>
+    <ol>
+      <li> If Durable Consumer 1 stops or disconnects its Solace Session to the event broker, it results in the associated Egress Queue being dissolved. The Queue 2 Endpoint will continue to exist since Queue 2 is a Durable Queue.</li>
+    </ol>
+    <ol style="list-style-type: upper-alpha;">
+      <li> If Durable Consumer 2 stops or disconnects its Solace Session to the event broker, it results in the associated Egress Queue being dissolved.</li>
+      <li>There is no longer any consumer associated with the Temporary Queue 1 so it is also dissolved and all references to the Persistent Event Stream are dissolved.</li>
+    </ol>
+    <p>The following links provide information about the components illustrated in the above diagram.</p>
+    <ul>
+      <li><a href="Guaranteed-Msg/Endpoints.htm#Endpoint_Durability" class="link-internal">Temporary Queue</a>: Learn more about temporary queues and topic endpoints.</li>
+      <li><a href="Guaranteed-Msg/Endpoints.htm#Endpoint_Durability" class="link-internal">Durable Queue</a>: Learn more about durable queues and top endpoints.</li>
+      <li><a href="Managing-Event-Delivery-Resources.htm" class="link-internal">Client Egress Queue</a>: Get an overview of Client Egress Queue.</li>
+      <li><a href="../API/API-Developer-Guide/Receiving-Guaranteed-Messages.htm" class="link-internal">Durable Consumer</a>: Information on how to receive and manage Guaranteed message using APIs.</li>
+    </ul>
+    <h2 class="with-rule"><a name="persisten-event-streams"/>Persistent Event Streams</h2>
+    <p> Event messages are considered to be persistent if they are placed onto non-volatile storage media after they arrive on the broker. Persistent messages are suitable for application design patterns where the event messages must be:</p>
+    <ul>
+      <li>Processed in-order of receipt.</li>
+      <li>Available to consumers, even if those consumers are off-line.</li>
+      <li>Able to survive the loss of an event broker.</li>
+    </ul>
+    <h4>When to use persistent events</h4>
+    <p>Persistent events are commonly used for MEPs where loss and duplication aren't tolerated, for example in financial transaction applications. </p>
+    <h4>Separate streams for processing persistent and non-persistent events</h4>
+    <p>Persistent events require more processing than non-persistent ones.  PubSub+ event brokers use different paths for these two message types to ensure that the respective processes don't interfere with each other. </p>
+    <h4>How are persistent events processed?</h4>
+    <p>Persistent event messages are processed in three main phases that are discussed in detail in later sections:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#producer-side-processing">Producer-Side Processing of Persistent Events</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#data-plane-tasks-persistent">Data Plane Tasks for Persistent Event Streams</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#consumer-side-processing-persistent">Consumer-Side Processing of Persistent Events</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="producer-side-processing"/>Producer-Side Processing of Persistent Events</h3>
+    <p>Event producers can send event messages using a guaranteed QoS by setting the message's <code>Persistent Delivery Mode</code> to <code>Persistent</code>. This flag  instructs the broker to reply to the producer with an acknowledgment when the broker has stored the message in durable storage (including HA and / or DR replication). </p>
+    <h4>Persistent event processing</h4>
+    <p>In the diagram below, you can follow a persistent event as it is processed by the PubSub+ event broker.</p>
+    <div class="responsive-maps">
+      <img src="../Resources/Images/Event-Stream/PersistentPublisher3.png" alt=""/>
+    </div>
+    <p>The detailed steps of this process flow (corresponding to the numbers in the diagram) are as follows:</p>
+    <ol>
+      <li>The Producer sends an event message to the event broker, and the event stream consumes and persists the message. For more information, see <MadCap:xref href="Guaranteed-Msg/Basic-Guaranteed-Messsaging-Operation.htm#publishing">Publishing Guaranteed Messages</MadCap:xref>.</li>
+      <li>Placing a new message on the Event Stream triggers the broker to react to the change. The Data Plane is alerted to determine if the message must be routed to another broker or VPN (via either DMR, MNR, or VPN Bridge). All Queue and DTE endpoints state engines are updated if they have registered interest against the newly arrived message topic. Take a look at <MadCap:xref href="Guaranteed-Msg/Basic-Guaranteed-Messsaging-Operation.htm">Basic Operation of Guaranteed Messaging</MadCap:xref> to learn more.</li>
+      <li>Once the message is physically persisted, the Producer receives an acknowledgment. This occurs in parallel with Step 2. More information is available in <MadCap:xref href="Guaranteed-Msg/Basic-Guaranteed-Messsaging-Operation.htm">Basic Operation of Guaranteed Messaging</MadCap:xref>.</li>
+    </ol>
+    <p>To find out more about provisioning a durable queue, see <MadCap:xref href="Guaranteed-Msg/Configuring-Queues.htm">Configuring Queues</MadCap:xref>.</p>
+    <h3><a name="data-plane-tasks-persistent"/>Data Plane Tasks for Persistent Event Streams</h3>
+    <p>The Data Plane operates on queue endpoints. For persistent event messaging, a queue endpoint maintains state for all messages in the Persistent Event Stream that are targeted directly to the specific queue, or are part of the queue's topic subscriptions. There are three main functional categories associated with a queue endpoint:</p>
+    <ul>
+      <li>Updating the state engine when a new message in the event stream matches the subscriptions configured against the queue.</li>
+      <li>Sending messages to clients as either browsing or processing consumers.</li>
+      <li>Internal processing against updates to the state engine to provide internal stream processing, transaction management, redundancy, replication, queue-to-queue state-engine updates and management / administration of the state engine properties.</li>
+    </ul>
+    <h4>Updating the Queue Endpoint's state engine</h4>
+    <p>The arrival of a new event message on the Persistent Event Steam causes, among other things, an update of the queue endpoint's state engine to add a pointer for the newly arrived message. </p>
+    <p>However, even if the queue endpoint has registered interest in a topic in the Persistent Event Stream, that doesn't guarantee the state engine will update the queue endpoint with a pointer to the new message. All messages must still meet the required access controls before the queue endpoint will reference the new messages.</p>
+    <h4>Consuming messages</h4>
+    <p>If a consumer binds a flow to the queue endpoint in order to receive messages in guaranteed delivery QoS, it still doesn't ensure the consumer will actually receive all the messages that are referenced in the queue endpoint state engine.</p>
+    <p>Guaranteed delivery QoS consumers still must be authorized at the queue level before they can consume or produce guaranteed messages that will be updated in the queue endpoint.</p>
+    <p>Guaranteed consumers may also define a selector where only a subset of the queued messages will actually be sent to the consumer. For more information about selectors, refer to <MadCap:xref href="../API/API-Developer-Guide/Using-Selectors.htm">Using Selectors</MadCap:xref> page.</p>
+    <h4>Operations the Data Plane performs</h4>
+    <p>A newly arriving persistent message does more than update the queue endpoint record list. The Data Plane also triggers checks and related processing operations for the following broker features:</p>
+    <ul>
+      <li>
+        <u>Message Replay</u>
+        <p>Message Replay is a Solace PubSub+ feature that allows a broker to resend messages to new or existing clients that request them, hours or even days after those messages were first received by the broker.</p>
+        <p>More information can be found at <MadCap:xref href="../Features/Replay/Message-Replay-Overview.htm">Message Replay Overview</MadCap:xref> and in the <MadCap:xref href="#replaying-messages">Replaying Messages</MadCap:xref> section below.</p>
+      </li>
+      <li>
+        <u>Dead Message Queue</u>
+        <p>Processing against the messages in the queue endpoint, the message could be removed because of a TTL (time-to-live) setting, or a poison message redelivery setting. The message is removed from queue endpoint reference, and is automatically added to a dead message queue associated with the original queue endpoint.</p>
+        <p>You can find more details in <MadCap:xref href="Guaranteed-Msg/Setting-Dead-Msg-Queues.htm">Dead Message Queues</MadCap:xref>.</p>
+      </li>
+      <li>
+        <u>HA Redundancy</u>
+        <p> The message may need to be replicated to the HA member before it's considered <code>persisted</code> in the primary HA broker.</p>
+        <p>More information can be found in <MadCap:xref href="../Features/HA-Redundancy/Redundancy-and-Fault-Tolerance-Overview.htm">Redundancy &amp; Fault Tolerance</MadCap:xref>.</p>
+      </li>
+      <li>
+        <u>DR Replication</u>
+        <p>The message may need to be replicated to the DR broker cluster  before it's considered <code>persisted</code> in the primary HA cluster.</p>
+        <p>There are more details at <MadCap:xref href="../Features/DR-Replication/Data-Center-Replication-Overview.htm">Replication Overview</MadCap:xref>.</p>
+      </li>
+      <li>
+        <u>Queue-to-Queue Multi-Phase Commit</u>
+        <p>If multiple queues are set with <code>reject-msg-to-sender-on-discard</code>, a failure to spool the same message in any one of the queues with the reject-on-discard setting, then that message is rolled back for all co-operating queues, and the producer is sent a negative acknowledgment.</p>
+        <p>You can find more information at <MadCap:xref href="../Features/DR-Replication/Replication-VPN-Level-Settings.htm#configuring_data_center_replication_2112153501_359511">Reject Message To Sender on Discard</MadCap:xref>.</p>
+      </li>
+      <li>
+        <u>Session and XA Transactions</u>
+        <p>The messages produced or consumed from the queue can be bracketed in either session or XA transactional semantics.</p>
+        <p>More information can be found in <MadCap:xref href="../API/API-Developer-Guide/Sessions.htm">Sessions</MadCap:xref> and <MadCap:xref href="../API/Solace-JMS-API/Using-XA-Transactions.htm">Using XA Transactions</MadCap:xref>.</p>
+      </li>
+    </ul>
+    <h4>Data Plane Tasks</h4>
+    <p>The diagram below illustrates various tasks performed by the Data Plane:</p>
+    <div class="responsive-maps">
+      <img src="../Resources/Images/Event-Stream/P-Data-PlaneTasks4.png" alt=""/>
+    </div>
+    <p>The components shown in the diagram are as follows:</p>
+    <ul>
+      <li><a href="../Security/ACL.htm" class="link-internal">Stream ACL</a>: ACLs are used to control which clients may connect to which Message VPNs, and which topics clients are allowed to publish and subscribe to in their Message VPN.</li>
+      <li><a href="../API/API-Developer-Guide/Using-Selectors.htm" class="link-internal">Selector</a>: Selectors enable clients to specify which messages that they are interested in receiving, as determined by the messages’ header field and property values.</li>
+      <li><a href="Guaranteed-Msg/Configuring-Queues.htm#Configur18" class="link-internal">Queue</a>: The queue owner has full unlimited permissions for the queue. That is, the owner can consume, delete, or modify topics in the queue.</li>
+      <li><a href="Guaranteed-Msg/Configuring-Queues.htm#Configur18" class="link-internal">Queue Permissions</a>: The queue owner has full unlimited permissions for the queue. That is, the owner can consume, delete, or modify topics in the queue.</li>
+      <li><a href="../API/Solace-JMS-API/Creating-Message-Consume.htm" class="link-internal">Queue Consumer</a>: A <code>MessageConsumer</code> object can be used to receive messages from a queue or for a specific topic.</li>
+      <li><a href="../API/API-Developer-Guide/Browsing-Guaranteed-Mess.htm" class="link-internal">Queue Browser</a>: Client applications using the Java and .NET APIs can use the Browser interface to look at Guaranteed messages spooled for a Queue in the oldest to newest order without consuming them.</li>
+      <li><a href="../Features/Replay/Message-Replay-Overview.htm" class="link-internal">Message Replay</a>: Get an overview information on Message Replay.</li>
+      <li><a href="Guaranteed-Msg/Setting-Dead-Msg-Queues.htm" class="link-internal">Dead Message Queue</a>: Processing against the Queue Endpoint messages, the message could be removed because of a TTL (time-to-live) setting or "poison message" redelivery setting. The message is removed from Queue Endpoint reference and is automatically added to a Dead Message Queue associated with the original Queue Endpoint.</li>
+      <li><a href="../Features/HA-Redundancy/Redundancy-and-Fault-Tolerance-Overview.htm" class="link-internal">HA Redundancy</a>: The message may need to be replicated to the HA mate before it's considered persisted in the primary HA broker.</li>
+      <li><a href="../Features/DR-Replication/Data-Center-Replication-Overview.htm" class="link-internal">DR Replication</a>: The message may need to be replicated to the Disaster Recovery PubSub+ broker cluster before it's considered persisted in the primary HA cluster.</li>
+      <li><a href="Guaranteed-Msg/Configuring-Queues.htm#Message-Discard-Handling" class="link-internal">Queue-to-Queue Multi-phase Commit Replication</a>: When publishing guaranteed messages to a broker, messages can be discarded for reasons such as message-spool full, maximum message size exceeded, endpoint shutdown, and so on.</li>
+      <li><a href="../API/API-Developer-Guide/Using-Local-Transactions.htm" class="link-internal">Session Transaction</a>: This section describes how to use transacted sessions to publish and/or receive a series of Guaranteed messages in a single atomic unit known as a local transaction. Local transactions only rely on a single resource (the broker) to provide messaging clients with service.</li>
+      <li><a href="../API/Solace-JMS-API/Using-XA-Transactions.htm" class="link-internal">XA Transaction</a>: This section is primarily intended for application architects, and intermediate to advanced programmers who intend to build their own XA solution rather than using the available Solace JEE Connector Architecture (JCA) Resource Adapter.</li>
+      <li><a href="../API/API-Developer-Guide/Adding-Topic-Subscriptio.htm#Adding2" class="link-internal">Subscription Binding</a>: Typically, messages are published to a Queue when it's set as the destination of the message. However, you can also add a topic subscription to a Queue so that it receives any messages that are published to a matching topic destination.</li>
+    </ul>
+    <h3><a name="consumer-side-processing-persistent"/>Consumer-Side Processing of Persistent Events</h3>
+    <p>Durable consumers process messages from the Persistent Event Stream by creating a flow against the queue endpoint. The Data Plane moves messages to the consumer egress queue.</p>
+    <p>In the diagram below, you can follow the processing of a message to a consumer.</p>
+    <div class="responsive-maps">
+      <img src="../Resources/Images/Event-Stream/PersistentConsumer3.png" alt=""/>
+    </div>
+    <p>The detailed steps of this process flow (corresponding to the numbers in the diagram) are as follows:</p>
+    <ol>
+      <li>Both Durable Consumers receive the next Topic 3 message that is yet to be processed. Learn more at <MadCap:xref href="../API/API-Developer-Guide/Receiving-Guaranteed-Messages.htm">Receiving Guaranteed Messages</MadCap:xref>.</li>
+      <li>Both Durable Consumers acknowledge they are done processing the message. Learn more at <MadCap:xref href="../API/API-Developer-Guide/Acknowledging-Messages.htm">Acknowledging Messages Received by Clients</MadCap:xref>.</li>
+      <li>The broker is aware that there are no other durable consumers for the same topic message, so the message is removed from the Persistent Event Stream. Additional information available at <MadCap:xref href="../API/API-Developer-Guide/Acknowledging-Messages.htm">Acknowledging Messages Received by Clients</MadCap:xref>.</li>
+    </ol>
+    <p>To find out more about the  components that are involved, see the following:</p>
+    <ul>
+      <li><a href="Guaranteed-Msg/Configuring-Queues.htm" class="link-internal">Queue</a>: Get information on provisioning a durable queue.</li>
+      <li><a href="../API/API-Developer-Guide/Receiving-Guaranteed-Messages.htm" class="link-internal">Durable Consumer</a>: Information on how to receive and manage Guaranteed message using APIs</li>
+    </ul>
+    <h3><a name="exclusive-nonexclusive-durable-queues"/>Exclusive and Non-Exclusive Durable Queues</h3>
+    <p>A durable queue can provide one of two types of access for consumers: Exclusive or Non-Exclusive. Both attract persistent messages even if there are no active consumers bound to the queue.</p>
+    <p>For information on how to set a durable queue's access type, you can refer to <MadCap:xref href="Guaranteed-Msg/Configuring-Queues.htm#Configur12">Configuring Access Types</MadCap:xref> on the <MadCap:xref href="Guaranteed-Msg/Configuring-Queues.htm">Configuring Queues</MadCap:xref> page, but a brief summary of the two types of access is provided in the next sub-sections.</p>
+    <h4>Non-Exclusive Queues</h4>
+    <p>Non-exclusive queues provide load balancing and fault tolerance to durable consumers, and allow multiple consumers to bind a flow to the same queue endpoint. </p>
+    <p>Messages are delivered to consumers in a round-robin fashion to provide load balancing. If a consumer fails, its unprocessed messages are forwarded to an active consumer to ensure fault-tolerance for the consumers.</p>
+    <p>If new consumers are bound to the queue, the load is automatically distributed among the newly joined consumers against the non-exclusive queue.</p>
+    <h4>Exclusive Queues</h4>
+    <p>Exclusive queues provide fault tolerance to durable consumers. More than one consumer can bind a flow to the queue, but only the first bound consumer receives any messages. If the processing consumer fails, the next bound consumer will receive any unprocessed messages from the first consumer, and become the active processing consumer.</p>
+    <h4>Exclusive and Non-Exclusive Durable Queue Process Flow</h4>
+    <p>The diagram below provides overview information about exclusive and non-exclusive queues. </p>
+    <div class="responsive-maps">
+      <img src="../Resources/Images/Event-Stream/Exclusive-NonExclusive-Durable-Queues2.png" alt=""/>
+    </div>
+    <p>The detailed steps of this process flow (corresponding to the letters in the diagram) are as follows:</p>
+    <ol style="list-style-type: upper-alpha;">
+      <li>Non-exclusive queues provide load balancing and fault tolerance to durable consumers. A non-exclusive queue allows multiple consumers to bind a flow to the same queue endpoint. Messages are delivered to the consumers in a round-robin fashion to allow load-balanced consumers. If a consumer fails, its unprocessed messages are forwarded to an active consumer to ensure fault tolerance for the consumers.</li>
+      <li>Exclusive queues provide fault tolerance to durable consumers. More than one consumer can bind a flow to the queue, but only the first bound consumer receives any messages. If the processing consumer fails, the next bound consumer will receive any unprocessed messages from the first consumer and become the active processing consumer.</li>
+    </ol>
+    <p>To find out more about the components illustrated above, see <MadCap:xref href="Guaranteed-Msg/Queues.htm#queue-access-types">Queue Access Types</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="replaying-messages"/>Replaying Messages</h2>
+    <p>PubSub+ supports four different replay strategies. Which one you decide to use depends on your requirements and use-cases. </p>
+    <ul>
+      <li>
+        <u>Message Replay</u>
+        <p>Message Replay is a PubSub+ feature that allows an event broker to resend messages to new or existing clients that request them, hours or even days after those messages were first received by the event broker.
+With replay enabled, event brokers store persistent messages in a replay log.</p>
+        <p>For more information refer to <MadCap:xref href="../Features/Replay/Message-Replay-Overview.htm">Message Replay Overview</MadCap:xref>.</p>
+      </li>
+      <li>
+        <u>Automatic Session Redelivery</u>
+        <p>When PubSub+ detects a session disconnect-reconnect event, the queue endpoint will automatically replay all messages to the consumer that were in flight, or being processed by the consumer, but were not acknowledged. All replayed messages on the session have a flag indicating they were replayed due to consumer session restart.</p>
+        <p>Information on configuring the maximum redelivery attempts for a durable queue can be found in <MadCap:xref href="Guaranteed-Msg/Configuring-Queues.htm#Configur15">Configuring Max Redelivery Attempts</MadCap:xref>.</p>
+      </li>
+      <li>
+        <u>Queue Browser</u>
+        <p>PubSub+ supports a special consumer called a Queue Browser, which consumes messages by replaying messages from a queue, but without the queue endpoint expecting an acknowledgment, or referencing the messages as consumed.</p>
+        <p>For more information refer to <MadCap:xref href="../API/API-Developer-Guide/Browsing-Guaranteed-Mess.htm">Browsing Guaranteed Messages</MadCap:xref>.</p>
+      </li>
+      <li>
+        <u>PubSub+ Cache</u>
+        <p>PubSub+ Cache an external in-memory data grid for high-speed and low latency storage on non-persisted messages. Replay is by topic, and based on message depth or time.</p>
+        <p>For more information refer to <MadCap:xref href="../Additional-Products/Solace-PubSub-Cache/PubSub-Cache-Overview.htm">Solace PubSub+ Cache</MadCap:xref>.</p>
+      </li>
+    </ul>
+    <h4>Message Replay Process Flow</h4>
+    <p>The following diagram shows you where each of the above replay strategies fits into PubSub+ event message processing. </p>
+    <div class="responsive-maps">
+      <img src="../Resources/Images/Event-Stream/Message-Replay.png" alt=""/>
+    </div>
+    <p>The following discussion and links provide information about the components illustrated in the diagram.</p>
+    <ul>
+      <li><a href="../Additional-Products/Solace-PubSub-Cache/PubSub-Cache-Overview.htm" class="link-internal">PubSub+ Cache</a>: An external in-memory data grid for high-speed and low latency storage on non-persisted messages for purpose of replay. Replay is by topic and based on message depth or time.</li>
+      <li><a href="../Features/Replay/Message-Replay-Overview.htm" class="link-internal">Message Replay</a>: A PubSub+ feature that allows an event broker to resend messages to new or existing clients that request them, hours or even days after those messages were first received by the event broker.</li>
+      <li><a href="../Features/Replay/Msg-Replay-Concepts-Config.htm" class="link-internal">Replay Log</a>: Learn how to configure Message Replay.</li>
+      <li><a href="Guaranteed-Msg/Configuring-Queues.htm#Configur15" class="link-internal">Automatic Session Redelivery</a>: When PubSub+ detects a session disconnect-connect-reconnect event, the queue endpoint will automatically replay all messages to the consumer that were in flight or being processed by the consumer, but were not acknowledged. All replayed messages on the session have a flag indicating they were replayed due to consumer session restart.</li>
+      <li><a href="../API/API-Developer-Guide/Browsing-Guaranteed-Mess.htm" class="link-internal">Queue Browser</a>: PubSub+ supports a special consumer called a Queue Browser, which consumes messages by replaying messages from the queue, but without the queue endpoint expecting an acknowledgment, or referencing the messages as consumed.</li>
+    </ul>
+  </body>
+</html>

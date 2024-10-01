@@ -1,0 +1,152 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+    <head>
+        <link href="../../../../TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table" />
+    </head>
+    <body>
+        <h2>Workflow Management Endpoint</h2>
+        <p>A custom <code>workflows</code> management endpoint using <a href="https://docs.spring.io/spring-boot/docs/current/reference/html/actuator.html#actuator.endpoints" target="_blank" class="link-offsite">Spring Actuator</a> is provided to manage workflows. </p>
+        <p>To enable the workflows management endpoint:</p><pre xml:space="preserve">management: 
+  endpoints:
+    web:
+      exposure:
+        include: "workflows"
+</pre>
+        <p>Once the <code>workflows</code> management endpoint is enabled, the following operations can be performed:</p>
+        <table style="mc-table-style: url('../../../../TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+            <col class="TableStyle-Table_Num-Column-Column1">
+            </col>
+            <col class="TableStyle-Table_Num-Column-Column1">
+            </col>
+            <col class="TableStyle-Table_Num-Column-Column1">
+            </col>
+            <thead>
+                <tr class="TableStyle-Table_Num-Head-Header1">
+                    <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Endpoint</th>
+                    <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Operation</th>
+                    <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Payloads</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="TableStyle-Table_Num-Body-Body1">
+                    <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                        <p><code>/workflows</code>
+                        </p>
+                    </td>
+                    <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                        <p>Read <br></br>(HTTP <code>GET</code>)</p>
+                    </td>
+                    <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                        <p><b>Request:</b> None.</p>
+                        <p><b>Response:</b> Same payload as the <code>/workflows/{workflowId}</code> read operation, but as a list of all workflows.</p>
+                    </td>
+                </tr>
+                <tr class="TableStyle-Table_Num-Body-Body1">
+                    <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                        <p><code>/workflows/{workflowId}</code>
+                        </p>
+                    </td>
+                    <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                        <p>Read <br></br>(HTTP <code>GET</code>)</p>
+                    </td>
+                    <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                        <p><b>Request:</b> None.</p>
+                        <p><b>Response:</b>
+                        </p><pre xml:space="preserve">{
+  "id": "&lt;workflowId&gt;",
+  "enabled": (true|false),
+  "state": "(running|stopped|paused|unknown)",
+  "inputBindings": [
+    "&lt;input-binding&gt;"
+  ],
+  "outputBindings": [
+    "&lt;output-binding&gt;"
+  ]
+}</pre>
+                    </td>
+                </tr>
+                <tr class="TableStyle-Table_Num-Body-Body1">
+                    <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+                        <p><code>/workflows/{workflowId}</code>
+                        </p>
+                    </td>
+                    <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+                        <p>Write<br />(HTTP <code>POST</code>)</p>
+                    </td>
+                    <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+                        <p><b>Request:</b>
+                        </p><pre>{
+"state": "STARTED|STOPPED|PAUSED|RESUMED"
+}</pre>
+                        <p><b>Response:</b> None.</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="note">
+            <ul>
+                <li>
+                    <p>Only workflows with <MadCap:variable name="Variables.CompanyName"></MadCap:variable> <MadCap:variable name="Product-Names.pubsub_brand_only"></MadCap:variable> consumers (where the <code>solace</code> binder is defined in the <code>input-#</code>) support pause/resume.</p>
+                </li>
+                <li>
+                    <p>Some features require for the connector to manage workflow lifecycles. There’s no guarantee that workflow states continue to persist when write operations are used to change the workflow states while such  features are in use.</p>
+                    <p>For example, when the connector is configured in the <code>active-standby</code> mode, workflows will automatically transition from <code>running</code> to <code>stopped</code> when the connector fails over from <code>active</code> to <code>standby</code>, and vice-versa for a failover in the opposite direction.</p>
+                </li>
+            </ul>
+        </div>
+        <h2>Workflow States</h2>
+        <p>A workflow’s state is defined as the aggregate states of its bindings (see the <a href="https://docs.spring.io/spring-cloud-stream/docs/current/reference/html/spring-cloud-stream.html#_actuator" target="_blank" class="link-offsite"><code>bindings</code> management endpoint</a>) as follows:</p>
+        <table style="mc-table-style: url('../../../../TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+            <col class="TableStyle-Table_Num-Column-Column1">
+            </col>
+            <col class="TableStyle-Table_Num-Column-Column1">
+            </col>
+            <thead>
+                <tr class="TableStyle-Table_Num-Head-Header1">
+                    <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Workflow State</th>
+                    <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Condition</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="TableStyle-Table_Num-Body-Body1">
+                    <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                        <p><code>running</code>
+                        </p>
+                    </td>
+                    <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                        <p>All bindings have <code>state="running"</code>.</p>
+                    </td>
+                </tr>
+                <tr class="TableStyle-Table_Num-Body-Body1">
+                    <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                        <p><code>stopped</code>
+                        </p>
+                    </td>
+                    <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                        <p>All bindings have <code>state="stopped"</code>.</p>
+                    </td>
+                </tr>
+                <tr class="TableStyle-Table_Num-Body-Body1">
+                    <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                        <p><code>paused</code>
+                        </p>
+                    </td>
+                    <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                        <p>All consumer bindings and all pausable producer bindings have <code>state="paused"</code>.</p>
+                    </td>
+                </tr>
+                <tr class="TableStyle-Table_Num-Body-Body1">
+                    <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+                        <p><code>unknown</code>
+                        </p>
+                    </td>
+                    <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+                        <p>None of the other states. Represents an inconsistent aggregate binding state.</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <p class="Note">When the producer or consumer binding is not implementing Spring’s Lifecycle interface, Spring always reports the bindings as <code>state=N/A</code>. The  <code>state=N/A</code> is ignored when deciding the overall state of the workflow. For example, if the consumer's binding is <code>state=running</code> and the producer's binding is <code>state=N/A</code> (or vice versa), the workflow state would be <code>running</code>.</p>
+        <p>For more information about binding states, see <a href="https://docs.spring.io/spring-cloud-stream/docs/current/reference/html/spring-cloud-stream.html#_actuator" target="_blank" class="link-offsite">Spring Cloud Stream: Binding visualization and control</a>.</p>
+    </body>
+</html>

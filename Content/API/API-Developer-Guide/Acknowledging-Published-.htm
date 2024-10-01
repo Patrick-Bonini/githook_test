@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Acknowledging Published Messages</h1>
+    <p>Published Guaranteed messages are acknowledged when they are received by the Solace PubSub+ event broker. The following figure shows the publish and acknowledge process used for Guaranteed messages.</p>
+    <p class="GraphicCaption">Acknowledging Published Guaranteed Messages</p>
+    <p class="GraphicCaption">
+      <img src="Images/message_acknowledgement_pub.jpg" alt=""/>
+    </p>
+    <ol>
+      <li>A client application publishes messages with Persistent delivery modes over an established client Session.
+                <p>The maximum number of messages that a client application can publish before the messaging API must receive an acknowledgment from the event broker is limited by the Publish Window Size Session property (refer to <MadCap:xref href="Sending-Guaranteed-Messages.htm#publishing_guaranteed_messages_3926332939_617205">Adjusting the Guaranteed Message Publish Window Size</MadCap:xref>).</p></li>
+      <li>After the event broker receives the Guaranteed messages, it returns positive acknowledgments to the API. This reopens the publish window so that the client application can continue to publish Guaranteed messages.
+        <p>By default, the event broker sends an acknowledgment for published messages when a threshold of either a third of the Publish Window Size is reached or one second has elapsed. These are non‑configurable thresholds on the event broker.</p><p class="Note">In cases where you do not have a high-rate publisher, and you do not want to wait for either the acknowledgment threshold or time out, you can enable the Ack Immediately message property for each message so that the event broker sends an individual acknowledgment for each message it receives (refer to <MadCap:xref href="Creating-Messages-1.htm#Ack-Immed">Setting Ack Immediately</MadCap:xref>).</p></li>
+      <li>When the API receives the acknowledgment for the windowed messages, the publish window automatically reopens so that further messages can be published. (To prevent interruptions when publishing messages, the maximum window size should not be reached before the API receives an acknowledgment.)
+        <p>The session property Ack Event Mode determines whether the API receives an acknowledgment for each message (the default) or a single acknowledgment for multiple messages sent in the publish window (that is, a ranged acknowledgment). Refer to <MadCap:xref href="#publishing_guaranteed_messages_3764653901_651044">Setting a Message Acknowledgment Event Mode</MadCap:xref>.</p></li>
+      <li>The API provides the message acknowledgments to the client application through Session events: 
+        <ul><li>When a WINDOWED Ack Event Mode is used, in the Session event a single ACK event acknowledges the last message sent (as referenced by its correlation ID) and implicitly acknowledges all of the preceding messages. Message rejection events remain explicit (that is, per message).</li><li>When a PER_MESSAGE Ack Event Mode is used, in the Session event an explicit acknowledgment or rejection of the message (as referenced by its correlation key) is provided for each message.</li></ul></li>
+    </ol>
+    <table style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">Session Events for Published Guaranteed Messages</p>
+      </caption>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Session Event</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li>
+                <code>JCSMPStreamingPublishCorrelatingEventHandler.responseReceivedEx(...)</code>
+              </li>
+              <li>
+                <code>JCSMPStreamingPublishCorrelatingEventHandler.handleErrorEx(...)</code>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li>
+                <code>SessionEventCode.ACKNOWLEDGEMENT</code>
+              </li>
+              <li>
+                <code>SessionEventCode.REJECTED_MSG_ERROR</code>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li>
+                <code>SOLCLIENT_SESSION_EVENT_ACKNOWLEDGEMENT</code>
+              </li>
+              <li>
+                <code>SOLCLIENT_SESSION_EVENT_REJECTED_MSG_ERROR</code>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <ul>
+              <li>
+                <code>SessionEvent.Acknowledgement</code>
+              </li>
+              <li>
+                <code>SessionEvent.RejectedMessageError</code>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <ul>
+              <li>
+                <p class="Tbl_BodyCode">solace.SessionEventCode.ACKNOWLEDGED_MESSAGE</p>
+              </li>
+              <li>
+                <p class="Tbl_BodyCode">solace.SessionEventCode.REJECTED_MESSAGE_ERROR</p>
+              </li>
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="publishing_guaranteed_messages_3764653901_651044"/>Setting a Message Acknowledgment Event Mode</h2>
+    <p>This session property specifies whether message acknowledgment events that are returned to the client application should acknowledge individual published Guaranteed messages or a range of published Guaranteed messages (the acknowledgment for a given message implicitly acknowledges all preceding messages).</p>
+    <table style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Set the Message Acknowledgment Event Mode for a Session</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Property</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">JCSMPProperties.ACK_EVENT_MODE</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">SessionHandle.PROPERTIES.ACK_EVENT_MODE</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">SOLCLIENT_SESSION_PROP_ACK_EVENT_MODE</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">SessionProperties.AckMode</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode">solace.sessionProperties.publisherProperties.acknowledgeMode</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

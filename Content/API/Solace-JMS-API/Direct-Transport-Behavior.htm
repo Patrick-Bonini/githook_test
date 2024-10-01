@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><a name="direct_transport_behavior"/>Direct Transport Behavior</h1>
+    <p>This section provides additional information on the behavior of the Direct Transport mode and some feature interactions that should be considered when designing applications.</p>
+    <h2 class="with-rule"><a name="Publishi"/>Publishing Direct Messages</h2>
+    <p>When a publishing client uses Direct Transport mode, JMS non‑persistent messages are sent as non-Guaranteed messages (that is, the event broker does not acknowledge the messages when they are received, they are not spooled for consumers, and they can be discarded).</p>
+    <p>Any JMS persistent messages published by that client are still handled as if Guaranteed Transport was used (that is, message acknowledgment and spooling are still performed by the event broker). However, if the event broker does not have an Assured Delivery Blade (ADB) installed, Guaranteed Messaging enabled, and message spooling enabled, those Persistent messages are rejected.</p>
+    <h2 class="with-rule"><a name="direct_transport_behavior_4062913447_322318"/>Consuming Direct Messages</h2>
+    <p>When a consuming client uses Direct Transport, the following behavior occurs:</p>
+    <ul>
+      <li>For non-durable consumers (that is, non-durable topic subscribers and consumers of temporary queues), one of the following types of topic subscriptions is added to the event broker: <ul><li>the topic associated with the topic subscriber</li><li>the temporary queue name</li></ul></li>
+      <li>For durable topic subscribers or durable consumers of queues, Direct Transport has no effect. That is, the received JMS persistent messages are still handled in the same manner as if Guaranteed Transport was used (that is, message acknowledgment and spooling is still performed so that message delivery is guaranteed). </li>
+    </ul>
+    <p class="Note">When using a Solace PubSub+ appliance, if there is no ADB present (or enabled), durable consumers cannot be created, but non-durable consumers can still be created.</p>
+    <h2 class="with-rule"><a name="direct_transport_behavior_4062913447_322325"/>Feature Interactions when Using Direct Transport</h2>
+    <p>The following section outlines the limitations of using some JMS or Solace features with Direct Transport mode. In the Solace JMS implementation, these particular JMS or Solace features depend on the Guaranteed Messaging capabilities of the event broker, which are not utilized by Direct Transport mode.</p>
+    <ul>
+      <li>
+        <u>No Local</u>
+        <p>When using Direct Transport mode, a client cannot create a non-durable consumer with no local set to true. Attempting to do so returns <code>com.solacesystems.jms.ConfigurationException</code>.</p>
+      </li>
+      <li>
+        <u>Queue Browsing</u>
+        <p>When using Direct Transport mode, a client cannot create a Queue Browser to a temporary queue. Attempting to do so returns <code>com.solacesystems.jms.ConfigurationException</code>.</p>
+      </li>
+      <li>
+        <u>Selectors</u>
+        <p>When using Direct Transport mode, a client cannot create a non-durable consumers with a selector. Attempting to create a non-durable consumer with a selector returns <code>com.solacesystems.jms.ConfigurationException</code>.</p>
+      </li>
+      <li>
+        <u>Topic Sequence Numbers</u>
+        <p>When using Direct Transport mode, Non-Persistent messages received by non‑durable consumers do not contain a topic sequence number.</p>
+      </li>
+      <li>
+        <u>Session Recover</u>
+        <p><code>Session.recover()</code> stops message delivery and restarts it with the oldest unacknowledged message. When using Direct Transport mode, <code>Session.recover()</code> has no effect (that is, no Non-Persistent messages are re-delivered). </p>
+      </li>
+      <li>
+        <u>Optimize Direct</u>
+        <p>When using Direct Transport mode and the Optimize Direct property is enabled, attempting to create more than one producer or more than one non‑durable consumer returns <code>com.solacesystems.jms.ConfigurationException</code>. </p>
+        <p>For information on the Optimize Direct property, refer to <MadCap:xref href="Message-Delivery-Propert.htm#jms_properties_39190069_303492">Direct Transport Optimization</MadCap:xref>.</p>
+      </li>
+      <li>
+        <u>Delayed Start</u>
+        <p>Delayed Start was developed in response to how the following programming pattern is handled in the Solace JMS implementation:</p>
+        <pre>Connection connection = connectionFactory.createConnection();
+Session session = connection.createSession(false,Session.AUTO_ACKNOWLEDGE);
+connection.start();	// starts messages flowing on all consumers
+MessageConsumer consumer = session.createConsumer(destination);
+consumer.setMessageListener(listener);</pre>
+        <p>In the above code snippet, when the consumer is created, it is implicitly started and branded as a synchronous consumer (that is, has no message listener). Therefore, when the message listener is set, it appears to be an error because the consumer was already branded as a synchronous, not asynchronous consumer.</p>
+        <p>When using Guaranteed Transport mode, enabling the Delayed Start property prevents the connection start from implicitly starting consumers when they are created. Rather the connection stays in stopped state by flow controlling the Guaranteed Delivery flow. When <code>receive(...)</code> or <code>setMessageListener(...)</code> is called, the message flow is then started and the consumer is properly branded as synchronous or asynchronous. </p>
+        <p>The Delayed Start property only affects a client using the Guaranteed Transport mode. It does not work with the Direct Transport mode because flow controlling can only be achieved by stopping message delivery without experiencing discards. </p>
+      </li>
+      <li>
+        <u>Connection Start and Stop</u>
+        <p>When using the Guaranteed Transport mode, <code>Connection.Start()</code> and <code>Connection.stop()</code> flow controls the message stream from the event broker for all consumers. When using the Direct Transport mode, there is no flow control, so when the connection is in the stopped state, the API discards all received Non‑Persistent messages. When the connection is started, the flow of messages is normal.</p>
+      </li>
+      <li>
+        <u>Transactions</u>
+        <p>When using the Direct Transport mode, a client cannot create a transacted Session. An attempt to do so returns <code>com.solacesystems.jms.ConfigurationException.</code></p>
+      </li>
+    </ul>
+  </body>
+</html>

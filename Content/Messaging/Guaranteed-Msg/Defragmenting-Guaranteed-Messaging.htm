@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <title/>
+  </head>
+  <body>
+    <h1>Defragmenting the Guaranteed Messaging Spool</h1>
+    <p>The spool files that a Solace PubSub+ event broker uses to store Guaranteed messages may become "fragmented" over time when consumers frequently go offline and do not reconnect. Fragmentation can occur because the small number of messages awaiting delivery to those offline consumers are maintained, which prevents the larger number of messages that have been consumed that are also on the spool file from being removed. This has the unwanted effect of consuming large quantities of disk space with messages that have already been delivered to consumers.</p>
+    <p>To  remove the delivered messages from spool files and reclaim disk space, you can either manually trigger defragmentation (see <MadCap:xref href="#Manual-Defrag">Manual Defragmentation </MadCap:xref>) or configure the event broker to automatically defragment the message spool  (see <MadCap:xref href="#Auto-Defrag">Automatic Defragmentation</MadCap:xref>).</p>
+    <p>In general:</p>
+    <ul>
+      <li>All manual and automatic (schedule-based and threshold-based rules) defragmentation behaviours can coexist and function together.</li>
+      <li>Any automatic defragmentation run  (automatic or manual) is ignored (skipped) if a defragmentation run is already in progress (regardless of what triggered it).</li>
+      <li>All manual and automatic defragmentation runs can be manually stopped by the administrator.</li>
+    </ul>
+    <h2 class="with-rule"><a name="Manual-Defrag"/>Manual Defragmentation </h2>
+    <p>To manually trigger defragmentation, enter the following command. When started, the message spool file defragmentation will run in the background.  </p>
+    <p class="Code">solace(admin)# system message-spool <br/>solace(admin/system/message-spool)# defragment-spool-files start</p>
+    <p>To stop an active spool file defragmentation process, enter the following command:</p>
+    <p class="Code">solace(admin/system/message-spool)# defragment-spool-files stop</p>
+    <div class="Note">
+      <ul>
+        <li>Defragmentation may not be able to completely defragment the message spool if there are spooled messages associated with open transactions. Defragmentation starts with the oldest message spooled and defragments the messages in the order they arrived until it reaches either the newest message or a message that is part of an open transaction. Information about the open transaction  for the most recent defragmentation is available in the <code>Exit Condition</code> field when you issue the <code>show message-spool</code> command.   Once the transactions are committed or rolled back defragmentation can be run again. In some cases committing or rolling back a transaction may not be possible if the transaction is not in a prepared state. In these cases, a client disconnect may be required to resolve the blocked transactions.</li>
+        <li>When an HA redundant pair of appliances is used, message spool defragmentation can only be performed on the active appliance. If an HA failover occurs, the message spool defragmentation will stop. To restart the defragmentation process, you must make the failed appliance active again, then execute the <code>defragment-spool-files start</code> command again. To defragment the message spool on the backup appliance, initiate an HA failover to make the backup appliance active. This only applies to  appliances. When defragmentation is initiated on an active software event broker, the message spool on both the active and standby are defragmented. </li>
+      </ul>
+    </div>
+    <p> CLI examples of how to manually start defragmenting a spool file, as well as check its status, and stop it from running are shown below:</p>
+    <pre class="Code" xml:space="preserve">solace(admin)# system message-spool
+solace(admin/system/message-spool)# defragment-spool-files start
+Defragmentation has been initiated.
+</pre>
+    <pre class="Code" xml:space="preserve">
+solace# show message-spool detail
+ 
+Config Status:                            Enabled (Primary)
+Maximum Spool Usage:                      60000 MB
+
+. . .
+ 
+Operational Status:                       AD-Active
+Datapath Status:                          Up
+Synchronization Status:                   Synced
+ 
+. . .	
+			
+Defragmentation:
+ <span style="color: #ff0000;">Status:                                 Active (8.8%)</span>
+  Schedule Enabled:                       No
+    Days:                                 daily
+    Times:                                0:00
+  Threshold Enabled:                      No
+    Fragmentation:                        50% 
+    Spool Usage:                          50%
+    Minimum Interval:                     15 minutes
+  Estimated Fragmentation:                12%
+  Estimated Recoverable Space:            123 MB  
+  Last Result:
+    Completed On:                         May 10 2020 10:11:12
+    Completion %:                         100%
+    Exit Condition:                       Success
+Number of delete in-progress:             0
+
+. . .
+ 
+                                              ADB         Disk           Total
+Current Persistent Store Usage (MB)        0.0000       0.0000          0.0000
+Number of Messages Currently Spooled            0            0               0
+
+. . .</pre>
+    <pre class="Code" xml:space="preserve">solace(admin/system/message-spool)# defragment-spool-files stop	
+Defragmentation has been stopped.</pre>
+    <pre class="Code" xml:space="preserve">
+solace# show message-spool detail
+ 
+Config Status:                            Enabled (Primary)
+Maximum Spool Usage:                      60000 MB
+
+. . .
+ 
+Operational Status:                       AD-Active
+Datapath Status:                          Up
+Synchronization Status:                   Synced
+ 
+. . .
+			
+Defragmentation:
+ <span style="color: #ff0000;">Status:                                 Idle</span>
+  Schedule Enabled:                       No
+    Days:                                 daily
+    Times:                                0:00
+  Threshold Enabled:                      No
+    Fragmentation:                        50% 
+    Spool Usage:                          50%
+    Minimum Interval:                     15 minutes
+  Estimated Fragmentation:                12%
+  Estimated Recoverable Space:            123 MB
+  Last Result:
+    Completed On:                         May 10 2020 10:11:12
+    Completion %:                         58%
+    Exit Condition:                       Unmovable XA Transaction       
+                                          XID:XXX-XXXXXXX
+Number of delete in-progress:             0
+
+. . .
+ 
+                                              ADB         Disk           Total
+Current Persistent Store Usage (MB)        0.0000       0.0000          0.0000
+Number of Messages Currently Spooled            0            0               0
+
+. . .</pre>
+    <h2 class="with-rule"><a name="Auto-Defrag"/>Automatic Defragmentation</h2>
+    <p>You can configure an event broker to defragment the message spool automatically, triggered in one of two ways:</p>
+    <ul>
+      <li>Based on a fixed time schedule, for example  every day at 1 am (see <MadCap:xref href="#Scheduled-Defrag">Schedule-Based Defragmentation</MadCap:xref>).</li>
+      <li>Based on a threshold of fragmentation and usage being exceeded (see <MadCap:xref href="#Threshold-Defrag">Threshold-Based Defragmentation</MadCap:xref>).</li>
+    </ul>
+    <p class="Note">You can configure an event broker to perform both scheduled and threshold-based defragmentation, the two options aren’t mutually exclusive.</p>
+    <h3><a name="Scheduled-Defrag"/>Schedule-Based Defragmentation</h3>
+    <p>To schedule the days of the week to trigger a defragmentation run, enter the following commands:</p>
+    <pre class="Code" xml:space="preserve">solace(config)# hardware 
+solace(config/hardware)# message-spool
+solace(config/hardware/message-spool)# defragment-spool-files
+solace(.../message-spool/defragment-spool-files)# schedule
+solace(...spool/defragment-spool-files/schedule)# days &lt;days-of-week&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;days-of-week&gt;</code> is either <code>daily</code> or a comma-separated list of days or numbers where 0 is Sunday, 1 is Monday, etc.</p>
+    <p>The no version of this command, <code>no days</code>, returns the value to the default, <code>daily</code>. </p>
+    <p>To schedule times per day to trigger a defragmentation run, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">
+solace(...spool/defragment-spool-files/schedule)# times &lt;times-of-day&gt;
+</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;times-of-day&gt;</code> is either <code>hourly</code> or a comma-separated list of up to four times of the form <code>hh:mm</code> where <code>hh</code> is between 0 and 23, and <code>mm</code> is between 0 and 59.</p>
+    <p>The no version of this command, <code>no times</code>, returns the value to the default, <code>0:00</code>. </p>
+    <p>By default, schedule-based defragmentation is disabled.To enable scheduled-based defragmentation, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">
+solace(...spool/defragment-spool-files/schedule)# no shutdown</pre>
+    <p>To disable scheduled-based defragmentation, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">
+solace(...spool/defragment-spool-files/schedule)# shutdown</pre>
+    <h3><a name="Threshold-Defrag"/>Threshold-Based Defragmentation</h3>
+    <p>Once enabled, threshold-based defragmentation runs are triggered by all of the following three criteria being true:</p>
+    <ul>
+      <li>The amount of fragmentation has reached a certain percent.</li>
+      <li>The amount of spool usage has reached a certain percent.</li>
+      <li>A minimum amount of time has passed since the previous defragmentation run (regardless of its trigger).</li>
+    </ul>
+    <p>To configure the percentage of fragmentation that will trigger a defragmentation run, enter the following commands:</p>
+    <pre class="Code" xml:space="preserve">solace(config)# hardware 
+solace(config/hardware)# message-spool
+solace(config/hardware/message-spool)# defragment-spool-files
+solace(.../message-spool/defragment-spool-files)# threshold
+solace(...pool/defragment-spool-files/threshold)# fragmentation-percentage &lt;percentage&gt;
+</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;percentage&gt;</code> is the percentage of fragmentation between 30 and 100. </p>
+    <p>The no version of this command <code>no fragmentation-percentage</code> returns the value to the default, 50 percent.</p>
+    <p>To configure the percentage of spool usage that will trigger a defragmentation run, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">
+solace(...pool/defragment-spool-files/threshold)# usage-percentage &lt;percentage&gt; 
+</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;percentage&gt;</code> is the percentage of spool usage between 30 and 100.</p>
+    <p>no version of this command, <code>no usage-percentage</code>, returns the value to the default, 50 percent. specifies the minimum amount of time </p>
+    <p>To configure the minimum amount of time that must have elapsed since any previous defragmentation run, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">
+solace(...pool/defragment-spool-files/threshold)# min-interval &lt;interval&gt; 
+</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;interval&gt;</code> the minimum interval in minutes. </p>
+    <p>no version of this command, <code>no min-interval</code>, returns the value to the default, 15 minutes.</p>
+    <p>By default, threshold-based defragmentation is disabled. To enable threshold-based defragmentation, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">
+solace(...pool/defragment-spool-files/threshold)# no shutdown 
+</pre>
+    <p>To disable threshold-based defragmentation, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">
+solace(...pool/defragment-spool-files/threshold)# shutdown 
+</pre>
+    <p> </p>
+    <p> </p>
+    <p> </p>
+  </body>
+</html>

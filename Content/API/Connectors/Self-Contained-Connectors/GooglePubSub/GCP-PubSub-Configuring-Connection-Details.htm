@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" xml:lang="en-us" MadCap:conditions="Default.ConnectorSpecific">
+  <head>
+    <title/>
+  </head>
+  <body>
+    <h1><a name="_bookmark8"/>Configuring Connection Details</h1>
+    <MadCap:snippetBlock src="../../../../Resources/Snippets/API/Connectors/common/configure-connection-details-part1.flsnp"/>
+    <h2 MadCap:conditions="Default.ConnectorSpecific"><a name="gcp-connection-details"/><MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-product-name"/> Connection Details</h2>
+    <p>This documentation presumes that you are familiar with the <a href="https://cloud.google.com/docs/authentication/provide-credentials-adc" target="_blank" class="link-offsite">Google Cloud Application Default Credentials (ADC)</a>. The Application Default Credentials (ADC) is a strategy used by the Google authentication libraries to automatically find credentials based on the application environment (local, Google Cloud, on-perm etc). Listing all possible authentication options is beyond the scope of this documentation.</p>
+    <p>The Google authentication libraries searches the application’s environment in <a href="https://cloud.google.com/docs/authentication/application-default-credentials#order" class="link-offsite">Application Default Credentials (ADC) Search Order</a>.</p>
+    <p>In addition to authentication credentials the<MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-product-name"/> client libraries also requires <code>spring.cloud.gcp.pubsub.project-id</code> for establishing connection. The <code>spring.cloud.gcp.pubsub.project-id</code> value can be set in the <code>application.yml</code> file:</p>
+    <pre xml:space="preserve">spring: 
+  cloud:
+    gcp:
+      pubsub:
+        project-id: gcp-pubsub-project-id   
+</pre>
+    <p>For more information about other configurable properties and their defaults, see <a href="https://googlecloudplatform.github.io/spring-cloud-gcp/reference/html/index.html#pubsub-configuration" class="link-offsite">Spring <MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-product-name"/> Configration</a>.</p>
+    <p>The Pub/Sub API uses the GRPC protocol to send API requests to the Pub/Sub service. See <a href="https://googlecloudplatform.github.io/spring-cloud-gcp/reference/html/index.html#grpc-connection-settings" class="link-offsite">GRPC Connection Settings</a> for configuration options for customizing the GRPC behavior.</p>
+    <p>The rest of page describes the various ways to provide the authentication credentials.</p>
+    <h3 MadCap:conditions="Default.ConnectorSpecific">Using Google Cloud CLI-Generated User Credentials</h3>
+    <p>If the <a href="https://cloud.google.com/docs/authentication/application-default-credentials#personal" target="_blank" class="link-offsite">user credentials provided by using the Google Cloud CLI</a> are already set up on the user’s system and <code>application_default_credentials.json</code> is in the default location, you can use <code>samples/config/application.yml</code>:</p>
+    <pre xml:space="preserve">java -jar <MadCap:conditionalText MadCap:conditions="Default.ConnectorSpecific"><MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-package-name"/>-&lt;version&gt;.jar</MadCap:conditionalText> --spring.config.additionallocation=file:samples/config/      </pre>
+    <p>If the <code>application_default_credentials.json</code> is not in the default path, or if the user wants to explicitly configure a path, it can be configured in <code>samples/config/application.yml</code> or passed through CLI. The following are examples:</p>
+    <p>Using the  <code>spring.cloud.gcp.credentials.location</code> in <code>samples/config/application.yml</code>:</p>
+    <pre xml:space="preserve">spring:
+  cloud:
+    gcp:
+      credentials:
+        location: file:/path/to/gcloud/application_default_credentials.json</pre>
+    <p>Using the <code>spring.cloud.gcp.credentials.location</code> property with the CLI: </p>
+    <pre>java -jar <MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-package-name"/>-&lt;version&gt;.jar --spring.config.additionallocation=
+file:samples/config/ --spring.cloud.gcp.credentials.location
+=file:/path/to/gcloud/application_default_credentials.json</pre>
+    <p>Using the <code>GOOGLE_APPLICATION_CREDENTIALS</code> environment variable:</p>
+    <pre>GOOGLE_APPLICATION_CREDENTIALS=/path/to/gcloud/application_default_credentials.json &amp;&amp;
+java -jar <MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-package-name"/>-&lt;version&gt;.jar --spring.config.additionallocation=file:samples/config/</pre>
+    <h3 MadCap:conditions="Default.ConnectorSpecific">Using Service Account Key</h3>
+    <p>Alternatively, user can also use the <a href="https://cloud.google.com/docs/authentication/provide-credentials-adc#local-key" class="link-offsite">service account key</a> with <code>GOOGLE_APPLICATION_CREDENTIALS</code> environment variable. For example:</p>
+    <pre>GOOGLE_APPLICATION_CREDENTIALS=/path/to/gcloud/application_default_credentials.json &amp;&amp;
+java -jar <MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-package-name"/>-&lt;version&gt;.jar --spring.config.additionallocation=
+file:samples/config/</pre>
+    <h2 MadCap:conditions="Default.ConnectorSpecific">Connecting to Multiple Systems</h2>
+    <p>To connect to multiple systems of a same type, use the <a href="https://docs.spring.io/spring-cloud-stream/docs/current/reference/html/spring-cloud-stream.html#multiple-systems" target="_blank" class="link-offsite">multiple binder syntax</a>.    </p>
+    <p>For example:</p>
+    <pre xml:space="preserve">spring: 
+  cloud:
+    stream: 
+      binders:
+        
+        # 1st solace binder in this example 
+	 solace1:
+          type: solace 
+	   environment: 
+	     solace: 
+	       java:
+        	 host: tcp://localhost:55555
+         
+	 # 2nd solace binder in this example 
+	 solace2:
+          type: solace 
+          environment: 
+            solace: 
+	       java:
+        	 host: tcp://other-host:55555
+        
+	 # The only jms binder 
+	 pubsub1:
+          type: pubsub
+          # The GCP Pub/Sub binder doesn't support multi-binder system. 
+	   # The GCP Pub/Sub binder must be configured as it is configured in singlebinder configuration.
+          
+	 # Required for internal use 
+	 undefined:
+          type: undefined 
+	 bindings:
+          input-0:
+            destination: &lt;input-destination&gt; 
+	     binder: pubsub1
+          output-0:
+            destination: &lt;output-destination&gt;
+            binder: solace1 # Reference 1st solace binder 
+	   input-1:
+            destination: &lt;input-destination&gt; 
+	     binder: pubsub1
+          output-1:
+            destination: &lt;output-destination&gt;
+            binder: solace2 # Reference 2nd solace binder</pre>
+    <p>The configuration above defines two binders of the <code>solace</code> type and one binder of the <code>pubsub</code> type, which are then referenced within the bindings. </p>
+    <p>Note that each binder is configured independently under <code>spring.cloud.stream.binders.&lt;bindername&gt;.environment.</code>.</p>
+    <p class="Note">When connecting to multiple systems, all solace binder configuration must be specified using the multiple binder syntax for all binders under the <code>spring.cloud.stream.binders.&lt;binder-name&gt;.environment</code>.</p>
+    <p class="Note">Do not use single-binder configuration (for example, <code> solace.java.*</code> at the root of your <code>application.yml</code>) while using the multiple binder syntax.</p>
+    <p class="Note">The <MadCap:variable name="Manifest-Products-Connectors.connector-gcppubsub-product-name"/> binder doesn't support multi-binder systems. The <code>pubsub</code> binder must be configured the same as in a single-binder configuration. </p>
+  </body>
+</html>

@@ -1,0 +1,1067 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/Stylesheets/Tabbed_Content.css" rel="stylesheet"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Appliance"/>Redundant Appliances</h1>
+    <p>Use these procedures to upgrade redundant appliances to SolOS-TR <MadCap:variable name="Manifest-Products-Routers.SolOS_TR"/>.</p>
+    <p class="Note">These upgrade procedures only apply to the latest version of the Solace PubSub+ appliance. Refer to the version-specific documentation to upgrade to versions before SolOS-TR <MadCap:variable name="Manifest-Products-Routers.SolOS_TR"/>.</p>
+    <ul class="nav tabs">
+      <li>
+        <a class="tab" href="#With">With Guaranteed Messaging</a>
+      </li>
+      <li>
+        <a class="tab" href="#Without">Without Guaranteed Messaging</a>
+      </li>
+    </ul>
+    <!-- <ul>
+            <li>
+                <p>
+                    <MadCap:xref href="#With">With Guaranteed Messaging</MadCap:xref>
+                </p>
+            </li>
+            <li>
+                <p>
+                    <MadCap:xref href="#Without">Without Guaranteed Messaging</MadCap:xref>
+                </p>
+            </li>
+        </ul> -->
+    <div id="With">
+      <h2 class="with-rule">With Guaranteed Messaging</h2>
+      <p>To upgrade SolOS software  to SolOS-TR <MadCap:variable name="Manifest-Products-Routers.SolOS_TR"/> without a prolonged service outage on a redundant appliance pair that uses guaranteed messaging, follow the procedure in this section.</p>
+      <ul>
+        <li>
+          <MadCap:xref href="#Before">Before you begin</MadCap:xref>
+        </li>
+        <li>
+          <MadCap:xref href="#Procedur">Procedure</MadCap:xref>
+        </li>
+      </ul>
+      <p>In the example <code>solace-primary</code> is the primary appliance, and <code>solace-backup</code> is the backup.</p>
+      <h3><a name="Before"/>Before you begin</h3>
+      <p>Perform the following steps to ensure the redundant pair is in the correct state before upgrading.</p>
+      <ol>
+        <li>
+          <p>Review the appliance upgrade notices.</p>
+          <p>
+            <MadCap:dropDown>
+              <MadCap:dropDownHead>
+                <MadCap:dropDownHotspot>
+                                Appliance Upgrade Notices
+                            </MadCap:dropDownHotspot>
+              </MadCap:dropDownHead>
+              <MadCap:dropDownBody>
+                <MadCap:snippetBlock src="../../Resources/Snippets/Appliance-Upgrade-Notices.flsnp"/>
+                <div class="Note">
+                  <p>For appliances in Active/Standby redundancy mode, prior to upgrading to version 10.0.1 or later, ensure that the <code>active-standby-role</code> is set to either <code>primary</code> or <code>backup</code>. If the redundancy role is <code>none</code> on either appliance, the upgrade will fail. For appliances in Active/Active redundancy mode, this setting is expected to be set to <code>none</code>. See <MadCap:xref href="../../Features/HA-Redundancy/Configuring-Appliance-Redundancy-Parameters.htm#Assignin">Assigning the Active/Standby Role</MadCap:xref> for instructions.</p>
+                </div>
+              </MadCap:dropDownBody>
+            </MadCap:dropDown>
+          </p>
+        </li>
+        <li>
+          <p>Ensure that the internal disks are in a redundant state on both the primary and backup appliances.</p>
+          <pre class="Code">solace-primary&gt; <b>show disk</b> 
+Reload required:               No
+
+Attribute                                 Disk 1                        Disk 2
+------------------ ----------------------------- -----------------------------
+Device Model                         ST3250820NS                   ST3250820NS
+Capacity (MB)                             238475                        238475
+Admin State                              enabled                       enabled
+Operational State                             up                            up
+
+RAID in fully redundant state: Yes
+
+solace-backup&gt; <b>show disk</b> 
+Reload required:               No
+
+Attribute                                 Disk 1                        Disk 2
+------------------ ----------------------------- -----------------------------
+Device Model                         ST3250820NS                   ST3250820NS
+Capacity (MB)                             238475                        238475
+Admin State                              enabled                       enabled
+Operational State                             up                            up
+
+RAID in fully redundant state: Yes
+</pre>
+          <div class="Caution">
+            <p>If the displayed output shows the RAID disk 1 and disk 2 drives to be in a non-redundant state (see example below), <a href="../../get-support.htm" class="link-internal">contact Solace</a> and stop this software upgrade procedure immediately to prevent software corruption on the appliance.</p>
+            <p>Some appliances contain slots for disk 3 and disk 4, however, these slots are not presently used, and the redundancy state for disk 3 and disk 4 should be ignored.</p>
+            <MadCap:dropDown>
+              <MadCap:dropDownHead>
+                <MadCap:dropDownHotspot>
+                                Example
+                            </MadCap:dropDownHotspot>
+              </MadCap:dropDownHead>
+              <MadCap:dropDownBody>
+                <pre class="Code">solace-primary&gt; <b>show disk</b> 
+Reload required:               No
+
+Attribute                                 Disk 1                        Disk 2
+------------------ ----------------------------- -----------------------------
+Device Model                         ST3250820NS                   ST3250820NS
+Capacity (MB)                             238475                        238475
+Admin State                              enabled                       enabled
+Operational State                         failed                            up
+
+RAID in fully redundant state: No
+
+-or-
+
+solace-backup&gt; <b>show disk</b> 
+Reload required:               No
+
+Attribute                                 Disk 1                        Disk 2
+------------------ ----------------------------- -----------------------------
+Device Model                         ST3250820NS                   ST3250820NS
+Capacity (MB)                             238475                        238475
+Admin State                              enabled                       enabled
+Operational State                         failed                            up
+
+RAID in fully redundant state: No
+</pre>
+              </MadCap:dropDownBody>
+            </MadCap:dropDown>
+          </div>
+        </li>
+        <li>
+          <p>Copy the latest SolOS software from an external file server (using either SFTP or SCP) to the <code>/loads</code> subdirectory on both appliances.</p>
+          <pre class="Code">solace-primary# <b>copy sftp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads</b>
+solace-primary# <b>copy scp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads</b>
+
+solace-backup# <b>copy sftp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads</b>
+solace-backup# <b>copy scp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads</b></pre>
+          <p><u>Where</u>:</p>
+          <p><code>&lt;username&gt;</code>, <code>&lt;ip-addr&gt;</code>, and <code>&lt;remote-pathname&gt;</code> correspond to the access information of where the new SolOS software is located.</p>
+        </li>
+        <li>
+          <p>Copy the correct SolBase software for the latest SolOS version software (the correct SolBase software is packaged with each SolOS version)  from an external file server (using either SFTP or SCP) to the <code>/loads</code> subdirectory on both appliances.</p>
+        </li>
+        <li>
+          <p>Ensure that the primary appliance is in the correct redundancy state.</p>
+          <p>If using Active/Active redundancy mode, the output from <code>show redundancy</code> on the primary appliance should look like this:</p>
+          <p><u>Example</u> (Output may vary by appliance version):</p>
+          <pre class="Code" xml:space="preserve">solace-primary# <b>show redundancy</b>
+    
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Local Active            Mate Active           
+Routing Interface              1/6/lag1:1              1/6/lag1:2            
+VRRP VRID                      50                      197                   
+Routing Interface Status       Up                      Up                    
+VRRP Status                    Master                  Backup                
+VRRP Priority                  250                     100                   
+Message Spool Status           AD-Active               AD-Disabled           
+Priority Reported By Mate      Standby                 Active
+</pre>
+          <p>If using Active/Standby redundancy mode, the output from <code>show redundancy</code> on the primary appliance should look like this:</p>
+          <p><u>Example</u> (Output may vary by appliance version):</p>
+          <pre class="Code" xml:space="preserve">solace-primary# <b>show redundancy</b>
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Local Active            Shutdown           
+Routing Interface              1/6/lag1:1                          
+VRRP VRID                      50                                         
+Routing Interface Status       Up                                          
+VRRP Status                    Master                                  
+VRRP Priority                  250                                        
+Message Spool Status           AD-Active                          
+Priority Reported By Mate      Standby                    
+</pre>
+          <div class="Note">
+            <ul>
+              <li>If the Message Spool Status of the Primary Virtual Router is not AD-Active, loss of spooled messages may occur during the upgrade.</li>
+              <li>The Auto Revert value is a configurable option and may be set to <code>Yes</code>, depending on the redundant system configuration. Solace recommends a setting of <code>No</code> for this option, but either is valid.</li>
+            </ul>
+          </div>
+        </li>
+        <li>
+          <p>Ensure that the backup appliance is in the correct redundancy state.</p>
+          <p>If using Active/Active redundancy mode, the output from <code>show redundancy</code> on the backup appliance should look like this:</p>
+          <p><u>Example</u> (Output may vary by appliance version):</p>
+          <pre class="Code" xml:space="preserve">solace-backup# <b>show redundancy</b>
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Local Active            Mate Active           
+Routing Interface              1/6/lag1:1              1/6/lag1:2            
+VRRP VRID                      197                     50                    
+Routing Interface Status       Up                      Up                    
+VRRP Status                    Master                  Backup                
+VRRP Priority                  250                     100                   
+Message Spool Status           AD-Disabled             AD-Standby            
+Priority Reported By Mate      Standby                 Active
+</pre>
+          <p>If using Active/Standby redundancy mode, the output from <code>show redundancy</code> on the backup appliance should look like this:</p>
+          <p><u>Example</u> (Output may vary by appliance version):</p>
+          <pre class="Code">solace-backup# <b>show redundancy</b>
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Shutdown                Mate Active           
+Routing Interface                                      1/6/lag1:2            
+VRRP VRID                                              50                    
+Routing Interface Status                               Up                    
+VRRP Status                                            Backup                
+VRRP Priority                                          100                   
+Message Spool Status                                   AD-Standby            
+Priority Reported By Mate                              Active
+</pre>
+          <p class="Note">The <code>Auto Revert</code> value is a configurable option and may be set to <code>Yes</code>, depending on the redundant system configuration. Solace recommends a setting of <code>No</code> for this option, but either is valid.</p>
+        </li>
+        <li>
+          <p>With the exception of the <code>Auto Revert</code> value, if the redundancy state of either the primary or backup appliance does not correspond to the examples above, do NOT upgrade the appliances. Instead, <a href="../../get-support.htm" class="link-internal">contact Solace</a> for further instructions.</p>
+        </li>
+        <li>
+          <p>If using config-sync, confirm that it is operationally up on both primary and backup appliances, which means all configuration is synchronized.</p>
+          <pre class="Code">solace-primary&gt; <b>show config-sync</b>
+
+Admin Status                      : Enabled
+Oper Status                       : Up 
+
+
+solace-backup&gt; <b>show config-sync</b>
+
+Admin Status                      : Enabled
+Oper Status                       : Up
+</pre>
+          <p>If the operational status of config-sync is not <code>Up</code>, you should resolve this before proceeding. Otherwise you may lose configuration during the upgrade.</p>
+        </li>
+      </ol>
+      <div class="Note">
+        <p>Before upgrading the appliance, SolAdmin  may also need to be upgraded. In addition, after the upgrade, SolGeneos Agent may also need to be upgraded. See <MadCap:xref href="">
+                                Appliance Upgrade Notices
+                            </MadCap:xref> for more information.</p>
+      </div>
+      <h3><a name="Procedur"/>Procedure</h3>
+      <ol>
+        <li>
+          <p>Follow all steps in <MadCap:xref href="#Before">Before you Begin the In-Service Upgrade</MadCap:xref>. Do not proceed if you cannot confirm that the system is in the correct state.</p>
+        </li>
+        <li>
+          <p>Make a copy of the current SolOS configuration in the <code>/configs</code> subdirectory on both appliances:</p>
+          <pre class="Code">solace-primary&gt; <b>enable</b>
+solace-primary# <b>copy current-config /configs/&lt;old_version&gt;_preUpgradeCfg</b>
+
+solace-backup&gt; <b>enable</b>
+solace-backup# <b>copy current-config /configs/&lt;old_version&gt;_preUpgradeCfg</b></pre>
+          <p><u>Where</u>:</p>
+          <p><code>&lt;old_version&gt;</code> is the version number of current SolOS software as seen in the output of the <b>show version</b> command.</p>
+        </li>
+        <li>
+          <p>On the backup appliance, release activity to the primary appliance:</p>
+          <pre class="Code">solace-backup# <b>configure</b>
+solace-backup(configure)# <b>redundancy</b>
+solace-backup(configure/redundancy)# <b>release-activity</b>
+solace-backup(configure/redundancy)# <b>end</b></pre>
+        </li>
+        <li>
+          <p>On the primary appliance, confirm the redundancy status.</p>
+          <p>If using Active/Active redundancy mode, the Activity Status for both virtual routers should be <code>Local Active</code>:</p>
+          <p><u>Example</u> (Output may vary by appliance version):</p>
+          <pre class="Code" xml:space="preserve">solace-primary# <b>show redundancy</b> 
+Configuration Status     : Enabled
+Redundancy Status        : Down
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Local Active            Local Active          
+Routing Interface              1/6/lag1:1              1/6/lag1:2            
+VRRP VRID                      50                      197                   
+Routing Interface Status       Up                      Up                    
+VRRP Status                    Master                  Master                
+VRRP Priority                  250                     250                   
+Message Spool Status           AD-Active               AD-Disabled           
+Priority Reported By Mate      Release                 Release
+</pre>
+          <p>If using the Active/Standby redundancy mode, the Activity Status for the primary virtual router should be <code>Local Active</code>:</p>
+          <p><u>Example</u> (Output may vary by appliance version):</p>
+          <pre class="Code" xml:space="preserve">solace-primary# <b>show redundancy</b> 
+Configuration Status     : Enabled
+Redundancy Status        : Down
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Local Active            
+Routing Interface              1/6/lag1:1              
+VRRP VRID                      50                      
+Routing Interface Status       Up                      
+VRRP Status                    Master                  
+VRRP Priority                  250                     
+Message Spool Status           AD-Active               
+Priority Reported By Mate      Release
+</pre>
+          <p class="Note">If the redundancy status on the primary appliance is not correct, do NOT proceed with the upgrade.  Instead, <a href="../../get-support.htm" class="link-internal">contact Solace</a> Technical Support for further instructions.</p>
+        </li>
+        <li>
+          <MadCap:snippetBlock src="../../Resources/Snippets/MQTT_Retain_Redundant.flsnp"/>
+        </li>
+        <li>
+          <p>Upgrade the backup appliance:</p>
+          <pre class="Code" xml:space="preserve">solace-backup# <b>boot &lt;new_version&gt;</b></pre>
+          <p><u>Where</u>:</p>
+          <p><code>&lt;new_version&gt;</code> is the version number of new SolOS software that was previously copied to the appliance.</p>
+        </li>
+        <li>
+          <p>Respond to prompts and then wait for the backup appliance to restart using the new SolOS software. This may take several minutes. You will be disconnected from the CLI and have to reconnect to the appliance.</p>
+        </li>
+        <li>
+          <p>Once reconnected to the backup appliance, confirm that the appliance has started using the new software version:</p>
+          <pre class="Code">solace-backup&gt; <b>enable</b>
+solace-backup# <b>show version</b></pre>
+        </li>
+        <li>
+          <p>Allow activity back to the backup appliance:</p>
+          <pre class="Code">solace-backup# <b>configure</b>
+solace-backup(configure)# <b>redundancy</b>
+solace-backup(configure/redundancy)# <b>no release-activity</b>
+solace-backup(configure/redundancy)# <b>end</b></pre>
+        </li>
+        <li>
+          <p>On the backup appliance, confirm the redundancy status.</p>
+          <p>If using Active/Active redundancy mode, the output from <b>show redundancy</b> on the backup appliance looks like this:</p>
+          <p><u>Example</u> (Output may vary by appliance version):</p>
+          <pre class="Code">solace-backup# <b>show redundancy</b>
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Mate Active             Mate Active           
+Routing Interface              1/6/lag1:1              1/6/lag1:2            
+VRRP VRID                      197                     50                    
+Routing Interface Status       Up                      Up                    
+VRRP Status                    Backup                  Backup                
+VRRP Priority                  100                     100                   
+Message Spool Status           AD-Disabled             AD-Standby            
+Priority Reported By Mate      Active                  Active 
+</pre>
+          <p>If using Active/Standby redundancy mode, the output from <b>show redundancy</b> on the backup appliance looks like this:</p>
+          <p><u>Example</u> (Output may vary by appliance version):</p>
+          <pre class="Code">solace-backup# <b>show redundancy</b>
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Shutdown                Mate Active           
+Routing Interface                                      1/6/lag1:2            
+VRRP VRID                                              50                    
+Routing Interface Status                               Up                    
+VRRP Status                                            Backup                
+VRRP Priority                                          100                   
+Message Spool Status                                   AD-Standby            
+Priority Reported By Mate                              Active
+</pre>
+          <p>It may take several minutes for the backup redundancy status to transition to <code>Up</code> state as the backup router synchronises its states from the primary appliance.</p>
+          <p class="Note">If the redundancy status on the backup appliance is not correct, do NOT proceed with the upgrade.  Instead, <a href="../../get-support.htm" class="link-internal">contact Solace</a> Technical Support for further instructions.</p>
+        </li>
+        <li>
+          <p>Release activity on the primary appliance to the backup appliance:</p>
+          <pre class="Code">solace-primary# <b>configure</b>
+solace-primary(configure)# <b>redundancy</b>
+solace-primary(configure/redundancy)# <b>release-activity</b>
+solace-primary(configure/redundancy)# <b>end</b></pre>
+        </li>
+        <li>
+          <p>On the backup appliance, confirm the redundancy status.</p>
+          <p>If using Active/Active redundancy mode, the output from <code>show redundancy</code> on the backup appliance looks like this:</p>
+          <p><u>Example</u> (Output may vary by appliance version):</p>
+          <pre class="Code" xml:space="preserve">solace-backup# show redundancy
+
+Configuration Status     : Enabled
+Redundancy Status        : Down
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Local Active            Local Active           
+Routing Interface              1/6/lag1:1              1/6/lag1:2            
+VRRP VRID                      197                     50                    
+Routing Interface Status       Up                      Up                    
+VRRP Status                    Master                  Master                
+VRRP Priority                  250                     240                   
+Message Spool Status           AD-Disabled             AD-Active            
+Priority Reported By Mate      Release                 Release
+</pre>
+          <p>If using Active/Standby redundancy mode, the output from <code>show redundancy</code> on the backup appliance looks like this:</p>
+          <p><u>Example</u> (Output may vary by appliance version):</p>
+          <pre class="Code" xml:space="preserve">solace-backup# <b>show redundancy</b>
+
+Configuration Status     : Enabled
+Redundancy Status        : Down
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Shutdown                Local Active           
+Routing Interface                                      1/6/lag1:2            
+VRRP VRID                                              50                    
+Routing Interface Status                               Up                    
+VRRP Status                                            Master                
+VRRP Priority                                          240                   
+Message Spool Status                                   AD-Active            
+Priority Reported By Mate                              Release 
+</pre>
+          <p class="Note">If the redundancy status on the backup appliance is not correct, do NOT proceed with the upgrade.  Instead, <a href="../../get-support.htm" class="link-internal">contact Solace</a> Technical Support for further instructions.</p>
+        </li>
+        <li>
+          <MadCap:snippetBlock src="../../Resources/Snippets/MQTT_Retain_Redundant.flsnp"/>
+        </li>
+        <li>
+          <p>Upgrade the primary appliance:</p>
+          <pre class="Code">solace-primary# <b>boot &lt;new version&gt;</b></pre>
+          <p><u>Where</u>:</p>
+          <p><code>&lt;new_version&gt;</code> is the version number of the new SolOS software that was previously copied to the appliance.</p>
+        </li>
+        <li>
+          <p>Respond to prompts and then wait for the primary appliance to restart using the new SolOS software. This may take several minutes. You will be disconnected from the CLI and have to reconnect to the appliance.</p>
+        </li>
+        <li>
+          <p>Once reconnected to the primary appliance, confirm that the appliance has started using the new software version:</p>
+          <pre class="Code">solace-primary&gt; <b>enable</b>
+solace-primary# <b>show version</b></pre>
+        </li>
+        <li>
+          <p>Allow activity on the primary:</p>
+          <pre class="Code">solace-primary# <b>configure</b>
+solace-primary(configure)# <b>redundancy</b>
+solace-primary(configure/redundancy)# <b>no release-activity</b>
+solace-primary(configure/redundancy)# <b>end</b></pre>
+        </li>
+        <li>
+          <p>On the primary appliance, confirm the redundancy status.</p>
+          <p>If using Active/Active redundancy mode, the output from <code>show redundancy</code> on the primary appliance looks like this:</p>
+          <p><u>Example</u> (Output may vary by appliance version):</p>
+          <pre class="Code">solace-primary# <b>show redundancy</b>
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Mate Active             Mate Active           
+Routing Interface              1/6/lag1:1              1/6/lag1:2            
+VRRP VRID                      50                      197                    
+Routing Interface Status       Up                      Up                    
+VRRP Status                    Backup                  Backup                
+VRRP Priority                  150                     100                   
+Message Spool Status           AD-Standby              AD-Disabled
+Priority Reported By Mate      Active                  Active
+</pre>
+          <p>If using Active/Standby redundancy mode, the output from <code>show redundancy</code> on the primary appliance looks like this:</p>
+          <p><u>Example</u> (Output may vary by appliance version):</p>
+          <pre class="Code">solace-primary# <b>show redundancy</b>
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Mate Active             Shutdown           
+Routing Interface              1/6/lag1:2            
+VRRP VRID                      50                    
+Routing Interface Status       Up                    
+VRRP Status                    Backup                
+VRRP Priority                  150                   
+Message Spool Status           AD-Standby            
+Priority Reported By Mate      Active
+</pre>
+          <p>It may take several minutes for the primary redundancy status to transition to <code>Up</code> state as the backup router synchronises its states from the primary appliance.</p>
+        </li>
+        <li>
+          <p>If auto-revert is not configured, revert activity to the primary appliance from the backup appliance:</p>
+          <pre class="Code">solace-backup# <b>admin</b>
+solace-backup(admin)# <b>redundancy revert-activity</b>
+solace-backup(admin)# <b>end</b></pre>
+        </li>
+        <li>
+          <p>Ensure that the primary appliance is in the correct redundancy state.</p>
+          <p>If using Active/Active redundancy mode, the output from <code>show redundancy</code> on the primary appliance looks like this:</p>
+          <p><u>Example</u> (Output may vary by appliance version):</p>
+          <pre class="Code" xml:space="preserve">solace-primary# <b>show redundancy</b>
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Local Active            Mate Active           
+Routing Interface              1/6/lag1:1              1/6/lag1:2            
+VRRP VRID                      50                      197                   
+Routing Interface Status       Up                      Up                    
+VRRP Status                    Master                  Backup                
+VRRP Priority                  250                     100                   
+Message Spool Status           AD-Active               AD-Disabled           
+Priority Reported By Mate      Standby                 Active
+</pre>
+          <p>If using Active/Standby redundancy mode, the output from <code>show redundancy</code> on the primary appliance looks like this:</p>
+          <p><u>Example</u> (Output may vary by appliance version):</p>
+          <pre class="Code" xml:space="preserve">solace-primary# <b>show redundancy</b>
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Local Active            Shutdown           
+Routing Interface              1/6/lag1:1                          
+VRRP VRID                      50                                         
+Routing Interface Status       Up                                          
+VRRP Status                    Master                                  
+VRRP Priority                  250                                        
+Message Spool Status           AD-Active                          
+Priority Reported By Mate      Standby
+</pre>
+          <p class="Note">The <b>Auto Revert</b> value is a configurable option and may be set to <code>Yes</code>, depending on the redundant system configuration.</p>
+        </li>
+        <li>
+          <p>Ensure that the backup appliance is in the correct redundancy state.</p>
+          <p>If using Active/Active redundancy mode, the output from show redundancy on the backup appliance looks like this:</p>
+          <p><u>Example</u> (Output may vary by appliance version):</p>
+          <pre class="Code" xml:space="preserve">solace-backup# <b>show redundancy</b>
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Local Active            Mate Active           
+Routing Interface              1/6/lag1:1              1/6/lag1:2            
+VRRP VRID                      197                     50                    
+Routing Interface Status       Up                      Up                    
+VRRP Status                    Master                  Backup                
+VRRP Priority                  250                     100                   
+Message Spool Status           AD-Disabled             AD-Standby            
+Priority Reported By Mate      Standby                 Active 
+</pre>
+          <p>If using Active/Standby redundancy mode, the output from show redundancy on the backup appliance looks like this:</p>
+          <p><u>Example</u> (Output may vary by appliance version):</p>
+          <pre class="Code">solace-backup# <b>show redundancy</b>
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Shutdown                Mate Active           
+Routing Interface                                      1/6/lag1:2            
+VRRP VRID                                              50                    
+Routing Interface Status                               Up                    
+VRRP Status                                            Backup                
+VRRP Priority                                          100                   
+Message Spool Status                                   AD-Standby            
+Priority Reported By Mate                              Active
+</pre>
+          <p class="Note">The <b>Auto Revert</b> value is a configurable option and may be set to <code>Yes</code>, depending on the redundant system configuration.</p>
+        </li>
+      </ol>
+      <p>You have completed this procedure.</p>
+    </div>
+    <div id="Without">
+      <h2 class="with-rule">Without Guaranteed Messaging</h2>
+      <p>To upgrade the SolOS software to SolOS-TR <MadCap:variable name="Manifest-Products-Routers.SolOS_TR"/> without a prolonged service outage on a redundant appliance pair that doesn't use guaranteed messaging , follow this procedure.</p>
+      <ul>
+        <li>
+          <p>
+            <MadCap:xref href="#Before2">Before you begin</MadCap:xref>
+          </p>
+        </li>
+        <li>
+          <p>
+            <MadCap:xref href="#Procedur2">Procedure</MadCap:xref>
+          </p>
+        </li>
+      </ul>
+      <p>In the example <code>solace-primary</code> is the primary appliance, and <code>solace-backup</code> is the backup.</p>
+      <h3><a name="Before2"/>Before you begin</h3>
+      <p>Perform the following steps to ensure the redundant pair is in the correct state before upgrading.</p>
+      <ol>
+        <li>
+          <p>Review the appliance upgrade notices.</p>
+          <p>
+            <MadCap:dropDown>
+              <MadCap:dropDownHead>
+                <MadCap:dropDownHotspot>
+                                Appliance Upgrade Notices
+                            </MadCap:dropDownHotspot>
+              </MadCap:dropDownHead>
+              <MadCap:dropDownBody>
+                <MadCap:snippetBlock src="../../Resources/Snippets/Appliance-Upgrade-Notices.flsnp"/>
+              </MadCap:dropDownBody>
+            </MadCap:dropDown>
+          </p>
+        </li>
+        <li>
+          <p>Ensure that the internal disks are in a redundant state on both the primary and backup appliances.</p>
+          <pre class="Code">solace-primary&gt; <b>show disk</b> 
+Reload required:               No
+
+Attribute                                 Disk 1                        Disk 2
+------------------ ----------------------------- -----------------------------
+Device Model                         ST3250820NS                   ST3250820NS
+Capacity (MB)                             238475                        238475
+Admin State                              enabled                       enabled
+Operational State                             up                            up
+
+RAID in fully redundant state: Yes
+
+solace-backup&gt; <b>show disk</b> 
+Reload required:               No
+
+Attribute                                 Disk 1                        Disk 2
+------------------ ----------------------------- -----------------------------
+Device Model                         ST3250820NS                   ST3250820NS
+Capacity (MB)                             238475                        238475
+Admin State                              enabled                       enabled
+Operational State                             up                            up
+
+RAID in fully redundant state: Yes</pre>
+          <div class="Caution">
+            <p>If the displayed output shows the RAID disk 1 and disk 2 drives to be in a non-redundant state (see example below), <a href="../../get-support.htm" class="link-internal">contact Solace</a> Technical Support and stop this software upgrade procedure immediately to prevent software corruption on the appliance. </p>
+            <p>Some appliances contain slots for disk 3 and disk 4, however, these slots are not presently used, and the redundancy state for disk 3 and disk 4 should be ignored.</p>
+            <pre class="Code">solace-primary&gt; <b>show disk</b> 
+Reload required:               No
+
+Attribute                                 Disk 1                        Disk 2
+------------------ ----------------------------- -----------------------------
+Device Model                         ST3250820NS                   ST3250820NS
+Capacity (MB)                             238475                        238475
+Admin State                              enabled                       enabled
+Operational State                         failed                            up
+
+RAID in fully redundant state: No
+
+OR
+
+solace-backup&gt; show disk 
+Reload required:               No
+
+Attribute                                 Disk 1                        Disk 2
+------------------ ----------------------------- -----------------------------
+Device Model                         ST3250820NS                   ST3250820NS
+Capacity (MB)                             238475                        238475
+Admin State                              enabled                       enabled
+Operational State                         failed                            up
+
+RAID in fully redundant state: No    </pre>
+          </div>
+        </li>
+        <li>
+          <p>Copy the latest SolOS software from an external file server (using either SFTP or SCP) to the <code>/loads</code> subdirectory on both appliances.</p>
+          <pre class="Code">solace-primary# <b>copy sftp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads</b>
+solace-primary# <b>copy scp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads</b>
+
+solace-backup# <b>copy sftp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads</b>
+solace-backup# <b>copy scp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads</b></pre>
+          <p><u>Where</u>:</p>
+          <p><code>&lt;username&gt;</code>, <code>&lt;ip-addr&gt;</code>, and <code>&lt;remote-pathname&gt;</code> correspond to the access information of where the new SolOS software is located.</p>
+        </li>
+        <li>
+          <p>Copy the correct SolBase software for the latest SolOS version (the correct SolBase software is packaged with each SolOS version) from an external file server (using either SFTP or SCP) to the <code>/loads</code> subdirectory on both appliances.</p>
+          <pre class="Code">solace-primary# <b>copy sftp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads</b>
+solace-primary# <b>copy scp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads</b>
+
+solace-backup# <b>copy sftp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads</b>
+solace-backup# <b>copy scp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads</b></pre>
+          <p><u>Where</u>:</p>
+          <p><code>&lt;username&gt;</code>, <code>&lt;ip-addr&gt;</code>, and <code>&lt;remote-pathname&gt;</code> correspond to the access information of where the new SolBase software is located.</p>
+        </li>
+        <li>
+          <p>Ensure that the primary appliance is in the correct redundancy state. The output from <code>show redundancy</code> on the primary appliance looks like this:</p>
+          <p><u>Example</u> (Output may vary by appliance version):</p>
+          <pre class="Code" xml:space="preserve">solace-primary# <b>show redundancy</b> 
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Down
+ADB Hello To Mate        : Down
+
+Primary Virtual Router  Backup Virtual Router 
+----------------------  ----------------------
+Activity Status                Local Active            Mate Active           
+Routing Interface              1/6/lag1:1              1/6/lag1:2            
+VRRP VRID                      50                      197                   
+Routing Interface Status       Up                      Up                    
+VRRP Status                    Master                  Backup                
+VRRP Priority                  250                     100                   
+Message Spool Status           AD-Disabled             AD-Disabled           
+Priority Reported By Mate      None                    Active    </pre>
+          <p class="Note">The <b>Auto Revert</b> value is a configurable option and may be set to <code>Yes</code>, 
+                depending on the redundant system configuration. Solace recommends a setting of <code>No</code> for this option, but either is valid.</p>
+          <p>Ensure that the backup appliance is in the correct redundancy state. The output from <code>show redundancy</code> on the backup appliance looks like this:</p>
+          <p><u>Example</u> (Output may vary by appliance version):</p>
+          <pre class="Code" xml:space="preserve">solace-backup# <b>show redundancy</b> 
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Down
+ADB Hello To Mate        : Down
+
+Primary Virtual Router  Backup Virtual Router 
+----------------------  ----------------------
+Activity Status                Local Active            Mate Active           
+Routing Interface              1/6/lag1:1              1/6/lag1:2            
+VRRP VRID                      197                     50                    
+Routing Interface Status       Up                      Up                    
+VRRP Status                    Master                  Backup                
+VRRP Priority                  250                     100                   
+Message Spool Status           AD-Disabled             AD-Disabled           
+Priority Reported By Mate      None                    Active      </pre>
+          <p class="Note">The <code>Auto Revert</code> value is a configurable option and may be set to <code>Yes</code>, 
+                depending on the redundant system configuration. Solace recommends a setting of <code>No</code> for this option, but either is valid.</p>
+        </li>
+        <li>
+          <p>With the exception of the <code>Auto Revert</code> value, if the redundancy state of either the primary or backup appliance does not correspond to the examples above, do NOT upgrade the appliances. Instead, <a href="../../get-support.htm" class="link-internal">contact Solace</a> Technical Support for further instructions.</p>
+        </li>
+      </ol>
+      <div class="Note">
+        <p>Before upgrading the appliance, SolAdmin and SolGeneos Agent may also need to be upgraded. See <MadCap:xref href="">
+                                Appliance Upgrade Notices
+                            </MadCap:xref>  for more information.</p>
+      </div>
+      <h3><a name="Procedur2"/>Procedure</h3>
+      <ol>
+        <li>Follow all steps in <MadCap:xref href="#Before">Before You Begin the In-Service Upgrade</MadCap:xref>. Do not proceed if you cannot confirm that the system is in the correct state.</li>
+        <li>
+          <p>Make a copy of the current SolOS configuration in the <code>/configs</code> subdirectory on both appliances:</p>
+          <pre class="Code">solace-primary&gt; <b>enable</b>
+solace-primary# <b>copy current-config /configs/&lt;old_version&gt;_preUpgradeCfg</b>
+
+solace-backup&gt; <b>enable</b>
+solace-backup# <b>copy current-config /configs/&lt;old_version&gt;_preUpgradeCfg</b></pre>
+          <p><u>Where</u>:</p>
+          <p><code>&lt;old_version&gt;</code> is the version number of current SolOS software as seen in the output of the <b>show version</b> command.</p>
+        </li>
+        <li>
+          <p>Ensure both appliances have auto-revert set to not enabled:</p>
+          <pre class="Code">solace-primary# <b>configure</b>
+solace-primary(configure)# <b>redundancy</b>
+solace-primary(configure/redundancy)# <b>no auto-revert</b>
+solace-primary(configure/redundancy)# <b>end</b>
+
+solace-backup# <b>configure</b>
+solace-backup(configure)# <b>redundancy</b>
+solace-backup(configure/redundancy)# <b>no auto-revert</b>
+solace-backup(configure/redundancy)# <b>end</b></pre>
+        </li>
+        <li>
+          <p>On the primary appliance, release activity to the backup appliance:</p>
+          <pre class="Code">solace-primary# <b>configure</b>
+solace-primary(configure)# <b>redundancy</b>
+solace-primary(configure/redundancy)# <b>release-activity</b>
+solace-primary(configure/redundancy)# <b>end</b></pre>
+        </li>
+        <li>
+          <p>On the primary appliance, confirm that the backup appliance has taken activity. The Activity Status for both virtual routers should be <code>Mate Active</code>:</p>
+          <p><u>Example</u> (Output may vary by appliance version):</p>
+          <pre class="Code">solace-primary# <b>show redundancy</b> 
+Configuration Status     : Enabled-Released
+Redundancy Status        : Down
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Down
+ADB Hello To Mate        : Down
+
+Primary Virtual Router  Backup Virtual Router 
+----------------------  ----------------------
+Activity Status                Mate Active             Mate Active           
+Routing Interface              1/6/lag1:1              1/6/lag1:2            
+VRRP VRID                      50                      197                   
+Routing Interface Status       Up                      Up                    
+VRRP Status                    Backup                  Backup                
+VRRP Priority                  0                       0                     
+Message Spool Status           AD-Disabled             AD-Disabled           
+Priority Reported By Mate      Active                  Active    </pre>
+          <p class="Note">If the backup appliance has not taken activity, do NOT proceed with the upgrade. Instead, <a href="../../get-support.htm" class="link-internal">contact Solace</a> Technical Support for further instructions.</p>
+        </li>
+        <li>
+          <MadCap:snippetBlock src="../../Resources/Snippets/MQTT_Retain_Redundant.flsnp"/>
+        </li>
+        <li>
+          <p>Shut down the Msg-Backbone service on the primary appliance:</p>
+          <pre class="Code">solace-primary# <b>configure</b>
+solace-primary(configure)# <b>service msg-backbone</b>
+solace-primary(configure/service/msg-backbone)# <b>shutdown</b>
+All SMF, WEB, and REST clients will be disconnected.
+Do you want to continue (y/n)? <b>y</b>
+solace-primary(configure/service/msg-backbone)# <b>end</b></pre>
+        </li>
+        <li>
+          <p>Upgrade the primary appliance:</p>
+          <pre class="Code">solace-primary# <b>boot &lt;new_version&gt;</b></pre>
+          <p><u>Where</u>:</p>
+          <p><code>&lt;new_version&gt;</code> is the version number of the new SolOS software that was previously copied to the appliance.</p>
+        </li>
+        <li>
+          <p>Respond to prompts and then wait for the primary appliance to restart using the new SolOS software. This may take several minutes. You will be disconnected from the CLI and have to reconnect to the appliance.</p>
+        </li>
+        <li>
+          <p>Once reconnected, confirm that the appliance has started using the new software version:</p>
+          <pre class="Code">solace-primary&gt; <b>enable</b>
+solace-primary# <b>show version</b></pre>
+        </li>
+        <li>
+          <p>Start the Msg-Backbone service that was shut down on the primary appliance:</p>
+          <p class="Code">solace-primary#<b>configure</b><br/>solace-primary(configure)# <b>service msg-backbone</b><br/>solace-primary(configure/service/msg-backbone)# <b>no shutdown</b><br/>solace-primary(configure/service/msg-backbone)# <b>end</b></p>
+        </li>
+        <li>
+          <p>Revert activity back to the primary appliance from the backup appliance.</p>
+          <p>Enter the <b>no release-activity</b>   command on the primary appliance to allow activity to return back to it:</p>
+          <pre class="Code">solace-primary# <b>configure</b>
+solace-primary(configure)# <b>redundancy</b>
+solace-primary(configure/redundancy)# <b>no release-activity</b>
+solace-primary(configure/redundancy)# <b>end</b></pre>
+          <p>Enter the <b>redundancy revert-activity</b> Admin command on the backup appliance to administratively force it to give up service:</p>
+          <pre class="Code">solace-backup# <b>admin</b>
+solace-backup(admin)# <b>redundancy revert-activity</b>
+solace-backup(admin)# <b>end</b></pre>
+        </li>
+        <li>
+          <p>On the backup appliance, release activity to the primary appliance:</p>
+          <pre class="Code">solace-backup# <b>configure</b>
+solace-backup(configure)# <b>redundancy</b>
+solace-backup(configure/redundancy)# <b>release-activity</b>
+solace-backup(configure/redundancy)# <b>end</b></pre>
+        </li>
+        <li>
+          <p>Confirm on the primary appliance that it has taken activity for both virtual routers. The Activity Status for both virtual routers should be <code>Local Active</code>:</p>
+          <p><u>Example</u> (Output may vary by appliance version):</p>
+          <pre class="Code" xml:space="preserve">solace-primary# <b>show redundancy</b>
+Configuration Status     : Enabled
+Redundancy Status        : Down
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Down
+ADB Hello To Mate        : Down
+
+Primary Virtual Router  Backup Virtual Router 
+----------------------  ----------------------
+Activity Status                Local Active            Local Active          
+Routing Interface              1/6/lag1:1              1/6/lag1:2            
+VRRP VRID                      50                      197                   
+Routing Interface Status       Up                      Up                    
+VRRP Status                    Master                  Master                
+VRRP Priority                  250                     250                   
+Message Spool Status           AD-Disabled             AD-Disabled           
+Priority Reported By Mate      None                    None                           </pre>
+          <p class="Note">If the primary appliance is not active for both virtual routers, do NOT proceed with the upgrade. Instead, contact Systems technical support for further instructions.</p>
+        </li>
+        <li>
+          <MadCap:snippetBlock src="../../Resources/Snippets/MQTT_Retain_Redundant.flsnp"/>
+        </li>
+        <li>
+          <p>Shut down the Msg-Backbone service on the backup appliance:</p>
+          <pre class="Code">solace-backup# <b>configure</b>
+solace-backup(configure)# <b>service msg-backbone</b>
+solace-backup(configure/service/msg-backbone)# <b>shutdown</b>
+All SMF, WEB, and REST clients will be disconnected.
+Do you want to continue (y/n)? <b>y</b>
+solace-backup(configure/service/msg-backbone)# <b>end</b></pre>
+        </li>
+        <li>
+          <p>Upgrade the backup appliance:</p>
+          <pre class="Code">solace-backup# <b>boot &lt;new version&gt;</b></pre>
+          <p><u>Where</u>:</p>
+          <p><code>&lt;new_version&gt;</code> is the version number of new SolOS software that was previously copied to the appliance.</p>
+        </li>
+        <li>
+          <p>Respond to prompts and then wait for the backup appliance to restart using the new SolOS software. This may take several minutes. You will be disconnected from the CLI and have to reconnect to the appliance.</p>
+        </li>
+        <li>
+          <p>Once reconnected to the backup appliance, confirm that the appliance has started using the new software version:</p>
+          <pre class="Code">solace-backup&gt; <b>enable</b>
+solace-backup# <b>show version</b></pre>
+        </li>
+        <li>
+          <p>Start the Msg-Backbone service that was shut down on the backup appliance:</p>
+          <pre class="Code">solace-backup# <b>configure</b>
+solace-backup(configure)# <b>service msg-backbone</b>
+solace-backup(configure/service/msg-backbone)# <b>no shutdown</b>
+solace-backup(configure/service/msg-backbone)# <b>end</b></pre>
+        </li>
+        <li>
+          <p>Enter the <b>no release-activity</b>  command on the backup appliance to allow activity to return back to it:</p>
+          <pre class="Code">solace-backup# <b>configure</b>
+solace-backup(configure)# <b>redundancy</b>
+solace-backup(configure/redundancy)# <b>no release-activity</b>
+solace-backup(configure/redundancy)# <b>end</b></pre>
+        </li>
+        <li>
+          <p>Enter the <b>redundancy revert-activity</b> Admin command on the primary appliance to administratively force it to give up service:</p>
+          <pre class="Code">solace-primary# <b>admin</b>
+solace-primary(admin)# <b>redundancy revert-activity</b>
+solace-primary(admin)# <b>end</b></pre>
+        </li>
+        <li>
+          <p>On the primary appliance, confirm that the primary appliance is active for the primary virtual router and the backup appliance is active for the backup virtual router. The Activity Status line should read <code>Local Active</code> for the primary virtual router and <code>Mate Active</code> for the backup virtual router:</p>
+          <p><u>Example</u> (Output may vary by appliance version):</p>
+          <pre class="Code" xml:space="preserve">solace-primary# <b>show redundancy</b> 
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Down
+ADB Hello To Mate        : Down
+
+Primary Virtual Router  Backup Virtual Router 
+----------------------  ----------------------
+Activity Status                Local Active            Mate Active           
+Routing Interface              1/6/lag1:1              1/6/lag1:2            
+VRRP VRID                      50                      197                   
+Routing Interface Status       Up                      Up                    
+VRRP Status                    Master                  Backup                
+VRRP Priority                  250                     100                   
+Message Spool Status           AD-Disabled             AD-Disabled           
+Priority Reported By Mate      None                    Active    </pre>
+          <p class="Note">If the activity status is not correct, do NOT proceed with the upgrade.
+                Instead, <a href="../../get-support.htm" class="link-internal">contact Solace</a> for further instructions.</p>
+        </li>
+        <li>
+          <p>If the redundancy auto-revert setting was set to not enabled in step 3, enable it on both appliances:</p>
+          <p class="Note">Solace recommends running redundancy with auto-revert not enabled.</p>
+          <pre class="Code">solace-primary# <b>configure</b>
+solace-primary(configure)# <b>redundancy</b>
+solace-primary(configure/redundancy)# <b>auto-revert</b>
+solace-primary(configure/redundancy)# <b>end</b>
+
+solace-backup# <b>configure</b>
+solace-backup(configure)# <b>redundancy</b>
+solace-backup(configure/redundancy)# <b>auto-revert</b>
+solace-backup(configure/redundancy)# <b>end</b></pre>
+        </li>
+        <li>
+          <p>Ensure that the backup appliance is in the correct redundancy state.</p>
+          <p>The output from <b>show redundancy</b> on the backup appliance looks like this:</p>
+          <p><u>Example</u> (Output may vary by appliance version):</p>
+          <pre class="Code" xml:space="preserve">solace-backup# <b>show redundancy</b> 
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Down
+ADB Hello To Mate        : Down
+
+Primary Virtual Router  Backup Virtual Router 
+----------------------  ----------------------
+Activity Status                Local Active            Mate Active           
+Routing Interface              1/6/lag1:1              1/6/lag1:2            
+VRRP VRID                      197                     50                    
+Routing Interface Status       Up                      Up                    
+VRRP Status                    Master                  Backup                
+VRRP Priority                  250                     100                   
+Message Spool Status           AD-Disabled             AD-Disabled           
+Priority Reported By Mate      None                    Active  
+</pre>
+          <p class="Note">The <code>Auto Revert </code>value is a configurable option and may be set to <code>Yes</code>, depending on the redundant system configuration.</p>
+        </li>
+      </ol>
+      <p>You have completed this procedure.</p>
+    </div>
+    <script type="text/javascript" src="../../Resources/Scripts/Tabbed_Content.js">
+        </script>
+  </body>
+</html>

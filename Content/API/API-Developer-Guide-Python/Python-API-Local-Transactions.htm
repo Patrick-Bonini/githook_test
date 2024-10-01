@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Using Local Transactions in the  Python API</h1>
+    <p>Local transactions in the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API allow your application to group multiple guaranteed message send and/or guaranteed message receive operations together as a single, atomic unit known as a transaction. Local transactions ensure that all the operations within a transaction are either committed or rolled back. Local transactions are used to maintain data integrity and consistency, and can be useful in situations such as order processing and financial transactions. For more information see <MadCap:xref href="../API-Developer-Guide/Using-Local-Transactions.htm">Using Local Transactions</MadCap:xref>. The following sections show how to use local transactions in the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API.</p>
+    <ol>
+      <li><a href="#Creating" class="link-internal">Create a TransactionalMessagingService</a>.</li>
+      <li><a href="#Creating2" class="link-internal">Publishing Messages in a Local Transaction</a>.</li>
+      <li><a href="#Creating3" class="link-internal">Receiving Messages in a Local Transaction</a>.</li>
+    </ol>
+    <h2><a name="Creating"/>Creating a TransactionalMessagingService Object</h2>
+    <p>A <code>TransactionalMessagingService</code> object allows the API to establish a connection to the event broker and create transactions. To create a <code>TransactionalMessagingService</code> object, do the following:</p>
+    <ol>
+      <li>
+        <p>Call the <code>MessagingService</code> class' <code>create_transactional_service_builder()</code> function to return a <code>TransactionalMessagingServiceBuilder</code> object.</p>
+      </li>
+      <li>
+        <p>The <code>TransactionalMessagingServiceBuilder</code> object gives you access to a number of functions that let you customize a <code>TransactionalMessagingService</code> object. These include the following:</p>
+        <ul>
+          <li><code>from_properties(configuration: dict)</code>—Pass the necessary broker properties dictionary to the <code>TransactionalMessagingServiceBuilder</code>.</li>
+          <li style="font-weight: normal;font-size: 11pt;"><code>set_transaction_request_timeout(timeout: int = 10000)</code>—Timeout (in milliseconds) to wait for a response. Default is 10000.</li>
+        </ul>
+      </li>
+      <li>
+        <p>Call the <code>build()</code> function on the <code>TransactionalMessagingServiceBuilder</code> object to return a <code>TransactionalMessagingService</code> object.</p>
+      </li>
+      <li>
+        <p>Call the <code>connect()</code> function on your <code>TransactionalMessagingService</code> object to connect to the event broker. </p>
+      </li>
+    </ol>
+    <p>For more information,  see the <a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a></a>.</p>
+    <p>The following sample code shows how to create a simple <code>TransactionalMessagingService</code> instance and connect it to an event broker:</p>
+    <pre xml:space="preserve">
+transactional_service = messaging_service.create_transactional_service_builder().build().connect()
+</pre>
+    <h2><a name="Creating2"/>Publishing Messages in a Local Transaction</h2>
+    <p>After a <code>TransactionalMessagingService</code> instance has established a connection to an event broker, use a <code>TransactionalMessagePublisher</code> to publish guaranteed messages. To create a <code>TransactionalMessagePublisher</code> object, do the following:</p>
+    <ol>
+      <li>
+        <p>Call the <code>create_transactional_message_publisher_builder()</code> function on a <code>TransactionalMessagingService</code> object. This returns a <code>TransactionalMessagePublisherBuilder</code> object.</p>
+      </li>
+      <li>
+        <p>Call the <code>build()</code> function on your <code>TransactionalMessagePublisherBuilder</code> to return a <code>TransactionalMessagePublisher</code> object.</p>
+      </li>
+      <li>
+        <p>To enable your <code>TransactionalMessagePublisher</code> to start publishing messages, call the <code>start()</code> function on it.</p>
+      </li>
+    </ol>
+    <p>For more information, see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a>.</p>
+    <p>The following is an example that shows how to use  a transactional message publisher to enable your application to publish messages to the event broker:</p>
+    <pre xml:space="preserve">
+transactional_publisher = transactional_service.create_transactional_message_publisher_builder().build().start()
+</pre>
+    <h3>Local Transaction <code>publish()</code> Example </h3>
+    <p>After you create a <code>TransactionalMessagingService</code> and a <code>TransactionalMessagePublisher</code>, you can now use the <code>publish()</code> function to publish messages in a local transaction. The example below will attempt to publish ten messages to each topic in the <code>topics</code> array. In each run through the for-loop, the application attempts to publish ten messages to a topic as a single transaction with the <code>commit()</code> function. If something goes wrong during the code execution, the transaction is rolled back and none of the messages will be published for that iteration of the loop.</p>
+    <pre xml:space="preserve">
+topics = [Topic.of("my/topic/1"), Topic.of("my/topic/2"), Topic.of("my/topic/3")]
+
+for topic in topics:
+    try:
+        for i in range(10):
+            message = messaging_service.message_builder().build(f"Message #{i} for topic {topic.get_name()}")
+            transactional_publisher.publish(message, topic)
+        # Publish all messages to a topic, or none at all:
+        transactional_service.commit()
+        # Can't be sure messages were actually published until the commit succeeds.
+    except TransactionRollbackError:
+        # Commit failed.
+        print("Commit failed.")
+    except UnknownTransactionStateError:
+        # Commit outcome unknown. This should be very rare.
+        print("Commit outcome unknown.")
+transactional_service.disconnect()
+</pre>
+    <p> </p>
+    <h2><a name="Creating3"/>Receiving Messages in a Local Transaction</h2>
+    <p>After a <code>TransactionalMessagingService</code> instance has established a connection to an event broker, use a <code>TransactionalMessageReceiver</code> to receive guaranteed messages. To create a <code>TransactionalMessageReceiver</code> object, do the following:</p>
+    <ol>
+      <li>
+        <p>Call the <code>create_transactional_message_receiver_builder()</code> function on a <code>TransactionalMessagingService</code> object. This returns a <code>TransactionalMessageReceiverBuilder</code> object.</p>
+      </li>
+      <li>
+        <p>You can now use the functions in the <code>TransactionalMessageReceiverBuilder</code> interface to configure a <code>TransactionalMessageReceiver</code> to use certain features of the API:</p>
+        <ul>
+          <li><code>with_message_replay(replay_strategy: ReplayStrategy)</code>—Add a message replay message strategy to a persistent receiver.</li>
+          <li><code>with_message_selector(selector_query_expression: str)</code>—Enables support for message selection based on message header parameter and message properties values.</li>
+          <li><code>with_missing_resources_creation_strategy(strategy: MissingResourcesCreationStrategy)</code>—Add the missing queue creation strategy that defines what action the API may take.</li>
+        </ul>
+      </li>
+      <li>
+        <p>Call the <code>build(endpoint_to_consume_from: Queue)</code> function on your <code>TransactionalMessageReceiverBuilder</code> to return a <code>TransactionalMessageReceiver</code> object.  The <code>build()</code> function takes an explicit queue to consume from as a parameter. </p>
+      </li>
+      <li>
+        <p>To enable your <code>TransactionalMessageReceiver</code> to start receiving messages, call the <code>start()</code> function on it.</p>
+      </li>
+    </ol>
+    <p>For more information, see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a>.</p>
+    <p>The following is an example that shows how to use  a transactional message receiver to enable your application to receive messages from the event broker:</p>
+    <pre xml:space="preserve">
+transactional_receiver= transactional_service.create_transactional_message_receiver_builder().build(my_queue).start()
+</pre>
+    <h3>Receiving Messages Synchronously in a Local Transaction</h3>
+    <p>After you create a <code>TransactionalMessagingService</code> and a <code>TransactionalMessageReceiver</code>, you can now receive messages in a transaction. The example below will attempt to receive ten messages using the blocking <code>receive_message()</code> function from each queue in the queues array using a for-loop. In each run through the for-loop, the application attempts to receive ten messages from a queue as a single transaction with the <code>commit()</code> function. If something goes wrong during the code execution, the transaction is rolled back and none of the messages will be consumed from the queue and removed from the event broker for that iteration of the loop.</p>
+    <pre xml:space="preserve">
+# Receive a message from each queue in a transaction, 'count' times. Each count is a separate transaction: A message is taken from every queue or none.
+count = 10
+queues = [queue1, queue2, queue3]
+messages = []
+receivers = []
+# Start a receiver for every queue
+for queue in queues:
+    transactional_receiver = transactional_service.create_transactional_message_receiver_builder().build(queue).start()
+    receivers.append(transactional_receiver)
+
+for _ in range(count):
+    # Grab a message from each receiver/queue
+    messages_in_this_transaction = []
+    for receiver in receivers:
+        message = receiver.receive_message()
+        if message is None:
+            if messages_in_this_transaction:
+                # One of the queues ran empty, rolling back the partial transaction:
+                transactional_service.rollback()
+            break
+        messages_in_this_transaction.append(message)
+    else:  # no break
+        try:
+            # Consume a message from all queues, or from none:
+            transactional_service.commit()
+            messages.extend(messages_in_this_transaction)
+        except TransactionRollbackError:
+            # Commit failed.
+            print("Commit error")
+        except UnknownTransactionStateError:
+            # Commit outcome unknown. This should be very rare.
+            print("Unknown commit error")
+transactional_service.disconnect()
+</pre>
+    <h3>Receiving Messages with a Message Handler in a Local Transaction</h3>
+    <p>After you create a <code>TransactionalMessagingService</code> and a <code>TransactionalMessageReceiver</code>, you can now use the non blocking <code>receive_async()</code> function to receive messages in a transaction. </p>
+    <p class="Note">The non-blocking receiver function is called <code>receive_async()</code>, however it is not an asynchronous co-routine or generator,
+			and is not <code>asyncio</code> compatible.
+<code>	receive_async()</code> returns immediately, and works with native threads under the hood. This function invokes the callback on a new python thread for every message.</p>
+    <p>The <code>receive_async()</code> function takes a message handler as a parameter. The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API has a <code>TransactionalMessageHandler</code> designed for local transactions. This interface contains the abstract <code>on_message()</code> function that you implement to handle the processing of inbound messages, such as print, modify, re-publish or commit operations. The example implementation of the <code>on_message()</code> function below is blocking, which is a way to control the flow of incoming messages.</p>
+    <p class="Note">Do not perform operations on the same transactional service from outside the message handler or from other threads because it is not thread safe.</p>
+    <p>The example below will attempt to receive ten messages using the non-blocking <code>receive_async()</code> function from the queue passed to the <code>build()</code> function. Either all messages will be received from the event broker queue when the transaction succeeds and is committed with the <code>commit()</code> function, or if something goes wrong at any point in the code execution the transaction is rolled back and none of the messages will be consumed from any queue.</p>
+    <pre xml:space="preserve">
+import threading
+from solace.messaging.receiver.transactional_message_receiver import TransactionalMessageHandler
+from solace.messaging.receiver.inbound_message import InboundMessage
+from solace.messaging.resources.topic_subscription import TopicSubscription
+
+transactional_service = messaging_service.create_transactional_service_builder().build().connect()
+queue = Queue.durable_exclusive_queue("myQueue")
+count = 11
+messages_processed = 0
+finished = threading.Event()
+
+# The message dispatch function is wrapped in a class
+class MsgHandler(TransactionalMessageHandler):
+    def on_message(self, message: InboundMessage):
+        # Process message, for example: print, modify, re-publish, commit.
+        # Blocking in this method is a way to control the flow of incoming messages.
+        # Do not perform operations on the same transactional service from anywhere else.
+        global transactional_service, messages_processed, finished
+        print(f'Transactional message callback processing message: {message.get_payload_as_string()}')
+		
+        transactional_service.commit()
+        messages_processed += 1
+        if messages_processed &gt;= count:
+            # Remember it's not safe to perform operations on the transactional service
+            # from other threads, including the main thread.
+            finished.set()
+
+msgHandler = MsgHandler()
+receiver_builder = transactional_service.create_transactional_message_receiver_builder()
+receiver = receiver_builder.build(queue)
+
+# The receiver's mode of operation (blocking vs non-blocking) must be decided before the receiver is started.
+receiver.receive_async(msgHandler)
+receiver.start()
+finished.wait(10)
+transactional_service.disconnect()
+</pre>
+    <p> </p>
+  </body>
+</html>

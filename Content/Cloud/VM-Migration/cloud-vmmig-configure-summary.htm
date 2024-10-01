@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="Default.OnlyForPDF">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Configuring Replication to Migrate a VM-Based <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h1>
+    <p MadCap:conditions="SAP.SapHideFromOutput">The steps to configure replication of <MadCap:variable name="Product-Names.broker_cloud_short"/>s are similar to those for <MadCap:variable name="Product-Names.pubsub_brand_only"/> software event brokers and <MadCap:variable name="Product-Names.broker_appliance_short"/>s, with the following differences:</p>
+    <ul MadCap:conditions="SAP.SapHideFromOutput">
+      <li>Each <MadCap:variable name="Product-Names.broker_cloud_short"/> (replication mate) in your replication pair has only one Message VPN to configure; the Message VPN must be the same and specified at creation time of the <MadCap:variable name="Product-Names.broker_cloud_short"/> in <MadCap:variable name="Product-Names.cloud_product_firstuse"/>.</li>
+      <li>Config-Sync is already set up on <MadCap:variable name="Product-Names.broker_cloud_short"/>s, so no configuration is necessary.</li>
+      <li>A custom hostname must be configured prior to starting this procedure. Client applications must use this custom hostname to connect to the correct <MadCap:variable name="Product-Names.broker_cloud_short"/> prior to starting a migration. This recommendation is to ensure that your event-driven architecture functions after migrating to the Target service, where it becomes active and has the custom hostname moved to it.</li>
+    </ul>
+    <p>To configure replication in <MadCap:variable name="Product-Names.cloud_product_short"/>, you must use <MadCap:variable name="Product-Names.solace_cli"/> commands, the <MadCap:variable name="Product-Names.pubsubmanager_long"/>, and the <MadCap:variable name="Product-Names.console_ui_long"/>.</p>
+    <h2>Prerequisites</h2>
+    <p>To configure replication, you must be familiar with configuring <MadCap:variable name="Product-Names.broker_cloud_short"/>s using the <MadCap:variable name="Product-Names.solace_cli"/> commands, the  <MadCap:variable name="Product-Names.console_ui_long"/>, and <MadCap:variable name="Product-Names.pubsubmanager_long"/>.</p>
+    <ul>
+      <li>You require CLI access to the <MadCap:variable name="Product-Names.broker_cloud_short"/>s.</li>
+      <li>You require a new user account on the <MadCap:variable name="Product-Names.broker_cloud_short"/>s.  For more information, see <MadCap:xref href="getting-global-admin-account.htm">Getting a Global-Admin Access Account</MadCap:xref>.</li>
+      <li>You require a user account in <MadCap:variable name="Product-Names.cloud_product_short"/> with the Cluster Editor or Administrator role, and access to <MadCap:variable name="Product-Names.pubsubmanager_long"/>. For more information, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../cloud-user-management.htm#Roles">Roles and Permissions</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/cloud-user-management.htm#Roles" class="link-internal">Roles and Permissions</a></MadCap:conditionalText>.</li>
+      <li>Your client applications connect to the VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/> using a custom hostname as an alternate hostname. Your client applications that use messaging must not use the initial, generated name created for the <MadCap:variable name="Product-Names.broker_cloud_short"/>. For more information, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../configure-domain-name.htm#add-customhostname">Adding a Hostname with Custom Domain Name</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/configure-hostnames.htm#add-hostname-ui" target="_blank" class="link-offsite">Adding a custom hostname</a></MadCap:conditionalText><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/configure-hostnames.htm#add-hostname-ui" target="_blank" class="link-offsite">.</a></li>
+    </ul>
+    <h2>Migrating <MadCap:variable name="Product-Names.broker_cloud_short_title"/> High-Level Steps</h2>
+    <p>The following are the high-level steps to use replication for <MadCap:variable name="Product-Names.cloud_product_short"/> to migrate an <MadCap:variable name="Product-Names.broker_cloud_short"/>:</p>
+    <ol>
+      <li>
+        <p><a href="cloud-vmmig-clone-broker-to-k8s.htm" class="link-internal">Clone a copy</a> of your VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/> (Target service) in a Kubernetes-based deployment or region. The clone copies the Message VPN name and cluster name from your VM-based service.</p>
+        <ul MadCap:conditions="Default.HideFromAllOutput">
+          <li>
+            <p>Do not copy the perquisite custom hostname as part of cloning the service.</p>
+          </li>
+        </ul>
+        <p class="Note">During the creation process, you start the process for configuring a replication pair.</p>
+      </li>
+      <li>Validate that the clone of the <MadCap:variable name="Product-Names.broker_cloud_short"/> (Target service) you created matches your VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/> (Source service). If necessary, ensure the port configurations are the same as those on the source <MadCap:variable name="Product-Names.broker_cloud_short"/>. The following are examples of testing to perform:<ul><li>Validate the authentication using the same configured authentication and ACL.</li></ul></li>
+      <li>In the <MadCap:variable name="Product-Names.console_ui_long"/>, <a href="cloud-vmmig-configure-event-brokers.htm" class="link-internal">configure your VM-based and cloned <MadCap:variable name="Product-Names.broker_cloud_short"/>s</a>, complete the configuration of both so it's a  replication pair.<ul><li>Ensure you have the prerequisite accounts and a global-admin account on the VM-based  <MadCap:variable name="Product-Names.broker_cloud_short"/> and the <MadCap:variable name="Product-Names.broker_cloud_short"/> you created in Step 1.</li></ul></li>
+      <li>
+        <p>Using the <MadCap:variable name="Product-Names.solace_cli"/> on both <MadCap:variable name="Product-Names.broker_cloud_short"/>s in the replication pair (replication mates), <a href="cloud-vmmig-configure-replication-solace-cli.htm" class="link-internal">configure the replication settings</a>.</p>
+        <p class="Caution">Replication only starts copying messages from the point in time when it is configured ​​​​​​(enabled) and the replication topics are set for those queues. Any long-lived messages in the queue before replication is configured and the replication topics are configured, are not copied over to the replication mate.</p>
+      </li>
+      <li>After you have set up replication, you must set your replication topics and wait until your oldest message on the target service is after the time when you configured replication.</li>
+      <li><a href="cloud-vmmig-controlled-fail-over.htm" class="link-internal">Perform a controlled failover to migrate services</a> to your cloned <MadCap:variable name="Product-Names.broker_cloud_short"/> in the Kubernetes-based region to cutover your service.</li>
+      <li>Validate that client applications and the cloned <MadCap:variable name="Product-Names.broker_cloud_short"/> operate and function as required. We recommend that you lock the <MadCap:variable name="Product-Names.broker_cloud_short"/> to avoid accidental deletion.<ul><li>Check that client services can authenticate using the same configured authentication and ACLs.</li><li><MadCap:variable name="Product-Names.broker_cloud_short_title"/> SSO may need to be enabled.</li><li>If the migration was successful, proceed to the next step. If the migration was not successful, perform step 6 to perform a controlled failover to the VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/> (Source service), re-check your configuration on the Target service, and restart the migration. <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><a href="../../get-support.htm" target="_blank" class="link-internal">Contact <MadCap:variable name="Variables.CompanyName"/></a></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF">Contact <MadCap:variable name="Variables.CompanyName"/></MadCap:conditionalText> if required.</li></ul></li>
+      <li>After a set time of validation,<a href="cloud-vmmig-aftermigration.htm" class="link-internal"> remove replication from the cloned <MadCap:variable name="Product-Names.broker_cloud_short"/> and delete the VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/></a>.</li>
+    </ol>
+    <p>For a summary of the configuration settings used in the set-up procedures, see <MadCap:xref href="cloud-vmmig-examplesheet.htm">Example Replication Information</MadCap:xref>.</p>
+  </body>
+</html>

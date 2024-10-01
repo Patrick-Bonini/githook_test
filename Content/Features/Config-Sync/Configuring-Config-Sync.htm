@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Config-Sync Configuration</h1>
+    <p>The Config-Sync feature can be used for Solace PubSub+ appliances or Solace PubSub+ software event brokers to automatically synchronize:</p>
+    <ul>
+      <li> configuration properties between event brokers in high-availability (HA) pairs.</li>
+      <li>replication‑enabled Message VPNs on one replication site with the corresponding Message VPNs on its mate replication site.</li>
+    </ul>
+    <p>To begin using Config-Sync for HA, or replication deployments, you must do the following:</p>
+    <ol>
+      <li>Enable Guaranteed Messaging on each event broker that will use Config-Sync. See <MadCap:xref href="../../Messaging/Guaranteed-Msg/System-Level-Msg-Spool-Config.htm">System-Level Message Spool Configuration</MadCap:xref>.</li>
+      <li>Enable Config-Sync on each event broker. See <MadCap:xref href="#Enabling">Enabling Config-Sync.</MadCap:xref></li>
+      <li>If you are configuring an HA pair, you must also assert one event broker’s system configuration over its mate. See <MadCap:xref href="#Assertin">Asserting Routers’ System Configurations Over Their Mates.</MadCap:xref></li>
+    </ol>
+    <div class="Caution">
+      <p>Solace HA pairs that use Config‑Sync can fall out of synchronization when a client adds or removes endpoints or topic subscriptions on the HA active event broker, while CLI or SEMP configuration changes are made simultaneously on the same endpoints or topic subscriptions on the HA standby event broker.</p>
+      <p class="Tbl_Body">To avoid this situation, it is recommended that you do one of the following:
+            <ul><li>Only make Guaranteed Messaging configuration changes through the CLI or SEMP on the HA active event broker.</li><li>Set the client profiles used to not allow clients to dynamically create or delete endpoints (see <MadCap:xref href="../../Security/Configuring-Client-Profiles.htm#Allow-G-Msg-Creates">Allowing Guaranteed Endpoint Creates</MadCap:xref>), and set the permission level for endpoints so that clients are not allowed to add, modify, or delete topic subscriptions for queues (see <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-Queues.htm#Configur19">Configuring Permissions for Non-Owner Clients</MadCap:xref>) and topic endpoints (see <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-DTEs.htm#Configur26">Configuring Permissions for Non-Owner Clients</MadCap:xref>).</li></ul></p>
+    </div>
+    <h2 class="with-rule"><a name="Enabling"/>Enabling Config-Sync</h2>
+    <p>For HA deployments, Config-Sync must be enabled for both event brokers in the HA pair. For Solace PubSub+ software event broker HA groups, do not enable Config-Sync for the monitoring nodes.</p>
+    <p>For replication deployments, Config-Sync must be enabled for each event broker in both replication sites (regardless of whether or not HA redundancy is also used).</p>
+    <ul>
+      <li>To enable Config-Sync for an event broker, enter the following commands:
+                <p class="Code">solace(configure)# config-sync<br/>solace(configure/config-sync)# no shutdown</p></li>
+      <li>To disable Config-Sync for an event broker, enter the following commands:
+                <p class="Code">solace(configure)# config-sync<br/>solace(configure/config-sync)# shutdown</p></li>
+    </ul>
+    <div class="Note">
+      <p>In versions 9.13.0 and later, to use Config-Sync with a standalone event broker at a replication site, you do not need to assign a redundancy interface for the event broker. This requirement from previous releases has been removed.</p>
+      <p>In versions earlier than 9.13.0, to use Config-Sync with a standalone event broker at a replication site, you must assign a redundancy interface for the event broker (see <MadCap:xref href="../HA-Redundancy/Configuring-Appliance-Redundancy-Parameters.htm#Assignin2">Assigning a Redundancy Interface</MadCap:xref>).</p>
+    </div>
+    <h2 class="with-rule"><a name="Assertin"/>Asserting Event Broker System Configurations</h2>
+    <p>When enabling Config-Sync for the first time on an HA pair, you must assert the system-level configuration of one event broker over its mate. This "leader" event broker is typically the primary event broker in the pair.</p>
+    <p>After Config-Sync is running, if the two configurations get out of sync, you can also assert one event broker's system-level configuration over its mate's.</p>
+    <div class="Caution">
+      <p class="Tbl_Body">The <code>assert-leader</code>, <code>resync-leader</code>, and <code>resync-follower</code> Config-Sync Admin EXEC commands force one event broker’s configuration onto one or more other event brokers. If there is a configuration mismatch between the mate replication sites, this could result in the loss of Guaranteed messages.</p>
+    </div>
+    <p>To assert the system-level  settings of the event broker that you are currently logged on to over its HA mate, enter the following commands:</p>
+    <p class="Code">solace1&gt; enable<br/>solace1# admin<br/>solace1(admin)# config-sync<br/>solace1(admin/config-sync)# assert-leader router</p>
+    <p>After asserting the system-level configuration of one event broker over its mate, the output for <code>show config-sync</code> command should show the "Oper Status" of Config-Sync as "Up" on both primary and backup event brokers.</p>
+    <h3>Resynchronizing Leaders After Errors</h3>
+    <p>If the Config-Sync facility receives an error code when executing a configuration command, the affected configuration table will enter a blocked state. In some situations, to clear this error it may be necessary to abandon the pending configuration changes and resynchronize a leader’s configuration with another leader using the following commands:</p>
+    <p class="Code">solace# admin<br/>solace(admin)# config-sync<br/>solace(admin/config-sync)# resync-leader {router | message-vpn &lt;vpn‑name&gt;}</p>
+    <p><u>Where</u>:</p>
+    <p><code>router</code> specifies to overwrite the system-level configuration parameters for the event broker that you are currently logged on to with the leader configuration parameters held by its redundant mate.</p>
+    <p><code>message-vpn &lt;vpn-name&gt;</code> is the name of a Message VPN on the event broker that you are currently logged on to. The configuration information for this Message VPN will be overwritten by a leader Message VPN of the same name on the event broker’s redundant mate or, if it is applicable, its replication mate (standalone or HA pair). This value may contain wildcards.</p>
+    <div class="Caution">
+      <p class="Tbl_Body"> To avoid message and data loss, the resync-leader command should not be run on an active event broker or Message VPN with connected clients. This command is intended for use on backup event brokers and Message VPNs.</p>
+    </div>
+    <h2 class="with-rule"><a name="Assertin2"/>Asserting Event Brokers VPN Configurations</h2>
+    <p>If there is a need to manually synchronize a Message VPN configuration between two event brokers, you can assert the Message VPN configuration of one of the event brokers (it doesn’t have to be on the leader or primary event broker) over the configuration of the same Message VPN on its mate.</p>
+    <p>To assert the Message VPN-level  settings of the event broker that you are currently logged on to over its HA mate, enter the following commands:</p>
+    <p class="Code">solace1&gt; enable<br/>solace1# admin<br/>solace1(admin)# config-sync<br/>solace1(admin/config-sync)# assert-leader message-vpn &lt;vpn-name&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;vpn-name&gt;</code> is the Message VPN name, which may contain wildcards.</p>
+    <p>Then press <code>Y</code> when prompted to continue.</p>
+    <p class="Tip">It is also possible to "pull" leader Message VPN configurations from one replication mate to the other. When logged in to the event broker that requires a leader VPN configuration, enter the following command:</p>
+    <p class="Code">solace2(admin/config-sync)# resync-follower message-vpn &lt;vpn-name&gt;</p>
+    <div class="Caution">
+      <p class="Tbl_Body"> When you assert the configuration information for a Message VPN on one event broker over the Message VPN of the same name on its HA and/or Replication mates, the clients of those Message VPNs on the mate event brokers can be temporarily disconnected. In addition, any in-flight messages to those endpoints on the Message VPNs that are receiving the asserted configuration changes will not be delivered if those endpoints are not configured the same as the endpoints on the Message VPN that is asserted.</p>
+    </div>
+    <h2 class="with-rule"><a name="Properti"/>Properties That Are Not Synchronized</h2>
+    <p>Config-Sync does not automatically synchronize all configuration properties because the values for some objects/properties are considered to be unique to an event broker, or related to licensing or security. These objects/properties must be manually configured for each event broker. Examples of objects/properties that are not synchronized are an event brokerʼs hostname and shutdown state.</p>
+    <p>To determine whether an object/property is automatically synchronized, you can look up the command used to define or set the configuration parameter in the <MadCap:xref href="../../Admin/Solace-CLI/Command-Line-Reference.htm">Command Line Interface Reference</MadCap:xref>. In the displayed help for the command, a <code>CONFIG-SYNC:</code> section lists whether the parameter is synchronized by the Config-Sync process.</p>
+    <p class="Tip">When you are using the Solace CLI, end a command with the "?" character to confirm whether the property affected by that command parameter is synchronized.</p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <p class="Code">solace1(configure)# message-spool ?<br/>   COMMAND:<br/>       message-spool message-vpn &lt;vpn-name&gt;<br/> <br/>   DESCRIPTION:<br/>       Use this command to configure message spool parameters for Guaranteed<br/>       Messaging on the router.<br/> <br/>   MINIMUM REQUIRED SCOPE/ACCESS LEVEL:<br/>       vpn/read-write<br/> <br/>   CONFIG-SYNC:<br/>       HA: no<br/>       Replicated VPNs: no<br/> <br/>   PARAMETERS:<br/>      message-vpn &lt;vpn-name&gt; [1..32 chars]  - Message VPN the message-spool<br/>                                              belongs to</p>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <p>Or, you can click below to access the Config-Sync Reference for a list of all the current configuration settings that are automatically synchronized:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="../../Admin-Ref/Config-Sync-Reference/appConfigSyncDoc.html">REST-MicroGateway-Eavesdropping-App-Example1</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="../../Admin-Ref/Config-Sync-Reference/vmrConfigSyncDoc.html">REST-MicroGateway-Eavesdropping-App-Example</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Checking-For-The-Same"/>Checking Whether VPN Configurations Are the Same</h2>
+    <p>To check if both mates in an HA pair have same Message VPN configurations, perform the following steps:</p>
+    <ol>
+      <li>For each Message VPN on each event broker, display the CLI commands used to configure the Message VPNs, and redirect the output to a file.
+
+			<p class="Code">solace1&gt; show current-config message-vpn &lt;vpn-name&gt; &gt; configs/solace1.txt<br/>solace2&gt; show current-config message-vpn &lt;vpn-name&gt; &gt; configs/solace2.txt</p></li>
+      <li>Copy the configuration files and transfer them to a host machine where they can be compared.<p class="Code">solace1&gt; enable<br/>solace1# copy configs/solace1.txt sftp://&lt;username&gt;@&lt;host&gt;</p><p> </p><p class="Code">solace2&gt; enable<br/>solace2# copy configs/solace2.txt sftp://&lt;username&gt;@&lt;host&gt;</p></li>
+      <li>Use a diff tool to compare the two Message VPN configuration files for each event broker.<p>For example, on a Linux host, you could enter the following:</p><p class="Code">diff configs_solace1.txt configs_solace2.txt</p></li>
+      <li>If Message VPN configurations don’t match, you can do either of the following:
+            <ul><li>Manually adjust the Message VPNs’ configurations (through Solace CLI commands or SolAdmin). This is only recommended for minor changes. Also note that manual adjustments to Message VPN configurations must be done before Config-Sync is enabled.</li><li>Enable Config-Sync for the event brokers and assert the configuration of each Message VPN with the configuration that you want over that of the Message VPN of the same name on the redundant mate (see <MadCap:xref href="#Assertin2">Asserting Event Brokers VPN Configurations</MadCap:xref>).</li></ul></li>
+    </ol>
+    <h2 class="with-rule"><a name="Advanced"/>Advanced Config-Sync Configurations</h2>
+    <p>This section provides information for modifying some advanced Config-Sync configuration parameters.</p>
+    <h3><a name="Enabling-Mgmt-User"/>Enabling Config-Sync for Management User Commands</h3>
+    <p>By default, Config-Sync automatically synchronizes any CLI user and file transfer user configuration changes made through <code>username</code> CONFIG commands. However, you can optionally disable the synchronization of <code>username</code> CONFIG commands.</p>
+    <ul>
+      <li>To enable the Config-Sync facility for the event broker, enter the following commands:
+                <p class="Code">solace(configure)# config-sync<br/>solace(configure/config-sync)# synchronize<br/>solace(configure/config-sync/synchronize)# username</p></li>
+      <li>To disable Config-Sync for the event broker, enter the following commands:
+                <p class="Code">solace(configure)# config-sync<br/>solace(configure/config-sync)# synchronize<br/>solace(configure/config-sync/synchronize)# no username</p><p class="Tip"> If you change from not synchronizing <code>username</code> CONFIG commands to synchronizing them, the mate event brokers will fall out of sync. To bring the redundant pair back in sync, run the <code>assert-leader router</code> Admin EXEC command on the event broker with the correct configuration (see <MadCap:xref href="#Assertin">Asserting Routers’ System Configurations Over Their Mates</MadCap:xref>.)</p></li>
+    </ul>
+    <h3><a name="Config-Sync-TCP"/>Modifying Config-Sync Client Profiles’ TCP Connect Parameters</h3>
+    <p>Config-Sync uses a system-created Config-Sync client (<code>#config‑sync</code>) to transmit configuration messages between event brokers. Although the default TCP connection parameters used by  this client’s client profile should be suitable for most implementations, you can modify them as you would for any other client profile.</p>
+    <p class="Note">Config-Sync does not propagate any changes made to the TCP connection parameters for the <code>#config‑sync</code> client on one event broker to its redundant mate. Therefore, to ensure proper operation of the Config-Sync feature, if you make any changes to the TCP connection parameters for one event broker’s <code>#config-sync</code> client profile, you must manually make the same changes to the mate’s <code>#config-sync</code> client profile.</p>
+    <p>To modify the TCP connection parameters for the <code>#config-sync</code> client profile, enter the following commands:</p>
+    <p class="Code">solace(configure)# config-sync<br/>solace(configure/config-sync)# client-profile<br/>solace(configure/config-sync/client-profile)# tcp</p>
+    <p>The CLI is now at a command level from which you can modify the TCP connection parameters for the <code>#config-sync</code> client. For information, see <MadCap:xref href="../../Services/Configuring-TCP-Settings.htm">Configuring TCP Settings</MadCap:xref>.</p>
+    <h3><a name="Config-Sync-Auth"/>Modifying Config-Sync Secure Authentication Parameters</h3>
+    <p>If you are using client certificate authentication for Config-Sync, you can specify the maximum allowed depth of certificate chains and whether the dates listed in certificates will be strictly validated.</p>
+    <p>For more detail on configuring certificate validation settings, refer to <MadCap:xref href="../../Security/Configuring-Server-Cert-Validation.htm">Configuring Server Certificate Validation Settings</MadCap:xref>.</p>
+    <h4>Maximum Certificate Chain Depth</h4>
+    <p>To set the maximum depth allowed for a certificate chain, enter the following commands:</p>
+    <p class="Code">solace(configure)# config-sync<br/>solace(configure/config-sync)# authentication client-certificate<br/>solace(...ync/authentication/client-certificate)# max‑certificate‑chain-depth &lt;max-depth&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;max-depth&gt;</code> is a number from 0 to 8 specifying the maximum number of signing CA certificates that may be present in the certificate chain. The default value is 3.</p>
+    <p class="Note">The no version of this command (<b>no max-certificate-chain-depth</b>) resets this parameter to its default value.</p>
+    <h4>Validate Certificate Date</h4>
+    <p>Certificates may specify a time range for which they are valid. This setting will enable or disable the validation of these dates. If disabled, a certificate will be accepted even if the valid date range provided in the certificate is not fulfilled.</p>
+    <p>To enable validation of certificate dates for Config-Sync, enter the following commands:</p>
+    <p class="Code">solace(configure)# config-sync<br/>solace(configure/config-sync)# authentication client-certificate<br/>solace(...ync/authentication/client-certificate)# validate‑certificate-date</p>
+    <p>By default, <code>validate-certificate-date</code> is enabled.</p>
+    <p class="Note">The no version of this command (<b>no validate-certificate-date</b>) disables validation of the “not before” and “not after” dates in certificates.</p>
+    <h2 class="with-rule"><a name="View-Config-Sync-Info"/>Viewing Config-Sync Info</h2>
+    <p>To view the Config-Sync information for event brokers, enter the following command:</p>
+    <p class="Code">solace&gt; show config-sync [database [router | message-vpn &lt;vpn-name&gt;] [detail | remote]]</p>
+    <p><u>Where</u>:</p>
+    <p><code>database router</code> asks to display system-level Config-Sync information for the given event broker.</p>
+    <p><code>database message-vpn &lt;vpn-name&gt;</code> asks to display only the Message VPN‑level Config-Sync information for the given Message VPN name. <code>&lt;vpn-name&gt;</code> is the Message VPN name, which may contain wildcards.</p>
+    <p><code>detail</code> asks to display details for the given system- or Message VPN-level Config-Sync information.</p>
+    <p><code>remote</code> asks to display the latest information known about the configuration of other event brokers using Config-Sync. For example, it may display an event broker’s HA mate and all of its known Message VPN configuration. It may also show replicated Message VPNs.</p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example 1: show config-sync</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <p class="Code">solace1&gt; show config-sync<br/> <br/>Admin Status            : Enabled<br/>Oper Status             : Up<br/>Authentication<br/>  Client Certificate<br/>    Maximum Chain Depth           : 3<br/>    Validate Certificate Dates    : Enabled<br/>Client-Profile<br/>  TCP<br/>    MSS                 : 1460<br/>    Initial Window      : 2<br/>    Maximum Window      : 256   KB<br/>    Keepalive<br/>      Count             : 5<br/>      Idle              : 3     seconds<br/>      Interval          : 1     seconds<br/>Client<br/>  Name                  : #config-sync/solace1<br/>  Connection State      : Connected<br/>  Last Fail Reason      :</p>
+        <p class="Note">When Config-Sync has an operational status of <code>Down</code>, a reason is provided in brackets beside the <code>Down</code> status. If assistance is required to trouble-shoot why Config-Sync is down, <a href="../../get-support.htm" class="link-internal">contact Solace</a>.</p>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example 2: show config-sync database remote</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <p class="Code">solace1# show config-sync database remote<br/> <br/>Legend:<br/>O - Ownership (L=Leader, F=Follower)<br/>S - Status (I=In-Sync, R=Reconciling, B=Blocked, O=Out-Of-Sync, D=Down,<br/>            U=Unknown)<br/> <br/> <br/>Router  : site<br/> <br/>Source Router                    O S Stale   Time In State     Last Msg Rx<br/>-------------------------------- - - ------- ----------------- -----------------<br/>solace2                          L I No      6d 19h 20m 35s    0d 0h 0m 5s<br/> <br/>Message-VPN : alpha<br/> <br/>Source Router                    O S Stale   Time In State     Last Msg Rx<br/>-------------------------------- - - ------- ----------------- -----------------<br/>solace2                          L I No      6d 19h 20m 35s    0d 0h 0m 5s<br/> <br/>Message-VPN : bravo<br/> <br/>Source Router                    O S Stale   Time In State     Last Msg Rx<br/>-------------------------------- - - ------- ----------------- -----------------<br/>solace2                          L I No      6d 19h 20m 35s    0d 0h 0m 5s<br/> <br/>Message-VPN : charlie<br/> <br/>Source Router                    O S Stale   Time In State     Last Msg Rx<br/>-------------------------------- - - ------- ----------------- -----------------<br/>solace2                          L I No      6d 19h 20m 35s    0d 0h 0m 5s<br/> <br/>Message-VPN : delta<br/> <br/>Source Router                    O S Stale   Time In State     Last Msg Rx<br/>-------------------------------- - - ------- ----------------- -----------------<br/>solace2                          L I No      6d 19h 20m 35s    0d 0h 0m 5s<br/> <br/>Message-VPN : echo<br/> <br/>Source Router                    O S Stale   Time In State     Last Msg Rx<br/>-------------------------------- - - ------- ----------------- -----------------<br/>solace2                          L I No      6d 19h 20m 35s    0d 0h 0m 5s<br/> <br/>Message-VPN : foxtrot<br/> <br/>Source Router                    O S Stale   Time In State     Last Msg Rx<br/>-------------------------------- - - ------- ----------------- -----------------<br/> <br/>solace2                          L I No      6d 19h 20m 35s    0d 0h 0m 5s<br/> <br/>Message-VPN : golf<br/> <br/>Source Router                    O S Stale   Time In State     Last Msg Rx<br/>-------------------------------- - - ------- ----------------- -----------------<br/>solace2                          M I No      6d 19h 20m 36s    0d 0h 0m 6s<br/> <br/>Message-VPN : hotel<br/> <br/>Source Router                    O S Stale   Time In State     Last Msg Rx<br/>-------------------------------- - - ------- ----------------- -----------------<br/>solace2                          L I No      6d 19h 20m 36s    0d 0h 0m 6s<br/>solace3                          F I No      6d 18h 36m 40s    0d 0h 0m 4s<br/>solace4                          F I No      6d 18h 48m 59s    0d 0h 0m 7s<br/> <br/>Message-VPN : india<br/> <br/>Source Router                    O S Stale   Time In State     Last Msg Rx<br/>-------------------------------- - - ------- ----------------- -----------------<br/>solace2                          L I No      6d 19h 20m 36s    0d 0h 0m 6s<br/> <br/>Message-VPN : juliet<br/> <br/>Source Router                    O S Stale   Time In State     Last Msg Rx<br/>-------------------------------- - - ------- ----------------- -----------------<br/>solace2                          L I No      6d 19h 20m 36s    0d 0h 0m 6s<br/>solace3                          F I No      6d 18h 36m 40s    0d 0h 0m 4s<br/>solace4                          F I No      6d 18h 48m 59s    0d 0h 0m 7s<br/> <br/>Message-VPN : kil<br/> <br/>Source Router                    O S Stale   Time In State     Last Msg Rx<br/>-------------------------------- - - ------- ----------------- -----------------<br/>solace2                          L I No      6d 19h 20m 36s    0d 0h 0m 6s</p>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <p class="Note">In HA deployments, the ownership of the event broker and Message VPNs in the Config-Sync database of both HA mates is always Leader. Only replication-enabled Message VPNs on standby replication mates can have Follower ownership.</p>
+  </body>
+</html>

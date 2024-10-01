@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Managing REST Service</h1>
+    <p>REST service can be configured on a per-Message VPN level for incoming and outgoing connections.</p>
+    <h2 class="with-rule"><a name="Config-In-REST-Connections"/>Configuring Incoming Connections</h2>
+    <p>You can perform the following configuration tasks for incoming REST client connections to the given Message VPN:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Auth-Header-Handling">Configuring Authorization Header Handling </MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Set-Max-In">Setting the Max Incoming Connections</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Set-Listen">Setting Listen Ports</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Enabling-Plain">Enabling REST Plain Text Service</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Enabling-SSL">Enabling REST SSL Service</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Request-Client-Cert">Configuring When to Request a Client Certificate from a REST Client</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="Auth-Header-Handling"/>Configuring Authorization Header Handling </h3>
+    <p>On PubSub+ event brokers, the REST service receives incoming REST requests, converts them to SMF messages (including copying headers into user properties), and places those messages on the message bus. By default, Authorization headers are not copied into the user properties, however, depending on your deployment, you may want to change this behavior.</p>
+    <p class="Note">Authorization header handling settings apply only when the Message VPN is in gateway mode.</p>
+    <p>To configure how the event broker handles Authorization headers for incoming REST requests, enter the following commands:</p>
+    <pre class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;
+solace(configure/message-vpn)# service rest
+solace(configure/message-vpn/service/rest)# incoming
+solace(...ure/message-vpn/service/rest/incoming)# authorization-header-handling {drop | forward | legacy}</pre>
+    <p><u>Where</u>:</p>
+    <p><code>drop</code>specifies that the event broker should not attach the Authorization header to the message as a user property. This option is the most secure and is also the default value. </p>
+    <p><code>forward</code> specifies that the event broker should forward the Authorization header, attaching it to the message as a user property in the same way as other headers, allowing downstream consumers of the message (including REST Delivery Points) to see the credentials. </p>
+    <p><code>legacy</code> specifies that an Authorization header other than <code>Authorization: Basic</code> should be attached to the message as a user property in the same way as other headers. An <code>Authorization: Basic</code> header will not be attached to the message as a user property, though it could be used for the broker's own basic client authentication.</p>
+    <p>If you select either <code>drop</code> or <code>forward</code>, previously cached Authorization headers on incoming REST requests on the same TCP connection are not used to authenticate incoming REST requests. The REST service responds in the same way as if the request missing the Authorization header was the first one on that connection.</p>
+    <p>The no version of this command, <code>no authorization-header-handling</code>, returns the value to the default setting (<code>drop</code>). </p>
+    <p class="Caution">Because the <code>forward</code> and <code>legacy</code> options can affect security and performance, they should only be used in specific deployment scenarios. We recommend that you <a href="../get-support.htm" class="link-internal">contact Solace</a> before enabling either of these settings.</p>
+    <h3><a name="Set-Max-In"/>Setting the Max Incoming Connections</h3>
+    <p>To set the maximum number of incoming REST clients that can simultaneously connect to the given Message VPN, enter the following CONFIG commands:</p>
+    <pre class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;
+solace(configure/message-vpn)# service rest
+solace(configure/message-vpn/service/rest)# incoming
+solace(...ure/message-vpn/service/rest/incoming)# max-connections &lt;value&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the maximum number of simultaneous incoming REST client connections to the given Message VPN that will be permitted. The valid range is from 0 to the maximum total number of REST clients that can be supported by the type of Solace PubSub+ event broker that the clients connect to.</p>
+    <p>The no version of this command, <code>no max-connections</code>, resets the value to the maximum limit supported by the event broker.</p>
+    <p class="Note">This parameter can be set to a value that is higher than the maximum number of simultaneous connections permitted by the event broker, but the connection limit for the event broker will be still be enforced.
+        </p>
+    <h3><a name="Set-Listen"/>Setting Listen Ports</h3>
+    <p>You must configure a TCP port number for REST clients to use when connecting to the given Message VPN. Separate ports can be configured for plain text REST clients and SSL REST clients.</p>
+    <p>To set a listen port for REST connections, enter the following CONFIG command:</p>
+    <pre class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;
+solace(configure/message-vpn)# service rest
+solace(configure/message-vpn/service/rest)# incoming
+solace(...ure/message-vpn/service/rest/incoming)# listen-port &lt;port&gt; [ssl]</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;port&gt;</code> is the port number from 1 to 65535. This port must not be used for any other service.</p>
+    <p><code>[ssl]</code> specifies that the port is for TLS/SSL encrypted connections.</p>
+    <p>The no version of this command, <code>no listen-port</code>, resets the listen port to an unconfigured state.</p>
+    <div class="Note">The listen port can only be configured while the service using the port is shutdown. If the service is currently running, an error will occur.
+        </div>
+    <h3><a name="Enabling-Plain"/>Enabling REST Plain Text Service</h3>
+    <p>To enable plain-text REST service for the given Message VPN, enter the following CONFIG commands:
+      <pre class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;
+solace(configure/message-vpn)# service rest
+solace(configure/message-vpn/service/rest)# incoming
+solace(...ure/message-vpn/service/rest/incoming)# no plain-text shutdown</pre><p class="Note">Before enabling plain-text service, you must configure the TCP port to be used (refer to <MadCap:xref href="#Set-Listen">Setting Listen Ports</MadCap:xref>).</p></p>
+    <p>To disable plain-text REST service for the given Message VPN, enter the following CONFIG commands:</p>
+    <pre class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;
+solace(configure/message-vpn)# service rest
+solace(configure/message-vpn/service/rest)# incoming
+solace(...ure/message-vpn/service/rest/incoming)# plain-text shutdown</pre>
+    <h3><a name="Enabling-SSL"/>Enabling REST SSL Service</h3>
+    <p>To enable SSL REST service for the given Message VPN, enter the following CONFIG commands:</p>
+    <MadCap:snippetBlock src="../Resources/Snippets/Enabling-REST-SSL-Service.flsnp"/>
+    <p>To disable SSL REST service for the given Message VPN, enter the following CONFIG commands:</p>
+    <pre class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;
+solace(configure/message-vpn)# service rest
+solace(configure/message-vpn/service/rest)# incoming
+solace(...ure/message-vpn/service/rest/incoming)# ssl shutdown</pre>
+    <h3><a name="Request-Client-Cert"/>Configuring When to Request a Client Certificate from a REST Client</h3>
+    <p>By default, PubSub+ event brokers  request client certificates from REST clients connecting via a TLS port if client certificate authentication is enabled in a given Message VPN. Because many popular web browsers handle the request for a client certificate poorly, this can result in  clients running in web browsers being unable to connect over REST-based protocols. If you have clients connecting from a web browser  and other clients in the same Message VPN that need to authenticate using client certificates, you may want to prevent the broker from requesting a client certificate from incoming REST clients.</p>
+    <p>To configure when the broker requests a client certificate from incoming REST clients connecting via a TLS port, enter the following CONFIG commands:</p>
+    <p class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;<br/>solace(configure/message-vpn)# service rest<br/>solace(configure/message-vpn/service/rest)# incoming<br/>solace(...ure/message-vpn/service/rest/incoming)# authentication<br/>solace(.../service/rest/incoming/authentication)# client-certificate<br/>solace(...ing/authentication/client-certificate)# request-client-certificate {always | never | when-enabled-in-message-vpn}<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>always</code> configures the broker to always request a client certificate, regardless of whether client certificate authentication is enabled in the Message VPN. For more information, see <MadCap:xref href="../Security/Configuring-Client-Authentication.htm#managing_client_authentication_and_authorization_21734666_340052">Enabling Client Certificate Authentication For Clients</MadCap:xref>.</p>
+    <p><code>never</code> configures the broker to never request a client certificate, regardless of whether client certificate authentication is enabled in the Message VPN. This setting is useful if you don't want the broker to request a client certificate from your REST clients, but you still want to use client certificate authentication for other types of clients (such as bridges).</p>
+    <p><code>when-enabled-in-message-vpn</code> configures the broker to request  a client certificate only if client certificate authentication is enabled in the Message VPN. This is the default setting. </p>
+    <p>The no version of command, <code>no request-client-certificate</code>, resets the value to the default.</p>
+    <h2 class="with-rule"><a name="Config-Out-REST-Connections"/>Configuring Outgoing Connections</h2>
+    <p>You can perform the following configuration tasks for outgoing REST client consumer connections from the given Message VPN:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Set-Max-Out-Connections">Setting the Max Outgoing Connections</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Config-SSL-Cert-Valid">Configuring SSL Cert Validation Settings for Outgoing Connections</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="Set-Max-Out-Connections"/>Setting the Max Outgoing Connections</h3>
+    <p>To set the maximum number of simultaneous REST consumer connections that the given Message VPN can establish, enter the following CONFIG commands:</p>
+    <pre class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;
+solace(configure/message-vpn)# service rest
+solace(configure/message-vpn/service/rest)# outgoing
+solace(...ure/message-vpn/service/rest/outgoing)# max-connections &lt;value&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the maximum number of REST consumer connections that the current Message VPN can establish. The valid range is from 0 to the maximum total number of REST consumers that can be supported by the type of event broker that the clients connect to. </p>
+    <p>The no version of this command, <code>no max-connections</code>, resets this parameter to the default value of 6000.</p>
+    <h3><a name="Config-SSL-Cert-Valid"/>Configuring SSL Cert Validation Settings for Outgoing Connections</h3>
+    <p>For outgoing REST connections that use TLS/SSL encryption, you can perform the following configuration tasks:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Enabling-Server-Name-Validation">Enabling Server Name Validation</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Set-Max-Chain">Setting the Maximum Certificate Chain Depth</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Enabling-Valid-Cert-Date">Enabling Validation of Certificate Dates</MadCap:xref>
+      </li>
+    </ul>
+    <h4><a name="Enabling-Server-Name-Validation"/>Enabling Server Name Validation</h4>
+    <p>You can enable or disable the TLS authentication mechanism to verify the requested hostname. If enabled, the Server Name Indication (SNI) extension is sent on outgoing TLS connections and the server name used for that connection is verified against the server names in the Subject Alternative Name (SAN) extension in the certificate returned from the remote server.</p>
+    <p>To enable the validation of server names, enter the following CONFIG commands:</p>
+    <pre class="Code" xml:space="preserve">solace(configure)# message-vpn &lt;vpn-name&gt;
+solace(configure/message-vpn)# rest ssl server-certificate-validation
+solace(...est/ssl/server-certificate-validation)# validate-server-name</pre>
+    <p>This parameter is  enabled by default.</p>
+    <p>To disable server name validation, enter the following CONFIG commands:</p>
+    <pre class="Code" xml:space="preserve">solace(configure)# message-vpn &lt;vpn-name&gt;
+solace(configure/message-vpn)# rest ssl server-certificate-validation
+solace(...est/ssl/server-certificate-validation)# no validate-server-name</pre>
+    <h4><a name="Set-Max-Chain"/>Setting the Maximum Certificate Chain Depth</h4>
+    <p>The <code>max-certificate-chain-depth</code> parameter determines the maximum permitted depth for the certificate chain. The depth of a certificate chain is defined as the number of signing CA certificates that are present in the certificate chain back to a trusted self-signed root CA certificate.</p>
+    <p>To set the max certificate chain depth, enter the following CONFIG commands:</p>
+    <pre class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;
+solace(configure/message-vpn)# rest ssl server-certificate-validation
+solace(...est/ssl/server-certificate-validation)# max-certificate-chain-depth &lt;max-depth&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;max-depth&gt;</code> is the maximum permitted depth of the certificate chain.</p>
+    <p>The no version of this command, <code>no max-certificate-chain-depth</code>, resets this parameter to the default value of 3.</p>
+    <h4><a name="Enabling-Valid-Cert-Date"/>Enabling Validation of Certificate Dates</h4>
+    <p>To enable the validation of "not before" and "not after" dates in the server certificate, enter the following CONFIG commands:</p>
+    <pre class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;
+solace(configure/message-vpn)# rest ssl server-certificate-validation
+solace(...est/ssl/server-certificate-validation)# validate-certificate-date</pre>
+    <p>This parameter is enabled by default.</p>
+    <p>To disable the validation of the "not before" and "not after" dates in the server certificate, enter the following CONFIG commands:</p>
+    <pre class="Code">solace(configure)# message-vpn &lt;vpn-name&gt;
+solace(configure/message-vpn)# rest ssl server-certificate-validation
+solace(...est/ssl/server-certificate-validation)# no validate-certificate-date</pre>
+    <p>If this parameter is disabled, a certificate will be accepted even if it is not valid according to the "not before" or "not after" dates present in the certificate.</p>
+  </body>
+</html>

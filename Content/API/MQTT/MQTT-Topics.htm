@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>MQTT Topic Structure and Syntax</h1>
+    <p>As a publish/subscribe messaging protocol, MQTT relies on hierarchical topics. Clients can publish messages on specific topics, and clients can receive published messages that match their current topic filters. MQTT topics are UTF-8 strings consisting of one or more topic levels that are separated by forward slash "/" characters, which creates a hierarchy of information for organizing topics. When creating topic strings it's important to note that Solace PubSub+ event brokers support topic strings with a maximum of 128 levels and a maximum length of 250 bytes, so an MQTT client connection that exceeds those limits will be closed.</p>
+    <p>The Solace PubSub+ allows messages to be exchanged between MQTT clients and non-MQTT clients (for example, SMF and REST clients) if those clients use an intersecting topic hierarchy. However, to deploy client applications that use different Solace-supported messaging protocols, architects and programmers should avoid using conflicting special characters and use a common topic syntax subset to ensure that topic filters are fulfilled in a consistent manner. For more information, refer to <MadCap:xref href="#Publishi">Topic Recommendations for Inter-protocol Messaging</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="mqtt-topic-name-syntax"/>Special Characters in MQTT Topic Names and Filters</h2>
+    <p>PubSub+ event brokers interpret special characters in MQTT topic names and filters as follows:</p>
+    <ul>
+      <li> If the event broker receives the "+" or "#" characters in a topic name in a publish packet, it treats them as literal characters. Most MQTT APIs do not allow these characters in topic names, in accordance with the MQTT specification.<p class="Note">The event broker automatically creates a topic subscription beginning with the prefix <code>#P2P/ </code>for each client, which allows messages to be sent directly to that client (for example, in request/reply scenarios). However, the leading "#" in <code>#P2P</code> is not valid MQTT syntax. Therefore, to make use of these special Solace subscriptions, MQTT clients can use the string <code>_P2P</code> instead of <code>#P2P</code>. The event broker considers these two strings to be equivalent.</p></li>
+      <li>A leading "!" in an  MQTT topic name or topic filter is treated the same way as a leading "!" in an SMF topic or subscription. For more information, refer to <MadCap:xref href="../../Messaging/Guaranteed-Msg/System-Level-Subscription-Exception-Config.htm">System-Level Subscription Exception Configuration</MadCap:xref>.</li>
+      <li>An   MQTT topic filter with the format <code>$share/{ShareName}/{filter}</code>   indicates a shared subscription. For more information, refer to <MadCap:xref href="Using-MQTT.htm#Shared_Subscriptions">Shared Subscriptions</MadCap:xref>. </li>
+      <li>An MQTT topic filter starting with <code>$noexport</code> indicates that the event broker should not export shared subscriptions. See <MadCap:xref href="#Special">Special Solace MQTT Topics</MadCap:xref> below for details.</li>
+    </ul>
+    <h3><a name="Publishi"/>Topic Recommendations for Inter-protocol Messaging</h3>
+    <p>MQTT clients can receive messages published by non-MQTT clients (for example, SMF or REST clients), and non-MQTT clients can receive messages published by MQTT clients, when an intersecting topic hierarchy is used by the MQTT and non-MQTT clients. Applications that expect to communicate between protocols should avoid conflicting special characters and use a common topic syntax subset. </p>
+    <p>Specifically, this means applications must:</p>
+    <ul>
+      <li>Avoid using the "+" character. It is illegal in an MQTT topic name. Although SMF treats the "+" character in an MQTT topic name as a literal, an MQTT API may block it.</li>
+      <li>Avoid using the "#" character. It is illegal in an MQTT topic name. Although SMF treats the "#" character in an MQTT topic name as a literal, an MQTT API may block it.</li>
+      <li>Avoid using the "*" character. SMF treats "*" character as a wildcard, but MQTT treats it as a literal. SMF clients will not necessarily be able to subscribe to topics that include this character.</li>
+      <li>Avoid using the "&gt;" character as a standalone final topic level. SMF treats the "&gt;" character as a wildcard, but MQTT treats it is a literal. As a result, SMF clients that subscribe to such topics may attract additional traffic.</li>
+      <li>Avoid using the "$" character at the start of a topic. In MQTT, topic names starting with "$" are reserved for use by server implementations and should not be used by clients. This makes such topics inappropriate for client-to-client messaging.</li>
+      <li>Avoid empty topic levels. MQTT supports empty topic levels, and Solace PubSub+ event brokers Version 7.1.1 or greater allow empty topic levels in SMF topics. However, there are some limitations to using empty topic levels with SMF topics:<ul><li>Client applications using Solace messaging APIs can publish to topics with empty levels, but they cannot use topic filters or subscriptions with empty levels.</li><li>ACL profiles do not allow SMF publishing or subscribing topic exceptions that have empty topic levels.</li></ul></li>
+    </ul>
+    <h3><a name="Using"/>Using Subscription Managers with MQTT Clients</h3>
+    <p> Client applications that are configured as Subscription Managers on a Message
+			VPN may add or remove topic filters at QoS 0 on behalf of other clients
+		within the same Message VPN.(For more information, refer to <MadCap:xref href="../../Messaging/Direct-Msg/Direct-Messages.htm#Subscriptions-on-Behalf">Managing Subscriptions on Behalf of Other Clients</MadCap:xref>.)</p>
+    <p>Although you can use Subscription Manager clients to add or remove topic filters for MQTT clients, those topic filters may only use SMF syntax. Therefore, to avoid subscription parse errors for the MQTT clients, those topic filters should be written with the following points in mind: </p>
+    <ul>
+      <li> The "&gt;" SMF wildcard is not allowed because there is no MQTT equivalent—in SMF, the "&gt;" character must match 1 or more topic levels, whereas in MQTT, the "#" character must match 0 or more topic levels.</li>
+      <li>Instead of the MQTT "#" wildcard, the topic filter must use the ASCII character 0x03.</li>
+      <li> Instead of the MQTT "+" wildcard, the topic filter must use the SMF "*" wildcard  for MQTT clients. The "*" and "+" wildcards are exact equivalents.</li>
+    </ul>
+    <h2 class="with-rule"><a name="Special"/>Special Solace MQTT Topics</h2>
+    <p>PubSub+ event brokers use a number of special topics to implement certain Solace messaging features. Each of these topics begin with the $ character, which is then followed by a specific, reserved sequence of characters.</p>
+    <table cellspacing="0" class="TableStyle-Table_Num" style="width: 95%;caption-side: top;margin-left: 0;margin-right: auto;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Topic</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_BodyCode">$noexport/</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Prevents the subscription, shared or otherwise, from being exposed to MNR or DMR.</p>
+            <p>For more information, see <MadCap:xref href="../../Messaging/Reserved-Topics.htm">Reserved Topics</MadCap:xref>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_BodyCode">$SYS/client/client-name</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>When an MQTT client subscribes to this special topic, the event broker responds with the client name for the MQTT session. The client name is required to configure on-behalf-of subscription managers. For more information, see <MadCap:xref href="../../Services/Managing-MQTT-Sessions.htm#Special-MQTT-Topics">Requesting Session Info with Special Topics</MadCap:xref> and <MadCap:xref href="../../Messaging/Direct-Msg/Direct-Messages.htm#Subscriptions-on-Behalf">Managing Subscriptions on Behalf of Other Clients</MadCap:xref>.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_BodyCode">$SYS/client/reply-to</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>When an MQTT client subscribes to this special topic, the event broker responds with the reply-to destination for the MQTT client. In other words, the body of the message published to this topic provides the reply-to topic/destination that is reserved for the client. The reply-to destination is needed to implement the request/reply messaging pattern. For more information, see <MadCap:xref href="../../Services/Managing-MQTT-Sessions.htm#Special-MQTT-Topics">Requesting Session Info with Special Topics</MadCap:xref>.</p>
+            <p class="Note">In MQTT 5.0, the need for the reply-to topic has been superseded by the Response Information added in the CONNECT/CONNACK exchange. For details, see <MadCap:xref href="../MQTT-v50-Prtl-Conformance-Spec/mqtt-v50-3-control-packets.htm#3.2-connect-acknowledgement">3.2 CONNACK – Connect
+acknowledgement</MadCap:xref>.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

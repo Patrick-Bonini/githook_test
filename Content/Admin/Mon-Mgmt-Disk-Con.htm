@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Monitoring &amp; Managing Disk Consumption</h1>
+    <p>If your appliance is using a SAN, or your software event broker has its message spool residing on a dedicated volume, as a best practice, Solace recommends limiting maximum disk space use to less than 50%. </p>
+    <h3><a name="Using"/>Using SYSTEM_CHASSIS_DISK_UTILIZATION_HIGH</h3>
+    <p>To help you keep track of disk space usage, it's recommended to monitor for exceeding the limit using the <code>SYSTEM_CHASSIS_DISK_UTILIZATION_HIGH</code> event with the alert configured for triggering when the disk is 30% full. For configuration instructions, refer to <MadCap:xref href="../Monitoring/Configuring-System-Event-Thresholds.htm">Configuring System Event Thresholds</MadCap:xref>.</p>
+    <h3><a name="If"/>Receiving SYSTEM_CHASSIS_DISK_UTILIZATION_HIGH</h3>
+    <p>If a <code>SYSTEM_CHASSIS_DISK_UTILIZATION_HIGH</code> event is received, the next step is to determine why. </p>
+    <p>The most common reason for receiving a SYSTEM_CHASSIS_DISK_UTILIZATION_HIGH event is that old messages aren't being acknowledged by clients, which causes lots of disk space to be consumed to store those messages. The section <MadCap:xref href="#Sparse">Diagnosing the Sparse Message Spool File Condition</MadCap:xref> shows you how to identify this situation.</p>
+    <h4><a name="Sparse"/>Diagnosing the Sparse Message Spool File Condition</h4>
+    <p>Disk usage will always be greater than persistent store usage; however, if disk space usage is several multiples of persistent store usage, then there is likely a large number of message spool files residing on the disk where each file contains few messages. This is referred to as a sparse message spool file condition.</p>
+    <p>To help you determine if this condition is present, consider the following rule:</p>
+    <ul>
+      <li> if disk space usage is &gt; 30% </li>
+      <li>and disk space usage is &gt;= 3 times persistent store usage</li>
+      <li>then you likely have sparse message spool files unnecessarily using up disk space</li>
+    </ul>
+    <p>You can use the output of the CLI command <code>show message-spool detail</code> to help figure out if the ratio of disk space usage to persistent store usage is too high. For example, shown below are two snippets from the output of the <code>show message-spool detail</code> command:</p>
+    <pre class="Code" xml:space="preserve">                                              ADB            Disk              Total
+Current Persistent Store Usage (MB)         0.000     <b>10 000.0000</b>         10 000.000
+Number of Messages Currently Spooled            0         100 000            100 000</pre>
+    <p>Notice that in the above snippet, the current persistent store usage is 10 000.0000 MB, or 10 GB. In the second snippet, shown below, there are 150.00 million 1 KB disk blocks in use on the active event broker, which means that 150 GB of disk space is being consumed. This is greater than 3 times the 10 GB of persistent storage that has been used, and therefore, in accordance with the rule, suggests that the sparse message spool file condition exists on the disk.</p>
+    <pre class="Code" xml:space="preserve">Disk Partition    1K-blocks         Used        Available    Use%    Mounted on
+Active             200.0 Mi    <b>150.00 Mi</b>          50.0 Mi     75%    /usr/sw/externalSpool/p1
+Standby            200.0 Mi       0.0 Mi         200.0 Mi      0%    /usr/sw/externalSpool/p2</pre>
+    <h3><a name="Recommen"/>Recommended Actions</h3>
+    <h4>Sparse Message Spool Files</h4>
+    <p>Regardless of whether there are sparse spool files, or simply a large number of messages spooled for slow/offline consumers, it's necessary to identify and consume, or delete, old messages. This will allow the message spool files to be deleted, freeing up disk space.</p>
+    <p>Alternatively, it is also possible to   defragment and consolidate message spool files to optimize the broker's use of disk storage. Note that this feature is only available in version 9.3.1.5+. For more information, refer to <MadCap:xref href="../Messaging/Guaranteed-Msg/Defragmenting-Guaranteed-Messaging.htm">Defragmenting the Guaranteed Messaging Spool</MadCap:xref>.</p>
+    <div class="Caution">
+      <p>If the disk hits capacity, new guaranteed messages won't be accepted by the event broker until older messages are consumed or deleted.</p>
+    </div>
+  </body>
+</html>

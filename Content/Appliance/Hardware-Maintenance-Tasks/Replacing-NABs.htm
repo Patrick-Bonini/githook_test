@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><MadCap:concept term="Appliance"/>NAB Replacement</h1>
+    <p>This section describes the steps required to replace one model of  Network Acceleration Blade (NAB) in deployed Solace PubSub+ 3260s or Solace PubSub+ 3560s with another model NAB that uses a different number of Ethernet ports.</p>
+    <p>To replace a failed NAB with the same model of NAB, follow the standard blade replacement procedure:</p>
+    <ul>
+      <li>For Solace PubSub+ 3260s equipped with FEC CHS-FC1040-01-B or CHS-FC0140-01-A, see <MadCap:xref href="Physically-Replacing-Bla.htm#hardware_maintenance_tasks_3613430003_430978">Replacing Blades in CHS-FC1040-01-A or -B or CHS-FC0140-01-A FECs</MadCap:xref>.</li>
+      <li>For Solace PubSub+ 3260s equipped with FEC CHS-FC1040-01-C or CHS-FC0140-01-B, see <MadCap:xref href="Physically-Replacing-Bla.htm#hardware_maintenance_tasks_3613430003_431162">Replacing Blades in FEC CHS-FC1040-01-C or CHS-FC0140-01-B</MadCap:xref>.</li>
+      <li>For all Solace PubSub+ 3560s, see <MadCap:xref href="Physically-Replacing-Bla-1.htm">Physically Replacing Blades in 3530/3560s</MadCap:xref>.</li>
+    </ul>
+    <h2 class="with-rule"><a name="hardware_maintenance_tasks_3613430003_430530"/>ESD/Safety Precautions</h2>
+    <p>Before replacing a NAB, review the following safety warning.</p>
+    <div class="Caution">
+      <p class="Tbl_Body"> To prevent equipment damage from Electrostatic Discharge (ESD), always ensure that the appliance chassis is electrically connected to earth ground. Always follow ESD prevention procedures when removing and replacing power supplies. Use an anti-static wrist strap, or another anti-static device. If no wrist strap or mat is available, touch the metal part of the chassis to ground yourself.</p>
+    </div>
+    <h2 class="with-rule"><a name="hardware_maintenance_tasks_3613430003_430534"/>Tool and Equipment Requirements</h2>
+    <div class="Caution">
+      <p class="Tbl_Body">Before you replace a NAB, enter the <code>show version</code> User EXEC command to determine the current version of Solace PubSub+ software that is running and ensure that the appliance is running a version that supports the new NAB. If it is not supported, after switching the NABs and powering the appliance back on, a FATAL log will be generated indicating the problem, and the appliance will fail to start. If this occurs, <a href="../../get-support.htm" class="link-internal">contact Solace</a> for technical support.</p>
+    </div>
+    <p>The following tools and equipment are required to replace a NAB in a appliance:</p>
+    <ul>
+      <li>electrostatic discharge wrist strap</li>
+      <li>anti-static mat</li>
+      <li>anti-static packaging for the NAB</li>
+      <li>No. 1 Phillips head screwdriver (PubSub+ 3260s with FEC CHS-FC1040-01-C or CHS-FC0140-01-B)</li>
+      <li>No. 2 Phillips head screwdriver (PubSub+ 3560s)</li>
+      <li>a replacement NAB (provided by Solace)</li>
+    </ul>
+    <h2 class="with-rule"><a name="hardware_maintenance_tasks_3613430003_430542"/>Replacing an Existing NAB with a NAB with Fewer Ports</h2>
+    <p>You can replace one model of NAB with another model NAB that has fewer Ethernet ports. For example, you can replace:</p>
+    <ul>
+      <li>an eight-port GigE NAB (NAB-0801ET) with a two-port 10GigE NAB (NAB‑0210EM)</li>
+      <li>a NAB-0801ET with a six-port 10GigE NAB (NAB‑0610EM)</li>
+      <li>a NAB-0610EM with a NAB‑0210EM</li>
+    </ul>
+    <p>To replace one model of NAB with another model NAB that has fewer Ethernet ports, you must perform the following steps:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_430570">Step 1: Back Up the Current Configuration</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_430578">Step 2: Make Required Configuration Changes</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_430703">Step 3: Reload the Router Configuration</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_430709">Step 4: Backup the Router Configuration</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_430714">Step 5: Power Down the Appliance</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_430720">Step 6: Physically Remove the Existing NAB and Install its Replacement</MadCap:xref>
+      </li>
+    </ul>
+    <p class="Note">The examples provided in this section show a eight-port GigE NAB being replaced with a two-port 10GigE NAB.</p>
+    <h3><a name="hardware_maintenance_tasks_3613430003_430570"/>Step 1: Back Up Current Configuration</h3>
+    <p>Before making any configuration changes, back up the current event broker configuration.</p>
+    <p><u>Example</u>:</p>
+    <p class="Code">solace1&gt; enable<br/>solace1# copy current-config pre-nab-upgrade-backup-file<br/>solace1# exit<br/>solace1&gt; show current-config all &gt; pre-nab-upgrade-config</p>
+    <h3><a name="hardware_maintenance_tasks_3613430003_430578"/>Step 2: Make Required Configuration Changes</h3>
+    <p>If you switch to a NAB with less ports, the following configuration changes are required:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_430609">LAG Configuration</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_430628">Bridge Configuration</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_430642">Replication Configuration</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_430651">Message Backbone VRF Configuration</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_430669">IP Interface Configuration</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_430677">Routing Interface Configuration</MadCap:xref>
+      </li>
+    </ul>
+    <h4><a name="hardware_maintenance_tasks_3613430003_430609"/>LAG Configuration</h4>
+    <p>An event broker only supports at most one LAG per interface. When a two-port NAB is going to be used, if there are more than two LAGs configured, interface 1/1/lag1 and 1/1/lag2 and their associated configurations may remain unchanged, but all LAGs from 1/1/lag3 and up must be removed. If these extra LAGs are not removed, upon switching the NABs and powering the appliance back on, logs are generated indicating that an invalid NAB has been detected, and the appliance then restarts with a default configuration. If this occurs, <a href="../../get-support.htm" class="link-internal">contact Solace</a> for technical support.</p>
+    <div class="Note">
+      <ul>
+        <li>Upon completing the initial software configuration procedure described in <MadCap:xref href="../Appliance-Set-Up/Initializing-Appliances.htm">Initializing Appliances </MadCap:xref>, the physical interfaces on the NAB are all configured as <code>lag1</code> by default through the <code>setup</code> Privileged EXEC command (see <MadCap:xref href="../Appliance-Set-Up/Initializing-Appliances.htm">Applying Initial Configurations to Appliances</MadCap:xref>).</li>
+        <li>The examples in this step are for when replacing an eight-port GigE NAB with a two-port 10GigE NAB. However, similar steps are required when switching from an eight-port NAB to a six-port NAB, a six-port NAB to a two-port NAB, and so on.</li>
+        <li>In a PubSub+ 3260, the NAB occupies slot 1/1. The examples in this section demonstrate the configuration of a PubSub+ 3260 because all interfaces begin with 1/1. In a PubSub+ 3560, the NAB occupies slot 1/6. For the configuration of a PubSub+ 3560, the interfaces will begin with 1/6 instead of 1/1.</li>
+      </ul>
+    </div>
+    <p>Enter the <code>show interface</code> User EXEC command to determine the current routing interface configuration on the event broker. Then use the Solace CLI  to remove invalid NAB ports from a LAG.</p>
+    <p><u>Example</u>:</p>
+    <p>To decommission NAB ports from lag1:</p>
+    <p class="Code">solace(configure)# interface 1/1/lag1<br/>solace(configure/interface)# no member 1/1/1<br/>solace(configure/interface)# no member 1/1/2<br/>solace(configure/interface)# no member 1/1/3<br/>solace(configure/interface)# no member 1/1/4<br/>solace(configure/interface)# no member 1/1/5<br/>solace(configure/interface)# no member 1/1/6<br/>solace(configure/interface)# no member 1/1/7<br/>solace(configure/interface)# no member 1/1/8<br/>solace(configure/interface)# exit</p>
+    <h4><a name="hardware_maintenance_tasks_3613430003_430628"/>Bridge Configuration</h4>
+    <p>If you switch an existing NAB with a NAB with less ports, Message VPN Bridges may need to be reconfigured so that they do not use invalid interfaces.</p>
+    <p><u>Example</u>:</p>
+    <p class="Code">solace&gt; enable<br/>solace# configure <br/>solace(configure)# bridge sample-bridge message-vpn sample-vpn <br/>solace(configure/bridge)# remote message-vpn sample-vpn connect-via &lt;primary-ip&gt;:5003 interface 1/1/3<br/>solace(configure/bridge-remote/message-vpn)# shut<br/>solace(configure/bridge/remote/message-vpn)# exit<br/>solace(configure/bridge/remote)# exit<br/>solace(configure/bridge)# no remote message-vpn sample-vpn connect-via &lt;primary-ip&gt;:55003 interface 1/1/3<br/>solace(configure/bridge)# create remote message-vpn sample-vpn connect-via &lt;primary-ip&gt;:55003<br/>solace(configure/bridge/remote/message-vpn)#</p>
+    <h4><a name="hardware_maintenance_tasks_3613430003_430642"/>Replication Configuration</h4>
+    <p>If you switch an existing NAB with a NAB with less ports, the Replication facility may need to be reconfigured so that it does not use invalid interfaces.</p>
+    <p><u>Example</u>:</p>
+    <p class="Code">solace&gt; enable<br/>solace# configure <br/>solace(configure)# replication <br/>solace(configure/replication)# no interface <br/>solace(configure/replication)#</p>
+    <h4><a name="hardware_maintenance_tasks_3613430003_430651"/>Message Backbone VRF Configuration</h4>
+    <p>If you switch an existing NAB with a NAB with less ports, shut down and delete independent IP interfaces (primary, backup, and static) under the Message Backbone VRF for any previous ports that no longer exist.</p>
+    <p><u>Example</u>:</p>
+    <p class="Code">solace(configure)# ip vrf msg-backbone<br/>solace(configure/ip/vrf)# interface 1/1/3:1 primary<br/>solace(configure/ip/vrf/interface)# shutdown<br/>solace(configure/ip/vrf/interface)# exit<br/>solace(configure/ip/vrf)# no interface 1/1/3:1 primary<br/>solace(configure/ip/vrf)# interface 1/1/3:1 backup<br/>solace(configure/ip/vrf/interface)# shutdown<br/>solace(configure/ip/vrf/interface)# exit<br/>solace(configure/ip/vrf)# no interface 1/1/3:1 backup<br/>solace(configure/ip/vrf)# interface 1/1/3:1 static<br/>solace(configure/ip/vrf/interface)# shutdown<br/>solace(configure/ip/vrf/interface)# exit<br/>solace(configure/ip/vrf)# no interface 1/1/3:1 static</p>
+    <p>Repeat the above command sequence for ports 1/1/4 through 1/1/8.</p>
+    <h4><a name="hardware_maintenance_tasks_3613430003_430669"/>IP Interface Configuration</h4>
+    <p>If you switch an existing NAB with a NAB with less ports, shut down IP interfaces for any previous ports that no longer exist.</p>
+    <p style="margin-top: 0pt;margin-bottom: 0pt;"><u>Example</u>:</p>
+    <p class="Code">solace(configure)# interface 1/1/3<br/>solace(configure-interface)# shutdown<br/>solace(configure-interface)# exit</p>
+    <p>Repeat the above command sequence for ports 1/1/4 through 1/1/8.</p>
+    <h4><a name="hardware_maintenance_tasks_3613430003_430677"/>Routing Interface Configuration</h4>
+    <p>If you switch an existing NAB with a NAB with less ports, the routing facility may need to be reconfigured so that it does not use invalid interfaces.</p>
+    <p>To change routing interfaces, do the following:</p>
+    <ol>
+      <li>Record all neighbor configuration:
+                <p class="Code">solace&gt; show cspf neighbor *</p></li>
+      <li>For each neighbor, use the <code>detail</code> option and record the <code>connect-via</code> field:
+        <p class="Code">solace# show cspf neighbor lab-130-20 detail <br/><br/>Neighbor:             solace2<br/>Connect Via:          &lt;neighbor-static-ip&gt;:55555</p></li>
+      <li>Remove each neighbor:
+        <p class="Code">solace&gt; enable<br/>solace# configure <br/>solace(configure)# routing<br/>solace(configure/routing)# shutdown<br/>solace(configure/routing)# no cspf neighbor solace2</p></li>
+      <li>Remove the invalid interface:
+        <p class="Code">solace(configure/routing)# no interface</p></li>
+      <li>Add the new valid interface:
+        <p class="Code">solace(configure/routing)# interface 1/1/1</p></li>
+      <li>Re-add each neighbor:
+        <p class="Code">solace(configure/routing)# create cspf neighbor solace2 connect-via &lt;neighbor-static-ip&gt;:55555</p></li>
+      <li>Enable routing:
+			<p class="Code">solace(configure/routing)# no shutdown</p></li>
+    </ol>
+    <h3><a name="hardware_maintenance_tasks_3613430003_430703"/>Step 3: Reload Event Broker Configuration</h3>
+    <p>After making the necessary configuration changes, reload the event broker configuration:</p>
+    <p class="Code">solace# reload<br/>This command causes a reload of the system<br/>Do you want to continue (y/n)? y</p>
+    <h3><a name="hardware_maintenance_tasks_3613430003_430709"/>Step 4: Backup Event Broker Configuration</h3>
+    <p>Back up the reloaded configuration:</p>
+    <p class="Code">solace# copy current-config nab-upgrade-ready-backup-file<br/>solace# show current-config all &gt; nab-upgrade-ready-config</p>
+    <h3><a name="hardware_maintenance_tasks_3613430003_430714"/>Step 5: Power Down Appliance</h3>
+    <p>Power down the appliance:</p>
+    <p class="Code">solace# power-down<br/>This command powers off the appliance and does not restart it afterwards<br/>Do you want to continue (y/n)? y</p>
+    <h3><a name="hardware_maintenance_tasks_3613430003_430720"/>Step 6: Physically Change Out NAB</h3>
+    <p>To physically remove the existing NAB and install the replacement NAB in its place refer to one of the following:</p>
+    <ul>
+      <li>For a PubSub+ 3260 equipped with FEC CHS-FC1040-01-B or CHS-FC0140-01-A, follow the blade replacement procedure in <MadCap:xref href="Physically-Replacing-Bla.htm#hardware_maintenance_tasks_3613430003_430978">Replacing Blades in CHS-FC1040-01-A or -B or CHS-FC0140-01-A FECs</MadCap:xref>.</li>
+      <li>For a PubSub+ 3260 equipped with FEC CHS-FC1040-01-C or CHS-FC0140-01-B, follow the blade replacement procedure in <MadCap:xref href="Physically-Replacing-Bla.htm#hardware_maintenance_tasks_3613430003_431162">Replacing Blades in FEC CHS-FC1040-01-C or CHS-FC0140-01-B</MadCap:xref>. </li>
+      <li>For a PubSub+ 3560, follow the blade replacement procedure in <MadCap:xref href="Physically-Replacing-Bla-1.htm">Blade Replacement in PubSub+ 3530s &amp; 3560s</MadCap:xref>.</li>
+    </ul>
+    <h2 class="with-rule"><a name="hardware_maintenance_tasks_3613430003_430735"/>Replacing an Existing NAB with a NAB with More Ports</h2>
+    <p>To replace an existing NAB with a NAB with more ports, do the following:</p>
+    <ol>
+      <li>As a protective measure, enter the following command to make a copy of the current Solace PubSub+ software configuration in the <code>/configs</code> subdirectory:        <p class="Code">solace&gt; enable<br/>solace# copy current-config<br/>/configs/&lt;version&gt;_preBladeReplacementCfg</p><p><u>Where</u>: </p><p><code>&lt;version&gt;</code> is the version number of current software in use (this can be seen in the output of a <code>show version</code> User EXEC command).</p></li>
+      <li>Ensure that the internal disks are in a redundant state.        <p class="Code">solace# show disk</p><p>Example:</p><pre xml:space="preserve">Reload required:               No
+
+Attribute                        Disk 1               Disk 2
+------------------ -------------------- --------------------
+Device Model                ST3250310NS          ST3250310NS
+Capacity (MB)                    238475                38475
+Admin State                     enabled              enabled
+Operational State                    up                   up
+RAID in fully redundant state: Yes</pre><div class="Caution"><p class="Tbl_Body"> If the displayed output shows the RAID disk drives to be in a non‑redundant state, <a href="../../get-support.htm" class="link-internal">contact Solace</a>, and stop this hardware replacement procedure immediately to prevent software corruption on the appliance.</p></div></li>
+      <li>Physically remove the existing NAB and install the replacement NAB in its place:</li>
+      <ul>
+        <li>For PubSub+ 3260s equipped with FEC CHS-FC1040-01-B or CHS-FC0140-01-A, follow the blade replacement procedure in <MadCap:xref href="Physically-Replacing-Bla.htm#hardware_maintenance_tasks_3613430003_430978">Replacing Blades in CHS-FC1040-01-A or -B or CHS-FC0140-01-A FECs</MadCap:xref>.</li>
+        <li>For PubSub+ 3260s equipped with FEC CHS-FC1040-01-C or CHS-FC0140-01-B, follow the blade replacement procedure in <MadCap:xref href="Physically-Replacing-Bla.htm#hardware_maintenance_tasks_3613430003_431162">Replacing Blades in FEC CHS-FC1040-01-C or CHS-FC0140-01-B</MadCap:xref>.</li>
+        <li>For all PubSub+ 3560s, follow the blade replacement procedure in <MadCap:xref href="Physically-Replacing-Bla-1.htm">Physically Replacing Blades in 3530/3560s</MadCap:xref>.</li>
+      </ul>
+      <li>In most cases, the fibre cables from the NAB that was replaced should re-inserted into ports 1 and 2 of the NAB that was installed.</li>
+      <li>Configure the additional ports. Refer to <MadCap:xref MadCap:unresolvedLink="import-link:3_configuring_ip_and_tcp_settings_102884512_92633" href="../../Admin/IP-Interfaces/Managing-Appliance-IP-Interfaces.htm">Managing IP Interfaces and TCP Settings</MadCap:xref>.</li>
+    </ol>
+  </body>
+</html>

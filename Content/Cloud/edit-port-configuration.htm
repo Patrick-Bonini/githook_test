@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="Default.ContentProductLink">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Changing the Port Configuration for  <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</h1>
+    <MadCap:snippetBlock src="../Resources/Snippets/Cloud/MissionControl/port-configuration-endpoint-info-usage.flsnp"/>
+    <p>You can change the port configuration for an existing service. Before you change the port configure, <a href="#considerations-for-modifying-ports" class="link-internal">review the considerations</a>. These are some of the reasons to do this:</p>
+    <ul>
+      <li>Change the ports for an endpoint from those that were enabled when you originally created the <MadCap:variable name="Product-Names.broker_cloud_short"/>. For more information, see <MadCap:xref href="#edit-port-config">Editing the Existing Port Configuration for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</li>
+      <li>Disable or enable protocols for an endpoint from their original state when you created the <MadCap:variable name="Product-Names.broker_cloud_short"/>. For more information, see <MadCap:xref href="#add-endpoint">Adding an Endpoint to an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</li>
+      <li>Add public or private connectivity. It's important to note that you can only create private endpoints on <MadCap:variable name="Product-Names.dedicated_region"/>s and <MadCap:variable name="Product-Names.customer-controlled_region"/>s. For more information, see <MadCap:xref href="#delete-endpoint">Deleting an Endpoint from a [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</li>
+    </ul>
+    <MadCap:snippetBlock src="../Resources/Snippets/Cloud/link-to-default-port.flsnp"/>
+    <h2><a name="usecase"/>Using Endpoints to Control Data Access</h2>
+    <p>For <MadCap:variable name="Product-Names.dedicated_region"/> and <MadCap:variable name="Product-Names.customer-controlled_region"/> deployments, the ability to configure both public and private endpoints on the same <MadCap:variable name="Product-Names.broker_cloud_short"/> provides the flexibility to change access to your data as required. For <MadCap:variable name="Product-Names.broker_cloud_short"/>s deployed on Kubernetes-based infrastructure, you can edit your ports after service creation, including adding and deleting both public and private endpoints as required. This allows you to control access to your data and provide secure messaging using a single <MadCap:variable name="Product-Names.broker_cloud_short"/>. </p>
+    <p>For example, assume your initial requirements are for private <MadCap:variable name="Product-Names.messaging_connectivity"/> and internal API connectivity within your VPC in your <MadCap:variable name="Product-Names.customer-controlled_region"/>. You want to share data on a database server between your enterprise  applications, and provide secure API communications between services that consume your data within your organization. To do this,  you enable the secure web messaging host, and the secure REST host on the private endpoints of your <MadCap:variable name="Product-Names.broker_cloud_short"/> and define their ports.</p>
+    <p>You later realize that you can add value to your customers by providing them access to public APIs and so they can integrate their services with yours. You also realize that the web applications used by your field teams can benefit from sharing some of the information on your database server. To keep your internal data secure, you choose to provide public access using a different protocol on a public endpoints of the same <MadCap:variable name="Product-Names.broker_cloud_short"/>. You do this by enabling a secured REST host and web messaging on a public endpoints, and define their ports. You have now provided access to cloud-based applications using public endpoints while keeping your internal messaging secure on a private endpoint, all using a single <MadCap:variable name="Product-Names.broker_cloud_short"/>. </p>
+    <p>Using both public and private endpoints you can us a single <MadCap:variable name="Product-Names.broker_cloud_short"/> to segregate your data allowing you to define which applications can access what data. </p>
+    <div class="thumbnail-container">
+      <img src="../Resources/Images/Cloud/diagrams/public-and-private-endpoints-on-service.png" class="solacethumbnail" alt="Illustration depicting the concepts described in the surrounding text."/>
+    </div>
+    <h2><a name="use-custom-hostnames"/>Using Custom Hostnames for Public and Private Endpoints</h2>
+    <p>Whether you choose public or private endpoints (or both), <MadCap:variable name="Variables.CompanyName"/> recommends configuring custom hostnames for the endpoints of your <MadCap:variable name="Product-Names.broker_cloud_short"/>. Custom hostnames provide many benefits, including:</p>
+    <ul>
+      <li>
+        <p>They are more memorable—Instead of the <MadCap:variable name="Product-Names.broker_cloud_short"/>'s generated name (for example, mr1egxydp8fguv), you could use ‘myservice’, which is both readable by a human and easy to remember.</p>
+      </li>
+      <li>
+        <p>Simplifying migration—If you need to move the hostname to a different event broker service, or to a different endpoint type on the same service, you don’t need to reconfigure your client applications.</p>
+      </li>
+      <li>
+        <p>Future-proofs your <MadCap:variable name="Product-Names.broker_cloud_short"/>—Certain features, such as <a href="DR-Replication/cloud-dr-lp.htm" target="_blank" alt="link to replication for disaster recovery topic" title="link to replication for disaster recovery topic" class="link-internal">Disaster Recovery</a>, require custom hostnames. Using custom hostnames for your endpoints means your <MadCap:variable name="Product-Names.broker_cloud_short"/> is ready if you decide to use these features at a later date.</p>
+      </li>
+    </ul>
+    <p>You can configure up to five custom hostnames and assign different hostnames to the public and private endpoints as required. For more information, see <MadCap:xref href="configure-hostnames.htm" target="_blank" alt="link to configuring hostnames topic">Configuring Custom Hostnames for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</p>
+    <h2><a name="considerations-for-modifying-ports"/>Considerations when Modifying Port Configuration</h2>
+    <p class="Note" MadCap:conditions="SAP.SapHideFromOutput">You can only edit port and endpoint configurations for Kubernetes-based <MadCap:variable name="Product-Names.broker_cloud_short"/>s. It is not possible to edit the port configuration for VM-based <MadCap:variable name="Product-Names.broker_cloud_short"/>s, or those prior to version 9.13.</p>
+    <p> You should evaluate the following considerations when you modify port configuration for <MadCap:variable name="Product-Names.broker_cloud_short"/>s. </p>
+    <ul>
+      <li>For <a href="Deployment-Considerations/deployment-options-ownership.htm#public-cloud" class="link-internal"><MadCap:variable name="Product-Names.public_region"/></a> (deployed in Kubernetes), <MadCap:variable name="Product-Names.broker_cloud_short"/>s only support the editing of public endpoints after service creation. <MadCap:variable name="Product-Names.broker_cloud_short_intitalcap"/>s created with Amazon Web Services or Azure don't allow for editing of port configuration.</li>
+      <li>In <MadCap:variable name="Product-Names.public_region"/>s (deployed on Kubernetes), only public endpoints are available. </li>
+      <li>In <a href="Deployment-Considerations/deployment-options-ownership.htm#customer-owned-vnet" class="link-internal"><MadCap:variable name="Product-Names.customer-controlled_region"/>s</a> and <a href="Deployment-Considerations/deployment-options-ownership.htm#solace-owned-vnet" class="link-internal"><MadCap:variable name="Product-Names.dedicated_region"/>s</a>, you can have one private endpoint, one public endpoint, or both.</li>
+      <li>The following are considerations when you modify the endpoints on your <MadCap:variable name="Product-Names.broker_cloud_short"/> or configure the protocols and port numbers in an endpoint:<ul><li>The operation to change a custom port is asynchronous and, for that reason, you may experience a slight delay before a configuration change becomes active. The status of the change appears in the user interface. If an error occurs during the configuration change, an error prompt appears.</li><li>There must be at least one endpoint—you can have a maximum of one public and one private endpoint per <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li><li>One endpoint must have the Secured SMF enabled. SMF is required for messaging with client applications and for inter-broker communication in an event mesh.</li><li>One endpoint must have the Secured Broker Management Host (SEMP) port. The SEMP management port is required to manage your <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li><li>If you have both private and public  endpoints, you don't need to enable the Secured SMF and SEMP management ports  on the same endpoint, but <MadCap:variable name="Variables.CompanyName"/> recommends that you choose the private endpoint for the SEMP port </li><li>When you have both public and private endpoints configured,  <MadCap:variable name="Product-Names.pubsubmanager_long"/> defaults to use the public endpoint. If only a private endpoint is available, you must have connectivity to the same private network where you deployed your <MadCap:variable name="Product-Names.broker_cloud_short"/>s to connect to <MadCap:variable name="Product-Names.pubsubmanager_long"/> from the <MadCap:variable name="Product-Names.console_ui_long"/>. For more information about <MadCap:variable name="Product-Names.pubsubmanager_long"/>, see <MadCap:xref href="using-broker-manager-cloud.htm">Using [%=Product-Names.pubsubmanager_long%]</MadCap:xref>.</li></ul></li>
+    </ul>
+    <p>If you have multiple endpoints, one endpoint can be deleted. If the endpoint being deleted is used for an event mesh, you are can delete it, but you may affect the event mesh. You can't delete an endpoint under these conditions:</p>
+    <ul>
+      <li>If the endpoint  is the only one with Secured Broker Management (SEMP) port enabled on it.</li>
+      <li>You must delete the custom hostnames that are assigned to that endpoint before you can delete the endpoint. For more information, see <MadCap:xref href="configure-hostnames.htm#delete-hostname-ui">Deleting a Custom Hostname</MadCap:xref>.</li>
+    </ul>
+    <p>Be aware of the following port configuration considerations:</p>
+    <ul>
+      <li> You can use ports 22 and 943 as custom ports.</li>
+      <li>If you are using NodePort as part of your deployment for <a href="Deployment-Considerations/deployment-options-ownership.htm#customer-owned-vnet" class="link-internal"><MadCap:variable name="Product-Names.customer-controlled_region"/>s</a>, creating an <MadCap:variable name="Product-Names.broker_cloud_short"/> generates the port numbers, which you can't change.</li>
+    </ul>
+    <h2 class="with-rule"><a name="edit-port-config"/>Editing the Existing Port Configuration for an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h2>
+    <p>You can edit the existing port configuration for <MadCap:variable name="Product-Names.broker_cloud_short"/>s. Ensure that you review the considerations in <MadCap:xref href="#considerations-for-modifying-ports">Considerations when Modifying Port Configuration</MadCap:xref> before you perform these steps to change the port configuration for your <MadCap:variable name="Product-Names.broker_cloud_short"/>:</p>
+    <ol>
+      <li>
+        <MadCap:snippetText src="../Resources/Snippets/Cloud/Task_UI_Snippets/login_console.flsnp"/>
+      </li>
+      <li>
+               Select <MadCap:variable name="Product-Names.cluster_mgr" style="font-weight: bold;"/> <img src="../Resources/Images/Cloud/reusable-icons/navbar_cluster_manager.png" class="img.img-inline" alt=""/> from the navigation bar.            </li>
+      <li>On the <b>Services</b> page, click the <MadCap:variable name="Product-Names.broker_cloud_short"/> for which you want to edit the port configurations.</li>
+      <li class="img.img-inline">On the service details page, select the <b>Manage</b> tab and then click <b>Advanced Options</b>.</li>
+      <li class="img.img-inline">On the <b>Port Configuration</b> tile, beneath the endpoint you want to delete, click <b>More Actions</b><img src="../Resources/Images/Cloud/reusable-icons/more_actions_ellipsis.png" class="img.img-inline" alt=""/>and then select <b>Edit</b>.</li>
+      <li class="img.img-inline">In the <b>Edit Endpoint</b> dialog box, you can:<ul><li class="img.img-inline">edit the name of the endpoint in the <b>Endpoint Name</b> field</li><li class="img.img-inline">add or modify the description in the <b>Description</b> field</li><li class="img.img-inline"><p>Configure the protocols and ports for the protocols for the endpoint under <b>Protocols and Management</b> as follows:</p><MadCap:snippetBlock src="../Resources/Snippets/Cloud/MissionControl/port-configuration-protocol-ports-info.flsnp"/><p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/edit-endpoint-dialog-box.png" alt=""/></div></p></li></ul></li>
+      <li class="img.img-inline">
+        <p>Click <b>Save</b>.</p>
+      </li>
+    </ol>
+    <p>The port configuration changes take time so you'll see the progress beside the endpoint.</p>
+    <h2 class="with-rule"><a name="add-endpoint"/>Adding an Endpoint to an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h2>
+    <p>You can add a private or public endpoint only for <a href="Deployment-Considerations/deployment-options-ownership.htm#customer-owned-vnet" class="link-internal"><MadCap:variable name="Product-Names.customer-controlled_region"/>s</a> and <MadCap:variable name="Product-Names.dedicated_region"/>s.</p>
+    <p>This can be useful in situations where you previously only had a private endpoint configured, but now your organization wants to  permit web messaging clients to connect from port 443 using Secured Web Messaging from the public Internet.</p>
+    <p>Ensure that you review the considerations in <MadCap:xref href="#considerations-for-modifying-ports">Considerations when Modifying Port Configuration</MadCap:xref> before you perform these steps:</p>
+    <ol>
+      <li>
+        <MadCap:snippetText src="../Resources/Snippets/Cloud/Task_UI_Snippets/login_console.flsnp">
+                </MadCap:snippetText>
+      </li>
+      <li>
+               Select <MadCap:variable name="Product-Names.cluster_mgr" style="font-weight: bold;"/> <img src="../Resources/Images/Cloud/reusable-icons/navbar_cluster_manager.png" class="img.img-inline" alt=""/> from the navigation bar..
+            </li>
+      <li>On the <b>Services</b> page, click the <MadCap:variable name="Product-Names.broker_cloud_short"/> for which you want to add an endpoint.</li>
+      <li>On the service details page, select the <b>Manage</b> tab and then click <b>Advanced Options</b>.</li>
+      <li>On the <b>Port Configuration</b> tile, click <b>Add Endpoint</b>.</li>
+      <li>(Optional) In the <b>Add Endpoint</b> dialog box,  enter a name in the <b>Endpoint Name</b> field. A default is provided if you don't complete this field.</li>
+      <li>(Optional) In the <b>Description</b> field, enter information to describe your endpoint.</li>
+      <li>
+        <p>Beneath <b>Protocols and Management</b>, Expand the messaging protocol that you want. You can: </p>
+        <ul>
+          <li>
+            <p>Configure, modify port numbers, and enable (or disable) ports as required.</p>
+          </li>
+          <li>
+            <p>Click <b>Disable Protocol</b> to disable a particular protocol. </p>
+            <p>If you want to enable a protocol again, click <b>Reset to default</b> and re-select the protocols that you want to enable (or disable).</p>
+          </li>
+        </ul>
+        <p>For more information about the protocols and ports, see <MadCap:xref href="create-service.htm#port-configuration-details">Understanding Port Configuration Details</MadCap:xref>.</p>
+        <p>
+          <div class="thumbnail-container">
+            <img class="solacethumbnail" src="../Resources/Images/Cloud/add-endpoint.png" alt=""/>
+          </div>
+        </p>
+      </li>
+      <li>Click <b>Save</b>.</li>
+    </ol>
+    <p>Adding an endpoint takes a few moments. The new endpoint appears showing it's progress.</p>
+    <h2 class="with-rule"><a name="delete-endpoint"/>Deleting an Endpoint from an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h2>
+    <p>You can delete an endpoint for your <MadCap:variable name="Product-Names.broker_cloud_short"/>. After you delete the endpoint, client applications using the configured protocols and ports can no longer connect to that <MadCap:variable name="Product-Names.broker_cloud_short"/>. </p>
+    <p>Ensure that you review the considerations in <MadCap:xref href="#considerations-for-modifying-ports">Considerations when Modifying Port Configuration</MadCap:xref> before you perform these steps:</p>
+    <ol>
+      <li>
+        <MadCap:snippetText src="../Resources/Snippets/Cloud/Task_UI_Snippets/login_console.flsnp">
+                </MadCap:snippetText>
+      </li>
+      <li>
+               Select <MadCap:variable name="Product-Names.cluster_mgr" style="font-weight: bold;"/> <img src="../Resources/Images/Cloud/reusable-icons/navbar_cluster_manager.png" class="img.img-inline" alt=""/> from the navigation bar.
+            </li>
+      <li>On the <b>Services</b> page, the <MadCap:variable name="Product-Names.broker_cloud_short"/> for which you want to delete an endpoint.</li>
+      <li class="img.img-inline">On the service details page, select the <b>Manage</b> tab and then click <b>Advanced Options</b>.</li>
+      <li class="img.img-inline">On the <b>Port Configuration</b> tile, beside the endpoint you want to delete, click <b>More Actions</b><img src="../Resources/Images/Cloud/reusable-icons/more_actions_ellipsis.png" class="img.img-inline" alt=""/>and then select <b>Delete</b>.</li>
+      <li class="img.img-inline">
+        <p>In the <i>Delete Endpoint</i> dialog, click <b>Delete</b> if you want to remove the endpoint, otherwise click <b>Cancel</b>.</p>
+        <p class="Note"> If the endpoint you want to delete is the last endpoint or is the only endpoint the Secured Broker Management Host (SEMP) port enabled, you won't be able to delete it.</p>
+      </li>
+      <li>Click <b>Save</b>.</li>
+    </ol>
+    <p>Deleting an endpoint takes a few moments.</p>
+  </body>
+</html>

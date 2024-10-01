@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Additional Steps and Best Practices for Security</h1>
+    <p>Security is important for the integrity of the <MadCap:variable name="Product-Names.broker_cloud_short"/>s because it transports your messaging data.  If you have deployed your <MadCap:variable name="Product-Names.broker_cloud_short"/>s in a <MadCap:variable name="Product-Names.customer-controlled_region"/> (Kubernetes cluster, Virtual Private Cloud or Virtual Network), there are a few additional security-related steps you can take  because they fall within your responsibilities to manage. By default, in <MadCap:variable name="Product-Names.public_region"/>sand  <MadCap:variable name="Product-Names.dedicated_region"/>s, <MadCap:variable name="Variables.CompanyName"/> uses the same best practices as described in the following sections:</p>
+    <ul>
+      <li>
+        <a href="#os-hotfixes-patches" class="link-internal">permit OS, hotfixes, service packs, and security patches</a>
+      </li>
+      <li>
+        <a href="#harden-access-authentication-clients" class="link-internal">harden access to <MadCap:variable name="Product-Names.cloud_product_firstuse"/> </a>
+      </li>
+      <li>
+        <a href="#harden-event-brokers" class="link-internal">harden access to <MadCap:variable name="Product-Names.broker_cloud_short"/>s</a>
+      </li>
+      <li>
+        <a href="#restrict-api-access" class="link-internal">restrict ports and protocols on <MadCap:variable name="Product-Names.broker_cloud_short"/>s</a>
+      </li>
+      <li>
+        <a href="#limit-access-bastion" class="link-internal">use Bastion host access to compute resources</a>
+      </li>
+      <li>
+        <a href="#outbound-connections" class="link-internal">secure access for outbound connections</a>
+      </li>
+    </ul>
+    <h2><a name="os-hotfixes-patches"/>OS, Hotfixes, Service Packs, and Security Patches</h2>
+    <p>It is critical that all  service packs, hotfixes, and security patches are updated on the infrastructure for all <MadCap:variable name="Product-Names.cloud_product_short"/> components  to ensure they have the latest, most secure code base.</p>
+    <p> To that end, these are best practices that we recommend and adhere to:</p>
+    <ul>
+      <li>OS patching is performed automatically on <MadCap:variable name="Variables.CompanyName"/>-controlled environments. Compute instances are configured to automatically install OS patches and an alert system is in place to notify <MadCap:variable name="Variables.CompanyName"/> if an instance needs to be rebooted to complete a patch installation.</li>
+      <li><MadCap:variable name="Product-Names.broker_cloud_short_intitalcap"/> updates follow a defined process. You can coordinate with <MadCap:variable name="Variables.CompanyName"/> to schedule an upgrade to your <MadCap:variable name="Product-Names.broker_cloud_short"/>s to pick up the latest maintenance loads. During scheduled service upgrades, <MadCap:variable name="Variables.CompanyName"/> upgrades your current release to apply the latest maintenance load that contains the latest security and critical fixes. For more information, see <MadCap:xref href="../upgrade-event-broker.htm">Upgrading Event Broker Versions for Existing [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref>.</li>
+      <li>There is an integration period between <MadCap:variable name="Product-Names.cloud_product_short"/> and releases of <MadCap:variable name="Product-Names.broker_sw_long"/>. For this reason, you may see a period of time before  <MadCap:variable name="Product-Names.broker_cloud_short"/>s are upgraded to a release of <MadCap:variable name="Product-Names.broker_sw_long"/>.</li>
+      <li MadCap:conditions="SAP.SapHideFromOutput">Virtual machines that run the <MadCap:variable name="Product-Names.cloud_agent_short"/> and <MadCap:variable name="Product-Names.broker_cloud_short"/>s have Ubuntu LTS releases as its base OS. <MadCap:variable name="Variables.CompanyName"/> creates custom images for these VMs (AMIs and managed images) that are based on the canonical Ubuntu LTS image. </li>
+      <li MadCap:conditions="SAP.SapHideFromOutput">These custom images contain the required software and tooling to run software from <MadCap:variable name="Variables.CompanyName"/>. <MadCap:variable name="Variables.CompanyName"/> ensures that these custom images contain the   latest Ubuntu patch set and enables unattended upgrades  so that the VMs can have the latest security updates.</li>
+      <li MadCap:conditions="SAP.SapHideFromOutput">Security vulnerability patching is completed as soon as possible. The patching time frame is linked to the CVSS score; third-party library fixes are applied once they are available from the vendor.</li>
+      <li>Security updates are delivered via secure ports to the deployment. Port 443 is required to download updated docker images. For more information, see <MadCap:xref href="summary_of_connections.htm#connection-details-kubernetes">Connection Details for Kubernetes</MadCap:xref>.<p MadCap:conditions="SAP.SapHideFromOutput">For VM-based deployments to Azure and AWS, port 80 is required to receive security updates. For more information, see  <MadCap:xref href="summary_of_connections.htm#connection-details-aws">Connection Details for Amazon Web Service (AWS) Deployments</MadCap:xref> and <MadCap:xref href="summary_of_connections.htm#connection-details-azure">Connection Details for Azure Deployments</MadCap:xref>, respectively.</p></li>
+    </ul>
+    <div class="Warning" MadCap:conditions="SAP.SapHideFromOutput">If your security policy does not permit port 80 to be open, the <MadCap:variable name="Product-Names.cloud_agent_short"/> VM/EC2 must be periodically recreated with an updated managed image/AMI to obtain the latest security patches. Contact <MadCap:variable name="Variables.CompanyName"/> for assistance to obtain an updated, managed image.</div>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/vmbased-deprecation-warning.flsnp" MadCap:conditions="SAP.SapHideFromOutput"/>
+    <h2><a name="harden-access-authentication-clients"/>Hardening Access to <MadCap:variable name="Product-Names.cloud_product_titlecase"/></h2>
+    <p>There are a few areas to further harden access to <MadCap:variable name="Product-Names.cloud_product_short"/>. <MadCap:variable name="Variables.CompanyName"/> recommends the following additional practices for additional security:</p>
+    <ul>
+      <li MadCap:conditions="SAP.SapHideFromOutput">Integrate Single Sign-On (SSO) with your organization's central identity management system. This makes it easier for your users to authenticate and  provides a single system to control and manage users.</li>
+    </ul>
+    <ul>
+      <li>For management client applications, ensure that the API tokens are assigned the minimal, but necessary permissions for the client application to perform its tasks.</li>
+    </ul>
+    <h2><a name="harden-event-brokers"/>Hardening Access to <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</h2>
+    <p>The <MadCap:variable name="Product-Names.broker_cloud_short"/>s are created with default settings to allow for easy development and testing when connecting from client applications. These default settings are useful for developmental purpose and are secure, but further hardening of access can be considered for additional security.</p>
+    <p>Some of the settings are set only at creation time and others are only configurable after the <MadCap:variable name="Product-Names.broker_cloud_short"/> has been created and are as follows. </p>
+    <dl>
+      <dt>Settings when creating an <MadCap:variable name="Product-Names.broker_cloud_short"/>:</dt>
+      <dd>These settings must be made a creation time. Consider the following:
+            <ul><li>Restrict the ports and protocols that are enabled by default to limit the vectors of attack to your messaging plane. For more information, see <MadCap:xref href="#restrict-api-access">Restricting Secure Ports and Protocols on Event Broker Services</MadCap:xref>.</li></ul></dd>
+      <dt>Settings after an <MadCap:variable name="Product-Names.broker_cloud_short"/> is created:</dt>
+      <dd>These settings can be only made after the <MadCap:variable name="Product-Names.broker_cloud_short"/> is created. 
+            <ul><li>By default, client applications use  Basic Authentication as the  authentication scheme to connect to an <MadCap:variable name="Product-Names.broker_cloud_short"/>. You can configure an <MadCap:variable name="Product-Names.broker_cloud_short"/>  to use more than one authentication scheme. <MadCap:variable name="Variables.CompanyName"/> recommends that  you use a more robust authentication scheme and at minimum, use the recommended authentication schemes specified by your organization's security policies for client application access. For example, you can use   LDAP Authentication as the authentication instead of Basic Authentication. For more information, see <MadCap:xref href="../ght_authentication.htm">Configuring Authentication</MadCap:xref>.</li><li>For the authorization of client applications, a client profile is created named <b>default</b>. <MadCap:variable name="Variables.CompanyName"/> recommends that the <b>default</b> client profile is deleted, and that you create client profiles with restricted authorization for use with your client applications. For more information, see <MadCap:xref href="../client-profiles.htm">Using Client Profiles</MadCap:xref>.</li><li>By default, SEMP over Message Bus is disabled for enhanced security and to keep your SEMP <code>show</code> commands hidden. For additional information, see  <MadCap:xref href="../enable-SEMP-over-message-bus.htm" style="font-weight: normal;">Enabling SEMP Over the Message Bus</MadCap:xref>.</li></ul></dd>
+    </dl>
+    <h3><a name="restrict-api-access"/>Restricting Secure Ports and Protocols on <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</h3>
+    <p> Both <MadCap:variable name="Product-Names.broker_cloud_short"/>s, event broker management, as well as events (messaging) are securely accessed and securely utilized through <MadCap:variable name="Variables.CompanyName"/> APIs and Open Source APIs. </p>
+    <p> These APIs do not provide a mechanism for the user or client applications to access the hosts or instances, only the functionality of the <MadCap:variable name="Product-Names.broker_cloud_short"/>s is available.</p>
+    <p>API access to an <MadCap:variable name="Product-Names.broker_cloud_short"/> is configurable  and we recommend the following configuration settings:<br/></p>
+    <ul>
+      <li>Only use secured ports (i.e., do not enable the plain-text ports other than for development purposes or non-production usage).</li>
+      <li>Disable protocols that you do not use. The default for an <MadCap:variable name="Product-Names.broker_cloud_short"/> is to enable all protocols with secure ports. This can be configured when you create the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li>
+      <li>When possible, use non-default port numbers.</li>
+      <li>For <MadCap:variable name="Product-Names.broker_cloud_short"/>s  deployed using Kubernetes, you can explicitly enable CLI access to configure the message VPN for an <MadCap:variable name="Product-Names.broker_cloud_short"/>.  Enabling CLI access exposes another mechanism to connect and manage an <MadCap:variable name="Product-Names.broker_cloud_short"/>, but may  unnecessarily expose you to a security risk. <MadCap:variable name="Variables.CompanyName"/> recommends that you disable this port where your services have public Internet connectivity to  harden access to your <MadCap:variable name="Product-Names.broker_cloud_short"/> and when the CLI access is not required or in use. The default setting when you create an <MadCap:variable name="Product-Names.broker_cloud_short"/> is disabled. For more information, see <MadCap:xref href="../enable-cli-for-cloud.htm">Enabling the Solace CLI for [%=Product-Names.broker_cloud_short_title%]s in [%=Product-Names.cloud_product_titlecase%]</MadCap:xref>.</li>
+    </ul>
+    <h2><a name="limit-access-bastion"/>Limiting Access to Compute Resources with Bastion Host</h2>
+    <p>You should limit access to the compute resources from the public Internet. If you require access for troubleshooting or maintenance to the hosts in a <MadCap:variable name="Product-Names.customer-controlled_region"/>s (Kubernetes cluster, Virtual Private Cloud, or Virtual Network), <MadCap:variable name="Variables.CompanyName"/> recommends that the customer configures a bastion host that provides access through port 22 to limit the vectors of attack. For more information, see the appropriate section in the <MadCap:variable name="Product-Names.cloud_product_short"/> deployment guides. For example, if you are deploying to Amazon Elastic Kubernetes Service (EKS), see <MadCap:xref href="../Deployment-Considerations/installing-ps-cloud-k8s-eks-specific-req.htm">Installing [%=Product-Names.cloud_product_short%] in Amazon Elastic Kubernetes Service (EKS)</MadCap:xref>.</p>
+    <h2><a name="outbound-connections"/>Securing Access for Outbound Connections</h2>
+    <p>For interactions that require outbound connections, such as RDPs (REST Destination Points), the  <MadCap:variable name="Product-Names.broker_cloud_short"/>s can be configured to originate from a static IP address. This makes it easier for applications outside of your deployment to whitelist.</p>
+    <p>For your organization, you can also configure your network to permit specific outbound access to a static IP address for the RDP for additional security. </p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/Cloud/static_ip_address_note.flsnp"/>
+    <p>For more information about getting the static IP address, see <MadCap:xref href="../getting_broker_static_ip.htm">Getting the IP Address of an [%=Product-Names.broker_cloud_short_title%] for Outbound Connections</MadCap:xref>.</p>
+  </body>
+</html>

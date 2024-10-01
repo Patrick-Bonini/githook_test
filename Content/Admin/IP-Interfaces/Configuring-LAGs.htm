@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Configuring LAGs on Appliances</h1>
+    <p>This section provides information on how to configure Link Aggregation Groups (LAGs) for Solace PubSub+ appliances. LAGs can be used for management and network interfaces on the Network Acceleration Blade (NAB)—a hardware line card used by the appliance for receiving and processing messages.</p>
+    <h2 class="with-rule"><a name="Config_LAG_Active_Back"/>Configuring LAG Active/Backup Mode on MGMT Ports</h2>
+    <p>To manually configure the two physical management network interface ports (that is, <code>eth1</code> and <code>eth2</code> on Solace PubSub+ 3260s, 3530s, and 3560s, or <code>eth1</code> and <code>eth0</code> on Solace PubSub+ 3230s) as a LAG in active/backup mode perform the following steps using the Solace CLI:</p>
+    <ol>
+      <li>Create the <code>chassis/lag1</code> interface and designate it as mode <code>active-backup</code>.        <p>Only a single LAG numbered 1 is supported. A LAG can not be deleted if IP interfaces reference it.</p><p class="Code">solace# configure<br/>solace(configure)# create interface chassis/lag1 active-backup<br/>solace(configure/interface)#</p></li>
+      <li>Assign both of your Management ports as members of the LAG interface, and then designate one of them as the “primary” member (this is the link that is active on startup).        
+			<p class="Code">solace(configure/interface)# member eth1<br/>solace(configure/interface)# member eth2 (3260, 3530, or 3560)<br/>solace(configure/interface)# member eth0 (3230 only)<br/>solace(configure/interface)# primary-member eth1</p></li>
+      <li>Start the LAG interface in active/backup mode.        <p class="Code">solace(configure/interface)# no shutdown</p><p>There is no special configuration required on the terminating Layer 2 devices. Configure them as normal individual ports.</p></li>
+      <li>View the status and configuration of the LAG in active/backup Mode.<![CDATA[ 
+        ]]><p class="Code">solace&gt; show interface chassis/lag1</p><pre xml:space="preserve">Interface: chassis/lag1 
+  MAC address: 00:15:17:4d:25:f0
+  Mode: Active-Backup
+  Enabled: yes
+  Rx pkts:           329217        Rx bytes:         24240418
+  Tx pkts:          2463932        Tx bytes:         432977869
+
+  Configured members:  eth1, eth2 
+  Available members:   eth1, eth2 
+  Operational members: eth1 
+  Primary member:      eth1</pre></li>
+    </ol>
+    <h2 class="with-rule"><a name="Changing_Mgmt_VRF"/>Changing the MGMT VRF Config on Working MGMT Port LAGs</h2>
+    <div class="Caution">
+      <p class="Tbl_Body">Management connectivity can be lost when changing the Management VRF interface configuration on working management port LAGs. Solace recommends performing these changes manually from the appliance CLI within a maintenance window to prevent service interruption.</p>
+    </div>
+    <p>To manually change the working LAG configuration of the two physical management interface ports (that is, <code>eth1</code> and <code>eth2</code> on Solace PubSub+ 3260s, 3530s, and 3560s, or <code>eth1</code> and <code>eth0</code> on Solace PubSub+ 3230s) from using an <code>eth1</code> configuration on the Management VRF to one using a <code>chassis/lag1</code> configuration, whereby the appliance uses the same IP address as before, do the following:</p>
+    <ol>
+      <li>Start the <code>eth2</code> interface:
+        <p class="Code">solace# configure<br/>solace(configure)# interface eth2<br/>solace(configure/interface)# no shutdown</p></li>
+      <li>Shutdown the <code>eth1:1</code> interface on the Management VRF: 
+        <p class="Code">solace(configure)# ip vrf management<br/>solace(configure/ip/vrf)# interface eth1:1<br/>solace(configure/ip/vrf/interface)# shutdown<br/>Changing management addresses or default routes may leave the appliance unreachable over a network connection. As well changing management addresses will result in newly unreachable routes being deleted.<br/>Do you want to continue (y/n)? y<br/></p></li>
+      <li>Remove the eth1:1 interface configuration:
+        <p class="Code">solace(configure/ip/vrf/interface)# exit<br/>solace(configure/ip/vrf)# no interface eth1:1<br/>solace(configure/ip/vrf)# exit</p><p class="Note">This automatically removes the default route. </p></li>
+      <li>Assign both of your management ports as members of the LAG interface, and designate one of them to be the “primary” member (this is the link that is active on startup):
+        
+		<p class="Code">solace(configure)# create interface chassis/lag1<br/>solace(configure/interface)# member eth1<br/>solace(configure/interface)# member eth2 (3260, 3530, or 3560)<br/>solace(configure/interface)# member eth0 (3230 only)<br/>solace(configure/interface)# primary-member eth1</p></li>
+      <li>Start the LAG interface:
+        <p class="Code">solace(configure/interface)# no shutdown</p><p class="Note">There is no special configuration required on the terminating Layer 2 devices. Configure them as normal individual ports.</p></li>
+      <li>Add the new <code>chassis/lag1</code> interface to the Management VRF, and start the LAG:
+        
+		<p class="Code">solace(configure)# ip vrf management<br/>solace(configure/ip/vrf)# create interface chassis/lag1:1 static<br/>solace(configure/ip/vrf/interface)# ip 192.168.129.83/22<br/>solace(configure/ip/vrf/interface)# no shutdown</p></li>
+      <li>If required for your network, configure the default IP route for the Management VRF: 
+        
+		<p class="Code">solace(configure/ip/vrf/interface)# exit<br/>solace(configure/ip/vrf)# route default 192.168.128.1 chassis/lag1:1 </p></li>
+      <li>Verify the status and configuration of the Management VRF: 
+				<p class="Code">solace&gt; show ip vrf management</p><pre xml:space="preserve">VRF: management      
+Number of interfaces: 1
+
+Status Flags:   R=Redundancy,  A=Admin,  P=Physical
+Status Values:  U=Up,  D=Down,  N=Not Applicable
+ 
+			Status
+Interface       V Router  IP Address          R  A  P
+--------------  --------  ------------------  --------
+chassis/lag1:1  static    192.168.129.83/22   N  U  U   
+ 
+Number of global routes: 1
+ 
+Destination       Gateway           Network Mask      Interface
+----------------  ----------------  ----------------  ----------
+default           192.168.128.1     0.0.0.0           chassis/lag1:1
+			</pre></li>
+    </ol>
+    <p>To change the working LAG configuration of the two management interface ports (that is, <code>eth1</code> and <code>eth2</code> on Solace PubSub+ 3260s, 3530s, and 3560s, or <code>eth1</code> and <code>eth0</code> on Solace PubSub+ 3230s) from using an <code>eth1</code> configuration on the Management VRF to one using a chassis/lag1 configuration, whereby the appliance uses the same IP address as before, do the following:</p>
+    <ol>
+      <li>Enter the <code>setup</code> CONFIG command, and follow the on-screen command prompts.
+				<p class="Code">solace# setup</p><pre xml:space="preserve">Please enter the hostname []: 
+Do you want to place the 2 management interfaces in an active-backup LAG? (y/n)
+[N]: y
+Choose primary interface for the management LAG (eth1, eth2) []: eth1
+Please configure the management VRF interface (chassis/lag1:1):
+Enter the IP/Netmask in CIDR form [192.168.129.83/22]: 
+Please enter the default gateway [192.168.128.1]: 
+Please configure the msg-backbone VRF interface (1/1/lag1:1):
+Enter the IP/Netmask in CIDR form []: 192.168.164.183/19
+Please enter the default gateway [192.168.160.1]: 
+Please enter the local time zone (? for help) [Canada/Eastern]:
+Do you want to synchronize time with an NTP server? (y/n) [Y]:
+Please enter the NTP server by IP [192.168.1.203]:
+Please enter DNS server(s) by comma separated IP []:
+Please enter the desired power redundancy (e.g. "2+1", "2+2") [2+2]:
+ 
+You have entered the following information:
+ 
+Primary interface (chassis/lag1):       eth1
+Create interface:                       chassis/lag1:1
+IP Address (chassis/lag1:1):            192.168.129.83/22
+Default Gateway (management):           192.168.128.1
+IP Address (1/1/lag1:1):                192.168.164.183/19
+Power Redundancy:                       2+2
+Please verify that this information is correct.
+Do you want to continue (y/n)? y
+
+Changing management addresses or default routes may leave the appliance unreachable over a network connection. 
+As well changing management addresses will result in newly unreachable routes being deleted.
+Do you want to continue (y/n)? y</pre></li>
+      <li>Enter the following show command to verify the status and configuration of the Management VRF: 
+				<p class="Code">solace&gt; show ip vrf management</p><pre xml:space="preserve">VRF: management      
+Number of interfaces: 1
+ 
+Status Flags:   R=Redundancy,   A=Admin,   P=Physical
+Status Values:  U=Up,  D=Down,  N=Not Applicable
+ 
+			Status
+Interface       V Router  IP Address          R  A  P
+--------------  --------  ------------------  --------
+chassis/lag1:1  static    192.168.129.83/22   N  U  U   
+ 
+Number of global routes: 1
+ 
+Destination       Gateway           Network Mask      Interface
+----------------  ----------------  ----------------  ----------
+default           192.168.128.1     0.0.0.0           chassis/lag1:1</pre></li>
+    </ol>
+    <h2 class="with-rule"><a name="Config_LAG_AB_on_twoPorts"/>Configuring LAG Active/Backup Mode on Two NAB Ports</h2>
+    <p>To configure two physical network interface ports on a NAB as a LAG in active/backup mode on appliances, perform the following steps:</p>
+    <ol>
+      <li>Create a LAG interface with an active-backup mode. For more information, refer to <MadCap:xref href="Managing-Appliance-IP-Interfaces.htm">Managing Appliance Interfaces</MadCap:xref>.
+			<p>Only a single LAG numbered 1 is supported. A LAG cannot be deleted if IP interfaces reference it, and a LAG cannot be created on a slot which does not contain a NAB.</p><p class="Code">solace# configure<br/>solace(configure)# create interface 1/1/lag1 active-backup<br/>solace(configure/interface)#</p></li>
+      <li>Assign two of your NAB ports as members of the LAG interface and designate one of them to be the “primary” member (this is the link that is active on startup). For more information, refer to <MadCap:xref href="Configuring-Appliance-IP-Interfaces.htm">Configuring Appliance IP Interfaces</MadCap:xref>.
+			
+			<p class="Code">solace(configure/interface)# member 1/1/1<br/>solace(configure/interface)# member 1/1/2<br/>solace(configure/interface)# primary-member 1/1/1</p></li>
+      <li>Start the LAG interface and in turn the active/backup mode. For more information, refer to <MadCap:xref href="Configuring-Appliance-IP-Interfaces.htm">Configuring Appliance IP Interfaces</MadCap:xref>.
+			<p class="Code">solace(configure/interface)# no shutdown</p><p class="Note">There is no special configuration required on the terminating Layer 2 devices. Configure them as normal individual ports.</p></li>
+      <li>Manually force a switch to the backup member. (For more information, refer to <MadCap:xref href="Manually-Switch-Activity-Between-LAG-Members.htm">Manually Switching Activity from one LAG Member to the Other</MadCap:xref>.)
+			
+			<p class="Code">solace(configure/interface)# exit<br/>solace(configure)# exit<br/>solace# admin<br/>solace(admin)# interface 1/1/lag1<br/>solace(admin/interface)# switch-active</p></li>
+      <li>View the status and configuration of the LAG in Active/Backup Mode.
+				<p class="Code">solace&gt; show interface 1/1/lag1</p><pre xml:space="preserve">Interface: 1/1/lag1 
+  MAC address: 00:50:c2:44:c0:ba
+  Mode: Active-Backup
+  Enabled: yes
+  Rx pkts:              204        Rx bytes:            13818
+  Tx pkts:                0        Tx bytes:                0
+ 
+  Configured members:  1/1/1, 1/1/2 
+  Available members:   1/1/1, 1/1/2 
+  Operational members: 1/1/1 
+  Primary member:      1/1/1</pre></li>
+    </ol>
+    <h2 class="with-rule"><a name="Config_Interfaces_Config_LACP"/>Configuring LACP LAGs in Active/Backup Pairs</h2>
+    <p>To configure two LACP LAGs as an Active/Backup pair and bond them together using a third LAG, perform the following steps:</p>
+    <ol>
+      <li>Create one LACP LAG interface , assign two of your NAB ports as members, and then start the interface.
+			
+			<p class="Code">solace# configure<br/>solace(configure)# create interface 1/6/lag2 lacp<br/>solace(config-interface)#</p><p> </p><p class="Code">solace(config-interface)# member 1/6/1<br/>solace(config-interface)# member 1/6/2</p><p> </p><p class="Code">solace(config-interface)# no shut<br/>solace(config-interface)# exit</p></li>
+      <li>Create a second LACP LAG interface , assign two more NAB ports as members, and then start the interface.
+			<p class="Code">solace(configure)# create interface 1/6/lag3 lacp<br/>solace(configure/interface)#</p><p> </p><p class="Code">solace(configure/interface)# member 1/6/3<br/>solace(configure/interface)# member 1/6/4</p><p> </p><p class="Code">solace(configure/interface)# no shut<br/>solace(configure/interface)# exit</p></li>
+      <li>Create a third LAG interface with an active-backup mode to bond the other two LAGs.
+			<p class="Code">solace(configure)# create interface 1/6/lag1 active-backup</p><p> </p><p class="Code">solace(configure/interface)# member 1/6/lag2<br/>solace(configure/interface)# member 1/6/lag3<br/>solace(configure/interface)# primary-member 1/6/lag2</p><p> </p><p class="Code">solace(configure/interface)# no shut<br/>solace(configure/interface)# end</p></li>
+      <li>View the status and configuration of the bonding LAG in Active/Backup Mode.
+				<p class="Code">solace&gt; show interface 1/6/lag1</p><pre xml:space="preserve">Interface: 1/6/lag1 
+  MAC address: 00:50:c2:44:c0:ba
+  Mode: Active-Backup
+  Enabled: yes
+  Rx pkts:             4836        Rx bytes:           436867
+  Tx pkts:                6        Tx bytes:              768
+ 
+  Configured members:  1/6/lag2 1/6/lag3 
+  Available members:   1/6/lag2  1/6/lag3
+  Operational members: 1/6/lag2 
+  Primary member:      1/6/lag2</pre></li>
+    </ol>
+  </body>
+</html>

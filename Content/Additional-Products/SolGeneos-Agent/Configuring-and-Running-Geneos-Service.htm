@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Configuring and Running Solace Geneos Agent Service</h1>
+    <p>To configure and run an installed Solace Geneos Agent Service, perform the following steps:</p>
+    <ol>
+      <li>Set the <code>JAVA_HOME</code> environment variable.
+                <p>Refer to <MadCap:xref href="#Set-Env-Variable">Setting the JAVA_HOME Environment Variable</MadCap:xref>.</p></li>
+      <li>Modify the Solace Geneos Agent properties file.
+                <p>Refer to <MadCap:xref href="#Update-Properties">Updating Solace Geneos Agent Configuration Properties</MadCap:xref>.</p></li>
+      <li>Start the Solace Geneos Agent Service.
+                <p>Refer to <MadCap:xref href="#Start-SolGeneos-Service">Starting Solace Geneos Agent Service</MadCap:xref>.</p></li>
+    </ol>
+    <h2 class="with-rule"><a name="Set-Env-Variable"/>Setting the JAVA_HOME Environment Variable</h2>
+    <p>The service script assumes that <code>JAVA_HOME</code> is set to <code>/usr/sw/java</code> on the target host.</p>
+    <p>If Java is installed under a different directory on the target host, you can:</p>
+    <ul>
+      <li>Create a <code>/usr/sw/java</code> softlink to the directory where Java is installed. This is the recommended approach.</li>
+      <li>Explicitly set the <code>JAVA_HOME</code> environment variable in <code>/usr/sw/solgeneos/loads/solgeneos_&lt;version&gt;/bin/serviceScript.sh</code></li>
+    </ul>
+    <h2 class="with-rule"><a name="Update-Properties"/>Updating Solace Geneos Agent Configuration Properties</h2>
+    <p>Before running the Solace Geneos Agent, you must edit <code>solgeneos/config/solgeneosagent.properties</code> to do the following:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#configuring_solgeneos_agent_service_3579565095_231989">Configuring NetProbe Properties</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#configuring_solgeneos_agent_service_3579565095_230407">Configuring Samplers, Group Headers, Managed Entities</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Configur2">Configuring Event Broker Management Properties</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Configur">Configuring Encrypted Management Password Property</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#configuring_solgeneos_agent_service_3579565095_230601">Configuring User Monitor Library Path</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="configuring_solgeneos_agent_service_3579565095_231989"/>Configuring NetProbe Properties</h3>
+    <p>The NetProbe definition in the Solace Geneos Agent properties file uses the form of <code>netprobe.&lt;alias&gt;.&lt;propertyName&gt;</code>.</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;alias&gt;</code> is a unique identifier of the NetProbe.</p>
+    <p><code>&lt;propertyName&gt;</code> is a NetProbe property name of the following properties:</p>
+    <ul>
+      <li><code>endpoint</code>—the IP address and port for the NetProbe. This is a required property.
+                <p>Typically, if you plan to run one NetProbe instance on the target host where the Solace Geneos Agent service is running, you do not need to modify the default value. However, if the NetProbe is running off the target host where the Solace Geneos Agent service is running, you should change the <code>endpoint</code> property to the corresponding IP address and port.</p></li>
+    </ul>
+    <ul>
+      <li><code>heartbeat</code>—the amount of time (in seconds) to wait between sending heartbeat probes to the NetProbe. The heartbeat interval is used by the Solace Geneos Agent to detect whether the NetProbe is up or down. This property is optional; by default, it is commented out because a default value is used.</li>
+      <li><code>replyTimeout</code>—the amount of time (in seconds) to wait for a reply from the NetProbe to a XML-RPC request that is made. This property is optional; by default, it is commented out because a default value is used.</li>
+    </ul>
+    <p>Below is an example of configured NetProbe properties.</p>
+    <p class="Code">netprobe.np0.endpoint=127.0.0.1:7036</p>
+    <p class="Code">netprobe.np0.heartbeat=60</p>
+    <p class="Code">netprobe.np0.replyTimeout=30</p>
+    <p>If you want to run multiple instances of NetProbes on or off the target host, additional NetProbes must be defined. For example, the second NetProbe might be defined as:</p>
+    <p class="Code">netprobe.np1.endpoint=127.0.0.1:7037</p>
+    <p class="Note">If you configure the “Trusted API Hosts” property on the NetProbe, ensure that the hostname where the agent is running is added to the host list. If the hostname is not added, the error code 102 (HOST_NOT_TRUSTED) is returned when the agent tries to communicate with the NetProbe.</p>
+    <h3><a name="configuring_solgeneos_agent_service_3579565095_230407"/>Configuring Samplers, Group Headers, Managed Entities</h3>
+    <p>Samplers, group headers, and managed entities are ITRS concepts that are used to group data views. Samplers and managed entities must be configured on the ITRS Geneos Gateway.</p>
+    <p>For the Solace Geneos Agent, samplers, group headers, and managed entities are represented by the following properties:</p>
+    <p class="Code">sampler=SolaceSampler</p>
+    <p class="Code">groupHeader=SolOS</p>
+    <p class="Code">managedEntities=[np0, &lt;Managed_Entity_Name&gt;]</p>
+    <p><u>Where</u>:</p>
+    <p><code>sampler</code> is the Geneos sampler name for a data view. The value of the sampler property must match the sampler configured on the Gateway. Samplers must be configured on the ITRS Geneos Gateway.</p>
+    <p><code>groupHeader</code> is the Geneos group header for the data view.</p>
+    <p><code>managedEntities</code> is a list of comma-separated NetProbe to managed entity associations. Managed entities must be configured on the ITRS Geneos Gateway. <code>&lt;Managed_Entity_Name&gt;</code> is a unique identifier for the event broker’s managed entity.</p>
+    <p class="Note">The managed entity must be unique within a Gateway. Therefore, if you have multiple NetProbes configured on the same Gateway and listen to the same Solace Geneos Agent, you should use different managed entity name for each NetProbe, even though they are monitoring the same event broker. For example, if there are two NetProbes <code>np0</code> and <code>np1</code>, then <code>managedEntities</code> would have the following value:</p>
+    <p class="Code">managedEntities=[np0, &lt;uid&gt; ManEnt_np0],[np1, &lt;uid&gt; ManEnt_np1]</p>
+    <p>A NetProbe is represented by its alias name. A managed entity must match the managed entity configured on the Gateway.</p>
+    <h3><a name="configure-management-properties"/>Configuring Event Broker Management Properties</h3>
+    <p>These properties include the <code>ipaddress</code>, <code>port</code>, <code>username</code>, and <code>encrypted_password</code> properties.</p>
+    <ul>
+      <li>Use port 80 for Solace PubSub+ appliances and port 8080 for Solace PubSub+ software event brokers.             </li>
+      <li>
+        <p>If plain-text SEMP service is shutdown, use port 1025 for SolOS versions 8.2 and greater.</p>
+      </li>
+    </ul>
+    <h3><a name="configure-encrypted-password"/>Configuring Encrypted Management Password Property</h3>
+    <p>The <code>encrypted_password</code> property value in <code>solgeneos/config/solgeneosagent.properties</code> can be encrypted using the <code>solgeneos/currentload/bin/encryptPassword.sh</code> script. When you run the script, you will be prompted to enter a password and enter it again for verification. If a non-empty password and the correctly repeated password  was entered, the script will output an "Encrypted:" password line. You can copy that and use as the value for the <code>encrypted_password</code> property in <code>solgeneos/config/solgeneosagent.properties</code>.</p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <p class="Code">./encryptPassword.sh<br/>Password:<br/>Verify Password:<br/>Encrypted:<br/>cFTkUinFqCIQCVq0iCNqKg==</p>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <p>If there are user-developed monitors created for Solace Geneos Agent 7.1 or lower, and the <code>encrypted_password</code> property will be used for Solace Geneos Agent 7.2 or higher, refer to <MadCap:xref href="Modifying-Custom-Monitors-pre72.htm">Modifying Custom Monitors Created Before Version 7.2</MadCap:xref> for details on how to modify these custom monitors to incorporate the <code>encrypted_password</code> property.</p>
+    <h3><a name="configuring_solgeneos_agent_service_3579565095_230601"/>Configuring User Monitor Library Path</h3>
+    <p>Solace Geneos Agent can dynamically load user-developed monitors that are used to generate ITRS data views.</p>
+    <p>The following property tells the Solace Geneos Agent from where to load these monitors packaged in Jar files.</p>
+    <p class="Code">userMonitorLibPath=/usr/sw/solgeneos/monitors</p>
+    <p class="Note">The property is optional, so it is commented out by default.</p>
+    <p>For more details on how to create custom monitors, refer to <MadCap:xref href="Developing-and-Deploying-Monitors.htm">Developing and Deploying Monitors</MadCap:xref>.</p>
+    <p>Refer to the comments in <code>solgeneosagent.properties</code> to further customize the Solace Geneos Agent.</p>
+    <h2 class="with-rule"><a name="Start-SolGeneos-Service"/>Starting Solace Geneos Agent Service</h2>
+    <p>Solace PubSub+ 8.2 or newer:</p>
+    <ul>
+      <li>To start the Solace Geneos Agent service, enter the following from the command line:
+                <p class="Code">&gt; systemctl start solgeneos</p></li>
+      <li>To stop the Solace Geneos Agent service, enter the following from the command line:
+                <p class="Code">&gt; systemctl stop solgeneos</p></li>
+      <li>To check the status of the Solace Geneos Agent service, enter the following from the command line:
+                <p class="Code">&gt; systemctl status solgeneos</p></li>
+    </ul>
+    <p MadCap:conditions="Default.HideFromAllOutput">Solace PubSub+ 7.1 or older:</p>
+    <ul MadCap:conditions="Default.HideFromAllOutput">
+      <li MadCap:conditions="Default.HideFromAllOutput">To start the Solace Geneos Agent service, enter the following from the command line:
+                <p class="Code" MadCap:conditions="Default.HideFromAllOutput">&gt; service solgeneos start</p></li>
+      <li MadCap:conditions="Default.HideFromAllOutput">To stop the Solace Geneos Agent service, enter the following from the command line:
+                <p class="Code" MadCap:conditions="Default.HideFromAllOutput">&gt; service solgeneos stop</p></li>
+      <li MadCap:conditions="Default.HideFromAllOutput">To check the status of the Solace Geneos Agent service, enter the following from the command line:
+                <p class="Code" MadCap:conditions="Default.HideFromAllOutput">&gt; service solgeneos status</p></li>
+    </ul>
+  </body>
+</html>

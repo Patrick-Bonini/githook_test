@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Managing MQTT Sessions</h1>
+    <p>On a Solace PubSub+ event broker, an MQTT session object  holds the state of an MQTT client (that is, it is used to contain a client’s QoS 0 and QoS 1 subscription sets and any undelivered QoS 1 messages). MQTT sessions are identified by their Client ID and associated Message VPN.</p>
+    <p>You can perform the following configuration tasks for an existing MQTT session:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Man-Session">Creating MQTT Sessions</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Sess-Owner">Setting MQTT Session Owners</MadCap:xref>
+      </li>
+      <li><MadCap:xref href="#Enable-Sessions">Enabling MQTT Sessions</MadCap:xref><![CDATA[			]]></li>
+      <li>
+        <MadCap:xref href="#Queues">Managing Queues</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Sess-Subscriptions">Managing MQTT Session Subscriptions</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Special-MQTT-Topics">Requesting Session Info with Special Topics</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Man-Session"/>Creating MQTT Sessions</h2>
+    <p>An MQTT session can be automatically created when an MQTT client connects to an event broker.  An MQTT session can also be manually created using the Solace CLI, SolAdmin, or Solace Element Management Protocol (SEMP).</p>
+    <p>To manually create an MQTT session in the given Message VPN, enter the following command:
+                </p>
+    <pre>solace(configure/message-vpn/mqtt)# create mqtt-session &lt;client-id&gt; [primary | backup | auto]</pre>
+    <p>To configure an existing MQTT session in the given Message VPN, enter the following command:
+                </p>
+    <pre>solace(configure/message-vpn/mqtt)# mqtt-session &lt;client-id&gt; [primary | backup | auto]</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;client-id&gt;</code> is a client ID that will match that used by the connecting client. Client IDs can be up to 128 characters long.</p>
+    <p><code>primary</code> specifies that the MQTT session belongs to the primary virtual router. </p>
+    <p><code>backup</code> specifies that the MQTT session belongs to the backup virtual router.</p>
+    <p><code>auto</code> specifies that the MQTT session belongs to either the primary or backup virtual router, depending on the current setting of the redundancy <code>active-standby-role</code>.This is the default value. We recommend using the <code>auto</code> setting except for event brokers configured with an active/active HA redundancy model.</p>
+    <p>The no version of this command, <code>no mqtt-session</code>, deletes the given MQTT session and all its state, including undelivered messages. To delete an MQTT session, it must be shut down.</p>
+    <p class="Caution">Prior to SolOS version 9.13.0, the <code>auto</code> value was not available, and <code>primary</code> was the default virtual router for the MQTT session upon creation. If you are upgrading DR sites to 9.13.0 or later, any MQTT session created as <code>auto</code> on a DR site with new (9.13.0 or later) versions of SolOS will fail when propagated to a DR site with older versions, causing Config-Sync to fall out-of-sync for the MsgVpn of the MQTT Session, because the <code>auto</code> value is not understood by the old loads. For this reason, upgrade all replicated brokers to at least version 9.13.0 before configuring any MQTT sessions as <code>auto</code>.</p>
+    <h2 class="with-rule"><a name="Sess-Owner"/>Setting MQTT Session Owners</h2>
+    <p>When an MQTT client connects and an MQTT session is automatically created, the client username of the connecting client is the MQTT session owner.</p>
+    <p>When an MQTT session is configured manually using the CLI or SEMP, the MQTT session does not have an assigned owner.</p>
+    <p>To set the owner of a manually-created MQTT session, enter the following command:</p>
+    <p class="Code">solace(configure/message-vpn/mqtt/mqtt-session)# owner &lt;owner&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;owner&gt;</code> is a client username that exists in the given Message VPN</p>
+    <p>The no version of this command, <code>no owner</code>, removes any configures owner from the MQTT session.</p>
+    <p class="Note">The MQTT session must be shutdown before its owner can be changed.</p>
+    <h2 class="with-rule"><a name="Enable-Sessions"/>Enabling MQTT Sessions</h2>
+    <p>To enable the given MQTT session, enter the following command:
+                <p class="Code">solace(configure/message-vpn/mqtt/mqtt-session)# no shutdown</p></p>
+    <p>To disable the given MQTT session, enter  the following command:
+                <p class="Code">solace(configure/message-vpn/mqtt/mqtt-session)# shutdown</p><p>When an MQTT session is disabled, clients attempting to connect to the session will be refused, and any existing connections will be closed. QoS1 subscriptions of a disabled MQTT session will continue to attract messages.</p></p>
+    <h2 class="with-rule"><a name="Queues"/>Managing Queues</h2>
+    <p>Each MQTT session created for a client can have an associated queue to store the client’s QoS 1 subscriptions and any undelivered messages attracted by those subscriptions.</p>
+    <p>A queue for the MQTT session is automatically created when the session is first given a QoS 1 subscription. Once created, the queue’s lifetime is tied to the MQTT session. It will be destroyed only when its session is destroyed.</p>
+    <p>When created, the initial configuration parameters of the queue are copied from the named <code>copy-from-on-create</code> queue if the following are both true:</p>
+    <ul>
+      <li>There is such a named <code>copy-from-on-create</code> queue in the client-profile</li>
+      <li>The MQTT Session was created automatically by the connecting MQTT Client (and not manually by the administrator through CLI/SEMP)</li>
+    </ul>
+    <p>Regardless of where the initial configuration parameters come from, once created, the configuration parameters of this queue can only be changed through the MQTT Session, except for the following:</p>
+    <ul>
+      <li>owner—the queue owner always mirrors the session owner</li>
+      <li>access-type—always <code>exclusive</code></li>
+      <li>permissions—always <code>all read-only</code></li>
+      <li>shutdown—always <code>no shutdown</code></li>
+    </ul>
+    <h2 class="with-rule"><a name="Sess-Subscriptions"/>Managing MQTT Session Subscriptions</h2>
+    <p>To create a topic subscription for the given MQTT session, enter the following command:
+                <p class="Code">solace(configure/message-vpn/mqtt/mqtt-session)# create subscription &lt;topic&gt;</p></p>
+    <p>To configure an existing topic subscription for the given MQTT session, enter the following command:
+                <p class="Code">solace(configure/message-vpn/mqtt/mqtt-session)# subscription &lt;topic&gt;</p></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;topic&gt;</code> is a topic name that uses MQTT topic syntax. </p>
+    <p class="Note">Although MQTT topic syntax is similar to that used for Solace Message Format (SMF) messages, it is recommended that you refer to <MadCap:xref href="../Messaging/Topic-Support-and-Syntax.htm">Topic Support &amp; Syntax</MadCap:xref> for information on MQTT topic syntax and considerations that should made for topic names to be handled similarly for both MQTT and Solace PubSub+. </p>
+    <p>For a given MQTT topic subscription in an MQTT session, you can do the following:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#QoS">Setting QoS Levels for Topic Subscriptions</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Add-Subscriptions">Adding/Removing Multiple Topic Subscriptions</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="QoS"/>Setting QoS Levels for Topic Subscriptions</h3>
+    <p>To set the QoS level of a configured topic subscription for the given MQTT session, enter the following command:</p>
+    <p class="Code">solace(...ge-vpn/mqtt/mqtt-session/subscription)# qos &lt;qos-value&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;qos-value&gt;</code> is the QoS level to assign to the topic subscription. The valid values are 0 (“deliver at most once”) or 1 (“deliver at least once”).</p>
+    <p>The no version of this command ,<code>no qos</code>, resets the subscription QoS level to the default value of 0.</p>
+    <p class="Note">Although QoS level of 2 cannot be configured. If a QoS level of 1 is configured, messages with matching topics with a QoS level of 2 will be accepted but treated as QoS 1 messages.</p>
+    <h3><a name="Add-Subscriptions"/>Adding/Removing Multiple Topic Subscriptions</h3>
+    <p>Instead of adding or removing individual topic subscriptions for an MQTT session, you can subscribe to or unsubscribe from multiple topics at once.</p>
+    <p>To add or remove multiple topic subscriptions for the given MQTT session, enter the following command:</p>
+    <p class="Code">solace(configure/message-vpn/mqtt/mqtt-session)# subscription-list qos &lt;qos-value&gt; [&lt;topic-list&gt;]</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;qos-value&gt;</code> is the QoS level of the topic subscriptions to be added or removed. The valid range is 0 (“deliver at most once”) or 1 (“deliver at least once”). When removing topic subscriptions, the QoS level entered must match the QoS level of the topic subscriptions to be removed.</p>
+    <p><code>&lt;topic-list&gt;</code> is a list of topics, separated by spaces, with each topic prefixed by either a “+” (which indicates that the topic subscription will be added) or a “-” (which indicates that the topic subscription will be removed).</p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <p class="Code">solace(configure/message-vpn/mqtt/mqtt-session)# subscription-list qos 0 +temperature +pressure -humidity</p>
+        <p>Entering the above command will add QoS 0 subscriptions to the topics <code>temperature</code> and <code>pressure</code>, and remove a QoS 0 subscription to the topic <code>humidity</code> if it exists.</p>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <h2 class="with-rule"><a name="Special-MQTT-Topics"/>Requesting Session Info with Special Topics</h2>
+    <p>An MQTT client may add topic subscriptions to special reserved topics that will provide the client with  information about itself and the event broker it has connected to. This information includes the client name assigned to the session and the reply-to topic reserved for the client. These special topic subscriptions will always be QoS 0 and must be exact matches (that is, they must not contain wildcards).</p>
+    <p>When an MQTT client subscribes to one of these special topics, the event broker responds by sending the relevant info to the MQTT client. The returned strings are not NULL terminated.</p>
+    <table style="width: 95%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');margin-left: 0;margin-right: auto;caption-side: top;" class="TableStyle-Table_Num" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">Special Topics for Requesting MQTT Session Information</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Topic</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Event broker responds with...</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_BodyCode">$SYS/client/client-name</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">The body of the message published to this topic provides the client name for the MQTT session.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_BodyCode">$SYS/client/reply-to</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">Reply-to destination for the MQTT client.</p>
+            <p>The body of the message published to this topic provides the reply-to topic/destination that is reserved for the client.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

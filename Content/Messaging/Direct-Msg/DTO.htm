@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Deliver-To-One</h1>
+    <p>Through the use of Solace messaging APIs, client applications can use the Deliver-To-One (DTO) feature of Solace PubSub+ to send a Direct delivery message to a single client even though there may be a number of clients with appropriate subscriptions that are capable of receiving the message.</p>
+    <p>The use of DTO allows for the load-balancing of received messages because only one connected client can consume a DTO message. It should be noted that, as a Direct message, if there are no connected clients, the event broker will not spool the message.</p>
+    <p>The DTO priority and behaviors are only relevant to messages published with the DTO flag set. Otherwise normal delivery rules apply; that is, all messages are delivered to all subscribers.</p>
+    <div class="Note">
+      <ul>
+        <li>For new applications we recommend using <MadCap:xref href="Direct-Messages.htm#Shared">Shared Subscriptions</MadCap:xref> for Direct Messaging load balancing.</li>
+        <li>Message consumers using web messaging APIs (Javascript and Node.js) cannot change message priority to take advantage of the DTO feature. </li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="Controll"/>Controlling DTO Message Reception</h2>
+    <p>To control which client can receive a DTO message, subscribing clients are assigned a local subscriber priority through a session property. The subscriber priority levels range from 1 (the highest) to 4 (the lowest).</p>
+    <p>A local priority is the priority that a client’s subscriptions have for receiving DTO messages published on the event broker that the client is directly connected to.</p>
+    <p>When a DTO message is published, a single local client with the highest subscriber priority level will receive the message. In a situation where the highest local subscriber priority level is shared by multiple clients, a single client is chosen in a round-robin fashion.</p>
+    <p>When possible, a published DTO message is always delivered to a locally connected client. However, if there are no clients with assigned local subscriber priorities, the message will be delivered to a neighboring event broker if one is available. Note that no attempt is made to evenly distribute DTO messages amongst remotely-connected event brokers should there be multiple options. This implies that a network of event brokers will ensure single delivery of DTO messages amongst the appropriate clients connected to a network of event brokers. However, load balancing can only be expected amongst clients connected to the same event broker.</p>
+    <h2 class="with-rule"><a name="DTO"/>DTO &amp; Deliver Always (DA)</h2>
+    <p>Clients can also override DTO delivery for specific topic subscriptions by applying the Deliver Always (DA) property to those subscriptions when they are added to the event broker. Topic subscriptions with the DA flag always receive all messages with topics that match the subscription—regardless of set priorities. Using the DA flag override can be useful if an application wants to take a copy of the message for auditing, replaying, or monitoring purposes. For example, a monitoring application should use the DA flag for every subscription it has so that it does not accidentally become a member of a DTO group and receive messages that should be delivered to other applications relying on DTO.</p>
+    <p>As a special case, the subscription <code>&gt;</code> (which matches all topics) is always treated as a DA subscription.</p>
+    <p>Subscriptions (with priority 1 to 4) and DA subscriptions that happen to share the same topic string are unique, meaning that a client may have both a DTO and DA subscription to the same topic. However, should a client be eligible to receive a given message due to both priority and DA subscriptions only a single copy of the message will be delivered.</p>
+    <h2 class="with-rule"><a name="How"/>How to Show a Subscription's DTO Priority </h2>
+    <p>The DTO priority of a subscription is shown by the <code>show smrp subscriptions</code> User EXEC command as either a value of P1 to P4 or the value DA to indicate a Deliver Always subscription.</p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot> Example:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <p class="Code">solace&gt; show smrp subscriptions<br/><br/>Flags Legend:<br/>T - Destination Type (C=local-client, Q=local queue<br/>       R=remote-router)<br/>P - Subscription Persistence (P=persistent, N=non-persistent)<br/>R - Redundancy Type for Local Destinations (P=primary, B=backup<br/>       S=static -=not-applicable)<br/><br/>Message VPN : default (exported: Yes; 100% complete)<br/>Destination Name       Flags BlkID DTO  Subscription<br/>                       T P R       Prio<br/>---------------------- - - - ----- ---- ------------------------------------<br/>#client                C N S     0   P1 #MCAST/&gt;<br/>#client                C N S     0   P1 #SEMP/lab-129-4/&gt;<br/>#client                C N S     0   P1 #P2P/lab-129-4/#client/&gt;<br/>#client                C N S     0   P1 #P2P/v:lab-129-4/#client/&gt;<br/>#client                C N S     0   P1 #SEMP/v:lab-129-4/&gt;<br/>#client                C N S     0   P1 #P2P/lab-129-4/WnAHbdbR/#client/&gt;<br/>dev2-180/316/#00000001 C N P    34   P1 #P2P/v:lab-129-4/27vgoQH9/dev2-180/316/#00000001/&gt;<br/>dev2-180/316/#00000001 C N P    33   P1 a/b<br/>test000001             C N P    33   P3 #P2P/v:lab-129-4/YC4EzyB4/test000001/&gt;<br/>testInstance           C N P    33   P1 #P2P/v:lab-129-4/0N7rz7R0/testInstance/&gt;<br/>testInstance           C N P    33   DA a/b<br/>testInstance           C N P    33   P1 #P2P/CACHEINST/testInstance/&gt;<br/>testInstance           C N P    34   P1 #P2P/CACHEINST/testCluster/&gt;<br/>testInstance           C N P    35   P1 #P2P/CACHEINST/testCache/&gt;<br/><br/>Message VPN : testVpn (exported: No; 100% complete)<br/>Destination Name       Flags BlkID DTO  Subscription<br/>                       T P R       Prio<br/>---------------------- - - - ----- ---- ------------------------------------<br/>#client                C N S     -   P1 #MCAST/&gt;<br/>#client                C N S     -   P1 #SEMP/lab-129-4/&gt;<br/>#client                C N S     -   P1 #P2P/lab-129-4/#client/&gt;<br/>#client                C N S     -   P1 #P2P/v:lab-129-4/#client/&gt;<br/>#client                C N S     -   P1 #SEMP/v:lab-129-4/&gt;<br/>#client                C N S     -   P1 #P2P/lab-129-4/WnAHbdbR/#client/&gt;<br/></p>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+  </body>
+</html>

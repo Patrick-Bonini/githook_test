@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" xml:lang="en-us" MadCap:conditions="Default.ConnectorSpecific">
+  <head>
+    <title/>
+  </head>
+  <body>
+    <h1>Configuring Connection Details</h1>
+    <h2><MadCap:variable name="Variables.CompanyName"/><MadCap:variable name="Product-Names.pubsub_brand_only"/> Connection Details</h2>
+    <MadCap:snippetBlock src="../../../../Resources/Snippets/API/Connectors/common/configure-connection-details-part1.flsnp"/>
+    <h2 MadCap:conditions="Default.ConnectorSpecific"><MadCap:variable name="Manifest-Products-Connectors.connector-awssqs-product-name"/> Connection Details</h2>
+    <p MadCap:conditions="Default.ConnectorSpecific">We presume that you are familiar with the Spring Cloud AWS Credentials, however he steps that follow help you to connect to AWS services without in-depth knowledge.  The connector can find these credentials automatically, or you can specify them manually.</p>
+    <h3 MadCap:conditions="Default.ConnectorSpecific">Automatic Credential Discovery</h3>
+    <p MadCap:conditions="Default.ConnectorSpecific">By default, the Spring Cloud AWS starter automatically configures a <code>DefaultCredentialsProvider</code>, which looks for AWS credentials in this order:</p>
+    <ol>
+      <li MadCap:conditions="Default.ConnectorSpecific"><b>Java System Properties</b>—<code>aws.accessKeyId</code> and <code>aws.secretAccessKey</code></li>
+      <li>
+        <p MadCap:conditions="Default.ConnectorSpecific"><b>Environment Variables</b>—<code>AWS_ACCESS_KEY_ID</code> and <code>AWS_SECRET_ACCESS_KEY</code></p>
+      </li>
+      <li>
+        <p MadCap:conditions="Default.ConnectorSpecific"><b>Web Identity Tokens</b>—The credentials from system properties or environment variables</p>
+      </li>
+      <li>
+        <p MadCap:conditions="Default.ConnectorSpecific"><b>Credential Profiles Files</b>—The default location is at <code>~/.aws/credentials</code>, which is shared by all AWS SDKs and the AWS CLI.</p>
+      </li>
+      <li>
+        <p MadCap:conditions="Default.ConnectorSpecific"><b>Amazon EC2 Container Services</b>—The credentials delivered through the Amazon EC2 container service if the <code>AWS_CONTAINER_CREDENTIALS_RELATIVE_URI</code> environment variable is set and and security manager has permission to access the variable.</p>
+      </li>
+      <li>
+        <p MadCap:conditions="Default.ConnectorSpecific"><b>Instance Profile Credentials</b>—These credentials are delivered through the Amazon EC2 metadata service.</p>
+      </li>
+    </ol>
+    <h3 MadCap:conditions="Default.ConnectorSpecific">Manual Credential <MadCap:variable name="Product-Names.ep_discovery"/></h3>
+    <p MadCap:conditions="Default.ConnectorSpecific">Alternatively, you can instead provide the necessary credentials through the application. You can use the Spring Cloud AWS authentication libraries are configurable using several properties as described in the <a href="https://docs.awspring.io/spring-cloud-aws/docs/3.1.0/reference/html/index.html#credentials" class="link-offsite">Configuring Spring Cloud AWS credentials</a>. You can set the <code>cloud.aws.credentials.xxx</code> as well as <code>cloud.aws.region.xxx</code> can be set in <code>application.yml</code>. The following is an example:</p>
+    <pre xml:space="preserve" MadCap:conditions="Default.ConnectorSpecific">spring:
+  cloud:
+    aws: # SqsTemplate configuration
+      credentials:
+        access-key: &lt;aws credentials/access key&gt; #Specifies the access key
+        secret-key: &lt;aws credentials/secret key&gt; #Specifies the secret key
+    region:
+      static: us-east-1 # A static value for region used by auto-configured AWS clients (e.g.,
+`eu-west-1`) as AWS credentials are valid in a context of a regions
+      auto: false</pre>
+    <p MadCap:conditions="Default.ConnectorSpecific">In addition to authentication credentials the AWS client libraries also require setting a property for the AWS cloud region using "spring.cloud.aws.region.xxx" properties. AWS credentials are valid in a context of a region.</p>
+    <p MadCap:conditions="Default.ConnectorSpecific">For example, this is how you can  configure the <code>us-east-2</code> region:</p>
+    <pre xml:space="preserve" MadCap:conditions="Default.ConnectorSpecific">spring:
+  cloud:
+    aws: # SqsTemplate configuration
+      ...
+    region:
+      static: us-east-1</pre>
+    <p MadCap:conditions="Default.ConnectorSpecific">For more information about AWS regions, see AWS Regions.</p>
+    <h2>Connecting to Multiple Systems</h2>
+    <p>To connect to multiple systems of a same type, use the <a href="https://docs.spring.io/spring-cloud-stream/docs/current/reference/html/spring-cloud-stream.html#multiple-systems" target="_blank" class="link-offsite">multiple binder syntax</a>.    </p>
+    <p>For example:</p>
+    <pre xml:space="preserve">spring: 
+  cloud:
+    stream: 
+      binders:
+        
+        # 1st solace binder in this example 
+	 solace1:
+          type: solace 
+	   environment: 
+	     solace: 
+	       java:
+        	 host: tcp://localhost:55555
+         
+	 # 2nd solace binder in this example 
+	 solace2:
+          type: solace 
+          environment: 
+            solace: 
+	       java:
+        	 host: tcp://other-host:55555
+        
+	 # The only sqs binder 
+	 sqs1:
+          type: sqs	  
+          # Add `environment` property map here if you need to customize this binder. 
+	   # But for this example, we'll assume that defaults are used.
+        # The only sqs binder 
+	 sqs2:
+          type: sqs	  
+          # Add `environment` property map here if you need to customize this binder. 
+	   # But for this example, we'll assume that defaults are used.
+          
+	 # Required for internal use 
+	 undefined:
+          type: undefined 
+	 bindings:
+          input-0:
+            destination: &lt;input-destination&gt; 
+	     binder: sqs1          output-0:
+            destination: &lt;output-destination&gt;
+            binder: solace1 # Reference 1st solace binder 
+	   input-1:
+            destination: &lt;input-destination&gt; 
+	     binder: sqs2          
+           output-1:
+            destination: &lt;output-destination&gt;
+            binder: solace2 # Reference 2nd solace binder</pre>
+    <p MadCap:conditions="Default.ConnectorSpecific">The configuration above defines two binders of type <code>solace</code> and of type <code>sqs</code>, which are then referenced within the bindings. </p>
+    <p>Each binder above is configured independently under <code>spring.cloud.stream.binders.&lt;bindername&gt;.environment.</code>.</p>
+    <div class="note">
+      <ul>
+        <li>
+          <p>When connecting to multiple systems, all binder configuration must be specified using the multiple binder syntax for all binders. For example, under the <code>spring.cloud.stream.binders.&lt;binder-name&gt;.environment</code>.</p>
+        </li>
+        <li>
+          <p>Do not use single-binder configuration (for example, <code> solace.java.*</code> at the root of your <code>application.yml</code>) while using the multiple binder syntax.</p>
+        </li>
+      </ul>
+    </div>
+  </body>
+</html>

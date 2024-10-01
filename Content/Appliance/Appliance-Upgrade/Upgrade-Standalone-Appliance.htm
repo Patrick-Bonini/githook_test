@@ -1,0 +1,365 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/Stylesheets/Tabbed_Content.css" rel="stylesheet"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Appliance"/>Standalone Appliance</h1>
+    <p>Use these procedures to upgrade a standalone appliance to SolOS-TR <MadCap:variable name="Manifest-Products-Routers.SolOS_TR"/>. </p>
+    <p class="Note">These upgrade procedures only apply to the latest version of the Solace PubSub+ appliance. Refer to the version-specific documentation to upgrade to versions before SolOS-TR <MadCap:variable name="Manifest-Products-Routers.SolOS_TR"/>.</p>
+    <ul class="nav tabs">
+      <li>
+        <a class="tab" href="#With">With Guaranteed Messaging</a>
+      </li>
+      <li>
+        <a class="tab" href="#Without">Without Guaranteed Messaging</a>
+      </li>
+    </ul>
+    <!--  <ul>
+            <li>
+                <p>
+                    <MadCap:xref href="#With">With Guaranteed Messaging</MadCap:xref>
+                </p>
+            </li>
+            <li>
+                <p>
+                    <MadCap:xref href="#Without">Without Guaranteed Messaging</MadCap:xref>
+                </p>
+            </li>
+        </ul> -->
+    <div id="With">
+      <h2 class="with-rule">With Guaranteed Messaging</h2>
+      <p>Use this procedure to upgrade a standalone appliance, that uses guaranteed messaging, to SolOS-TR <MadCap:variable name="Manifest-Products-Routers.SolOS_TR"/>.</p>
+      <ul>
+        <li>
+          <p>
+            <MadCap:xref href="#Before">Before you begin</MadCap:xref>
+          </p>
+        </li>
+        <li>
+          <p>
+            <MadCap:xref href="#Standalo">Procedure</MadCap:xref>
+          </p>
+        </li>
+      </ul>
+      <h3><a name="Before"/>Before you begin</h3>
+      <p>Perform the following steps to ensure the system is in the correct state before upgrading.</p>
+      <ol>
+        <li>
+          <p>Review the appliance upgrade notices.</p>
+          <p>
+            <MadCap:dropDown>
+              <MadCap:dropDownHead>
+                <MadCap:dropDownHotspot><a name=""/>
+								Appliance Upgrade Notices
+							</MadCap:dropDownHotspot>
+              </MadCap:dropDownHead>
+              <MadCap:dropDownBody>
+                <MadCap:snippetBlock src="../../Resources/Snippets/Appliance-Upgrade-Notices.flsnp"/>
+              </MadCap:dropDownBody>
+            </MadCap:dropDown>
+          </p>
+        </li>
+        <li>
+          <p>Ensure that the internal disks are in a redundant state.</p>
+          <pre class="Code">solace-primary&gt; <b>show disk</b>
+Reload required:               No
+
+Attribute                                 Disk 1                        Disk 2
+------------------ ----------------------------- -----------------------------
+Device Model                         ST3250820NS                   ST3250820NS
+Capacity (MB)                             238475                        238475
+Admin State                              enabled                       enabled
+Operational State                             up                            up
+
+RAID in fully redundant state: Yes
+</pre>
+          <div class="Caution">
+            <p>If the displayed output shows the RAID disk 1 and disk 2 drives to be in a non-redundant state (see example below), <a href="../../get-support.htm" class="link-internal">contact Solace</a> and stop this software upgrade procedure immediately to prevent software corruption on the appliance.</p>
+            <p>Some appliances contain slots for disk 3 and disk 4, however, these slots are not presently used, and the redundancy state for disk 3 and disk 4 should be ignored.</p>
+            <pre class="Code">solace-primary&gt; <b>show disk</b> 
+Reload required:               No
+
+Attribute                                 Disk 1                        Disk 2
+------------------ ----------------------------- -----------------------------
+Device Model                         ST3250820NS                   ST3250820NS
+Capacity (MB)                             238475                        238475
+Admin State                              enabled                       enabled
+Operational State                         failed                            up
+
+RAID in fully redundant state: No
+</pre>
+          </div>
+        </li>
+        <li>
+          <p>Ensure that a redundancy interface is configured on the appliance:</p>
+          <pre class="Code" xml:space="preserve">solace-primary&gt; <b>show redundancy</b>
+
+...
+
+Interface        Primary Address Status Backup Address  Status
+---------------- --------------- ------ --------------- ------
+<span style="color: #ff0000;">1/1/lag1         192.168.160.132 Up</span>                      
+
+                               Primary Virtual Router  Backup Virtual Router
+                               ----------------------  ----------------------
+Activity Status                Local Active            Shutdown
+VRRP VRID                                              
+Redundancy Interface Status                            
+VRRP Status                                            
+  1/1/lag1                                             
+VRRP Priority                                          
+Message Spool Status                                   
+Priority Reported By Mate                       
+</pre>
+          <p>If no interface is configured, run the following commands to set one up:</p>
+          <pre>solace-primary&gt; enable
+solace-primary# config
+solace-primary(configure)# redundancy
+solace-primary(configure/redundancy)# vrrp
+solace-primary(configure/redundancy/vrrp)# interface &lt;phy-interface&gt;
+solace-primary(configure/redundancy/vrrp)# exit						
+solace-primary(configure/redundancy)# exit
+solace-primary(configure)# exit</pre>
+          <p>
+            <u>Where:</u>
+          </p>
+          <p><code>&lt;phy-interface&gt;</code> is an ASCII string specifying the Ethernet interface port or LAG to be assigned. Valid values are <code>eth&lt;port&gt;</code> (for example, <code>eth1</code>); <code>&lt;cartridge&gt;/&lt;slot&gt;/&lt;port&gt;</code> (for example, <code>1/1/8</code>); <code>&lt;cartridge&gt;/&lt;slot&gt;/lag&lt;N&gt;</code> (for example, <code>1/1/lag1</code>). There is no default value.</p>
+        </li>
+        <li>
+          <p>Copy the latest SolOS software from an external file server (using either SFTP or SCP) to the <code>/loads</code> subdirectory on the appliance.</p>
+          <pre class="Code">solace-primary# <b>copy sftp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads</b>
+solace-primary# <b>copy scp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads</b></pre>
+          <p><u>Where</u>:</p>
+          <p><code>&lt;username&gt;</code>, <code>&lt;ip-addr&gt;</code>, and <code>&lt;remote-pathname&gt;</code> correspond to the access information of where the new SolOS software is located.</p>
+        </li>
+        <li>
+          <p>Copy the correct SolBase software for the latest SolOS version (the correct SolBase software is packaged with each SolOS version) from an external file server (using either SFTP or SCP) to the <code>/loads</code> subdirectory on the appliance.</p>
+          <pre class="Code">solace-primary# <b>copy sftp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads</b>
+solace-primary# <b>copy scp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads</b></pre>
+          <p><u>Where</u>:</p>
+          <p><code>&lt;username&gt;</code>, <code>&lt;ip-addr&gt;</code>, and <code>&lt;remote-pathname&gt;</code> correspond to the access information of where the new SolBase software is located.</p>
+        </li>
+      </ol>
+      <div class="Note">
+        <p>Before upgrading the appliance, SolAdmin  may also need to be upgraded. In addition, after the upgrade, SolGeneos Agent may also need to be upgraded. See <MadCap:xref href="">
+								Appliance Upgrade Notices
+							</MadCap:xref>  for more information.</p>
+      </div>
+      <h3><a name="Standalo"/>Procedure</h3>
+      <ol>
+        <li>
+          <p>Follow all the steps in <MadCap:xref href="#Before">Before You Begin the Standalone Upgrade</MadCap:xref>. Don't proceed if you can't confirm that the system is in the correct state.</p>
+        </li>
+        <li>
+          <p>Make a copy of the current SolOS configuration in the <code>/configs</code> subdirectory:</p>
+          <pre class="Code">solace-primary&gt; <b>enable</b>
+solace-primary# <b>copy current-config /configs/&lt;old_version&gt;_preUpgradeCfg</b></pre>
+          <p><u>Where</u>:</p>
+          <p><code>&lt;old_version&gt;</code> is the version number of current SolOS software as seen in the output of the <b>show version</b> command.</p>
+        </li>
+        <li>
+          <p>If multi-node routing is enabled, shut it down:</p>
+          <pre class="Code" xml:space="preserve">solace-primary# <b>configure</b>
+solace-primary(configure)# <b>routing</b>
+solace-primary(configure/routing)# <b>multi-node-routing</b>
+solace-primary(configure/routing/multi-node-routing)# <b>shutdown</b>
+solace-primary(configure/routing/multi-node-routing)# <b>end</b></pre>
+        </li>
+        <li>
+          <p>Shut down the Msg-Backbone service:</p>
+          <pre class="Code">solace-primary# <b>configure</b>
+solace-primary(configure)# <b>service msg-backbone</b>
+solace-primary(configure/service/msg-backbone)# <b>shutdown</b>
+All SMF, WEB, and REST clients will be disconnected.
+Do you want to continue (y/n)? y
+solace-primary(configure/service/msg-backbone)# <b>end</b></pre>
+        </li>
+        <li>
+          <p>If the Solace appliance is using transacted sessions, wait until all transacted sessions time out and the count drops to 0:</p>
+          <pre class="Code">solace-primary# <b>show message-spool detail</b>
+
+                           Currently Used   Max Allowed
+                           --------------   -----------
+Transacted Sessions:                    0         16000
+</pre>
+          <p>This will take up to 3 minutes.</p>
+        </li>
+        <li>
+          <p>Shut down the message spool:</p>
+          <pre class="Code">solace-primary# <b>configure</b>
+solace-primary(configure)# <b>hardware message-spool</b>
+solace-primary(configure/hardware/message-spool)# <b>shutdown</b>
+All message spooling will be stopped.
+Do you want to continue (y/n)? <b>y</b>
+solace-primary(configure/hardware/message-spool)# <b>end</b></pre>
+          <MadCap:snippetBlock src="../../Resources/Snippets/MQTT_Retain_Standalone.flsnp"/>
+        </li>
+        <li>
+          <p>Upgrade the appliance:</p>
+          <pre class="Code">solace-primary# <b>boot &lt;new-version&gt;</b></pre>
+        </li>
+        <li>
+          <p>Respond to prompts and then wait for the appliance to restart using the new SolOS software. This may take several minutes. You will be disconnected from the CLI and   have to reconnect to the appliance.  The appliance restarts, using the new SolOS software.</p>
+        </li>
+        <li>
+          <p>Once reconnected, confirm that the appliance has started using the new software version:</p>
+          <pre class="Code">solace-primary&gt; <b>enable</b>
+solace-primary# <b>show version</b></pre>
+        </li>
+        <li>
+          <p>Start the message spool that was shut down:</p>
+          <pre class="Code">solace-primary# <b>configure</b>
+solace-primary(configure)# <b>hardware message-spool</b>
+solace-primary(configure/hardware/message-spool)# <b>no shutdown primary</b>
+solace-primary(configure/hardware/message-spool)# <b>end</b></pre>
+        </li>
+        <li>
+          <p>Start the Msg-Backbone service that was shut down:</p>
+          <pre class="Code">solace-primary# <b>configure</b>
+solace-primary(configure)# <b>service msg-backbone</b>
+solace-primary(configure/service/msg-backbone)# <b>no shutdown</b>
+solace-primary(configure/service/msg-backbone)# <b>end</b></pre>
+        </li>
+        <li>
+          <p>If routing or multi-node routing was shut down in step 3, start multi-node routing:</p>
+          <pre class="Code" xml:space="preserve">solace-primary# <b>configure</b>
+solace-primary(configure)# <b>routing</b>
+solace-primary(configure/routing)# <b>multi-node-routing</b>
+solace-primary(configure/routing/multi-node-routing)# <b>no shutdown</b>
+solace-primary(configure/routing/multi-node-routing)# <b>end</b>
+</pre>
+        </li>
+      </ol>
+      <p>You have completed this procedure.</p>
+    </div>
+    <div id="Without">
+      <h2 class="with-rule">Without Guaranteed Messaging</h2>
+      <p>Use this procedure to upgrade a standalone appliance, that doesn't use guaranteed messaging,  to SolOS-TR <MadCap:variable name="Manifest-Products-Routers.SolOS_TR"/>.</p>
+      <ul>
+        <li>
+          <p>
+            <MadCap:xref href="#Before2">Before you begin</MadCap:xref>
+          </p>
+        </li>
+        <li>
+          <MadCap:xref href="#Procedur">Procedure</MadCap:xref>
+        </li>
+      </ul>
+      <h3><a name="Before2"/>Before you begin</h3>
+      <p>Perform the following steps to ensure the system is in the correct state before upgrading:</p>
+      <ol>
+        <li>
+          <p>Review the appliance upgrade notices.</p>
+          <p>
+            <MadCap:dropDown>
+              <MadCap:dropDownHead>
+                <MadCap:dropDownHotspot>
+								Appliance Upgrade Notices
+							</MadCap:dropDownHotspot>
+              </MadCap:dropDownHead>
+              <MadCap:dropDownBody>
+                <MadCap:snippetBlock src="../../Resources/Snippets/Appliance-Upgrade-Notices.flsnp"/>
+              </MadCap:dropDownBody>
+            </MadCap:dropDown>
+          </p>
+        </li>
+        <li>
+          <p>Ensure that the internal disks are in a redundant state:</p>
+          <pre class="Code">solace-primary&gt; <b>show disk</b> 
+Reload required:               No
+
+Attribute                                 Disk 1                        Disk 2
+------------------ ----------------------------- -----------------------------
+Device Model                         ST3250820NS                   ST3250820NS
+Capacity (MB)                             238475                        238475
+Admin State                              enabled                       enabled
+Operational State                             up                            up
+
+RAID in fully redundant state: Yes	</pre>
+          <div class="Caution">
+            <p>If the displayed output shows the RAID disk 1 and disk 2 drives to be in a non-redundant state (see example below), <a href="../../get-support.htm" class="link-internal">contact Solace</a> and stop this software upgrade procedure immediately to prevent software corruption on the appliance. </p>
+            <p>Some appliances contain slots for disk 3 and disk 4, however, these slots are not presently used, and the redundancy state for disk 3 and disk 4 should be ignored.</p>
+            <pre class="Code">solace-primary&gt; <b>show disk</b> 
+Reload required:               No
+
+Attribute                                 Disk 1                        Disk 2
+------------------ ----------------------------- -----------------------------
+Device Model                         ST3250820NS                   ST3250820NS
+Capacity (MB)                             238475                        238475
+Admin State                              enabled                       enabled
+Operational State                         failed                            up
+
+RAID in fully redundant state: No
+</pre>
+          </div>
+        </li>
+        <li>
+          <p>Copy the latest SolOS software from an external file server (using either SFTP or SCP) to the <code>/loads</code> subdirectory on the appliance:</p>
+          <pre class="Code">solace-primary# <b>copy sftp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads</b>
+solace-primary# <b>copy scp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads</b></pre>
+          <p><u>Where</u>:</p>
+          <p><code>&lt;username&gt;</code>, <code>&lt;ip-addr&gt;</code>, and <code>&lt;remote-pathname&gt;</code> correspond to the access information of where the new SolOS software is located.</p>
+        </li>
+        <li>
+          <p>Copy correct SolBase software for the latest SolOS version (the correct SolBase software is packaged with each SolOS version) from an external file server (using either SFTP or SCP) to the <code>/loads</code> subdirectory on the appliance:</p>
+          <pre class="Code" xml:space="preserve">solace-primary# <b>copy sftp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads</b>
+solace-primary# <b>copy scp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt; /loads</b>
+</pre>
+          <p><u>Where</u>:</p>
+          <p><code>&lt;username&gt;</code>, <code>&lt;ip-addr&gt;</code>, and <code>&lt;remote-pathname&gt;</code> correspond to the access information of where the new SolBase software is located.</p>
+        </li>
+      </ol>
+      <div class="Note">
+        <p>Before upgrading the appliance, SolAdmin and SolGeneos Agent may also need to be upgraded. See <MadCap:xref href="">
+								Appliance Upgrade Notices
+							</MadCap:xref> for more information.</p>
+      </div>
+      <h3><a name="Procedur"/>Procedure</h3>
+      <ol>
+        <li>
+          <p>Follow all the steps in <MadCap:xref href="#Before">Before You Begin the Standalone Upgrade</MadCap:xref>. Don't proceed if you can't confirm that the system is in the correct state.</p>
+        </li>
+        <li>
+          <p>Make a copy of the current SolOS configuration in the <code>/configs</code> subdirectory:</p>
+          <pre class="Code">solace-primary&gt; enable
+solace-primary# copy current-config /configs/&lt;old_version&gt;_preUpgradeCfg	</pre>
+          <p><u>Where</u>:</p>
+          <p><code>&lt;old_version&gt;</code> is the version number of current SolOS software as seen in the output of the <b>show version</b> command.</p>
+        </li>
+        <li>
+          <p>Shut down the Msg-Backbone service:</p>
+          <pre class="Code">solace-primary# <b>configure</b>
+solace-primary(configure)# <b>service msg-backbone</b>
+solace-primary(configure/service/msg-backbone)# <b>shutdown</b>
+All SMF, WEB, and REST clients will be disconnected.
+Do you want to continue (y/n)? <b>y</b>
+solace-primary(configure/service/msg-backbone)# <b>end</b></pre>
+          <MadCap:snippetBlock src="../../Resources/Snippets/MQTT_Retain_Standalone.flsnp"/>
+        </li>
+        <li>
+          <p>Upgrade the appliance:</p>
+          <pre class="Code">solace-primary# <b>boot &lt;new-version&gt;</b></pre>
+        </li>
+        <li>
+          <p>Respond to prompts and then wait for the appliance to restart using the new SolOS software. This may take several minutes. You will be disconnected from the CLI and   have to reconnect to the appliance. The appliance restarts, using the new SolOS software.</p>
+        </li>
+        <li>
+          <p>Once reconnected, confirm that the appliance has started using the new software version:</p>
+          <pre class="Code" xml:space="preserve">solace-primary&gt; <b>enable</b>
+solace-primary# <b>show version</b>			</pre>
+        </li>
+        <li>
+          <p>Start the Msg-Backbone service that was shut down:</p>
+          <pre class="Code">solace-primary# <b>configure</b>
+solace-primary(configure)# <b>service msg-backbone</b>
+solace-primary(configure/service/msg-backbone)# <b>no shutdown</b>
+solace-primary(configure/service/msg-backbone)# <b>end</b></pre>
+        </li>
+      </ol>
+      <p>You have completed this procedure.</p>
+    </div>
+    <script type="text/javascript" src="../../Resources/Scripts/Tabbed_Content.js">
+        </script>
+  </body>
+</html>

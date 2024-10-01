@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Solace OpenMAMA Components</h1>
+    <p>The required Solace-provided components include the:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Middleware-Bridge">Solace Middleware Bridge</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Payload-Bridge">Solace Payload Bridge</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#C">C API</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Solace-Router">Solace PubSub+ Event Broker</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Last-Value-Cache">Last-Value Cache</MadCap:xref>
+      </li>
+    </ul>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">If last-value caching of OpenMAMA messages is required, PubSub+ Cache Instances must also be configured on Linux Servers that connect with an event broker. PubSub+ Cache is discussed in <MadCap:xref href="Configuring-Message-Caching.htm">Configuring Message Caching</MadCap:xref>.</p>
+    <p class="GraphicCaption">OpenMAMA Software Stack</p>
+    <p class="GraphicCaption">
+      <img src="../../Resources/Images/OpenMama/limited_overview.jpg" alt=""/>
+    </p>
+    <h2 class="with-rule"><a name="Middleware-Bridge"/>Solace Middleware Bridge</h2>
+    <p>A Middleware Bridge is software invoked from the OpenMAMA API that acts as an adapter to translate OpenMAMA function calls to the appropriate native function calls of a vendor’s middleware. It provides OpenMAMA API clients various middleware functions (such as client login and authentication, subscription management, cache requests, message transport) in a vendor‑neutral fashion. The OpenMAMA API fully defines the interface to a Middleware Bridge.</p>
+    <p>The Solace Middleware Bridge (<code>SolOpenMAMA-MW-Bridge</code>) is used to translate OpenMAMA function calls to the appropriate Solace C API function calls. It enables OpenMAMA API clients to use Solace messaging transport encoding transparently, and it is fully compliant with the OpenMAMA build and runtime environment for middleware bridges.</p>
+    <p>The Solace Middleware Bridge has one default payload, which has the name of <code>solacemsg</code> and the ID <code>MAMA_PAYLOAD_SOLACE</code>.</p>
+    <p>The Solace Middleware Bridge is delivered as a run-time library that must be integrated with an OpenMAMA distribution, the Solace C API, and the customer applications. Both static and dynamic linking with OpenMAMA are supported. For more information, refer to <MadCap:xref href="Installing-SolOpenMAMA-Components.htm#Install-Bridges">Installing Solace Middleware and Payload Bridges</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Payload-Bridge"/>Solace Payload Bridge</h2>
+    <p>A Payload Bridge is software invoked from the OpenMAMA API that allows OpenMAMA message payloads to be properly encoded for transport over a Middleware Bridge. The interface to the Payload Bridge is defined by the OpenMAMA API, and the Solace Payload Bridge (SolOpenMAMA-PL-Bridge) is fully compliant with the OpenMAMA build and runtime environment for middleware bridges.</p>
+    <p>The Solace Payload Bridge encodes OpenMAMA messages to be received by an event broker (that is, ingress messages) so that they map to the native Solace Message Format (SMF) Solace PubSub+ uses. Ingress OpenMAMA message contents map to a Solace structured data type (SDT) of a stream of fields, where each field contains a field ID, a field value, and an optional field name. The Solace Payload Bridge also decodes egress SMF messages so that subscriber applications receive them as OpenMAMA messages.</p>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">Although the Solace Middleware Bridge does not have any specific dependencies on a Solace Payload Bridge to prevent it from working with a non‑Solace payload bridge, Solace only tests and supports using a Solace Payload Bridge with a Solace Middleware Bridge.</p>
+    <p>The Solace Payload Bridge is delivered as a library that must be integrated with an OpenMAMA distribution, the Solace C API, and the OpenMAMA messaging application. Both static and dynamic linking with OpenMAMA are supported. For more information, refer to <MadCap:xref href="Installing-SolOpenMAMA-Components.htm#Install-Bridges">Installing Solace Middleware and Payload Bridges</MadCap:xref>.</p>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">Whenever PubSub+ Cache is used to cache OpenMAMA messages, the Solace Payload Bridge must be used because the PubSub+ Cache OpenMAMA Plug-In only understands the Solace Payload Bridge format.</p>
+    <h2 class="with-rule"><a name="C"/>C API</h2>
+    <p>The Solace Middleware Bridge and Solace Payload Bridge translate OpenMAMA function calls to the corresponding function calls of the Solace C API. To permit the bridges to use the C API to interface with the event broker, some Solace‑specific properties must be defined in the <code>mama.properties</code> configuration file used by the bridges. For information, refer to <MadCap:xref href="Configuring-Solace-OpenMAMA-Bridges.htm">Configuring Solace OpenMAMA Bridges</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Solace-Router"/>Solace PubSub+ Event Broker</h2>
+    <p>The event broker is a message-oriented middleware event broker that efficiently routes market data messages that are published and received through the standardized OpenMAMA APIs. Note that OpenMAMA clients may be present at separate geographic sites, so multiple event brokers could be deployed at separate sites and be inter-connected across a WAN through multi-node routing.</p>
+    <h2 class="with-rule"><a name="Last-Value-Cache"/>Last-Value Cache</h2>
+    <p>Solace offers an optional last-value caching facility, PubSub+ Cache, that can be used to allow OpenMAMA client applications to request the last cached data for market data symbols and order books instead of requesting the data directly from a publisher/source. PubSub+ Cache can also be used to store OpenMAMA data dictionaries required by those clients.</p>
+    <p>PubSub+ Cache is a distributed in-memory caching solution. It relies on an event broker, which acts as the central repository and management point for managing the topics for which messages should be cached, and separate external caches (PubSub+ Cache Instances) hosted on Linux systems that published messages that match those topics of interest are distributed to.</p>
+    <p>When the PubSub+ Cache facility is implemented, OpenMAMA applications that connect to the event broker can publish messages with initial values and real‑time data to particular topics. The event broker then distributes those messages to all the PubSub+ Cache Instances in a grouping known as a Cache Cluster that subscribe to those topics. When an OpenMAMA subscriber is interested in getting an initial value for a topic, it can send a cache request for it to a Distributed Cache, Cache Cluster, or PubSub+ Cache Instance managed by the event broker. Through a cache response received through a callback, the subscriber is then provided with the last cached initial value for the topic of interest.</p>
+    <p>A <code>mama.properties</code> configuration file (separate from that required by the Solace Middleware Bridge) is also required for each PubSub+ Cache Instance that is deployed to handle OpenMAMA messages. For information, refer <MadCap:xref href="Configuring-Message-Caching.htm#Configur">Configuring the SolOpenMAMA Plug-In</MadCap:xref>.</p>
+    <p>When PubSub+ Cache is used for an OpenMAMA deployment, a Solace-provided PubSub+ Cache Plug‑In (<code>solopenmama_plugin</code>) must be used. This SolOpenMAMA Plug‑In enables a PubSub+ Cache Instance to properly handle received OpenMAMA messages according to their message type before they are cached so that OpenMAMA incremental/delta updates can occur. For more information, refer to <MadCap:xref href="Installing-SolOpenMAMA-Components.htm#Install-SolCache">Installing and Configuring PubSub+ Cache Instances</MadCap:xref>.</p>
+    <h3><a name="Global"/>Global Caching</h3>
+    <p>In most cases, market data is published and consumed within one geographic location. However, in a WAN environment, it is possible that clients may request messages for topics that are not cached in their “local” Distributed Cache, but are cached in a Distributed Cache located in another geographical location across the WAN. When the Global Caching is implemented, if a Cache Cluster in a requesting client’s “local” Distributed Cache does not subscribe to the requested topic, the client can receive a cache response from another Distributed Cache in the network that is configured as the “home” for that topic.</p>
+    <p>When Global Caching is implemented, it will not be apparent to requesting clients whether the messages that are returned were cached locally or in a Distributed Cache that is geographically distant.</p>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">When a message is not cached locally, the time to fulfill a cache request may take longer depending on factors such as the number of hops between the local cache and the home cache and WAN network characteristics.</p>
+    <p>For more information on the Global Caching feature, refer to <MadCap:xref MadCap:unresolvedLink="import-link:using_global_caching_590796381_38232" href="../../Additional-Products/Solace-PubSub-Cache/Using-Global-Caching.htm">Using Global Caching</MadCap:xref>.</p>
+  </body>
+</html>

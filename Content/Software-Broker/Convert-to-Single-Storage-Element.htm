@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Software"/>Converting from Multiple Mount Points to a Single Mount Point</h1>
+    <p class="Note">In versions of SolOS prior to 9.12, <code>storage-elements</code> were typically externalized to separate storage volumes and mounted to the container using separate mount points. In version 9.12 and later, these <code>storage-elements</code> are now collected under a single object called a <code>storage-group</code>, which uses a single mount point.</p>
+    <div class="Caution">
+      <p>Before you use these procedures, ensure that you calculate the storage requirements for your container. You must make sure your external storage is sufficient accommodate:</p>
+      <ul>
+        <li>the minimum required storage, PLUS</li>
+        <li>additional storage for higher values of system scaling parameters, PLUS</li>
+        <li>space for spooled messages</li>
+      </ul>
+      <p>For details, see:</p>
+      <ul>
+        <li>
+          <MadCap:xref href="System-Resource-Requirements.htm">System Resource Requirements</MadCap:xref>
+        </li>
+        <li>
+          <MadCap:xref href="System-Scaling-Parameters.htm">Modifying System Limits Using System Scaling Parameters</MadCap:xref>
+        </li>
+        <li>
+          <MadCap:xref href="System-Resource-Calculator.htm">System Resource Calculator</MadCap:xref>
+        </li>
+      </ul>
+    </div>
+    <p>If you have upgraded from SolOS version 9.11 or earlier to SolOS 9.12 or later, you can use the following procedures to convert your software event broker(s) from using multiple mount points to using a single mount point:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#container-standalone">Standalone</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#high-availability">High Availability</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="container-standalone"/>Standalone</h2>
+    <p>To update a standalone container image to use a single mount point instead of multiple mount points, do the following:</p>
+    <p class="Note">These steps assume you are using Docker Engine. Similar commands are available for other container runtimes.</p>
+    <ol>
+      <li>Make sure all the required data are in the volumes.  To double check what volumes you have in the environment, run the following command:<pre xml:space="preserve">docker volume ls</pre><p>The response should look like the following:</p><pre xml:space="preserve">
+DRIVER    VOLUME NAME
+local     adb
+local     adbBackup
+local     diagnostics
+local     spool
+local     jail
+local     var</pre></li>
+      <li>Stop the Solace container:<pre>docker stop --time 1200 solace</pre></li>
+      <li>Remove the container: <pre>docker rm solace</pre></li>
+      <li>On the host operating system, create new directories in the location where you want the new <code>storage-group</code> to reside. <p>You can use any name you want for the top-level directory, but the <code>storage-element</code> directories must be as shown in the example (<code>spool</code>, <code>spool-cache</code>, <code>var</code>, <code>spool-cache-backup</code>,<code> jail</code>, and <code>diagnostics</code>)</p><p>The following example uses  <code>/mnt/solace</code> as the  top-level directory:</p><pre xml:space="preserve">mkdir /mnt/solace/spool
+mkdir /mnt/solace/spool-cache
+mkdir /mnt/solace/var
+mkdir /mnt/solace/spool-cache-backup  
+mkdir /mnt/solace/jail   
+mkdir /mnt/solace/diagnostics</pre></li>
+      <li>
+        <p>Set the owner and group of the new directories to the container owner and container group by running the following command, replacing <code>&lt;container-user&gt;</code> and <code>&lt;container-group&gt;</code> with the actual values:</p>
+        <pre xml:space="preserve">chown -R &lt;container-user&gt;:&lt;container-group&gt; /mnt/solace/</pre>
+        <p>For example, if you use the default values for the container owner (1000001) and group (0), run the following command:</p>
+        <pre xml:space="preserve">chown -R 1000001:0 /mnt/solace/</pre>
+      </li>
+      <li>To determine what the mount point was for the old volumes, run the following command:<pre>docker volume inspect adb</pre><p>The response should look like the following. The <code>"Mountpoint"</code> field shows where the <code>adb</code> volume was mounted:</p><pre>[
+    {
+        "CreatedAt": "0001-01-01T00:00:00Z",
+        "Driver": "local",
+        "Labels": {},
+        "Mountpoint": "<span style="color: #ff0000;">/var/lib/docker/volumes/adb/_data</span>",
+        "Name": "adb",
+        "Options": {},
+        "Scope": "local"
+    }
+]</pre></li>
+      <li> Copy the folder contents corresponding to each volume to the new location (note the differences between the old and new <code>storage-element</code> names):<pre>shopt -s dotglob
+mv /var/lib/docker/volumes/<span style="color: #ff0000;">adb</span>/_data/* /mnt/solace/<span style="color: #ff0000;">spool-cache</span>
+mv /var/lib/docker/volumes/<span style="color: #ff0000;">internalSpool</span>/_data/* /mnt/solace/<span style="color: #ff0000;">spool</span>
+mv /var/lib/docker/volumes/<span style="color: #ff0000;">diagnostics</span>/_data/* /mnt/solace/<span style="color: #ff0000;">diagnostics</span>
+mv /var/lib/docker/volumes/<span style="color: #ff0000;">var</span>/_data/* /mnt/solace/<span style="color: #ff0000;">var</span>
+mv /var/lib/docker/volumes/<span style="color: #ff0000;">adbBackup</span>/_data/* /mnt/solace/<span style="color: #ff0000;">spool-cache-backup</span>
+mv /var/lib/docker/volumes/<span style="color: #ff0000;">jail</span>/_data/* /mnt/solace/<span style="color: #ff0000;">jail</span></pre></li>
+      <li>Run the following command to create a new container that mounts the new <code>storage-group</code> directory (<code>/mnt/solace</code>) as a bind mount:<pre> docker create --network=host --uts=host --shm-size=1g --ulimit core=-1 \
+--ulimit memlock=-1 --ulimit nofile=2448:42192 --env 'username_admin_globalaccesslevel=admin' \
+--env 'username_admin_password=admin' --name=solace <span style="color: #ff0000;">--mount type=bind,source=/mnt/solace,destination=/var/lib/solace,ro=false</span> \
+solace-pubsub-enterprise:&lt;version&gt;</pre></li>
+      <li> If you used the Docker volume API to create the old named volumes, you can now remove them by running the following command (they are no longer used):<pre>docker volume rm adb adbBackup diagnostics internalSpool jail var</pre></li>
+    </ol>
+    <h2 class="with-rule"><a name="high-availability"/>High Availability</h2>
+    <p>To update the software event brokers in a   high-availability group to use a single mount point instead of multiple mount points, do the following:</p>
+    <p class="Note">In the steps that follow, the primary messaging node is referred to as <code>solace-primary</code> and the backup messaging node is referred to as <code>solace-backup</code>.</p>
+    <ol>
+      <li>Verify that the redundancy status  is correct by running the <code>show redundancy</code> command on each messaging node:<ul><li>On both messaging nodes, ensure <code>Redundancy Configuration Status</code> is <code>Enabled</code> and <code>Redundancy Status</code> is <code>Up</code></li><li> On the <b>primary</b> node, the <code>Message Spool Status</code> should be <code>AD-Active</code></li><li>On the <b>backup</b> node, the <code>Message Spool Status</code> should be <code>AD-Standby</code></li></ul></li>
+      <li>On the <b>backup</b> node, perform the steps listed above for  a <a href="#container-standalone" class="link-internal">standalone image</a>.</li>
+      <li>On the <b>backup</b> node, run the <code>show redundancy</code> command to ensure that the <code>Redundancy Status</code> is <code>Up</code>:<pre>solace-backup&gt; show redundancy
+Configuration Status     : Enabled
+Redundancy Status        : Up</pre></li>
+      <li>On the <b>backup</b> node, if config-sync was active, ensure it is active again:
+            <pre>solace-backup&gt; show config-sync
+Admin Status            : Enabled
+Oper Status             : Up</pre></li>
+      <li>On the <b>primary</b> node, release activity to the backup node:
+            <pre>solace-primary&gt; enable
+solace-primary&gt; configure
+solace-primary&gt; redundancy release-activity</pre></li>
+      <li>On the <b>backup</b> node, run the <code>show redundancy</code> command to ensure that  the <code>Message Spool Status</code> is now <code>AD-Active</code>.</li>
+      <li>On the <b>primary</b> node, perform the steps listed above for a <a href="#container-standalone" class="link-internal">standalone image</a>.</li>
+      <li>On the <b>primary</b> node, re-claim activity:
+            <pre xml:space="preserve">solace-primary&gt; enable
+solace-primary&gt; configure
+solace-primary&gt; no redundancy release-activity</pre></li>
+      <li>On the <b>primary</b> node, run the <code>show redundancy</code> command to ensure that the <code>Redundancy Status</code> is <code>Up</code>:<pre xml:space="preserve">solace-primary&gt; show redundancy
+Configuration Status     : Enabled
+Redundancy Status        : Up</pre><p class="Note">At this point, the backup node is still handling messaging traffic. If required, you can manually <a href="../Features/HA-Redundancy/Maintaining-Event-Broker-Redundancy-All-Broker.htm#Give-Up-Activity" class="link-internal">force the backup node to release activity to the primary node</a>.</p></li>
+      <li>On the <b>primary</b> node, if config-sync was active, ensure it is active again:
+            <pre xml:space="preserve">solace-primary&gt; show config-sync
+Admin Status            : Enabled
+Oper Status             : Up</pre></li>
+      <li>On the <b>monitoring</b> node, perform the steps listed above for  a <a href="#container-standalone" class="link-internal">standalone image</a>.</li>
+    </ol>
+  </body>
+</html>

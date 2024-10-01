@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head> </head>
+  <body>
+    <h1>Reconfiguring Hostname / Routername</h1>
+    <p>Follow these steps to reconfigure the hostname / routername for both appliances in a High Availability (HA) pair where <code>primary
+</code>            and <code>backup</code> in the prompt represent the primary and backup brokers, respectively in the HA pair configuration.</p>
+    <ol>
+      <li>
+				Go into configuration and then shutdown Config-Sync on both the primary and backup brokers:
+		       <pre class="Code" xml:space="preserve">primary&gt; enable
+primary# configure
+primary(configure)# config-sync shutdown</pre><pre class="Code" xml:space="preserve">backup&gt; enable
+backup# configure
+backup(configure)# config-sync shutdown</pre></li>
+      <li>Shutdown the <code>msg-backbone</code> service. Note that after you confirm the command (enter <code>y</code>), all clients are disconnected.		<pre class="Code" xml:space="preserve">primary(configure)# service msg-backbone shutdown
+All clients will be disconnected.
+Do you want to continue (y/n)? y</pre><pre class="Code" xml:space="preserve">backup(configure)# service msg-backbone shutdown
+All clients will be disconnected.
+Do you want to continue (y/n)? y
+</pre></li>
+      <li>Shutdown redundancy on both nodes by running these commands:		<pre class="Code" xml:space="preserve">primary(configure)# redundancy shutdown</pre><pre class="Code" xml:space="preserve">
+backup(configure)# redundancy shutdown</pre></li>
+      <li>Reconfigure the redundancy <code>mate-router-name</code> running these commands, where <code>&lt;new-primary-hostname&gt;</code> and <code>&lt;new-backup-hostname&gt;</code> represent  new hostnames/routernames.
+In each case below, ensure that the mate router is the other hostname.			<pre class="Code" xml:space="preserve">primary(configure)# redundancy
+primary(configure/redundancy)# mate-router-name <code>&lt;new-backup-hostname&gt;</code></pre><pre class="Code" xml:space="preserve">backup(configure)# redundancy
+backup(configure/redundancy)# mate-router-name <code>&lt;new-primary-hostname&gt;</code></pre></li>
+      <li>Configure the new hostname for the primary and backup brokers. Note that it can take up to 15 minutes for the brokers to reload.<pre class="Code" xml:space="preserve">primary(configure/redundancy)# exit
+primary(configure)# hostname <code>&lt;new-primary-hostname&gt;</code>
+This command causes a reload of the system.
+Do you want to continue (y/n)?y</pre><pre class="Code" xml:space="preserve">backup(configure/redundancy)# exit
+backup(configure)# hostname <code>&lt;new-backup-hostname&gt;</code>
+This command causes a reload of the system.
+Do you want to continue (y/n)?y
+</pre></li>
+      <li>After the brokers come up, re-login to your brokers and re-enable redundancy.						<pre class="Code" xml:space="preserve">primary&gt; enable
+primary# configure
+primary(configure)# redundancy
+primary(configure/redundancy)# no shutdown</pre><pre class="Code" xml:space="preserve">backup&gt; enable
+backup# configure
+primary(configure)# redundancy
+backup(configure/redundancy)# no shutdown</pre></li>
+      <li>(Optional) Reconfigure any affected configuration settings.						<p class="Note">This typically is done on any brokers other than the renamed brokers in the configuration (i.e., not the primary for backup brokers). For this reason,  the hostname in the example is <code>solace </code>rather than <code>primary</code> or <code>backup</code>.</p><p>Reconfigure an MNR neighbor where <code>&lt;old_name&gt;</code> is the hostname you changed from and <code>&lt;new_name&gt;</code> is the new hostname you changed your broker to.</p><pre class="Code" xml:space="preserve">
+solace&gt; enable
+solace# configure
+solace(configure)# routing
+solace(configure/routing)# cspf
+solace(configure/routing/cspf)# no neighbor <code>&lt;old_name&gt;</code>
+solace(configure/routing/cspf)# create neighbor <code>&lt;new_name&gt;</code>
+solace(configure/routing/cspf)# exit</pre><p>Reconfigure a bridge using the routername to connect:</p><pre class="Code" xml:space="preserve">solace# configure
+solace(configure)# bridge bridge message-vpn <code>&lt;vpn_name&gt;</code>
+solace(configure/bridge)# remote message-vpn bridge router v:<code>&lt;old_name&gt;</code>
+solace(configure/bridge/remote/message-vpn)# shutdown<br/>solace(configure/bridge/remote/message-vpn)# exit
+solace(configure/bridge/remote)# exit
+solace(configure/bridge)# no remote message-vpn default router v:<code>&lt;old_name&gt;</code>
+solace(configure/bridge)# create remote message-vpn default router v:<code>&lt;new_name&gt;</code></pre></li>
+      <li>Then, back on the primary and backup brokers, re-enable the <code>msg-backbone</code> service.<p class="Code">solace&gt; enable
+<br/>solace# configure<br/>primary(configure)# no service msg-backbone shutdown</p><p class="Code">solace&gt; enable
+<br/>solace# configure<br/>backup(configure)# no service msg-backbone shutdown</p></li>
+      <li>Re-enable Config-Sync on the primary and backup brokers.					<pre class="Code" xml:space="preserve">primary(configure)# config-sync
+primary(configure/config-sync)# no shutdown</pre><pre class="Code" xml:space="preserve">backup(configure)# config-sync
+backup(configure/config-sync)# no shutdown</pre><p>Run the <code>show config-sync</code> command to check that Config-Sync is <code>up</code> on both the primary and backup brokers. You can also run the <code>show config-sync database</code> command to see the individual table statuses on each broker. Config-Sync is up when the <b>Oper Status</b> shows <code>up</code> and all Message VPNs show the <b>Oper</b> status as <code>up</code>.</p><p>On the primary broker:</p><pre class="Code" xml:space="preserve">primary&gt; show config-sync
+
+	Admin Status                      : Enabled
+	Oper Status                       : Up
+	SSL Enabled                       : No
+	Authentication
+	Client Certificate
+	Maximum Chain Depth           : 3
+	Validate Certificate Dates    : Enabled
+	Server Certificate Configured : Yes
+	Client-Profile
+	TCP
+	MSS                           : 1460
+	Initial Window                : 2
+	Maximum Window                : 256   KB
+	Keepalive
+	Count                       : 5
+	Idle                        : 3     seconds
+	Interval                    : 1     seconds
+	Client
+	Name                            : #config-sync/primary
+	Connection State                : Connected
+	Last Fail Reason                :
+	Synchronize
+	Username                        : Yes
+	
+primary&gt; show config-sync database
+	
+	Legend:
+	O - Ownership (L=Leader, F=Follower)
+	S - Status (I=In-Sync, R=Reconciling, B=Blocked, O=Out-Of-Sync, D=Down,
+	U=Unknown)
+	
+	Type   Name                             O S Time In State
+	------ -------------------------------- - - ------------------
+	Router site                             L I 1d 20h 53m 21s
+	Vpn    default                          L I 1d 20h 53m 28s
+
+primary&gt;</pre><p>While on the backup broker:</p><pre class="Code" xml:space="preserve">backup&gt; show config-sync
+
+	Admin Status                      : Enabled
+	Oper Status                       : Up
+	SSL Enabled                       : No
+	Authentication
+	Client Certificate
+	Maximum Chain Depth           : 3
+	Validate Certificate Dates    : Enabled
+	Server Certificate Configured : Yes
+	Client-Profile
+	TCP
+	MSS                           : 1460
+	Initial Window                : 2
+	Maximum Window                : 256   KB
+	Keepalive
+	Count                       : 5
+	Idle                        : 3     seconds
+	Interval                    : 1     seconds
+	Client
+	Name                            : #config-sync/backup
+	Connection State                : Connected
+	Last Fail Reason                :
+	Synchronize
+	Username                        : Yes
+
+backup&gt; show config-sync database
+
+	Legend:
+	O - Ownership (L=Leader, F=Follower)
+	S - Status (I=In-Sync, R=Reconciling, B=Blocked, O=Out-Of-Sync, D=Down,
+	U=Unknown)
+
+	Type   Name                             O S Time In State
+	------ -------------------------------- - - ------------------
+	Router site                             L I 1d 20h 54m 18s
+	Vpn    default                          L I 1d 20h 54m 25s
+
+backup&gt;</pre><p>
+					If Config-Sync is up, then you are done; otherwise if Config-Sync is down, run the following commands on the active broker . For illustrative purposes,  the primary broker is the broker with the operational status of active in this case.</p><pre class="Code" xml:space="preserve">primary&gt; enable
+primary# admin
+primary#(admin)# config-sync
+primary#(admin/config-sync)# assert-leader router
+primary#(admin/config-sync)# assert-leader message-vpn *
+</pre></li>
+    </ol>
+  </body>
+</html>

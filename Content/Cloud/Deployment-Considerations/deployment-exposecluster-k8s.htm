@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Exposing <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s to External Traffic</h1>
+    <p>As shown in the <MadCap:xref href="deployment-architecture-k8s.htm#top">Deployment Architecture for Kubernetes</MadCap:xref>, <MadCap:variable name="Product-Names.broker_cloud_short"/>s run in pods on the worker nodes in your Kubernetes cluster. </p>
+    <p>Each <MadCap:variable name="Product-Names.broker_cloud_short"/> consists of three <MadCap:variable name="Product-Names.broker_sw_short"/>s  deployed across three pods.  Each of these pods has a unique IP address (pod IP) which can't be exposed outside the cluster except through a Kubernetes <i>service</i>. A Kubernetes service is an object that abstracts and exposes an application running on a set of pods as a network service. The <MadCap:variable name="Product-Names.cloud_agent_short"/> configures the Kubernetes service to route external traffic to the <MadCap:variable name="Product-Names.broker_sw_short"/>s running inside the Kubernetes cluster. With external traffic exposed,  clients outside the Kubernetes cluster can  interact with <MadCap:variable name="Product-Names.broker_cloud_short"/>s, either from other customer VPCs or, optionally, from the Internet. </p>
+    <p>Kubernetes services can be exposed in different ways by using different <code>ServiceTypes</code> (specified in the <code>type</code> property in the Kubernetes Service Specification). There are three <code>ServiceTypes</code> you (the customer) can use to expose your <MadCap:variable name="Product-Names.broker_cloud_short"/>s outside the cluster:</p>
+    <ul>
+      <li><b>LoadBalancer</b>: Exposes the Kubernetes service externally using a cloud provider's load balancer. This is the simplest way to expose a service but requires an L4 load balancer supported by the cluster's cloud provider. Load balancer is the only <code>ServiceType</code> that supports Public/Private endpoint connectivity. See <MadCap:xref href="../create-service.htm#configure-port-9.13later">Configuring Endpoints and Ports for Kubernetes-Based [%=Product-Names.broker_cloud_short_title%]s 9.13 and Later</MadCap:xref> for more information. Load balancer supports port customization and the ability to disable and enable individual protocols.</li>
+      <li><b>NodePort</b>: Exposes the Kubernetes service on each Node's IP address at a static port (the NodePort). A LoadBalancer, which routes to the NodePort Service, must be manually created (usually by a network administrator) to front the NodePort service. You can contact the NodePort Service, from outside the cluster, by requesting <code>&lt;NodeIP&gt;:&lt;NodePort&gt;</code>. NodePort does not allow port customization, but supports the ability to disable and enable individual protocols.</li>
+    </ul>
+    <p>For more details about Kubernetes services, load balancing, and networking, see the <a href="https://kubernetes.io/docs/concepts/services-networking/" class="link-offsite">Kubernetes documentation</a>.</p>
+    <p>Consider the following when deciding which of these strategies to use:</p>
+    <ul>
+      <li><MadCap:variable name="Variables.CompanyName"/> recommends that you use an <a href="#summary-integrated-lb" class="link-internal">integrated load balancer</a> (Kubernetes service type of <code>LoadBalancer</code>). Specifically, integrated load balancer solutions must use an external network load balancer with an L4 load balancing strategy.</li>
+      <li>  If an integrated load balancer is not available, you can use <a href="#summary-nodeport" class="link-internal">NodePort</a> to expose the <MadCap:variable name="Product-Names.broker_cloud_short"/> within the cluster to external traffic.</li>
+    </ul>
+    <p>If you need more help to decide, see  the considerations in <MadCap:xref href="checklist-customer-controlled.htm">Planning Your Kubernetes Deployment</MadCap:xref>. </p>
+    <p>The options for exposing your <MadCap:variable name="Product-Names.broker_cloud_short"/>s are summarized below, in order of preference.</p>
+    <h2>
+      <a name="summary-integrated-lb"/>
+      <b>Option 1: Integrated Load Balancer</b>
+    </h2>
+    <p>This is the recommended solution that permits each <MadCap:variable name="Product-Names.broker_cloud_short"/> to be accessible via its own endpoint (IP address and optional port). This solution specifies that each <MadCap:variable name="Product-Names.broker_cloud_short"/> that's exposed has its own  network load balancer. In this solution, the Kubernetes Service type is set to  <code>LoadBalancer</code>. From a high-level perspective, this solution permits connectivity from outside the cluster to the <MadCap:variable name="Product-Names.broker_cloud_short"/>, as shown in the following diagram.</p>
+    <p>
+      <div class="thumbnail-container">
+        <img src="../../Resources/Images/Cloud-Deployment-Guides/k8s_simple_loadbalancer.png" class="solacethumbnail" alt=""/>
+        <img src="../../Resources/Images/expand-icon.png" class="img-expand" MadCap:conditions="Default.NotForPDF" alt=""/>
+      </div>
+    </p>
+    <p><b>Considerations</b>:</p>
+    <ul>
+      <li><MadCap:variable name="Variables.CompanyName"/> recommends that you use an load balancer solution that's integrated with Kubernetes  (e.g.,MetalLB, VMWare NST) to expose the cluster to external traffic. These integrated solutions automatically create a network load balancer for you to simplify deployment. </li>
+      <li>Determine with the Kubernetes administrator whether services of type <code>LoadBalancer</code> are supported and whether any special annotations are needed to create a network load balancer.</li>
+      <li>To support an integrated load balancer setup, ensure that you determine with your Kubernetes administrator that an integrated load balancer is available.</li>
+      <li>For planning purposes, this solution requires one load balancer and that load balancer consumes one IP address. For example, if you have three services, they require three load balancers and three IP addresses. </li>
+      <li><MadCap:variable name="Variables.CompanyName"/> recommends setting the load balancer's <code>externalTrafficPolicy</code> to <code>local</code>. The <code>local</code> policy setting preserves the source IP of connecting client applications. For more information see our traffic policy recommendation in <a href="k8s-using-loadbalancer.htm#traffic_policy_recommendation" target="_blank" class="link-internal">Using an Integrated Load Balancer Solution</a>.</li>
+    </ul>
+    <p>For more in details about the architecture and advantages of this solution, see <MadCap:xref href="k8s-using-loadbalancer.htm">Using an Integrated Load Balancer Solution</MadCap:xref>.</p>
+    <h2>
+      <a name="summary-nodeport"/>
+      <b>Option 2: NodePort with an External Network Load Balancer</b>
+    </h2>
+    <p>This is a solution that's well-known and available across all Kubernetes clusters. This approach requires that customers configure the Kubernetes Service type to <code>NodePort</code> and manually provision an external network load balancer that redirects traffic to the Kubernetes cluster.</p>
+    <p>
+      <div class="thumbnail-container">
+        <img src="../../Resources/Images/Cloud-Deployment-Guides/k8s_simple_nodeport.png" class="solacethumbnail" alt=""/>
+      </div>
+    </p>
+    <p><b>Considerations</b>:</p>
+    <ul>
+      <li>You must use an external network load balancer in this configuration for robustness and fault-tolerant routing, but you can use any means to map an external IP address to an IP address and port within your private network. </li>
+      <li>This approach is similar to the integrated load balancer solution, but you don't have one network load balancer per service and services are accessed using port numbers.</li>
+    </ul>
+    <p>For more in details about the architecture and advantages of this solution, see <MadCap:xref href="k8s-using-nodeport.htm">Using NodePort</MadCap:xref>.</p>
+  </body>
+</html>

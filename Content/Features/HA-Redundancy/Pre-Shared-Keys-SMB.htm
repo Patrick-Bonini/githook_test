@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Pre-Shared Authentication Keys for Software Event Brokers</h1>
+    <p>Pre-shared authentication keys are used to authenticate connections between redundancy group members and must be the same for all members.  By default, no key is set on an event broker.</p>
+    <h2 class="with-rule"><a name="How"/>Generating Pre-Shared Keys</h2>
+    <p>Pre-shared authentication keys are 32 to 256 bytes of binary data encoded in Base64. To ensure maximum security, Solace recommends that each key be randomly generated and as long as possible.</p>
+    <h2 class="with-rule"><a name="Configur"/>Configuring Pre-Shared Keys</h2>
+    <p>To set the pre-shared key authentication key for an event broker in a redundant deployment, enter the following commands:</p>
+    <p class="Code">solace(configure)# redundancy<br/>solace(configure/redundancy)# authentication<br/>solace(configure/redundancy/authentication)# pre-shared-key key &lt;pre-shared-key&gt;<br/></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;pre-shared-key&gt;</code> is 44 to 344 characters (which translates into 32 to 256 bytes of binary data encoded in Base64). The <code>no</code> version of this command returns the value to the default. </p>
+    <h2 class="with-rule"><a name="How2"/>Changing Pre-Shared Keys</h2>
+    <p>You do not need to shut down redundancy group members to change a pre-shared key. Also, either the primary or backup node can be active, and the other node is in standby mode.</p>
+    <p>To make the change, perform the following three steps.</p>
+    <p class="Note">In order to migrate from a group password to a pre-shared key, you must first add the desired pre-shared key and then remove the group password. For more information, refer to <MadCap:xref href="#Migratin">Migrating from HA Redundancy Group Passwords to Pre-Shared Keys</MadCap:xref>.</p>
+    <ol>
+      <li>Change the key on the <u>monitoring</u> node.
+			<p class="Code">solace3(configure)# redundancy<br/>solace3(configure/redundancy)# authentication<br/>solace3(configure/redundancy/authentication)# pre-shared-key key &lt;new-pre-shared-key&gt;<br/></p></li>
+      <li>Change the key on the <u>active</u> node.
+			<p class="Code">solace1(configure)# redundancy<br/>solace1(configure/redundancy)# authentication<br/>solace1(configure/redundancy/authentication)# pre-shared-key key &lt;new-pre-shared-key&gt;<br/></p></li>
+      <li>Change the key on the <u>standby</u> node.
+			<p class="Code">solace2(configure)# redundancy<br/>solace2(configure/redundancy)# authentication<br/>solace2(configure/redundancy/authentication)# pre-shared-key key &lt;new-pre-shared-key&gt;<br/></p></li>
+    </ol>
+    <h2><a name="Migratin"/>Migrating from HA Redundancy Group Passwords to Pre-Shared Keys</h2>
+    <p>Prior to release 9.2.0, HA redundancy group passwords were used to authenticate connections between redundancy group members. In release 9.2.0+ pre-shared keys should be used instead of group passwords.</p>
+    <p>To migrate from a group password to a pre-shared key, perform the following steps:</p>
+    <ol>
+      <li>
+        <p>Add the desired pre-shared key (refer to <MadCap:xref href="#Configur">Configuring Pre-Shared Keys</MadCap:xref>).</p>
+        <p class="Note">While both a pre-shared key and a group password are configured, the group password is used for HA group membership, and the pre-shared key is used for all other connections between redundancy group members (encrypted HA mate link, encrypted HA config-sync client, retain cache).</p>
+      </li>
+      <li>
+        <p> Remove the HA Redundancy group password (refer to <MadCap:xref href="#Removing">Removing HA Redundancy Group Passwords</MadCap:xref>).</p>
+      </li>
+    </ol>
+    <h2 class="with-rule"><a name="Removing"/>Removing HA Redundancy Group Passwords</h2>
+    <p>If you had an HA Redundancy group password configured before you set a <code>pre-shared-key</code>, then you should remove the group password once the pre-shared keys are configured on all group nodes.</p>
+    <p>To remove the HA redundancy group password, perform the following steps:</p>
+    <ol>
+      <li>Remove the group password on the <u>monitoring</u> node:</li>
+      <p class="Code">solace3(configure/redundancy)# group<br/>solace3(configure/redundancy/group)# no password<br/></p>
+      <li>Remove the group password on the <u>active</u> node:</li>
+      <p class="Code">solace1(configure/redundancy)# group<br/>solace1(configure/redundancy/group)# no password<br/></p>
+      <li>Remove the group password on the <u>standby</u> node:</li>
+      <p class="Code">solace2(configure/redundancy)# group<br/>solace2(configure/redundancy/group)# no password</p>
+    </ol>
+  </body>
+</html>

@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Browsing Guaranteed Messages</h1>
+    <p><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging APIs can use queue browser instances or browser flows to look at guaranteed messages spooled on a queue in the order of oldest to newest.</p>
+    <ul>
+      <li>
+        <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> C and Java RTO APIs can browse guaranteed messages with a browser flow. </p>
+      </li>
+      <li>
+        <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> JCSMP, JavaScript, Node.js, and .NET APIs can browse guaranteed messages with a browser object.</p>
+      </li>
+    </ul>
+    <p>Browser flows and browser objects enable your application to browse messages on a queue and selectively remove messages as needed. This can be done independently of any other flow bound to the queue. Browsers allow you to connect to an exclusive queue even if other applications are connected and active on the queue. When you connect to a non-exclusive queue, you can view all messages on the queue. In this case, your browser is not subject to the round-robin method used to deliver messages to regular consumers. After messages are browsed, clients can still receive them over flows.</p>
+    <p>A queue’s access type, exclusive or non-exclusive, does not affect clients’ ability to browse its spooled messages. It only affects clients’ ability to consume those messages. For more information on access type, refer to <MadCap:xref href="Defining-Endpoint-Proper.htm">Defining Endpoint Properties</MadCap:xref>.</p>
+    <p>For an example of how to browse messages on a queue, see:</p>
+    <ul>
+      <li>
+        <p>the <code>QueueProvisionAndBrowse.java</code> JCSMP sample on the <a href="https://github.com/SolaceSamples/solace-samples-java-jcsmp/blob/master/src/main/java/com/solace/samples/jcsmp/features/QueueProvisionAndBrowse.java" class="link-offsite"><MadCap:variable name="Variables.CompanyName"/> Developer Hub</a></p>
+      </li>
+      <li>
+        <p>the <code>simpleBrowserFlow.c</code> sample in the <a href="https://docs.solace.com/API-Developer-Online-Ref-Documentation/c/ex_2simple_browser_flow_8c-example.html" class="link-internal">C API Reference Documentation</a></p>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="receiving_guaranteed_messages_1016811797_666548"/>Creating Browsers</h2>
+    <p>To browse Guaranteed messages spooled for a Queue when using the JCSMP, JavaScript, Node.js or .NET API, a client must create a Browser in a Session.</p>
+    <p>To create a Browser, call one of the methods listed below and pass in a set of Browser properties. </p>
+    <table style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Create Browsers</p>
+      </caption>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Call</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>JCSMPSession.createBrowser(BrowserProperties properties)</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>ISession.CreateBrowser(Endpoint endpointToBrowse, BrowserProperties browserProperties)</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">JavaScript, Node.js</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1" style="font-family: Arial;">
+            <code>session.createQueueBrowser(solace.QueueBrowserProperties | Object browserProperties)</code>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>When defining a new set of Browser properties, be sure to do the following:</p>
+    <ul>
+      <li>Specify the Queue endpoint that you want to browse. Only Queues can be browsed—Topic Endpoints cannot be browsed. For JCSMP, the Queue is set through the Flow properties. For .NET, the <code>IEndpoint</code> is passed in separately.</li>
+      <li>(Optional) For JCSMP and .NET, specify a selector string for the <code>Selector</code> property to only browse messages that match that selector. When a selector is used, the wait time-out can be significantly increased because it takes longer for the message bus to evaluate spooled messages against a selector. The complexity of the selector can also increase the evaluation time. (For information on selectors and selector syntax, refer to <MadCap:xref href="Using-Selectors.htm">Using Selectors</MadCap:xref>.)</li>
+      <li>(Optional) To increase browsing performance, specify the maximum number of messages that the Browser can pre-fetch from the Queue and buffer locally through the Transport Window Size (JCSMP) or Window Size (.NET API) properties.</li>
+      <li>(Optional) Specify a maximum wait time-out (in milliseconds) before returning from a GetNext operation if no messages are available in the local message buffer through the <code>WaitTimeout</code> property.</li>
+    </ul>
+    <div class="Note">
+      <ul>
+        <li>If the Session is not already connected:
+				<ul><li>JavaScript/Node.js—the API will throw an error.</li><li>JCSMP—the API auto-connects the session and creates the browser instance.</li><li>C, C#, Java RTO—the operation depends on the property <code>FLOW_BIND_BLOCKING</code>. If this property is enabled, the default setting, the API blocks until the session is connected, otherwise the function call returns immediately  and waits for the session connect operation to complete. </li></ul></li>
+        <li>The life span of the Browser or Browser Flow is tied to the Session that it is created in. Therefore, closing a Session closes all Browsers created in that Session.</li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="receiving_guaranteed_messages_1016811797_645160"/>Creating Browser Flows</h2>
+    <p>To browse Guaranteed messages spooled for a Queue when using the C or Java RTO APIs, a client must create a Browser Flow in a Session.</p>
+    <p>To create a Browser Flow, use one of the methods listed below, and pass in the appropriate Flow properties:</p>
+    <table style="caption-side: top;width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Create Browser Flows</p>
+      </caption>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Call</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>CreateFlowForHandle(...)</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>solClient_session_createFlow(...)</code>
+              <br/>
+            </p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>When defining a new set of Flow properties for use with a Browser Flow, be sure to do the following:</p>
+    <ul>
+      <li>Specify the Queue that you want to browse. Only Queues can be browsed—Topic Endpoints cannot be browsed. For the Java RTO API, the Queue is specified when creating the Flow. For the C API, the Queue is set through the Flow properties.</li>
+      <li>Enable the property <code>FlowHandle.PROPERTIES.BROWSER</code> (for the Java RTO API) or <code>SOLCLIENT_FLOW_PROP_BROWSER</code> (for the C API) to configure the Flow as a Browser Flow rather than a standard Guaranteed message Flow. (For information on creating standard Flows, refer to <MadCap:xref href="Creating-Flows.htm">Creating Flows</MadCap:xref>).</li>
+      <li>Pass in a pointer to a structure that provides information on callback functions for messages and events that are received on this Browser Flow.</li>
+      <li>(Optional) Specify a selector string for the <code>Selector</code> property to only browse messages that match that selector. When a selector is used, the wait time-out can be significantly increased because it takes longer for the message bus to evaluate spooled messages against a selector. The complexity of the selector can also increase the evaluation time. (For information on selectors and selector syntax, refer to <MadCap:xref href="Using-Selectors.htm">Using Selectors</MadCap:xref>.)</li>
+      <li>(Optional) To increase browsing performance, specify the maximum number of messages that the Browser can pre-fetch from the Queue and buffer locally through the Window Size property.</li>
+    </ul>
+    <p class="Note">The life span of a Flow is tied to the Session that it is created in. Therefore, closing a Session closes all Browser Flows created in that Session. When a session is reconnected, a Browser Flow will rebind to its Session.</p>
+    <h3>Closing Browsers or Browser Flows</h3>
+    <p>To free allocated memory, it is important to close the Browser instance when the application is done with it.</p>
+    <table style="caption-side: top;width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Close Browsers or Browser Flows</p>
+      </caption>
+      <col width="121px" class="TableStyle-Table_Num-Column-Column1"/>
+      <col width="407px" class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Call</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>Browser.close()</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>FlowHandle.destroy()</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>solClient_flow_destroy(...)</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>IBrowser.Dispose()</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1" style="font-family: Arial;">JavaScript, Node.js</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1" style="font-family: Arial;">
+            <code>browser.disconnect()</code>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="receiving_guaranteed_messages_1016811797_555812"/>Browsing Messages with the JCSMP or .NET APIs</h2>
+    <p>To browse Guaranteed messages on a Queue when using the JCSMP or .NET API, do the following:</p>
+    <ol>
+      <li>Acquire a Browser instance.
+			<p>Refer to <MadCap:xref href="#receiving_guaranteed_messages_1016811797_666548">Creating Browsers</MadCap:xref>.</p></li>
+      <li>(Optional)To check if there is a message immediately available in the local message buffer, call a <code>HasMore</code> method.
+			<p>If at least one message is available in the local buffer, this method returns <code>true</code>. If it returns <code>false</code>, it does not necessarily mean that the Queue is empty, rather the local buffer does not currently contain any messages. Subsequent calls to <code>HasMore</code> or <code>GetNext</code> methods might return <code>true</code>, or return a message, respectively.</p><p class="Note">These methods are provided to support the enumeration pattern for <code>javax.jms.QueueBrowser</code> used by JMS implementations.</p></li>
+      <li>To look at a message in a Queue, call a <code>GetNext</code> method.
+			<ul><li><code>GetNext</code> is a synchronous operation that returns the full contents of a message (that is, complete with all message headers and payloads). Each call to <code>GetNext</code> returns the next message in the Queue (in order of oldest to newest).</li><li><code>GetNext</code> methods check the local buffer for messages. If a message is available, it returns immediately; if no message is available, the call returns null (when using the <code>GetNextNoWait()</code> method), or it waits for a message for up to a set amount of time (when using the <code>GetNext()</code> method).</li></ul><div class="Note"><p>Client applications should not make any assumptions about the polling strategy used by the API when browsing spooled messages. For example, when browsing messages, the API could be requesting more messages from the event broker or returning already buffered messages.</p></div></li>
+    </ol>
+    <h2 class="with-rule"><a name="receiving_guaranteed_messages_1016811797_637056"/>Browsing Messages with the Java RTO or C APIs</h2>
+    <p>To browse Guaranteed messages on a Queue when using the Java RTO or C APIs, do the following:</p>
+    <ol>
+      <li>Create a Browser Flow. (Refer to <MadCap:xref href="#receiving_guaranteed_messages_1016811797_645160">Creating Browser Flows</MadCap:xref>.)
+			<p>Messages are handled according to the referenced callback.</p></li>
+      <li>When the maximum number of messages set by the window size is reached, call <code>FlowHandle.start()</code> (for the Java RTO API) or <code>solClient_flow_start()</code> (for the C API) to reset the window so that more Guaranteed messages can be browsed.</li>
+    </ol>
+    <h2 class="with-rule"><a name="browsing_guaranteed_messages_js"/>Browsing Messages with the JavaScript or Node.js APIs</h2>
+    <p>To browse Guaranteed messages on a Queue when using the JavaScript or Node.js APIs, do the following:</p>
+    <ol>
+      <li>Create an object literal to set your queue browser properties.	The only required property is the <code>queueDescriptor</code> which is the name of the queue to browse, but you can also set: 
+				<ul><li><p><code>connectAttempts</code>—Gets and sets the maximum number of bind attempts when creating a connection to the Solace Message Router. The default is 3.</p></li><li><p><code>connectTimeoutInMsecs</code>—The bind timeout in milliseconds when creating a connection to the Solace Message Router. The default is 10000.</p></li><li><p><code>transportAcknowledgeThresholdPercentage</code>—The threshold for sending an acknowledgment, as a percentage. The default is 60.</p></li><li><p><code>transportAcknowledgeTimeoutInMsecs</code>—The transport acknowledgment timeout for guaranteed messaging in milliseconds. The default is 1000.</p></li><li><p><code>windowSize</code>—The window size for Guaranteed Message delivery. The default is 255.</p></li></ul><p>For more information about queue browser properties, see <a href="https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.QueueBrowserProperties.html" class="link-internal">solace.QueueBrowserProperties</a> in the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for JavaScript reference documentation. <br/></p><p>The example below shows a simple queue browser property object that contains only the queue name:</p><pre xml:space="preserve">
+const queueBrowserProps = {
+   queueDescriptor: { name: "queueName", type: solace.QueueType.QUEUE },  
+};</pre></li>
+      <li>Create a browser object with the <code>createQueueBrowser()</code> function, and connect it to the event broker with the <code>connect()</code> function.<pre xml:space="preserve">
+queuebrowser = session.createQueueBrowser(queueBrowserProps);
+queuebrowser.connect();</pre></li>
+      <li>(Optional) If you need to pause your queue browser for any reason, use the <code>stop()</code> function. To start your browser again use the <code>start()</code> function.<pre xml:space="preserve">
+queuebrowser.stop();
+// Perform any operation here, for example wait for 1 second to allow message processing to catch up: setTimeout(() =&gt; {}, 1000);
+queuebrowser.start();</pre></li>
+      <li>The queue browser is an event emitter, and you can chose which events your application subscribes to using event listeners:
+				<ul><li><code>solace.QueueBrowserEventName.UP</code>—The queue browser is connected.</li><li><code>solace.QueueBrowserEventName.DOWN</code>—The queue browser is disconnected.</li><li><code>solace.QueueBrowserEventName.DOWN_ERROR</code>—The queue browser was disconnected by the router, likely due to operator intervention.</li><li><code>solace.QueueBrowserEventName.MESSAGE</code>—A message was received on the queue browser. </li><li><code>solace.QueueBrowserEventName.DISPOSED</code>—The queue browser is disposed. No further events will be emitted.</li><li><code>solace.QueueBrowserEventName.GM_DISABLED</code>—The queue browser will not connect because the current session is incompatible with Guaranteed Messaging.</li><li><code>solace.QueueBrowserEventName.CONNECT_FAILED_ERROR</code>—The queue browser attempted to connect but was unsuccessful.</li></ul><p>For more information on queue browser events, see <a href="https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.QueueBrowserEventName.html" class="link-internal">solace.QueueBrowserEventName</a> in the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for JavaScript reference documentation.</p><p>To begin receiving browsed messages, create an event listener for <code>MESSAGE</code>. This listener will continue to receive browsed messages until the browser is stopped, disconnected or has received all the messages in a queue.  The following example shows an event listener for browsed messages:</p><pre xml:space="preserve">queuebrowser.on(solace.QueueBrowserEventName.MESSAGE, (message) =&gt; {
+   // the browsed message:
+   receivedMessage = message;
+   // If you want to remove the message from the queue:
+   queuebrowser.removeMessageFromQueue (receivedMessage);
+});</pre></li>
+    </ol>
+    <div class="Note">
+      <p>When there is no listener for <code>solace.QueueBrowserEventName.MESSAGE</code> on a <code>QueueBrowser</code>, messages are queued internally until a listener is added.</p>
+    </div>
+    <h2 class="with-rule"><a name="receiving_guaranteed_messages_1016811797_637048"/>Removing Messages When Browsing</h2>
+    <p>A client can selectively remove spooled Guaranteed messages while browsing a Queue. Removing browsed messages deletes them from the Queue, so that they can no longer be delivered to consuming clients (or redelivered if they were already delivered to consumers at some point).</p>
+    <p>Selectively removing messages when browsing can be useful in situations where an administrator wants to remove “stuck” Guaranteed messages from a Queue without modifying or disrupting existing consuming clients. A message can get stuck if:</p>
+    <ul>
+      <li>It has been received by a client, but that client has failed to acknowledge it. </li>
+      <li>All active message selectors have failed to match the message, so the message has not been delivered to any client.</li>
+    </ul>
+    <p>No confirmation is returned when a message is removed. Further, no error is returned if you try to remove a non-existent message or a message that has already been removed from a Queue.</p>
+    <p>To remove a browsed message do the following:</p>
+    <ul>
+      <li>When using the JCSMP, JavaScript, Node.js or .NET APIs, call one of the methods listed below for that message.</li>
+      <li>When using the Java RTO or C APIs, send an acknowledgment for the message that is received on the Browser Flow.</li>
+    </ul>
+    <table class="TableStyle-Table_Num" style="caption-side: top;width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Remove Browsed Messages</p>
+      </caption>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1" style="font-weight: normal;"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1" style="font-weight: normal;">Call</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>Browser.remove(BytesXMLMessage message)</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li>
+                <code>FlowHandle.ack(long adMsgId)</code>
+              </li>
+              <li>
+                <code>FlowHandle.ack(MessageHandle rxMsg)</code>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">
+              <code>solClient_flow_sendAck(solClient_opaqueFlow_pt opaqueFlow_p, solClient_msgId_t msgId)</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <ul>
+              <li>
+                <code>IBrowser.Remove(IMessage)</code>
+              </li>
+              <li>
+                <code>IBrowser.Remove(Int64)</code>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">JavaScript, Node.js</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <code>solace.QueueBrowser.removeMessageFromQueue(message)</code>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

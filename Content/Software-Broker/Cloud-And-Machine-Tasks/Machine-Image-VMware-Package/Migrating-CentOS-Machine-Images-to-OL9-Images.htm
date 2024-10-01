@@ -1,0 +1,885 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="Default.OnlyForPDF">
+  <head>
+    </head>
+  <body>
+    <h1>Upgrading a Machine Image Deployment to a CA Machine Image Deployment</h1>
+    <h2 class="with-rule">Prerequisites</h2>
+    <p>Before starting the procedure, upgrade your existing machine image instances to <MadCap:variable name="Product-Names.pubsub_brand_only"/> version 10.8.1 using the procedure documented in <a href="https://docs.solace.com/Software-Broker/SW-Broker-Upgrade/Machine-Upgrade-Current-Release.htm" target="_blank" class="link-offsite">Machine Upgrade</a>.</p>
+    <h3>Network and Redundancy</h3>
+    <p>To upgrade to the new CA machine image in-service, the redundancy configuration cannot change (making changes to the redundancy configuration requires a service outage). Before starting the procedure, confirm that the network identity of the three nodes that make up the HA group is configured in a way that can be transferred to the new hosts during the upgrade. The easiest way to do this is by a DNS update.</p>
+    <p>Run the following commands on all three nodes of the HA group to confirm that the network identities can be transferred to the new hosts:</p>
+    <pre xml:space="preserve">solace-primary# show redundancy group 
+Node Router-Name   Node Type       Address           Status 
+-----------------  --------------  ----------------  --------- 
+solace-primary*    Message-Router  ca-mi-primary     Online 
+solace-backup      Message-Router  ca-mi-backup      Online 
+solace-monitor     Monitor         ca-mi-monitor     Online 
+
+ * - indicates the current node </pre>
+    <p>If the identities of the nodes in the HA group are configured using DNS names, then you must update these DNS records to bring the new hosts into the HA group. If IP addresses are used, the process is more complicated because both hosts (new and old) must be running at the same time to transfer the configuration (unless the configuration can be transferred without the need to copy). After you transfer the configuration, you must shut down the existing node and transfer the IP address to the new host. Before starting the procedure, consider how the new hosts will join the cluster.</p>
+    <p>In addition, be aware that the router name of each event broker in the HA group must match the name given to each node in the redundancy group configuration.  By default, the router name is  inherited from the hostname assigned to the event broker.  When provisioning the new event broker instance (using the CA machine image) the hostname must be configured to be the same as the original instance (unless the router name was configured to be different from the hostname).</p>
+    <p>You should also verify if there are any other connections configured using IP addresses that might need to be updated if the IP address of the event broker changes.  Consider bridge connections that have an IP address configured as a connect-via address, replication, DMR or clients.</p>
+    <p>You can use the following commands  to check for connections to the new event broker instance that might be using IP addresses (run these commands  on the remote instances):</p>
+    <ul>
+      <li>
+        <p>
+          <code>show bridge * detail</code>
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>show cspf neighbor * detail</code>
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>show cluster * link * detail</code>
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>show replication stats</code>
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>show redundancy group</code>
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>show redundancy detail</code>
+        </p>
+      </li>
+    </ul>
+    <p>For more information about each command, see <a href="https://docs.solace.com/Admin-Ref/CLI-Reference/VMR_CLI_Commands.html" target="_blank" class="link-offsite">Command Line Interface Reference (Software Event Broker)</a> . </p>
+    <h3>Transferring Configuration and Message State</h3>
+    <p>The next thing to consider before starting the procedure is how to transfer the configuration and message state from the old node to the new host. There are several ways to do this depending on how the old node was created. With the storage-group (or individual storage elements), on a dedicated device (such as a vSAN volume) you can use hypervisor methods to attach the volume to the new host. If the storage from the old node cannot be attached to the new host, then you must copy the data using rsync.</p>
+    <p>To copy the data, you must first determine the source and target locations. The target location should have been identified while creating the new host. The source of the configuration and message state will depend on how the old node was created. If it was created using a single storage-group, then you can transfer everything in a single command. If it was configured by creating individual storage-elements, then you need to copy the elements one at a time and configure each storage element individually using <code>solacectl storage configure</code>.  If there are no special performance requirements for any of the storage elements, consider combining them into a single storage-group as a part of the transfer (see <a href="https://docs.solace.com/Software-Broker/Convert-to-Single-Storage-Element.htm" target="_blank" class="link-offsite">Converting from Multiple Mount Points to a Single Mount Point</a>).</p>
+    <p>You can find the locations of the storage-elements by logging into the old nodes host (<code>ssh -p 22 sysadmin@host</code>) and executing the following command:</p>
+    <pre>sudo solacectl storage ls </pre>
+    <p>Once you understand the locations of the storage-elements and their new locations for all three nodes, you can begin the upgrade process.</p>
+    <h2 class="with-rule">Procedure</h2>
+    <h3>Step 1: Verify the Redundancy Configuration </h3>
+    <p>Check the redundancy configuration on each node. </p>
+    <ol>
+      <li>
+        <p>Log into the <MadCap:variable name="Product-Names.solace_cli"/> of each node as an admin user.</p>
+      </li>
+      <li>
+        <p>Ensure the redundancy <code>Configuration Status</code> is <code>Enabled</code>, and the <code>Redundancy Status</code> is <code>Up</code> on each node. On <code>solace-primary</code> the <code>Message Spool Status</code> should be <code>AD-Active</code>, and on <code>solace-backup</code> the <code>Message Spool Status</code> should be <code>AD-Standby</code>.</p>
+        <pre>solace-primary# show redundancy 
+Configuration Status     : Enabled 
+Redundancy Status        : Up 
+Operating Mode           : Message Routing Node 
+Switchover Mechanism     : Hostlist 
+Auto Revert              : No 
+Redundancy Mode          : Active/Standby 
+Active-Standby Role      : Primary 
+Mate Router Name         : solace-backup 
+ADB Link To Mate         : Up 
+ADB Hello To Mate        : Up 
+
+Interface        Static Address           Status 
+---------------- ------------------------ ------ 
+intf0            192.168.133.91           Up 
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ---------------------- 
+Activity Status                Local Active            Shutdown 
+Redundancy Interface Status    Up 
+VRRP Status 
+  intf0                        Initialize 
+VRRP Priority                  250 
+Message Spool Status           AD-Active 
+Priority Reported By Mate      Standby</pre>
+        <pre xml:space="preserve">solace-backup# show redundancy 
+Configuration Status     : Enabled 
+Redundancy Status        : Up 
+Operating Mode           : Message Routing Node 
+Switchover Mechanism     : Hostlist 
+Auto Revert              : No 
+Redundancy Mode          : Active/Standby 
+Active-Standby Role      : Backup 
+Mate Router Name         : solace-primary 
+ADB Link To Mate         : Up 
+ADB Hello To Mate        : Up  
+
+Interface        Static Address           Status 
+---------------- ------------------------ ------ 
+intf0            192.168.134.58           Up  
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ---------------------- 
+Activity Status                Shutdown                Mate Active 
+Redundancy Interface Status                            Up 
+VRRP Status 
+  intf0                                                Initialize 
+VRRP Priority                                          100 
+Message Spool Status                                   AD-Standby 
+Priority Reported By Mate                              Active </pre>
+        <pre xml:space="preserve">solace-monitor# show redundancy 
+Configuration Status     : Enabled 
+Redundancy Status        : Up 
+Operating Mode           : Monitoring Node 
+Switchover Mechanism     : Hostlist 
+Auto Revert              : No 
+Redundancy Mode          : Active/Standby 
+Active-Standby Role      : None 
+Mate Router Name         : 
+ADB Link To Mate         : Down 
+ADB Hello To Mate        : Down  
+
+Interface        Static Address           Status 
+---------------- ------------------------ ------ 
+intf0            192.168.135.19           Up  
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ---------------------- 
+Activity Status                Shutdown                Shutdown 
+Redundancy Interface Status 
+VRRP Status 
+  intf0 
+VRRP Priority 
+Message Spool Status 
+Priority Reported By Mate</pre>
+      </li>
+    </ol>
+    <h3>Step 2: Upgrade the Monitoring Node</h3>
+    <p>Perform the following steps on the monitoring node:</p>
+    <ol>
+      <li>
+        <p>Log in to the machine image host of <code>solace-monitor</code> as <code>sysadmin</code>.</p>
+      </li>
+      <li>
+        <p>Stop the solace service:</p>
+        <pre>[sysadmin@solace-monitor ~]$ solacectl service stop </pre>
+      </li>
+      <li>
+        <p>Copy the configuration and state over from the monitoring node to the new virtual machine (VM).</p>
+        <p>On the machine image host, verify the location of the storage elements.</p>
+        <pre xml:space="preserve">[sysadmin@solace-monitor ~]$ sudo solacectl storage ls 
+Block Devices: 
+Name                      Size   Note 
+sda                       30.0G  Main device 
+└─sda1                    0.2G 
+└─sda2                    29.8G 
+
+Storage Volumes: 
+Name                      Size   Used   Available Path 
+/dev/mapper/vg01-solace   9.8G   125M   9.7G      /var/lib/docker/volumes 
+└─storage-group           9.8G   93M    9.7G      /var/lib/docker/volumes/storage-group/_data</pre>
+        <p>In this case, a single storage-group is configured that contains the data for all of the storage elements. This will be copied over to the new system.</p>
+        <p class="Note">If the instance was created with more than one storage-element; each must be copied individually to assemble the storage-group on the new system. For more information, see <MadCap:xref href="#Appendix">Upgrading an Event Broker That Uses Multiple Storage-Elements</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>Launch a new instance based on the CA machine image. </p>
+        <p class="Tip">For a tutorial that describes how to do this using VMware ESXI, see <MadCap:xref href="Machine-Image-Setup-OL9.htm">Setting Up CA Machine Images</MadCap:xref>. If you use the tutorial, stop after you complete <MadCap:xref href="Machine-Image-Setup-OL9.htm#Step-2-Import-Software-Broker">Step 2: Import the Software Event Broker</MadCap:xref>, because the rest of the steps in the tutorial are described in this procedure.</p>
+        <p>The new image must be deployed with an external block device that will be used to store the event broker state.  The new storage device will be provisioned with <code>solacectl</code> and the state copied from the existing instance to the new CA machine image instance.</p>
+        <p>Note that it may be possible to transfer the device containing the event broker’s state from the existing instance to the new instance using hypervisor methods to connect the volume to the new instance.  This procedure describes the more general case where the data must be copied from the existing instance to the new instance.</p>
+      </li>
+      <li>
+        <p>Log in to the new instance via SSH to port 22.</p>
+        <p>You will be required to change the sysadmin account password on first login.</p>
+        <pre>$ ssh sysadmin@new-monitor
+Solace PubSub+ Enterprise
+Password: sysadmin
+You are required to change your password immediately (administrator enforced).
+Current password: sysadmin
+New password: xxxxxxxx
+Retype new password: xxxxxxxx</pre>
+      </li>
+      <li>
+        <p>Verify that the solace service is stopped.</p>
+        <pre>[sysadmin@solace ~]$ solacectl service status
+PubSub+ Application solace is disabled
+PubSub+ Application solace status: False</pre>
+      </li>
+      <li>
+        <p>Configure the storage on the new instance.</p>
+        <p>Find the device name of the secondary storage.</p>
+        <pre xml:space="preserve">[sysadmin@solace ~]$ sudo solacectl storage ls
+Block Devices:
+Name                      Size   Note
+sda                       30.0G  Main device
+└─sda1                    0.5G
+└─sda2                    29.5G
+sdb                       9.77G
+
+Storage Volumes:
+Name                      Size   Used   Available Path</pre>
+        <p>From the output of <code>solacectl storage ls</code> you can see device <code>sdb</code> is a secondary storage with a size of 9.77GB. Next, use <code>solacectl</code> to provision the secondary storage.</p>
+        <pre>[sysadmin@solace ~]$ sudo solacectl storage configure sdb storage-group
+Creating new partition...
+Mounting /dev/sdb1
+Attempting to create new volume storage-group
+Volumes have been configured in the new block device.</pre>
+        <p>Then verify that the storage was provisioned correctly.</p>
+        <pre xml:space="preserve">[sysadmin@solace ~]$ sudo solacectl storage ls
+Block Devices:
+Name                      Size   Note
+sda                       30.0G  Main device
+└─sda1                    0.5G
+└─sda2                    29.5G
+sdb                       9.77G
+└─sdb1                    9.76G
+
+Storage Volumes:
+Name                      Size   Used   Available Path
+/dev/sdb1                 9.8G   33M    9.7G      /mnt/sdb1
+└─storage-group           9.8G   0      9.7G      /mnt/sdb1/storage-group</pre>
+        <p>The secondary storage is mounted at <code>/mnt/sdb1/storage-group</code>.</p>
+      </li>
+      <li>
+        <p>Copy the event broker state from the original instance.</p>
+        <p>From the new system:</p>
+        <pre>[sysadmin@solace ~]$ sudo rsync --rsync-path="sudo rsync" -av sysadmin@solace-monitor:/var/lib/docker/volumes/storage-group/_data/ /mnt/sdb1/storage-group</pre>
+        <p>This command transfers the configuration and message state from the old instance to the new instance.</p>
+      </li>
+      <li>
+        <p>Shut down the VM that the original monitoring event broker instance runs on.</p>
+      </li>
+      <li>
+        <p>Update the DNS record to point to the new host.</p>
+      </li>
+      <li>
+        <p>Configure the hostname with <code>solacectl</code>.</p>
+        <pre>[sysadmin@solace ~]$ sudo solacectl hostname configure solace-monitor</pre>
+      </li>
+      <li>
+        <p>Start the event broker service using <code>solacectl</code></p>
+        <pre>[sysadmin@solace ~]$ solacectl service start</pre>
+      </li>
+      <li>
+        <p>Log in to the <MadCap:variable name="Product-Names.solace_cli"/> and verify that redundancy is <code>Up</code> on all three nodes.</p>
+        <pre xml:space="preserve">solace-monitor# show redundancy
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Monitoring Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : None
+Mate Router Name         :
+ADB Link To Mate         : Down
+ADB Hello To Mate        : Down
+
+Interface        Static Address           Status
+---------------- ------------------------ ------
+intf0            192.168.133.93           Up
+
+                              Primary Virtual Router  Backup Virtual Router
+                              ----------------------  ----------------------
+Activity Status               Shutdown                Shutdown
+Redundancy Interface Status
+VRRP Status
+  intf0
+VRRP Priority
+Message Spool Status
+Priority Reported By Mate</pre>
+        <pre xml:space="preserve">solace-primary# show redundancy
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Message Routing Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : Primary
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+Interface        Static Address           Status
+---------------- ------------------------ ------
+intf0            192.168.133.91           Up
+
+                               Primary Virtual Router Backup Virtual Router
+                               ---------------------- ----------------------
+Activity Status                Local Active           Shutdown
+Redundancy Interface Status    Up
+VRRP Status
+  intf0                        Initialize
+VRRP Priority                  250
+Message Spool Status           AD-Active
+Priority Reported By Mate      Standby</pre>
+        <pre xml:space="preserve">solace-backup# show redundancy
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Message Routing Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : Backup
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+Interface        Static Address           Status
+---------------- ------------------------ ------
+intf0            192.168.134.58           Up
+
+                               Primary Virtual Router Backup Virtual Router
+                               ---------------------- ----------------------
+Activity Status                Shutdown               Mate Active
+Redundancy Interface Status                           Up
+VRRP Status
+  intf0                                               Initialize
+VRRP Priority                                         100
+Message Spool Status                                  AD-Standby
+Priority Reported By Mate                             Active</pre>
+      </li>
+    </ol>
+    <p>The monitor node has now been upgraded. </p>
+    <h3>Step 3: Upgrade the Backup Node</h3>
+    <p>Perform the following steps on the backup node:</p>
+    <ol>
+      <li>
+        <p>Log in to the machine image host of <code>solace-backup</code> as <code>sysadmin</code>.</p>
+      </li>
+      <li>
+        <p>Stop the solace service.</p>
+        <pre xml:space="preserve">[sysadmin@solace-backup ~]$ solacectl service stop</pre>
+      </li>
+      <li>
+        <p>Prepare to copy the configuration and state over from the backup node to the new VM.</p>
+        <p>On the machine image host, verify the location of the storage elements.</p>
+        <pre xml:space="preserve">[sysadmin@solace-backup ~]$ sudo solacectl storage ls
+Block Devices:
+Name                      Size   Note
+sda                       30.0G  Main device
+└─sda1                    0.2G
+└─sda2                    29.8G
+
+Storage Volumes:
+Name                      Size   Used   Available Path
+/dev/mapper/vg01-solace   9.8G   1.9G   8.0G      /var/lib/docker/volumes
+└─storage-group           9.8G   1.8G   8.0G      /var/lib/docker/volumes/storage-group/_data
+</pre>
+        <p>In this case, a single storage-group is configured that contains the data for all of the storage elements. This will be copied over to the new system.</p>
+        <p class="Note">If the instance was created with more than one storage-element; each must be copied individually to assemble the storage-group on the new system. For more information, see <MadCap:xref href="#Appendix">Upgrading an Event Broker That Uses Multiple Storage-Elements</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>Launch a new instance based on the CA machine image. </p>
+        <p class="Tip">For a tutorial that describes how to do this using VMware ESXI, see <MadCap:xref href="Machine-Image-Setup-OL9.htm">Setting Up CA Machine Images</MadCap:xref>. If you use the tutorial, stop after you complete <MadCap:xref href="Machine-Image-Setup-OL9.htm#Step-2-Import-Software-Broker">Step 2: Import the Software Event Broker</MadCap:xref>, because the rest of the steps in the tutorial are described in this procedure.</p>
+        <p>As with the monitor, the new image must be deployed with an external block device that will be used to store the event broker state. The new storage device will be provisioned with <code>solacectl</code> and the state copied from the existing instance to the new CA machine image instance.</p>
+      </li>
+      <li>
+        <p>Log in to the new instance via ssh to port 22.</p>
+        <p>You will be required to change the sysadmin account password on first login.</p>
+        <pre>$ ssh sysadmin@new-backup
+Solace PubSub+ Enterprise
+Password:
+You are required to change your password immediately (administrator enforced).
+Current password:
+New password:
+Retype new password:
+</pre>
+      </li>
+      <li>
+        <p>Verify that the solace service is stopped.</p>
+        <pre>[sysadmin@solace  ~]$ solacectl service status
+PubSub+ Application solace is disabled
+PubSub+ Application solace status: False
+</pre>
+      </li>
+      <li>
+        <p>Configure the storage on the new instance.</p>
+        <p>Find the device name of the secondary storage.</p>
+        <pre xml:space="preserve">[sysadmin@solace ~]$ sudo solacectl storage ls
+Block Devices:
+Name                      Size   Note
+sda                       30.0G  Main device
+└─sda1                    0.5G
+└─sda2                    29.5G
+sdb                       9.77G
+
+Storage Volumes:
+Name                      Size   Used   Available Path
+</pre>
+        <p>From the output of <code>solacectl storage ls</code> you can see device <code>sdb</code> is a secondary storage with a size of 9.77GB. Next, use <code>solacectl</code> to provision the secondary storage.</p>
+        <pre>[sysadmin@solace ~]$ sudo solacectl storage configure sdb storage-group
+Creating new partition...
+Mounting /dev/sdb1
+Attempting to create new volume storage-group
+Volumes have been configured in the new block device.
+</pre>
+        <p>Then verify that the storage was provisioned correctly.</p>
+        <pre xml:space="preserve">[sysadmin@solace ~]$ sudo solacectl storage ls
+Block Devices:
+Name                      Size   Note
+sda                       30.0G  Main device
+└─sda1                    0.5G
+└─sda2                    29.5G
+sdb                       9.77G
+└─sdb1                    9.76G
+
+Storage Volumes:
+Name                      Size   Used   Available Path
+/dev/sdb1                 9.8G   33M    9.7G      /mnt/sdb1
+└─storage-group           9.8G   0      9.7G      /mnt/sdb1/storage-group
+</pre>
+        <p>The secondary storage is mounted at <code>/mnt/sdb1/storage-group</code>.</p>
+      </li>
+      <li>
+        <p>Copy the event broker state from the original instance.</p>
+        <p>From the new system:</p>
+        <pre>[sysadmin@solace ~]$ sudo rsync --rsync-path="sudo rsync" -av sysadmin@solace-backup:/var/lib/docker/volumes/storage-group/_data/ /mnt/sdb1/storage-group</pre>
+        <p>This command transfers the configuration and message state from the old instance to the new VM.</p>
+      </li>
+      <li>
+        <p>Shut down the VM that the original backup event broker instance runs on.</p>
+      </li>
+      <li>
+        <p>Update the DNS record to point to the new host.</p>
+      </li>
+      <li>
+        <p>Configure the hostname with <code>solacectl</code>.</p>
+        <pre>[sysadmin@solace ~]$ sudo solacectl hostname configure solace-backup</pre>
+      </li>
+      <li>
+        <p>Start the event broker service using <code>solacectl</code>.</p>
+        <pre>[sysadmin@solace ~]$ solacectl service start</pre>
+      </li>
+      <li>
+        <p>Log into the <MadCap:variable name="Product-Names.solace_cli"/> and check that redundancy is up on all three nodes.</p>
+        <pre>solace-backup# show redundancy
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Message Routing Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : Backup
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+Interface        Static Address           Status
+---------------- ------------------------ ------
+intf0            192.168.135.19           Up
+
+                               Primary Virtual Router  Backup Virtual Router
+                               ----------------------  ----------------------
+Activity Status                Shutdown                Mate Active
+Redundancy Interface Status                            Up
+VRRP Status
+  intf0                                                Initialize
+VRRP Priority                                          100
+Message Spool Status                                   AD-Standby
+Priority Reported By Mate                              Active
+</pre>
+        <pre>solace-primary# show redundancy
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Message Routing Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : Primary
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+Interface        Static Address           Status
+---------------- ------------------------ ------
+intf0            192.168.133.91           Up
+
+                               Primary Virtual Router  Backup Virtual Router
+                               ----------------------  ----------------------
+Activity Status                Local Active            Shutdown
+Redundancy Interface Status    Up
+VRRP Status
+  intf0                        Initialize
+VRRP Priority                  250
+Message Spool Status           AD-Active
+Priority Reported By Mate      Standby
+</pre>
+        <pre xml:space="preserve">solace-monitor# show redundancy
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Monitoring Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : None
+Mate Router Name         :
+ADB Link To Mate         : Down
+ADB Hello To Mate        : Down
+
+Interface        Static Address           Status
+---------------- ------------------------ ------
+intf0            192.168.133.93           Up
+
+                               Primary Virtual Router  Backup Virtual Router
+                               ----------------------  ----------------------
+Activity Status                Shutdown                Shutdown
+Redundancy Interface Status
+VRRP Status
+  intf0
+VRRP Priority
+Message Spool Status
+Priority Reported By Mate
+</pre>
+      </li>
+    </ol>
+    <p>The backup node has now been upgraded.</p>
+    <h3>Step 4: Upgrade the Primary Node</h3>
+    <p>Perform the following steps on the primary node:</p>
+    <ol>
+      <li>
+        <p>Log in to the primary event broker and release activity.</p>
+        <p>Fail over to the new backup node by logging into the <MadCap:variable name="Product-Names.solace_cli"/> of the active node as <code>admin</code> user and releasing activity:</p>
+        <pre>solace-primary&gt; enable
+solace-primary# configure
+solace-primary(configure)# redundancy release-activity
+solace-primary(configure)# show redundancy
+Configuration Status     : Enabled-Released
+Redundancy Status        : Down
+Operating Mode           : Message Routing Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : Primary
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+Interface        Static Address           Status
+---------------- ------------------------ ------
+intf0            192.168.133.91           Up
+
+                               Primary Virtual Router  Backup Virtual Router
+                               ----------------------  ----------------------
+Activity Status                Mate Active             Shutdown
+Redundancy Interface Status    Up
+VRRP Status
+  intf0                        Initialize
+VRRP Priority                  0
+Message Spool Status           AD-NotReady
+Priority Reported By Mate      Active
+</pre>
+        <p>The primary node (previously active) now shows <code>Activity Status</code> as <code>Mate Active</code>.</p>
+      </li>
+      <li>
+        <p>Log in to the new backup node and verify that it has taken activity.</p>
+        <pre>Solace-backup# show redundancy
+Configuration Status     : Enabled
+Redundancy Status        : Down
+Operating Mode           : Message Routing Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : Backup
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+Interface        Static Address           Status
+---------------- ------------------------ ------
+intf0            192.168.135.19           Up
+
+                               Primary Virtual Router  Backup Virtual Router
+                               ----------------------  ----------------------
+Activity Status                Shutdown                Local Active
+Redundancy Interface Status                            Up
+VRRP Status
+  intf0                                                Initialize
+VRRP Priority                                          240
+Message Spool Status                                   AD-Active
+Priority Reported By Mate                              Release
+</pre>
+        <p>The backup node (previously standby) now shows <code>Activity Status</code> as <code>Local Active</code>.</p>
+      </li>
+      <li>
+        <p>Log out and log back into the old primary node as <code>sysadmin</code>.</p>
+      </li>
+      <li>
+        <p>Stop the solace service:</p>
+        <pre>[sysadmin@solace-primary ~]$ solacectl service stop</pre>
+      </li>
+      <li>
+        <p>Prepare to copy the configuration and state over from the primary node to the new VM.</p>
+        <p>On the machine image host, verify the location of the storage elements.</p>
+        <pre xml:space="preserve">[sysadmin@solace-primary ~]$ sudo solacectl storage ls
+Block Devices:
+Name                      Size   Note
+sda                       30.0G  Main device
+└─sda1                    0.2G
+└─sda2                    29.8G
+
+Storage Volumes:
+Name                      Size   Used   Available Path
+/dev/mapper/vg01-solace   9.8G   1.5G   8.4G      /var/lib/docker/volumes
+└─storage-group           9.8G   1.5G   8.4G      /var/lib/docker/volumes/storage-group/_data
+</pre>
+        <p>In this case, a single storage-group is configured that contains the data for all of the storage elements. This will be copied over to the new system.</p>
+        <p class="Note">If the instance was created with more than one storage-element; each must be copied individually to assemble the storage-group on the new system. For more information, see <MadCap:xref href="#Appendix">Upgrading an Event Broker That Uses Multiple Storage-Elements</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>Launch a new instance based on the CA machine image. </p>
+        <p class="Tip">For a tutorial that describes how to do this using VMware ESXI, see <MadCap:xref href="Machine-Image-Setup-OL9.htm">Setting Up CA Machine Images</MadCap:xref>. If you use the tutorial, stop after you complete <MadCap:xref href="Machine-Image-Setup-OL9.htm#Step-2-Import-Software-Broker">Step 2: Import the Software Event Broker</MadCap:xref>, because the rest of the steps in the tutorial are described in this procedure.</p>
+        <p>As with the monitor and backup, the new image must be deployed with an external block device that will be used to store the event broker state. The new storage device will be provisioned with <code>solacectl</code> and the state copied from the existing instance to the new CA machine image instance.</p>
+      </li>
+      <li>
+        <p>Log in to the new instance via SSH to port 22.</p>
+        <p>You will be required to change the sysadmin account password on first login.</p>
+        <pre>$ ssh sysadmin@new-primary
+Solace PubSub+ Enterprise
+Password:
+You are required to change your password immediately (administrator enforced).
+Current password:
+New password:
+Retype new password:
+</pre>
+      </li>
+      <li>
+        <p>Verify that the solace service is stopped.</p>
+        <pre>[sysadmin@solace ~]$ solacectl service status 
+PubSub+ Application solace is disabled
+PubSub+ Application solace status: False
+</pre>
+      </li>
+      <li>
+        <p>Configure the storage on the new instance.</p>
+        <p>Find the device name of the secondary storage.</p>
+        <pre xml:space="preserve">[sysadmin@solace ~]$ sudo solacectl storage ls
+Block Devices:
+Name                      Size   Note
+sda                       30.0G  Main device
+└─sda1                    0.5G
+└─sda2                    29.5G
+sdb                       9.77G
+
+Storage Volumes:
+Name                      Size   Used   Available Path
+</pre>
+        <p>From the output of <code>solacectl storage ls</code> you can see device <code>sdb</code> is a secondary storage with a size of 9.77GB. Next, use <code>solacectl</code> to provision the secondary storage.</p>
+        <pre>[sysadmin@solace ~]$ sudo solacectl storage configure sdb storage-group
+Creating new partition...
+Mounting /dev/sdb1
+Attempting to create new volume storage-group
+Volumes have been configured in the new block device.
+</pre>
+        <p>Then verify that the storage was provisioned correctly.</p>
+        <pre xml:space="preserve">[sysadmin@solace ~]$ sudo solacectl storage ls
+Block Devices:
+Name                      Size   Note
+sda                       30.0G  Main device
+└─sda1                    0.5G
+└─sda2                    29.5G
+sdb                       9.77G
+└─sdb1                    9.76G
+
+Storage Volumes:
+Name                      Size   Used   Available Path
+/dev/sdb1                 9.8G   33M    9.7G      /mnt/sdb1
+└─storage-group           9.8G   0      9.7G      /mnt/sdb1/storage-group
+</pre>
+        <p>The secondary storage is mounted at <code>/mnt/sdb1/storage-group</code>.</p>
+      </li>
+      <li>
+        <p>Copy the event broker state from the original instance.</p>
+        <p>From the new system:</p>
+        <pre>[sysadmin@solace ~]$ sudo rsync --rsync-path="sudo rsync" -av sysadmin@solace-primary:/var/lib/docker/volumes/storage-group/_data/ /mnt/sdb1/storage-group</pre>
+        <p>This command transfers the configuration and message state from the old instance to the new instance.</p>
+      </li>
+      <li>
+        <p>Shut down the VM that the original primary event broker instance runs on.</p>
+      </li>
+      <li>
+        <p>Update the DNS record to point to the new host.</p>
+      </li>
+      <li>
+        <p>Configure the hostname with <code>solacectl</code></p>
+        <pre>[sysadmin@solace ~]$ sudo solacectl hostname configure solace-primary</pre>
+      </li>
+      <li>
+        <p>Start the event broker service using <code>solacectl</code></p>
+        <pre>[sysadmin@solace ~]$ solacectl service start</pre>
+      </li>
+      <li>
+        <p>Re-enable redundancy.</p>
+        <pre>solace-primary&gt; enable
+solace-primary# configure
+solace-primary(configure)# redundancy
+solace-primary(configure/redundancy)# no release-activity
+</pre>
+        <p>Log in to the backup event broker and revert activity (if you want the primary node to be active in the final state).</p>
+        <pre>solace-backup&gt; enable
+solace-backup# admin
+solace-backup(admin)# redundancy revert-activity
+</pre>
+      </li>
+      <li>
+        <p>Log in to the <MadCap:variable name="Product-Names.solace_cli"/> and verify that redundancy is up on all three nodes</p>
+        <pre>solace-primary# show redundancy
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Message Routing Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : Primary
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+Interface        Static Address           Status
+---------------- ------------------------ ------
+intf0            192.168.134.58           Up
+
+                               Primary Virtual Router  Backup Virtual Router
+                               ----------------------  ----------------------
+Activity Status                Local Active            Shutdown
+Redundancy Interface Status    Up
+VRRP Status
+  intf0                        Initialize
+VRRP Priority                  250
+Message Spool Status           AD-Active
+Priority Reported By Mate      Standby
+</pre>
+        <pre xml:space="preserve">solace-backup# show redundancy
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Message Routing Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : Backup
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+Interface        Static Address           Status
+---------------- ------------------------ ------
+intf0            192.168.135.19           Up
+
+                               Primary Virtual Router  Backup Virtual Router
+                               ----------------------  ----------------------
+Activity Status                Shutdown                Mate Active
+Redundancy Interface Status                            Up
+VRRP Status
+  intf0                                                Initialize
+VRRP Priority                                          100
+Message Spool Status                                   AD-Standby
+Priority Reported By Mate                              Active
+</pre>
+        <pre>solace-monitor# show redundancy
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Operating Mode           : Monitoring Node
+Switchover Mechanism     : Hostlist
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : None
+Mate Router Name         :
+ADB Link To Mate         : Down
+ADB Hello To Mate        : Down
+
+Interface        Static Address           Status
+---------------- ------------------------ ------
+intf0            192.168.133.93           Up
+
+                               Primary Virtual Router  Backup Virtual Router
+                               ----------------------  ----------------------
+Activity Status                Shutdown                Shutdown
+Redundancy Interface Status
+VRRP Status
+  intf0
+VRRP Priority
+Message Spool Status
+Priority Reported By Mate
+</pre>
+        <p>Verify that Config-Sync is <code>Up</code>.</p>
+        <pre xml:space="preserve">solace-primary# show config-sync
+
+Admin Status                      : Enabled
+Oper Status                       : Up
+SSL Enabled                       : No
+Authentication
+  Client Certificate
+    Maximum Chain Depth           : 3
+    Validate Certificate Dates    : Enabled
+    Server Certificate Configured : No
+Client-Profile
+  TCP
+    MSS                           : 1460
+    Initial Window                : 2
+    Maximum Window                : 256   KB
+    Keepalive
+      Count                       : 5
+      Idle                        : 3     seconds
+      Interval                    : 1     seconds
+Client
+  Name                            : #config-sync/solace-primary
+  Connection State                : Connected
+  Last Fail Reason                :
+Synchronize
+  Username                        : Yes
+</pre>
+      </li>
+    </ol>
+    <p>The primary event broker has been upgraded and the HA group has been restored.</p>
+    <h2 class="with-rule"><a name="Appendix"/>Upgrading an Event Broker That Uses Multiple Storage-Elements</h2>
+    <p>In this case, the output of <code>solacectl storage ls</code> indicates that the system’s state is stored in multiple storage elements rather than a single storage-group.  Each one of these storage elements must be copied over to the new instance.  The storage-group can be assembled as a part of this process to be used by the new system.</p>
+    <pre xml:space="preserve">[sysadmin@solace-primary ~]$ sudo solacectl storage ls
+Block Devices:
+Name                      Size   Note
+sda                       30.0G  Main device
+└─sda1                    0.2G
+└─sda2                    29.8G
+
+Storage Volumes:
+Name                      Size   Used   Available Path
+/dev/mapper/vg01-solace   9.8G   1.4G   8.5G      /var/lib/docker/volumes
+├─adb                     9.8G   1.3G   8.5G      /var/lib/docker/volumes/adb/_data
+├─adbBackup               9.8G   0      8.5G      /var/lib/docker/volumes/adbBackup/_data
+├─diagnostics             9.8G   3.0M   8.5G      /var/lib/docker/volumes/diagnostics/_data
+├─internalSpool           9.8G   12K    8.5G      /var/lib/docker/volumes/internalSpool/_data
+├─jail                    9.8G   496K   8.5G      /var/lib/docker/volumes/jail/_data
+└─var                     9.8G   50M    8.5G      /var/lib/docker/volumes/var/_data
+</pre>
+    <p>Launch the new system and log in as previously described.</p>
+    <p>Provision the new storage-group as previously described.</p>
+    <pre xml:space="preserve">[sysadmin@solace ~]$ sudo solacectl storage ls
+Block Devices:
+Name                      Size   Note
+sda 		           30.0G  Main device
+└─sda1 	           0.5G
+└─sda2                    29.5G
+sdb 		           9.77G
+Storage Volumes:
+Name 		           Size   Used   Available Path
+</pre>
+    <p>From the output of <code>solacectl storage ls</code> you can see device <code>sdb</code> is a secondary storage with a size of 9.77GB. Next, use <code>solacectl</code> to provision the secondary storage.</p>
+    <pre>[sysadmin@solace ~]$ sudo solacectl storage configure sdb storage-group
+Creating new partition...
+Mounting /dev/sdb1
+Attempting to create new volume storage-group
+Volumes have been configured in the new block device.
+</pre>
+    <p>Then verify that the storage was provisioned correctly.</p>
+    <pre xml:space="preserve">[sysadmin@solace ~]$ sudo solacectl storage ls
+Block Devices:
+Name                      Size   Note
+sda 		           30.0G  Main device
+└─sda1 		   0.5G
+└─sda2                    29.5G
+sdb 			   9.77G
+└─sdb1 		   9.76G
+Storage Volumes:
+Name 			   Size   Used   Available Path
+/dev/sdb1 		   9.8G   33M    9.7G      /mnt/sdb1
+└─storage-group 	   9.8G   0      9.7G      /mnt/sdb1/storage-group
+</pre>
+    <p>From the new host, copy each storage element to the new location in the storage-group.</p>
+    <pre>[sysadmin@solace ~]$ sudo rsync --rsync-path="sudo rsync" -av sysadmin@solace-monitor:/var/lib/docker/volumes/adb/_data/           /mnt/sdb1/storage-group/adb</pre>
+    <pre>[sysadmin@solace ~]$ sudo rsync --rsync-path="sudo rsync" -av sysadmin@solace-monitor:/var/lib/docker/volumes/adbBackup/_data/     /mnt/sdb1/storage-group/adbBackup</pre>
+    <pre>[sysadmin@solace ~]$ sudo rsync --rsync-path="sudo rsync" -av sysadmin@solace-monitor:/var/lib/docker/volumes/diagnostics/_data/   /mnt/sdb1/storage-group/diagnostics</pre>
+    <pre>[sysadmin@solace ~]$ sudo rsync --rsync-path="sudo rsync" -av sysadmin@solace-monitor:/var/lib/docker/volumes/internalSpool/_data/ /mnt/sdb1/storage-group/internalSpool</pre>
+    <pre>[sysadmin@solace ~]$ sudo rsync --rsync-path="sudo rsync" -av sysadmin@solace-monitor:/var/lib/docker/volumes/jail/_data/          /mnt/sdb1/storage-group/jail</pre>
+    <pre>[sysadmin@solace ~]$ sudo rsync --rsync-path="sudo rsync" -av sysadmin@solace-monitor:/var/lib/docker/volumes/var/_data/           /mnt/sdb1/storage-group/var</pre>
+    <p>At this point, the state from the original system has been transferred to the new system.</p>
+  </body>
+</html>

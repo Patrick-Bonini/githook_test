@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Installing <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.cloud_product_titlecase"/></MadCap:conditionalText> in Google Kubernetes Engine (GKE)</h1>
+    <p>Google Kubernetes Engine (GKE) is a secure and fully managed Kubernetes service that maximizes your operational efficiency. Google takes care of the underlying infrastructure of your entire cluster, including nodes. For more information about GKE, see the
+                <a href="https://cloud.google.com/kubernetes-engine" class="link-offsite" target="_blank">Google Kubernetes Engine</a> documentation.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/k8s-environment-specific-intro.flsnp"/>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/solace-k8s-terraforms.flsnp"/>
+    <p><MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">The process to deploy <MadCap:variable name="Product-Names.broker_cloud_short"/>s in a GKE private data <MadCap:annotation MadCap:createDate="2022-10-07T15:35:28.1713176-04:00" MadCap:creator="GilYu" MadCap:initials="GI" MadCap:comment="Delete to go with flow" MadCap:editor="GilYu" MadCap:editDate="2022-10-07T15:35:29.6595005-04:00">center</MadCap:annotation> is completed in collaboration with a <MadCap:variable name="Variables.CompanyName"/> representative. </MadCap:conditionalText>The steps that you (the customer) perform are as follows:</p>
+    <ol>
+      <li>Create the cluster as described in <MadCap:xref href="#gke-prerequsites">GKE Cluster Specifications</MadCap:xref>.</li>
+      <li class="link-internal" MadCap:conditions="Default.HideFromAllOutput">
+        <a href="#deploy-cloud-agent-aks" class="link-internal">Deploy the <MadCap:variable name="Product-Names.cloud_agent_short"/></a>
+        <MadCap:annotation MadCap:createDate="2022-10-07T15:35:04.3897210-04:00" MadCap:creator="GilYu" MadCap:initials="GI" MadCap:comment="Delete to go with flow" MadCap:editor="GilYu" MadCap:editDate="2022-10-07T15:35:04.9736403-04:00">.</MadCap:annotation>
+      </li>
+    </ol>
+    <h2><a name="gke-prerequsites"/>GKE Cluster Specifications</h2>
+    <p>Before you (the customer) install the <MadCap:variable name="Product-Names.cloud_agent_short"/>, you must configure the GKE cluster with the technical specifications listed in the sections that follow which include these areas:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#networking">Networking</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#vpc">VPC and Subnet</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#cloud-nat">NAT Gateway</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#cluster">Cluster</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#node-pools">Node Pools</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#storage-class">Storage Class</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Autoscaling">Autoscaling</MadCap:xref>
+      </li>
+    </ul>
+    <p>When created with these specifications, the GKE cluster has multiple node pools, and  is designed to be auto-scaled when new <MadCap:variable name="Product-Names.broker_cloud_short"/>s are created. Each node pool provides the exact resources required by each plan to help optimize the cluster's utilization.</p>
+    <p class="Note">If you have configured your GKE cluster to use Dataplane v2, you must use <MadCap:variable name="Product-Names.broker_cloud_short"/> versions 10.3 and later. Dataplane v2 is an optimized dataplane for GKE clusters that offers some advantages, including scalability, built in security and logging, and consistency across clusters. For more information, see <a href="https://cloud.google.com/kubernetes-engine/docs/concepts/dataplane-v2" target="_blank" class="link-offsite">About Dataplane v2 in the Google Kubernetes (GKE) documentation</a>. <MadCap:variable name="Variables.CompanyName"/> does not support Dataplane v2 with <MadCap:variable name="Product-Names.broker_cloud_short"/>s prior to version 10.3.</p>
+    <h4><a name="networking"/>Networking</h4>
+    <p>The cluster requires a VPC with a subnet. We recommend a private cluster with public access to the master, which will also require a NAT gateway (created using Cloud NAT) set up to allow the pods on the worker nodes to access the internet to communicate with <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.cloud_product_long"/></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><MadCap:variable name="Product-Names.cloud_product_firstuse"/></MadCap:conditionalText>  and DataDog. </p>
+    <p>For subnet IP address range sizing, there are three IP address ranges that must exist in the subnet to support a GKE cluster: the primary address range, which is used by the worker nodes in the cluster, a secondary range that is used for pods, and another secondary range that is used used for services. For more information, see <a href="https://cloud.google.com/kubernetes-engine/docs/how-to/alias-ips" rel="nofollow" target="_blank" class="link-offsite">Creating a VPC-native cluster</a> in the Google Cloud documentation.</p>
+    <p>There are two options here:</p>
+    <ul>
+      <li>If the VPC will not be peered with any other VPC, then only the primary IP range must be provided for the subnet and the secondary IP ranges will be auto-configured by GCP.</li>
+      <li>If the VPC will be peered, then the ranges must not conflict with the peered VPC(s), so it's best to provide the primary and both secondary ranges manually.</li>
+    </ul>
+    <p>The specifications for the three IP address ranges are listed below.</p>
+    <p class="Note">Provided there is sufficient space, all address ranges can be increased in size at any time if more capacity is required.</p>
+    <dl>
+      <dt>Primary IP Range</dt>
+      <dd>
+        <p>To determine this required size of the primary IP address range, determine the total number of enterprise and developer services that are expected to be created in the cluster. For each enterprise (HA) services, 3 nodes are required, and for each developer 1 node is required. There are also 3 nodes in the system pool. So:</p>
+        <pre>node count = 3 * enterprise + 1 * developer + 3 (for the system node pool)</pre>
+        <p>If 10 enterprise service are required, and 10 developers, then 43 total nodes are required.</p>
+        <p>Once the required node count is determined, you can look up the required size of the primary IP range using <a href="https://cloud.google.com/kubernetes-engine/docs/how-to/alias-ips#cluster_sizing_primary_range" rel="nofollow" target="_blank" class="link-offsite">this table</a> in the Google documentation.</p>
+        <p>We always recommend that you err on the side of caution and make the IP range bigger than what is calculated to allow for any unplanned future expansion.</p>
+      </dd>
+      <dt>Secondary IP Range (Pods)</dt>
+      <dd>
+        <p class="Note">This calculation is required only if the secondary subnet IP ranges are not auto-generated by GCP.</p>
+        <p>The secondary IP address range for pods is based on the maximum pods per node, and the number of nodes in the cluster. If limiting the size of the IP range is a concern, we suggest limiting the pods per node in the node pools (except for the system node pool) to 16 (from 110), because <MadCap:variable name="Product-Names.cloud_product_short"/> <MadCap:variable name="Product-Names.broker_cloud_short"/>s require a fairly low pod count per node.</p>
+        <p>A full description of the calculations required to determine the pod secondary IP range can be found in the <a href="https://cloud.google.com/kubernetes-engine/docs/how-to/alias-ips#cluster_sizing_secondary_range_pods" rel="nofollow" target="_blank" class="link-offsite">Google documentation</a>.</p>
+        <p>The three <code>system-node-pool</code> nodes need a <code>/24</code> range each for your default 110 pods, which means a minimum secondary range of <code>/22</code> with 16 nodes per pod that will support up to 8 service worker nodes. This configuration allows up to 2 HA services or 8 developer services (or a combination of the two.)</p>
+        <p>A more reasonable range is <code>/20</code> which would provide up to 104 worker nodes for messaging services.</p>
+      </dd>
+    </dl>
+    <dl>
+      <dt>Secondary IP Range (Services)</dt>
+      <dd>
+        <p class="Note">This calculation is required only if the secondary subnet IP ranges are not auto-generated by GCP.</p>
+        <p>This secondary IP range is for Kubernetes services. Each messaging service (enterprise or developer) creates two Kubernetes services, that is, two IP addresses, per messaging service.</p>
+        <p>Therefore, the total required number of Kubernetes services is simply twice the number of messaging services. The IP range can be determined from <a href="https://cloud.google.com/kubernetes-engine/docs/how-to/alias-ips#cluster_sizing_secondary_range_svcs" rel="nofollow" target="_blank" class="link-offsite">this table</a> in the Google documentation. </p>
+        <p>Again, we suggest adding some padding to this range to allow for unplanned future expansion. There are at least 10 internal Kubernetes services that will need IP addresses.</p>
+      </dd>
+    </dl>
+    <dl>
+      <dt>Primary and Secondary IP Range Examples</dt>
+      <dd>
+        <p>The table below shows a few examples for IP range options for combinations of services expected in the cluster. The calculations expect the maximum pods per node to be 110 for the system pool and 16 for the auto-scaling pools. These values are the minimum subnet ranges—they can be larger. These ranges can also be increased after they're created (but they cannot be shrunk).</p>
+        <table class="TableStyle-Table_Num" cellspacing="0" style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');margin-left: 0;margin-right: auto;">
+          <col class="TableStyle-Table_Num-Column-Column1">
+                    </col>
+          <col class="TableStyle-Table_Num-Column-Column1">
+                    </col>
+          <col class="TableStyle-Table_Num-Column-Column1">
+                    </col>
+          <col class="TableStyle-Table_Num-Column-Column1">
+                    </col>
+          <col class="TableStyle-Table_Num-Column-Column1">
+                    </col>
+          <col class="TableStyle-Table_Num-Column-Column1">
+                    </col>
+          <thead>
+            <tr class="TableStyle-Table_Num-Head-Header1">
+              <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Enterprise (HA) Services</th>
+              <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">Developer</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">Standard</MadCap:conditionalText> Services</th>
+              <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Node Count</th>
+              <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Primary IP Range</th>
+              <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Secondary IP Range (Pods)</th>
+              <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Secondary IP Range (Services)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p>10</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p>0</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p>33</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p>/26</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p>/21</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p>/24</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p>0</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p>10</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p>13</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p>/27</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p>/21</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p>/24</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p>10</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p>10</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p>43</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p>/26</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p>/20</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p>/24</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+                <p>20</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+                <p>0</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+                <p>63</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+                <p>/25</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+                <p>/20</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+                <p>/24</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+                <p>50</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+                <p>20</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+                <p>173</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+                <p>/24</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+                <p>/19</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+                <p>/23</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p>The secondary IP range is a concern only if the VPC will be peered to other VPCs. If that is not the case, we recommend that you use a Primary IP Range of <code>/20</code> and allow GCP to auto-create the secondary IP ranges.</p>
+      </dd>
+    </dl>
+    <h4 id="PrivateCloudGKECustomerRequirements-VPCandSubnet"><a name="vpc"/>VPC and Subnet</h4>
+    <p>Once any IP ranges have been calculated, the VPC and subnet can be created.</p>
+    <p>Create a VPC Network, then add a subnet to it. Both can be named whatever you choose. For the subnet, provide the primary IP range, and (if required) also the two secondary IP ranges calculated from above. The subnet's region must be the region you want the cluster in.</p>
+    <h4 id="PrivateCloudGKECustomerRequirements-CloudNAT"><a name="cloud-nat"/>NAT Gateway</h4>
+    <p>If the cluster is going to be a private cluster (which is our recommendation) then a NAT gateway must be set up to allow pods on the worker nodes access to the internet. This is required so the <MadCap:variable name="Product-Names.cloud_agent_short"/> can communicate with the <MadCap:variable name="Product-Names.home_cloud_long"/> and our monitoring solution can ship metrics and logs. To do this, you use Cloud NAT. For more information about <a href="https://cloud.google.com/nat" class="link-offsite">Cloud NAT</a>, see the Google documentation.</p>
+    <p>After the VPC and subnet are set up, go to Cloud NAT and create a NAT Gateway, selecting the VPC and the region that the subnet is in.</p>
+    <h4><a name="cluster"/>Cluster</h4>
+    <p>Once the VPC, subnet, and a NAT Gateway are configured, the cluster can be created.</p>
+    <p>Below are the settings for the cluster itself.</p>
+    <ul>
+      <li>Basics<ul><li>Location type: Regional (with 3 zones)</li><li>Stable version: Release channel</li></ul></li>
+      <li>Networking<ul><li>Private cluster: enabled</li><li>Access master using its external IP address: enabled</li><li>Master IP Range: <code>/28</code> network, must be different than any in the VPC</li><li>Network: the network created above</li><li>Node subnet: the subnet created above</li><li>Enable network policy: enabled</li><li>Enable HTTP Load Balancing: enabled</li><li>Enable master authorized networks: disabled</li></ul></li>
+      <li>Security<ul><li>Enable Shielded GKE nodes: enabled</li><li>Enable workload identify: enabled</li></ul></li>
+    </ul>
+    <h4><a name="node-pools"/>Node Pools</h4>
+    <p>The following are the required settings for the node pools. These should be configured at the same time as the cluster.</p>
+    <dl>
+      <dt>system-node-pool</dt>
+      <dd>
+        <ul>
+          <li>General<ul><li>Number of nodes (per zone): 1</li><li>Autoscaling: disabled</li></ul></li>
+          <li>Nodes<ul><li>ImageType: Container-Optimized OS with containerd (cos_containerd)</li><li>Machine Type: n1-standard-4</li><li>Boot Disk Size: 100GB</li></ul></li>
+        </ul>
+      </dd>
+      <dt>monitoring-node-pool</dt>
+      <dd>
+        <ul>
+          <li>General<ul><li>Number of nodes (per zone): 0</li><li>Autoscaling: enabled<ul><li>Minimum nodes: 0</li><li>Maximum nodes (per zone): 1000</li></ul></li></ul></li>
+          <li>
+            <p>Nodes</p>
+            <ul>
+              <li>Machine Type: n1-standard-2</li>
+              <li>Image Type: Ubuntu with containerd (ubuntu_containerd)</li>
+              <li>Boot Disk Size: 100GB</li>
+              <li>Maximum Pods per node: 16</li>
+            </ul>
+          </li>
+          <li>Metadata<ul><li>Labels:<ul><li>nodeType: monitoring</li></ul></li><li>Taints:<ul><li>nodeType=monitoring:NoExecute</li></ul></li></ul></li>
+        </ul>
+      </dd>
+      <dt>prod1k-node-pool</dt>
+      <dd>
+        <ul>
+          <li>General<ul><li>Number of nodes (per zone): 0</li><li><p>Autoscaling: enabled</p><ul><li>Minimum nodes: 0</li><li>Maximum nodes (per zone): 1000</li></ul></li></ul></li>
+          <li>Nodes<ul><li>Machine Type: n1-standard-4</li><li>Image Type: Ubuntu with containerd (ubuntu_containerd)</li><li>Boot Disk Size: 100GB</li><li>Maximum Pods per node: 16</li></ul></li>
+          <li>Metadata<ul><li>Labels:<ul><li>nodeType: messaging</li><li>serviceClass: prod1k</li></ul></li><li>Taints:<ul><li>nodeType=messaging:NoExecute</li><li>serviceClass=prod1k:NoExecute</li></ul></li></ul></li>
+        </ul>
+      </dd>
+      <dt>prod10k-node-pool</dt>
+      <dd>
+        <ul>
+          <li>General<ul><li>Number of nodes (per zone): 0</li><li>Autoscaling: enabled<ul><li>Minimum nodes: 0</li><li>Maximum nodes (per zone): 1000</li></ul></li></ul></li>
+          <li>Nodes<ul><li>Machine Type: n1-standard-8</li><li>Image Type: Ubuntu with containerd (ubuntu_containerd)</li><li>Boot Disk Size: 100GB</li><li>Maximum Pods per node: 16</li></ul></li>
+          <li>Metadata<ul><li>Labels:<ul><li>nodeType: messaging</li><li>serviceClass: prod10k</li></ul></li><li>Taints:<ul><li>nodeType=messaging:NoExecute</li><li>serviceClass=prod10k:NoExecute</li></ul></li></ul></li>
+        </ul>
+      </dd>
+      <dt>prod100k-node-pool</dt>
+      <dd>
+        <ul>
+          <li>General<ul><li>Number of nodes (per zone): 0</li><li>Autoscaling: enabled<ul><li>Minimum nodes: 0</li><li>Maximum nodes (per zone): 1000</li></ul></li></ul></li>
+          <li>Nodes<ul><li>Machine Type: n1-standard-16</li><li>Image Type: Ubuntu with containerd (ubuntu_containerd)</li><li>Boot Disk Size: 100GB</li><li>Maximum Pods per node: 16</li></ul></li>
+          <li>Metadata<ul><li>Labels:<ul><li>nodeType: messaging</li><li>serviceClass: prod100k</li></ul></li><li>Taints:<ul><li>nodeType=messaging:NoExecute</li><li>serviceClass=prod100k:NoExecute</li></ul></li></ul></li>
+        </ul>
+      </dd>
+    </dl>
+    <h4><a name="storage-class"/>Storage Class</h4>
+    <p>The cluster requires a storage class that can create SSD-based Persistent Volume Claims (PVCs) with XFS as the file system type. To support scale-up, the <code>StorageClass</code> must contain the <code>allowVolumeExpansion</code> property, and have it set to "<code>true</code>". After the cluster is created, create the storage class  using the following YAML file.</p>
+    <pre xml:space="preserve">apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ssd
+provisioner: kubernetes.io/gce-pd
+volumeBindingMode: WaitForFirstConsumer
+parameters:
+  type: pd-ssd
+  fsType: xfs
+allowVolumeExpansion: true</pre>
+    <p>For more information about recommended storage classes, see <MadCap:xref href="resource-requirements-k8s.htm#supported-storage-solutions">Supported Storage Solutions</MadCap:xref>.</p>
+    <h4><a name="Autoscaling"/>Autoscaling</h4>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/K8SClusterAutoscaler.flsnp"/>
+    <p>See the <a href="https://cloud.google.com/kubernetes-engine/docs/how-to/cluster-autoscaler" class="link-offsite" style="font-style: italic;" target="_blank">Autoscaling a cluster</a> documentation on the Google Kubernetes Engine (GKE) documentation site for information about implementing a Cluster Autoscaler.</p>
+    <h3 MadCap:conditions="Default.HideFromAllOutput"><a name="deploy-cloud-agent-gke"/>Deploying the <MadCap:variable name="Product-Names.cloud_agent_short"/> on <MadCap:annotation MadCap:createDate="2022-10-07T15:34:21.3403597-04:00" MadCap:creator="GilYu" MadCap:initials="GI" MadCap:comment="Delete to go with flow" MadCap:editor="GilYu" MadCap:editDate="2022-10-07T15:34:21.9362039-04:00">GKE</MadCap:annotation></h3>
+    <p MadCap:conditions="Default.HideFromAllOutput">As discussed in 
+                <MadCap:xref href="installing-ps-cloud-k8s.htm#prerequisites"><MadCap:xref href="installing-ps-cloud-k8s.htm#prerequisites">Common Kubernetes Prerequisite</MadCap:xref>s</MadCap:xref>, before you (the customer) can deploy the <MadCap:variable name="Product-Names.cloud_agent_short"/>, you can obtain the following from <MadCap:variable name="Variables.CompanyName"/> as examples that you modify and can use for your customer-controlled deployment. Here's an overview of the sample files you modify to deploy the <MadCap:variable name="Product-Names.cloud_agent_short"/> : </p>
+    <ul>
+      <li MadCap:conditions="Default.HideFromAllOutput">A file containing registry credentials,  provided by <MadCap:variable name="Variables.CompanyName"/> and downloaded through the Private Region tab (see <MadCap:xref href="../private_regions_tab.htm#Download">Downloading the Image Pull Secret File to Access Registry Credentials</MadCap:xref>). The file you download will be based on your Kubernetes configuration and is either:<ul><li MadCap:conditions="Default.HideFromAllOutput">A JSON file used to create the Docker registry secret to pull images
+                from <MadCap:variable name="Variables.CompanyName"/>'s official <code>GCR.IO</code> registry.
+                In the examples below, it is called <code><code>&lt;datacenter-id&gt;-registry-credentials.json</code></code>.   </li><li MadCap:conditions="Default.HideFromAllOutput">A YAML file used to create the Docker registry secret to pull images from <MadCap:variable name="Variables.CompanyName"/>'s official <code>GCR.IO</code> registry. In the examples below, it is called <code>&lt;datacenter-id&gt;-pull-secret.yaml</code>. </li></ul></li>
+      <li MadCap:conditions="Default.HideFromAllOutput">The YAML file (<code>values.yaml</code>) containing the parameters required by the Helm
+                chart.  <MadCap:variable name="Variables.CompanyName"/>  creates this file with input from the you about your Kubernetes cluster. You can modify this file as required and are responsible to maintain and modify it for your deployment.  </li>
+      <li MadCap:conditions="Default.HideFromAllOutput">The URL to the <MadCap:variable name="Product-Names.cloud_agent_short"/>'s Helm
+                chart, which is provided from <MadCap:variable name="Variables.CompanyName"/>.</li>
+    </ul>
+    <p MadCap:conditions="Default.HideFromAllOutput">To deploy the <MadCap:variable name="Product-Names.cloud_agent_short"/>, complete the following steps (optionally with assistance from <MadCap:variable name="Variables.CompanyName"/>):</p>
+    <ol MadCap:conditions="Default.HideFromAllOutput">
+      <li>Create the <MadCap:variable name="Product-Names.cloud_agent_short"/>'s namespace in the
+                cluster by running the following command:<pre class="Code">kubectl create namespace &lt;namespace&gt;			</pre></li>
+      <li>Create the Docker registry secret to pull images from <MadCap:variable name="Variables.CompanyName"/>'s GCR.IO registry one of the commands below based on the file you <a href="../private_regions_tab.htm#Download">downloaded from the Private Region</a> tab:           <ul><li><code><code>&lt;datacenter-id&gt;-registry-credentials.json</code></code> . You can use any name for the namespace (e.g., <code>myorgabc</code>). Note the email value (<code>any@anywhere.com</code>) can be any valid-formatted email; it's a required parameter for the command, but is not used.
+<pre xml:space="preserve" class="Code">kubectl create secret docker-registry gcr-reg-secret --namespace myorgabc\
+--docker-server=https://gcr.io --docker-username=_json_key --docker-email=any@anywhere.com \
+--docker-password="$(cat ./<code>&lt;datacenter-id&gt;-registry-credentials.json</code>)"</pre></li><li><code>&lt;datacenter-id&gt;-pull-secret.yaml</code>.
+You can use any name for the namespace (e.g., <code>myorgabc</code>).				<pre xml:space="preserve">
+kubectl apply -f &lt;datacenter-id&gt;-pull-secret.yaml -n &lt;namespace&gt;		</pre></li></ul></li>
+      <li>
+        <p>Install the <MadCap:variable name="Product-Names.cloud_agent_short"/>'s Helm chart, using the Helm
+				chart URL and <code>values.yaml</code>:</p>
+        <pre xml:space="preserve">helm install &lt;release-name&gt; \
+&lt;Helm Chart's URL&gt; --namespace myorgabc\
+--values values.yaml</pre>
+        <p>You can use any name for the <code>--namespace</code> parameter (such as
+				<code>myorgabc</code>). The value  <code>&lt;release-name&gt;</code> parameter can also be any value; <MadCap:variable name="Variables.CompanyName"/> usually uses <code>cloud-agent-rel</code>. For example:</p>
+        <pre xml:space="preserve">helm install cloud-agent-rel \
+http://URL.from<MadCap:variable name="Variables.CompanyName"/>.com/cha</pre>
+      </li>
+    </ol>
+  </body>
+</html>

@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <meta name="keywords" content="multiple vrrp instances, multiple vrrp interfaces"/>
+  </head>
+  <body>
+    <h1>Adding Redundancy Interfaces to an HA Pair</h1>
+    <p>This  procedure describes how to add a second redundancy interface to each appliance in an existing HA pair of appliances. The procedure does not cause loss of client service, however, redundancy must be disabled for a period of time during the change. </p>
+    <p>For more information about redundancy interfaces, refer to <MadCap:xref href="Configuring-Appliance-Redundancy-Parameters.htm#Assignin2">Assigning a Redundancy Interface</MadCap:xref>.</p>
+    <h2 class="with-rule">Before you Begin</h2>
+    <p>Before starting this procedure, verify the following:</p>
+    <ul>
+      <li>You have a redundant pair of appliances deployed  using an active/active or active/standby redundancy model. In this example, the appliances are deployed in a active/standby redundancy model and the primary and backup appliances are named <code>solace-primary</code> and <code>solace-backup</code> respectively.</li>
+      <li>The appliances are deployed with a SolOS version that includes  support for multiple redundancy interfaces (SolOS 9.5.0+). </li>
+      <li>The message spool is enabled as <code>primary</code> on the primary appliance  and <code>backup</code> on the backup appliance.</li>
+      <li>The redundancy status is <code>Up</code> for both appliances. </li>
+      <li>Both the primary and backup appliances  are active for their primary virtual router. </li>
+      <li>Auto-revert is disabled on both appliances.</li>
+      <li>A single redundancy interface is configured on each appliance. In this example <code>1/6/1</code> is the only redundancy interface configured on each appliance. </li>
+      <li>The second interface you want to add   has static, primary, and/or backup IP addresses configured (as needed) and operational. In this example <code>1/6/2</code> is to be added as a second redundancy interface for each appliance.</li>
+    </ul>
+    <h2 class="with-rule">Step 1: Disable Redundancy on the Primary Appliance</h2>
+    <p>To disable redundancy on the primary appliance, enter the following commands:</p>
+    <p class="Code">solace-primary(configure)# redundancy<br/>solace-primary(configure/redundancy)# shutdown<br/></p>
+    <h2 class="with-rule">Step 2: Add the Redundancy Interface to the Primary Appliance</h2>
+    <p>To add the redundancy interface to the primary appliance:</p>
+    <ol>
+      <li>
+        <p>Assign the  redundancy interface.</p>
+        <p class="Code">solace-primary(configure/redundancy)# vrrp<br/>solace-primary(configure/redundancy/vrrp)# interface 1/6/2<br/></p>
+      </li>
+      <li>
+        <p>Specify the appropriate failover criteria. For more information about the failover criteria, refer to <MadCap:xref href="Configuring-Appliance-Redundancy-Parameters.htm#Specifyi">Specifying the Redundancy Failover Criteria </MadCap:xref>.</p>
+        <p class="Code">solace-primary(configure/redundancy/vrrp)# failover-criteria {any-fail | all-fail}</p>
+      </li>
+    </ol>
+    <h2 class="with-rule">Step 3: Disable Redundancy on the Backup Appliance</h2>
+    <p>To disable redundancy on the backup appliance, enter the following commands:</p>
+    <p class="Code">solace-backup(configure)# redundancy<br/>solace-backup(configure/redundancy)# shutdown<br/></p>
+    <h2 class="with-rule">Step 4: Add the Redundancy Interface to the Backup Appliance</h2>
+    <p>To add the redundancy interface to the backup appliance:</p>
+    <ol>
+      <li>
+        <p>Assign the redundancy interface. For more information about redundancy interfaces, refer to <MadCap:xref href="Configuring-Appliance-Redundancy-Parameters.htm#Assignin2">Assigning a Redundancy Interface</MadCap:xref>.</p>
+        <p class="Code">solace-backup(configure/redundancy)# vrrp<br/>solace-backup(configure/redundancy/vrrp)# interface 1/6/2<br/></p>
+      </li>
+      <li>
+        <p>Specify the appropriate failover criteria. For more information about the failover criteria, refer to <MadCap:xref href="Configuring-Appliance-Redundancy-Parameters.htm#Specifyi">Specifying the Redundancy Failover Criteria </MadCap:xref>.</p>
+        <p class="Code">solace-backup(configure/redundancy/vrrp)# failover-criteria {any-fail | all-fail}</p>
+      </li>
+    </ol>
+    <h2 class="with-rule">Step 5: Enable Redundancy on Both Appliances</h2>
+    <p>To enable redundancy on the primary appliance, enter the following commands:</p>
+    <p class="Code">solace-primary(configure)# redundancy<br/>solace-primary(configure/redundancy)# no shutdown<br/></p>
+    <p>To enable redundancy on the backup appliance, enter the following commands:</p>
+    <p class="Code">solace-backup(configure)# redundancy<br/>solace-backup(configure/redundancy)# no shutdown</p>
+    <h2 class="with-rule">Step 6: Verify Redundancy is Working Correctly</h2>
+    <p>To verify redundancy is working correctly on both appliances, issue the following show command and verify that the <code>Redundancy Status</code> is <code>Up</code>: </p>
+    <p class="Code">solace-primary(configure)# show redundancy<br/></p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre class="Code" xml:space="preserve">
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : None
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+Failover Criteria        : Any Fail
+
+Interface        Primary Address Status Backup Address  Status
+---------------- --------------- ------ --------------- ------
+1/6/1            192.0.2.1       Up
+1/6/2            192.0.2.2       Up
+
+                               Primary Virtual Router  Backup Virtual Router
+                               ----------------------  ----------------------
+Activity Status                Local Active            Shutdown
+VRRP VRID                      239
+Redundancy Interface Status    Up
+VRRP Status
+  1/6/1                        Master
+  1/6/2                        Master
+VRRP Priority                  250
+Message Spool Status           AD-Active
+Priority Reported By Mate      Standby
+</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <p class="Code">solace-backup(configure)# show redundancy<br/></p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre class="Code" xml:space="preserve">Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Active-Standby Role      : None
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+Failover Criteria        : Any Fail
+
+Interface        Primary Address Status Backup Address  Status
+---------------- --------------- ------ --------------- ------
+1/6/1                                   192.0.2.1       Down
+1/6/2                                   192.0.2.2       Down
+
+                               Primary Virtual Router  Backup Virtual Router
+                               ----------------------  ----------------------
+Activity Status                Shutdown                Mate Active
+VRRP VRID                                              239
+Redundancy Interface Status                            Up
+VRRP Status
+  1/6/1                                                Backup
+  1/6/2                                                Backup
+VRRP Priority                                          100
+Message Spool Status                                   AD-Standby
+Priority Reported By Mate                              Active
+</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+  </body>
+</html>

@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Adding Subscriptions to Endpoints</h1>
+    <p>Typically, messages are published to a Queue when it is set as the destination of the message. However, you can also add a Topic subscription to a Queue so that it receives any messages that are published to a matching Topic destination.</p>
+    <p>As shown in the figure below, when a Topic subscription is added to a Queue, it is possible for a message published to a Topic to be sent to a Queue, a Topic Endpoint, and directly to the message bus where it can be matched with clients’ Topic subscriptions.</p>
+    <p class="GraphicCaption">Possible Routing of Messages Published to Topics</p>
+    <p class="GraphicCaption">
+      <img src="../../Resources/Images/Guaranteed-Msg/Possible_Message_Routing.png" alt="" style="width: 586px;height: 388px;"/>
+    </p>
+    <h2 class="with-rule"><a name="Adding2"/>Adding Subscriptions to Queues</h2>
+    <p>A client can add or remove Topic subscriptions whether it is bound to the Queue or not, but the Queue must have at least Modify-Topic privileges (refer to <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-Queues.htm#Configur19">Configuring Permissions for Non-Owner Clients</MadCap:xref>) for the client to add Topic subscriptions to it or remove Topic subscriptions from it.</p>
+    <p class="Note">A client cannot remove Topic subscriptions that an administrator has added to a Queue through the Solace CLI or SolAdmin.</p>
+    <div class="Caution">
+      <p class="Tbl_Body"> When a Queue is deleted, all topic-to-queue mappings for that Queue are also deleted.</p>
+    </div>
+    <p class="Note">If  persistent or non-persistent messages are published to a topic that matches a queue's subscriptions but the event broker cannot persist the message on the queue (for example, if the message size exceeds the queue's configured size limit or if the queue is over quota), the message is discarded. Whether the publisher receives a rejection (NACK) depends on the queue's reject-msg-to-sender-on-discard setting, which is enabled by default on the event broker. For more information, see <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-Queues.htm#Message-Discard-Handling">Configuring Queues</MadCap:xref>.		  
+        </p>
+    <p>To add a Topic subscription to a Queue, call a method or function listed below appropriate for the messaging API used, and pass in the Queue name and the Topic that you want to add to that Queue.</p>
+    <p>The subscription flags that can be set include:</p>
+    <ul>
+      <li>Wait For Confirm</li>
+      <li>Request Confirm (for Java RTO, C and .NET)</li>
+    </ul>
+    <table style="caption-side: top;width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Add a Topic Subscription to a Queue</p>
+      </caption>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">
+            <MadCap:variable name="Product-Names.pubsub_brand_only" style="font-weight: normal;"/>
+            <span style="font-weight: normal;"> Messaging API</span>
+          </th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Call</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">JCSMPSession.addSubscription(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">SessionHandle.subscribe(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">solClient_session_<br/>endpointTopicSubscribeExt(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">ISession.Subscribe(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js
+                        </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">messageConsumer.addSubscription(...)
+                        </p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-weight: bold;">Related Samples</p>
+    <p>For an example of how to add to a Topic subscription to a Queue, refer to the <code>TopicToQueueMapping</code> sample for the appropriate messaging API.</p>
+    <h2 class="with-rule"><a name="Add-Subs-Queues"/>Adding Subscriptions with Custom Callbacks to Queues</h2>
+    <p>When using the Java RTO, C, or .NET APIs, you can add Topic subscriptions to the Flow bound to a Queue and use specific message receive callbacks or delegates to handle the Guaranteed messages that are received with matching Topics. This functionality is also known as topic dispatching because messages with a specific Topic are dispatched to a specific callback or delegate.</p>
+    <p>By default, each Topic subscription with a custom callback or delegate is added to the event broker, and it is removed when there is no longer a custom callback or delegate associated with the subscription. However, you can use the Local Dispatch Only subscribe flag to add a Topic subscription that uses a specific callback or delegate without adding the subscription to the event broker.</p>
+    <p class="Note">Error indications are not returned to the publishing client if the message cannot be delivered to a Queue for some reason (that is, the feedback to the publishing client is the same as what occurs when a message terminates on a Topic Endpoint).</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Add a  Subscription with a Custom Callback to a Queue</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Call</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Not applicable</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body"><code>FlowHandle.subscribe(...)</code> and pass in the following:</p>
+            <ul>
+              <li>
+                <p class="Tbl_Body">a <code>MessageDispatchTargetHandle</code></p>
+              </li>
+              <li>
+                <p class="Tbl_Body">optional subscribe flags</p>
+              </li>
+              <li>
+                <p class="Tbl_Body">a message correlation key</p>
+              </li>
+            </ul>
+            <p class="Tbl_Body">A <code>MessageDispatchTargetHandle</code> encapsulates a topic subscription and a message callback. Call <code>Solclient.Allocator.newMessageDispatchTargetHandle(...)</code> to create one.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body"><code>solClient_flow_topicSubscribeWithDispatch(...)</code> and pass in the following:</p>
+            <ul>
+              <li>
+                <p class="Tbl_Body">the Flow bound to the Queue</p>
+              </li>
+              <li>
+                <p class="Tbl_Body">the Topic subscription that you want to add</p>
+              </li>
+              <li>
+                <p class="Tbl_Body">message receive callback information</p>
+              </li>
+              <li>
+                <p class="Tbl_Body">optional subscribe flags</p>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body"><code>IMessageDispatcher.Subscribe(...)</code> and pass in an <code>IDispatchTarget</code> object and any optional subscribe flags.</p>
+            <p class="Tbl_Body">An <code>IDispatchTarget</code> encapsulates a subscription (an <code>ISubscription</code>) and a message callback delegate (a <code>MessageHandler</code>). Call <code>IFlow.CreateDispatchTarget()</code> to create an <code>IDispatchTarget</code> instance.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">Not applicable</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="Adding"/>Adding Subscription Exceptions to Queues</h2>
+    <p>To add a Topic subscription exception to the given durable message Queue so that Guaranteed messages published to the topic are not delivered to the Queue, repeat the steps to add a  subscription and append a  leading "!" character to the Topic name. In other words, use the same call to create a subscription and pass in the Topic parameter with a leading "!" character  (in the form !a/b/c).</p>
+    <p>Subscription exceptions are enabled by default. If subscription exceptions are disabled, the leading "!" is treated as a literal character. For more information about enabling and disabling subscription exceptions, refer to <MadCap:xref href="../../Messaging/Guaranteed-Msg/System-Level-Subscription-Exception-Config.htm">System-Level Subscription Exception Configuration</MadCap:xref>. </p>
+    <h2 class="with-rule"><a name="Add-Subs-DTEs"/>Adding Subscriptions to Topic Endpoints</h2>
+    <p>Typically, a Flow for a Topic Endpoint receives messages according to the single Topic defined for it when the Flow is created. (For the C API, a Flow property sets the Topic; for the .NET API, the <code>ISubscription</code> that is passed in sets the Topic.)</p>
+    <p>When using the Java RTO, C, or .NET APIs, you can add additional Topic subscriptions to a Flow bound to a Topic Endpoint and use specific message receive callbacks or delegates to handle Guaranteed messages for those Topics.</p>
+    <p>Dispatching messages for a Topic Endpoint to a custom callback or delegate can be useful when the Flow’s Topic contains wildcards because it enables you to separate out received messages with more precision. For example if a Flow’s Topic is <code>part1/&gt;</code>, it could receive messages with the Topics <code>part1/item1</code> and <code>part1/item2</code>. Using topic dispatch subscriptions, you can configure separate message receive callback routines: one for messages published to <code>part1/item1</code>, and one for messages published to <code>part1/item2</code>.</p>
+    <p>It is not possible to dynamically add subscriptions to a provisioned Topic Endpoint on the event broker. Therefore a subscription with a custom callback or message delegate for a Topic Endpoint is only saved to the messaging API’s local dispatch table. This is the same behavior that occurs when the Local Dispatch subscribe flag is enabled when adding a Topic subscription with a custom callback or delegate to a Queue (refer to <MadCap:xref href="#Add-Subs-Queues">Adding Subscriptions to Queues</MadCap:xref>).</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Add a Topic Subscription with Custom Callback or Delegate</p>
+      </caption>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Call</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body">Not applicable</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body"><code>FlowHandle.subscribe(...)</code> and pass in the following:</p>
+            <ul>
+              <li>
+                <p class="Tbl_Body">a <code>MessageDispatchTargetHandle</code></p>
+              </li>
+              <li>
+                <p class="Tbl_Body">the <code>LOCAL_ONLY</code> subscribe flag (required)</p>
+              </li>
+              <li>
+                <p class="Tbl_Body">optional subscribe flags</p>
+              </li>
+              <li>
+                <p class="Tbl_Body">a message correlation key</p>
+              </li>
+            </ul>
+            <p class="Tbl_Body">A <code>MessageDispatchTargetHandle</code> encapsulates a topic subscription and a message callback. Call <code>Solclient.Allocator.newMessageDispatchTargetHandle(...)</code> to create one.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_Body"><code>solClient_flow_topicSubscribeWithDispatch(...)</code> and pass in the following:</p>
+            <ul>
+              <li>
+                <p class="Tbl_Body">the Flow bound to the Topic Endpoint</p>
+              </li>
+              <li>
+                <p class="Tbl_Body">the Topic subscription that you want to add</p>
+              </li>
+              <li>
+                <p class="Tbl_Body">message receive callback information</p>
+              </li>
+              <li>
+                <p class="Tbl_Body">optional subscribe flags</p>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_Body"><code>IMessageDispatcher.Subscribe(...)</code> and pass in an <code>IDispatchTarget</code> object and any optional subscribe flags.</p>
+            <p class="Tbl_Body">An <code>IDispatchTarget</code> encapsulates a subscription (an <code>ISubscription</code>) and a message callback delegate (a <code>MessageHandler</code>). Call <code>IFlow.CreateDispatchTarget(...)</code> to create an <code>IDispatchTarget</code> instance.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body"><code>messageConsumer.addSubscription(...)</code> and pass in 
+the following:</p>
+            <ul>
+              <li>
+                <p class="Tbl_Body">the topic destination </p>
+              </li>
+              <li>
+                <p>optional correlation key</p>
+              </li>
+              <li>
+                <p>optional timeout period in milliseconds</p>
+              </li>
+            </ul>
+            <p class="Tbl_Body">
+                        </p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-weight: bold;">Related Samples</p>
+    <p>For an example of how to add to a Topic subscription with a custom callback or delegate, refer to the <code>TopicDispatch</code> sample for the Java RTO, C, or .NET APIs.</p>
+    <h2 class="with-rule"><a name="Remove-Subs"/>Removing Subscriptions from Endpoints</h2>
+    <p>To remove a Topic subscription that was added to a Queue or Topic Endpoint, call the method or function listed below appropriate for the messaging API used and pass in the Queue or Topic Endpoint, subscription, and any subscribe flags that are used.</p>
+    <table class="TableStyle-Table_Num" style="caption-side: top;width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" cellspacing="0">
+      <caption valign="top" style="padding-bottom: 3pt;">
+        <p class="TblCaption">To Remove a Topic Subscription from an Endpoint</p>
+      </caption>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Call</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">JCSMP</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p class="Tbl_BodyCode">JCSMPSession.removeSubscription(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">Java RTO</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li>
+                <p class="Tbl_BodyCode">FlowHandle.unsubscribe(...)</p>
+              </li>
+              <li>
+                <p class="Tbl_Body"><code>SessionHandle.unsubscribe(...)</code> if passing an Endpoint as an argument.</p>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p class="Tbl_Body">C</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <ul>
+              <li>
+                <p class="Tbl_BodyCode">solClient_session_endpointTopicUnsubscribe(...)</p>
+              </li>
+              <li>
+                <p class="Tbl_BodyCode">solClient_flow_topicUnsubscribeWithDispatch(...)</p>
+              </li>
+            </ul>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+            <p class="Tbl_Body">.NET</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+            <p class="Tbl_BodyCode">ISession.Unsubscribe(...)</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p class="Tbl_Body">JavaScript and Node.js</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p class="Tbl_Body">messageConsumer.removeSubscription(...)</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

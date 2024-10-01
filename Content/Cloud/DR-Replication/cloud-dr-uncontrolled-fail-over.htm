@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="Default.OnlyForPDF">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Performing an Uncontrolled Failover of <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</h1>
+    <p>There is no automated, uncontrolled failover. You (the customer) are responsible for performing the failover if a disaster condition impacts your <MadCap:variable name="Product-Names.broker_cloud_short"/>s.</p>
+    <p>In the event of a failure of an active data center or a network isolation, there may not be an opportunity to gracefully release activity from the Message VPNs from the Active site and transition activity to the Standby site.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/Features/DR-Replication/types-uncontrolled-failovers.flsnp"/>
+    <MadCap:snippetBlock src="../../Resources/Snippets/Features/DR-Replication/consequences-uncontrolled-fail-over.flsnp"/>
+    <p>No matter which type of  uncontrolled failover you experience, the procedure to handle an uncontrolled failover is the same. We recommend that you <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><a href="../../get-support.htm" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a></MadCap:conditionalText> <MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF">contact <MadCap:variable name="Variables.CompanyName"/></MadCap:conditionalText> for help to resolve any issues that may be present in the circumstance of a specific uncontrolled failover in the Failed site.</p>
+    <p class="Note">The procedure to perform an uncontrolled failover in <MadCap:variable name="Product-Names.cloud_product_firstuse"/> is similar to the other <MadCap:variable name="Product-Names.pubsub_brand_only"/> <MadCap:variable name="Product-Names.broker_sw_short"/>s and <MadCap:variable name="Product-Names.broker_appliance_short"/>s. One additional step is the requirement to switch the custom hostname for the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+    <p>Before you begin this procedure, ensure you have fulfilled the <MadCap:xref href="#uncontrolled-prerequisites">Prerequisites</MadCap:xref>.</p>
+    <p class="Note"><MadCap:variable name="Variables.CompanyName"/> recommends that you verify that the configuration on the Standby site is the same as the Active site prior to performing a failover. Any configuration changes that are made in the <MadCap:variable name="Product-Names.console_ui_long"/> to your <MadCap:variable name="Product-Names.broker_cloud_short"/> on the Active site must be manually configured duplicated on the Standby site. For more information, see <MadCap:xref href="cloud-dr-overview.htm#Limitati">Limitations of Replication in [%=Product-Names.cloud_product_titlecase%]</MadCap:xref>.</p>
+    <p>To perform an uncontrolled  failover, do the following (you must repeat this procedure for each replication pair):</p>
+    <ol>
+      <li><MadCap:xref href="#change-standby-to-active-status">Change the Status of the Message VPN to Active on  the Formerly Replication Standby Site</MadCap:xref>.</li>
+      <li><MadCap:xref href="#switch-hostname-to-new-active-site" class="link-internal">Switch the Hostname to the newly Active site</MadCap:xref>.
+            </li>
+      <li><MadCap:xref href="#suspend-replication" class="link-internal">Suspend Replication If Necessary</MadCap:xref>.
+            </li>
+      <li><MadCap:xref href="#bring-standby-site-online" class="link-internal">Recover the  Failed site and set as the Standby site</MadCap:xref>. For this recovery, there are a number of steps to complete.</li>
+    </ol>
+    <p>For the examples provided on this page, we use the following values:</p>
+    <table style="width: 100%;margin-left: 0;margin-right: auto;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Example Item</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Value</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Name of the Message VPN</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <code>myfirstservice</code>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The <MadCap:variable name="Product-Names.broker_cloud_short"/>s are in different regions and name of the Message VPN on both are configured to be the same name.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Primary Site</td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">primary-myfirstservice or <code>nano-production-azzn9vsqdk5-solace-primary-0</code></td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">The Active site (or Formerly Active site) at the start of the procedure that becomes the Standby site (for Failed site in this case). This site is in a faulty state.</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">Backup Site</td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">backup-myfirstservice or <code>nano-production-89il3uubs0c-solace-primary-0</code></td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">The Standby site that becomes the Active site after this procedure. This is the Backup site to which to switch activity.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="with-rule"><a name="uncontrolled-prerequisites"/>Prerequisites</h2>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDRReplication/failover-prerequisites.flsnp"/>
+    <p>Set the Administration State for Replication to Down</p>
+    <p> </p>
+    <h2 class="with-rule"><a name="change-standby-to-active-status"/>Change the Status of the Message VPN to Active on  the Formerly Replication Standby Site</h2>
+    <p>Follow this procedure after you have determined that an uncontrolled failure has occurred - that is, no messaging activity is possible to your <MadCap:variable name="Product-Names.broker_cloud_short"/> at the currently Active site.</p>
+    <p>To restore service, you access the <MadCap:variable name="Product-Names.broker_cloud_short"/> and then change the replication state of the Message VPN to <code>active</code>.</p>
+    <p>Switch the state of the Message VPN to <code>active</code> using the following CONFIG commands:</p>
+    <pre xml:space="preserve">SolaceCLI (configure)# message-vpn &lt;Message VPN name&gt;
+SolaceCLI (configure/message-vpn)# replication state &lt;newstate&gt;</pre>
+    <p>where:</p>
+    <ul>
+      <li><code>&lt;Message VPN name&gt;</code> is the Message VPN that is the same between your replication pair.</li>
+      <li><code>&lt;newstate&gt;</code> is the state to move the Message VPN to, which can be <code>active</code> or <code>standby</code>. In this case, use <code>active</code>. </li>
+    </ul>
+    <p>The following example shows the status before setting the replication state of the Message VPN on the formerly Standby site to the <code>active</code> status:</p>
+    <pre xml:space="preserve">nano-production-89il3uubs0c-solace-primary-0&gt; enable
+nano-production-89il3uubs0c-solace-primary-0# configure
+nano-production-89il3uubs0c-solace-primary-0(configure)# message-vpn myfirstservice
+nano-production-89il3uubs0c-solace-primary-0(configure/message-vpn)# replication state active
+			
+</pre>
+    <p>Since a Standby site is not available (your previously Active site is the Failed site), asynchronous messages and transactions are stored in the replication queue. By default, synchronous replication switches to asynchronous, causing those messages and transactions to also be stored in replication queue. If r<code>eject-msg-when-sync</code> ineligible is set on the Message VPN, synchronous replication is blocked until the Message VPN is available (when the Failed site is restored).</p>
+    <h2 class="with-rule"><a name="switch-hostname-to-new-active-site"/>Move the Custom Hostname to the Newly Active Site</h2>
+    <p>In the <MadCap:variable name="Product-Names.console_ui_long"/>, move the hostname of the <MadCap:variable name="Product-Names.broker_cloud_short"/> on the Failed site   to the <MadCap:variable name="Product-Names.broker_cloud_short"/> on the Active site (the replication mate that you changed to the <code>active</code> state in the previous step).</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDRReplication/customhostname-steps.flsnp"/>
+    <p>At this point, client connectivity resumes.</p>
+    <p> </p>
+    <h2 class="with-rule"><a name="suspend-replication"/>Suspend Replication If Necessary</h2>
+    <p>If it is a prolonged outage, suspend replication to prevent the replication queue from becoming full on your newly active <MadCap:variable name="Product-Names.broker_cloud_short"/>. </p>
+    <p>If the replication queue becomes full,  messages published to replicated topics (in or out of transactions are rejected), since no replication service can be provided. If you know the outage is prolonged or the replication queue is close to becoming full (high event log has been triggered on the replication queue), it may be necessary to suspend the replication service to continue to provide non-replicated service to the replicated topics. </p>
+    <p>To suspend replication, disable the <code>reject-msg-to-send</code> behavior on the replication queue using the following CONFIG command:</p>
+    <pre xml:space="preserve">
+SolaceCLI (configure/message-vpn/&lt;Message VPN name&gt;)# replication queue
+SolaceCLI (configure/message-vpn/&lt;Message VPN name&gt;/replication/queue)# no reject-msg-to-sender-on-discard
+</pre>
+    <p>For example, on newly Active site, perform the following commands to suspend replication:</p>
+    <pre>nano-production-89il3uubs0c-solace-primary-0&gt; enable
+nano-production-89il3uubs0c-solace-primary-0# configure
+nano-production-89il3uubs0c-solace-primary-0(configure)# message-vpn myfirstservice
+nano-production-89il3uubs0c-solace-primary-0(configure/message-vpn)# replication queue
+nano-production-89il3uubs0c-solace-primary-0(configure/message-vpn/replication/queue)# no reject-msg-to-sender-on-discard
+</pre>
+    <p>After you suspend replication with this setting, the replicated service continues until the replication queue gets full. After the replication queue is  full, only local, non-replicated service is provided. <MadCap:conditionalText MadCap:conditions="SAP.SAPTempHide">For details about what occurs when the replication is full, see </MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:conditionalText MadCap:conditions="SAP.SAPTempHide"><MadCap:xref href="../../Features/DR-Replication/Replication-Queue-Full.htm">Replication Queue Full</MadCap:xref></MadCap:conditionalText></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><MadCap:conditionalText MadCap:conditions="SAP.SAPTempHide"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Features/DR-Replication/Replication-Queue-Full.htm"><MadCap:conditionalText MadCap:conditions="SAP.SAPTempHide">Replication Queue Full</MadCap:conditionalText></a></MadCap:conditionalText></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SAPTempHide">.</MadCap:conditionalText></p>
+    <h2 class="with-rule"><a name="bring-standby-site-online"/>Recover the  Failed Site and Set As the Replication Standby</h2>
+    <p>After the Failed site has been recovered, it must have management access available. Client connectivity is also required, but client applications won't be able to connect  because connections are made via the custom hostname for the replicated pair.  Here the steps for preparing the recovered failed <MadCap:variable name="Product-Names.broker_cloud_short"/> to be the Standby site:</p>
+    <ol>
+      <li><a href="#configure-restored-site-as-standby" class="link-internal">Change the Message VPN on the <MadCap:variable name="Product-Names.broker_cloud_short"/> at the Failed site to Standby</a>.</li>
+      <li><a href="#verify-message-spool" class="link-internal">On the restored site, verify the Message Spool can provide service</a>.</li>
+      <li><a href="#heuristically-complete-transactions" class="link-internal">On the restored site, heuristically Complete Transactions</a>. This is required only if you have client applications that use XA Transactions.</li>
+      <li><a href="#reenable-replication" class="link-internal">Re-able Replication if necessary</a>.</li>
+      <li><a href="#retrieve-spooled-messages-restored-site" class="link-internal">On the restored site, retrieve the replication queue spooled messages from the restored Failed site</a>.</li>
+    </ol>
+    <h2 class="with-rule"><a name="configure-restored-site-as-standby"/>Change the Message VPN to a Standby Status and Enable Replication</h2>
+    <p>Set the replication state on the Message VPN of the <MadCap:variable name="Product-Names.broker_cloud_short"/> at the Restored site (recovered Failed site) to <code>standby</code> using the following CONFIG commands:</p>
+    <pre xml:space="preserve">
+SolaceCLI (configure)# message-vpn &lt;Message VPN name&gt;
+SolaceCLI (configure/message-vpn/&lt;Message VPN name&gt;)# replication status standby</pre>
+    <p>For example, on the <MadCap:variable name="Product-Names.broker_cloud_short"/> of the failed service, set the Message VPN of <code>myfirstservice</code> to the <code>standby</code> status:</p>
+    <pre xml:space="preserve">nano-production-azzn9vsqdk5-solace-primary-0&gt; enable
+nano-production-azzn9vsqdk5-solace-primary-0# configure
+nano-production-azzn9vsqdk5-solace-primary-0(configure)# message-vpn myfirstservice
+nano-production-azzn9vsqdk5-solace-primary-0(configure/message-vpn)# replication state standby</pre>
+    <h3><a name="verify-message-spool"/>Verify the Message Spool</h3>
+    <p>We recommend that you verify that the Message Spool for the <MadCap:variable name="Product-Names.broker_cloud_short"/> at the Failed site is capable of providing service. Enter the following USER command to verify if  the <MadCap:variable name="Product-Names.broker_cloud_short"/> is capable of providing service: </p>
+    <pre xml:space="preserve">SolaceCLI&gt; show redundancy
+</pre>
+    <ul>
+      <li>If the <code>Activity Status</code> is <code>Local Active</code> and <code>Message Spool Status</code> is <code>AD-Active</code>, it is capable to provide service</li>
+      <li>Otherwise, if the <code>Activity Status</code> is <code>Local Inactive</code> and the <code>Message Spool Status</code> is <code>AD-Not Ready</code>, the Message Spool it uses is not yet active. You must resolve the issue to prevent the Message Spool from becoming active. If you cannot, <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><a href="../../get-support.htm" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF">contact <MadCap:variable name="Variables.CompanyName"/></MadCap:conditionalText>.</li>
+    </ul>
+    <p>In this situation, you must prevent the failed <MadCap:variable name="Product-Names.broker_cloud_short"/> from becoming active to resolve the issue. If you cannot resolve the issue,<MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><a href="../../get-support.htm" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a></MadCap:conditionalText> <MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF">contact <MadCap:variable name="Variables.CompanyName"/></MadCap:conditionalText>. </p>
+    <h3><a name="heuristically-complete-transactions"/>Heuristically Complete Transactions</h3>
+    <p>If you have client applications that use XA Transactions, you must heuristically commit or heuristically rollback any prepared transactions on the failed site (previously Active site). If you do not have applications that use XA Transactions, you do not need to perform this step. </p>
+    <p>Once transactions are heuristically completed (committed or rolled back), delete them to free up the resources.</p>
+    <p>To commit, rollback or delete a transaction, enter the appropriate  ADMIN commands on the Failed site:</p>
+    <p class="Code">SolaceCLI (admin/message-spool) commit-transaction xid &lt;xid&gt;</p>
+    <p>and/or</p>
+    <p class="Code">SolaceCLI (admin/message-spool) rollback-transaction xid &lt;xid&gt;</p>
+    <p>and then</p>
+    <p class="Code">SolaceCLI (admin/message-spool) delete-transaction xid &lt;xid&gt;</p>
+    <p>Where:</p>
+    <p><code>xid</code> specifies the XID of the transaction to be committed, rolled back, or deleted.</p>
+    <h3><a name="wait-for-sychronous-replication-eligibility"/>Wait for Synchronous Replication to be Eligible</h3>
+    <p>After connectivity is restored between the previously Failed site and your now Active site, the replication bridge will connect from the Standby site to the Active site and drain the replication queue  to synchronize the sites. Depending on how much message and transaction data is in the replication queue and the available bandwidth between the sites, this process may take a long time. When this process is complete, replication is no longer considered to be degraded and the Message VPN on the <MadCap:variable name="Product-Names.broker_cloud_short"/>s are eligible for synchronous replication.</p>
+    <p>To verify the replication status, run the following USER command:</p>
+    <pre xml:space="preserve">SolaceCLI &gt; show message-vpn &lt;Message VPN name&gt; replication</pre>
+    <p> In the following example, the information displayed is for the Active site (<code>nano-production-89il3uubs0c-solace-primary-0</code>).</p>
+    <pre xml:space="preserve">nano-production-89il3uubs0c-solace-primary-0&gt; show message-vpn myfirstservice replication
+Flags Legend:
+A - Admin State (U=Up, D=Down)
+C - Config State (A=Active, S=Standby)
+B - Local Bridge State (U=Up, Q=Queue Unbound, D=Down, -=N/A)
+R - Remote Bridge State (U=Up, D=Down, -=N/A)
+Q - Queue State (U=Up, D=Down, -=N/A)<br/>S - Sync Replication Eligible (Y=Yes, N=No, -=N/A)
+M - Reject Msg When Sync Ineligible (Y=Yes, N=No)
+T - Transaction Replication Mode (A=Async, S=Sync, -=N/A)
+Message VPN                      A C B R Q S M T
+-------------------------------- - - - - - - - -<br/>myfirstservice                   U A - - U N N A<br/></pre>
+    <p>A <code>Y</code> under the <code>S</code> (Sync Replication Eligible) column indicates that synchronous replication is eligible for the Message VPN on the <MadCap:variable name="Product-Names.broker_cloud_short"/> at your .</p>
+    <pre xml:space="preserve">nano-production-89il3uubs0c-solace-primary-0&gt; show message-vpn myfirstservice replication
+Flags Legend:
+A - Admin State (U=Up, D=Down)
+C - Config State (A=Active, S=Standby)
+B - Local Bridge State (U=Up, Q=Queue Unbound, D=Down, -=N/A)
+R - Remote Bridge State (U=Up, D=Down, -=N/A)
+Q - Queue State (U=Up, D=Down, -=N/A)
+S - Sync Replication Eligible (Y=Yes, N=No, -=N/A)
+M - Reject Msg When Sync Ineligible (Y=Yes, N=No)
+T - Transaction Replication Mode (A=Async, S=Sync, -=N/A)
+Message VPN                      A C B R Q S M T
+-------------------------------- - - - - - - - -
+myfirstservice                   U A U - U Y N A</pre>
+    <h3><a name="reenable-replication"/>Re-enable Replication When Necessary</h3>
+    <p>If you previously had to suspend replication because the replication queue was full, you can re-enable it. <br/>Enter the following CONFIG command:</p>
+    <pre>SolaceCLI (configure/message-vpn/replication/queue)# reject-msg-to-sender-on-discard</pre>
+    <p>For example, enter the following commands on the newly Active site:</p>
+    <pre>nano-production-89il3uubs0c-solace-primary-0&gt; enable
+nano-production-89il3uubs0c-solace-primary-0# configure
+nano-production-89il3uubs0c-solace-primary-0(configure)# message-vpn myfirstservice
+nano-production-89il3uubs0c-solace-primary-0(configure/message-vpn)# replication queue
+nano-production-89il3uubs0c-solace-primary-0(configure/message-vpn/replication/queue)# reject-msg-to-sender-on-discard</pre>
+    <h3><a name="retrieve-spooled-messages-restored-site"/>Retrieve Replication Queue Spooled Messages From the Restored Failed Site</h3>
+    <p>Asynchronously spooled messages on the restored Failed site (formerly Active site) can only be consumed when the activity is failed back to it. You can fail back to the restore site to recover those messages and to remove any unnecessary duplicated messages (referred to as deduplication). For more information, see <MadCap:xref href="cloud-dr-failover-to-restored-site.htm">Fail Back to a Restored Site After an Uncontrolled FailOver</MadCap:xref>.</p>
+    <p>To retrieve these messages, we recommend that you perform a controlled failover during your next scheduled maintenance window. For more information, see <MadCap:xref href="cloud-dr-controlled-fail-over.htm">Performing a Controlled Failover in [%=Product-Names.cloud_product_titlecase%]</MadCap:xref>.</p>
+  </body>
+</html>

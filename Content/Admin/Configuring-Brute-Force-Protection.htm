@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <title>Configuring Brute Force Protection</title>
+  </head>
+  <body>
+    <h1>Configuring Brute Force Protection</h1>
+    <p>In a brute force attack, an attacker attempts to guess a password by trying to authenticate with many different passwords.  You can configure an event broker to temporarily lock out local accounts after a number of failed authentication attempts as a mitigation measure.</p>
+    <p>The account types covered by this feature are:</p>
+    <ul>
+      <li>
+        <p>local Linux accounts (appliance)</p>
+      </li>
+      <li>
+        <p>local CLI accounts (appliance, container image)</p>
+      </li>
+    </ul>
+    <p>Accounts from integrations (LDAP, RADIUS, OAuth, etc.) are not a part of this feature, although LDAP and RADIUS accounts are affected by the lockout when using SSH.</p>
+    <p>To enable brute force protection, enter the following command:</p>
+    <pre xml:space="preserve">solace(configure/authentication)# brute-force-protection no shutdown</pre>
+    <p>When brute force protection is enabled:</p>
+    <ul>
+      <li>
+        <p>10 consecutive failed authentication attempts in 15 minutes for a management account will cause that specific management account to be locked out for 15 minutes.</p>
+      </li>
+      <li>
+        <p>A successful login will reset the count.</p>
+      </li>
+      <li>
+        <p>For an appliance, this does not apply to the serial console.</p>
+      </li>
+      <li>
+        <p>For SSH, this applies to local, LDAP, and RADIUS accounts.</p>
+      </li>
+      <li>
+        <p>For SEMP, this  applies only to local accounts (not LDAP, RADIUS, or OAuth accounts).</p>
+      </li>
+    </ul>
+    <p>To disable brute force protection, enter the following command:</p>
+    <pre xml:space="preserve">solace(configure/authentication)# brute-force-protection shutdown</pre>
+    <p>When brute force protection is disabled, the event broker does no password guessing mitigation.</p>
+    <p>There is a risk of denial of service when you enable brute force protection.</p>
+    <p>To mitigate this risk, you should add additional non-default admin management users.  You can also add LDAP management users to mitigate this issue for SEMP access.</p>
+    <p>If an admin account is locked out, there are various things you can do to workaround the issue:</p>
+    <ul>
+      <li>
+        <p>Use a different management user that isn't locked out.</p>
+      </li>
+      <li>
+        <p>Log in using the appliance or host console.</p>
+      </li>
+      <li>
+        <p>If you are using a container image, connect via solacectl cli, docker/podman/kubectl exec, etc.</p>
+      </li>
+      <li>
+        <p>Connect via SEMP with an LDAP, RADIUS, or OAuth management user.</p>
+      </li>
+      <li>
+        <p>Use SSH if SEMP is locked out and SEMP if SSH is locked out (SSH and SEMP track the lockout separately).</p>
+      </li>
+      <li>
+        <p>Use network level access control to prevent the attack, such as blocking the attacking IP address at the switch. This is the standard way to block most denial of service attacks.</p>
+      </li>
+    </ul>
+  </body>
+</html>

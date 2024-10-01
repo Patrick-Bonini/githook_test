@@ -1,0 +1,572 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Patch SOL-40151</h1>
+    <p>This patch updates firmware to address potential security vulnerabilities in 
+some Intel Server Boards that may allow escalation of privilege or denial of
+service.</p>
+    <p>This patch applies to all versions of SolOS for the following appliance types
+shipped prior to October 19, 2020, only. Other appliance types are not exposed
+to these vulnerabilities.</p>
+    <ul>
+      <li>
+        <p>CHS-3530AC-02-A</p>
+      </li>
+      <li>
+        <p>CHS-3560AC-03-A</p>
+      </li>
+      <li>
+        <p> CHS-3560AC-06-A</p>
+      </li>
+    </ul>
+    <p>This patch resolves the following <a href="https://cve.mitre.org/index.html" target="_blank" class="link-offsite">Common Vulnerabilities and Exposures</a> (CVEs):
+</p>
+    <p>CVE-2020-8708, CVE-2020-8730, CVE-2020-8731, CVE-2020-8707, CVE-2020-8719,
+CVE-2020-8721, CVE-2020-8710, CVE-2020-8711, CVE-2020-8712, CVE-2020-8718,
+CVE-2020-8722, CVE-2020-8732, CVE-2020-8709, CVE-2020-8723, CVE-2020-8713,
+CVE-2020-8706, CVE-2020-8729, CVE-2020-8715, CVE-2020-8716, CVE-2020-8714,
+CVE-2020-8717, CVE-2020-8720.</p>
+    <h2 class="with-rule"><a name="standalone"/>Instructions for Standalone Appliances</h2>
+    <div class="Caution">
+      <p>Applying this patch is service impacting and requires a reboot of the appliance.</p>
+      <p>Do NOT continue the patching process if you run into any unexpected issues—<a href="../get-support.htm" class="link-internal">contact Solace</a> for assistance.</p>
+    </div>
+    <div class="Note">
+      <p>The patch script can be run with the <code>-c</code> flag. If this flag is specified, 
+the script verifies whether the patch can be applied or has already been applied  to the appliance.</p>
+    </div>
+    <h3>Installation Procedure</h3>
+    <ol>
+      <li>Make a copy of the current SolOS configuration in the <code>/configs</code> directory and then back up the file to an SFTP or SCP server:<pre class="Code">solace&gt; enable
+solace# copy current-config /configs/sol_40151_prePatchCfg
+solace# copy /configs/sol_40151_prePatchCfg &lt;destination&gt;</pre></li>
+      <li>Ensure direct shell access is enabled:
+<pre class="Code" xml:space="preserve">
+solace&gt; show authentication
+
+. . .
+
+Shell Users                                        Direct shell login enabled
+================================================== ==========================
+support                                                                   Yes</pre><p>To enable direct shell access, run the following commands:</p><pre class="Code" xml:space="preserve">
+solace&gt; enable
+solace# configure
+solace# authentication allow-direct-shell-login</pre></li>
+      <li>Copy the patch package to the Solace appliance:
+            <pre class="Code">$ scp patch-sol-40151.tgz support@&lt;appliance-mgmt-ip&gt;:</pre></li>
+      <li>Log in to the appliance with the support account over an SSH connection:
+            <p class="Caution">Do not run this procedure by dropping to the support shell from the CLI. If you do this, your shell session will become unresponsive while applying this patch.</p><pre class="Code">$ ssh support@&lt;appliance-mgmt-ip&gt;</pre></li>
+      <li>Unpack the patch package:<pre class="Code">$ cd /usr/sw/support
+$ tar zxf patch-sol-40151.tgz</pre></li>
+      <li>Change to the <code>patch-sol-40151</code> directory:<pre class="Code">$ cd /usr/sw/support/patch-sol-40151</pre></li>
+      <li>Check whether the appliance needs this patch (the root password is required):
+<pre class="Code">$ sudo ./patch-sol-40151 -c</pre><ul><li><p>If the output is <code>Patch is not installed</code>, proceed to Step 8.</p></li><li><p>If the output is <code>Patch is installed</code> or <code>This patch does not apply to this platform. Supported platform:
+    CHS-3530AC-02-A, CHS-3560AC-03-A, and CHS-3560AC-06-A</code>, patching is not required. Stop this procedure.</p></li></ul></li>
+      <li>Disable the <code>solace</code> service and then reboot the appliance (the root password is required):
+<p class="Note">This step causes a service outage.</p><pre class="Code">$ sudo chkconfig solace off
+$ sudo /sbin/reboot</pre></li>
+      <li>Wait until the appliance has finished rebooting, then log in over an SSH connection. Rebooting has completed when you can connect over SSH as the support user.
+<pre class="Code">$ ssh support@&lt;appliance-mgmt-ip&gt;</pre><p class="Note">The Solace service is disabled and SolOS won't start.</p></li>
+      <li>Confirm that the <code>solace</code> service has stopped.
+<pre class="Code">$ sudo service solace status
+solace service is stopped
+[run] processes are enabled
+solacedaemon is stopped</pre><p class="Caution">Do NOT proceed with the installation until the <code>solace</code> service has stopped.</p></li>
+      <li>Change to the <code>patch-sol-40151</code> directory:
+<pre class="Code">$ cd /usr/sw/support/patch-sol-40151</pre></li>
+      <li>Run the patch script with <code>sudo</code> to install the patch (the root password is required). The installation may take
+up to 15 minutes.
+<pre class="Code">$ sudo ./patch-sol-40151 -i
+Firmware update in progress. This may take up to 15 minutes to exit. Please wait...
+Firmware update succeeded!
+Patch was applied successfully</pre></li>
+      <li>Enable the <code>solace</code> service and then reboot the appliance (the root password is required):
+<pre class="Code">$ sudo chkconfig solace on
+$ sudo /sbin/reboot</pre></li>
+      <li>Wait until the appliance has finished rebooting, then verify the BIOS version by entering the <code>show hardware details</code> command in the CLI.
+The expected BIOS version is: <code>SE5C610.86B.01.01.1029.C1.090220201031</code><pre class="Code">solace&gt; show hardware details</pre></li>
+      <li>If you had to enable direct shell access in Step 2 to run this procedure, turn it off now.
+<pre class="Code">solace&gt; enable
+solace# configure
+solace# no authentication allow-direct-shell-login</pre></li>
+    </ol>
+    <p>You have completed this procedure.</p>
+    <h2 class="with-rule"><a name="redundant"/>Instructions for Redundant (HA) Appliances</h2>
+    <div class="Caution">
+      <ul>
+        <li>This procedure requires HA failovers that briefly interrupt client connections as they disconnect and then reconnect to the newly active appliance. We recommend running this procedure during a maintenance window.</li>
+        <li>Apply this patch to the appliances in an HA pair (redundant appliances) one appliance at a time. Only patch the second appliance in the HA pair after the first appliance has rebooted and is providing service. This procedure applies the patch to the backup appliance first, then the primary appliance.</li>
+        <li>Do NOT continue the patching process if you run into any unexpected issues—<a href="../get-support.htm" class="link-internal">contact Solace</a> for assistance.</li>
+      </ul>
+    </div>
+    <div class="Note">
+      <p>If you run the patch script with the <code>-c</code> flag, the script verifies whether the patch can be applied or has already been applied to the appliance.</p>
+    </div>
+    <h3>Installation Procedure</h3>
+    <ol>
+      <li>On the primary appliance, ensure that the redundancy state is correct by running the <code>show redundancy</code> command: 
+ <p>If the HA pair is using the Active/Active redundancy mode, the output from the <code>show redundancy</code> command looks like the following (the output may vary by appliance version):</p><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example <code>show redundancy</code> output (Active/Active):</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code" xml:space="preserve">solace-primary# show redundancy
+    
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                           Primary Virtual Router  Backup Virtual Router 
+                           ----------------------  ----------------------
+Activity Status                Local Active            Mate Active           
+Routing Interface              1/6/lag1:1              1/6/lag1:2            
+VRRP VRID                      50                      197                   
+Routing Interface Status       Up                      Up                    
+VRRP Status                    Master                  Backup                
+VRRP Priority                  250                     100                   
+Message Spool Status           AD-Active               AD-Disabled           
+Priority Reported By Mate      Standby                 Active</pre></MadCap:dropDownBody></MadCap:dropDown></p><p>If the HA pair is using Active/Standby redundancy mode, the output from the <code>show redundancy</code> command looks like the following (output may vary by appliance version):</p><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example <code>show redundancy</code> output (Active/Standby):</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code" xml:space="preserve">solace-primary# show redundancy
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                              Primary Virtual Router  Backup Virtual Router 
+                              ----------------------  ----------------------
+Activity Status                Local Active            Shutdown           
+Routing Interface              1/6/lag1:1                          
+VRRP VRID                      50                                         
+Routing Interface Status       Up                                          
+VRRP Status                    Master                                  
+VRRP Priority                  250                                        
+Message Spool Status           AD-Active                          
+Priority Reported By Mate      Standby</pre></MadCap:dropDownBody></MadCap:dropDown></p></li>
+      <li>On the backup appliance, ensure that the redundancy state is correct by running the <code>show redundancy</code> command:
+        <p>If the HA pair is using the Active/Active redundancy mode, the output from the <code>show redundancy</code> command looks like the following (output may vary by appliance version):</p><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example <code>show redundancy</code> output (Active/Active):</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code" xml:space="preserve">solace-backup# show redundancy
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                              Primary Virtual Router  Backup Virtual Router 
+                              ----------------------  ----------------------
+Activity Status                Local Active            Mate Active           
+Routing Interface              1/6/lag1:1              1/6/lag1:2            
+VRRP VRID                      197                     50                    
+Routing Interface Status       Up                      Up                    
+VRRP Status                    Master                  Backup                
+VRRP Priority                  250                     100                   
+Message Spool Status           AD-Disabled             AD-Standby            
+Priority Reported By Mate      Standby                 Active</pre></MadCap:dropDownBody></MadCap:dropDown></p><p>If the HA pair is using Active/Standby redundancy mode, the output from the <code>show redundancy</code> command looks like the following (output may vary by appliance version):</p><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example <code>show redundancy</code> output (Active/Standby):</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code">solace-backup# show redundancy
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                              Primary Virtual Router  Backup Virtual Router 
+                              ----------------------  ----------------------
+Activity Status                Shutdown                Mate Active           
+Routing Interface                                      1/6/lag1:2            
+VRRP VRID                                              50                    
+Routing Interface Status                               Up                    
+VRRP Status                                            Backup                
+VRRP Priority                                          100                   
+Message Spool Status                                   AD-Standby            
+Priority Reported By Mate                              Active</pre></MadCap:dropDownBody></MadCap:dropDown></p><p class="Note">With the exception of the Auto Revert value, if the redundancy state of either the primary or backup appliance does not correspond to the examples above, do NOT patch the appliances. Instead, <a href="../get-support.htm" class="link-internal">contact Solace</a> for further instructions.</p></li>
+      <li>If Config-Sync is enabled, confirm that it is operationally up on both the primary and backup appliances; this means all configuration is synchronized.
+<p>For example:</p><pre class="Code" xml:space="preserve">solace-primary&gt; show config-sync
+
+Admin Status                      : Enabled
+Oper Status                       : Up</pre><pre class="Code" xml:space="preserve">
+solace-backup&gt; show config-sync
+
+Admin Status                      : Enabled
+Oper Status                       : Up</pre><p class="Note">If the operational status of config-sync is not <code>Up</code>, you should resolve this before proceeding.</p></li>
+      <li>Make a copy of the current SolOS configuration in the <code>/configs</code> directory on both appliances, then back up the files to an SFTP or SCP server.
+<pre class="Code" xml:space="preserve">solace-primary&gt; enable
+solace-primary# copy current-config /configs/sol_40151_prePatchCfg_primary
+solace-primary# copy /configs/sol_40151_prePatchCfg_primary &lt;destination&gt;</pre><pre class="Code" xml:space="preserve">
+solace-backup&gt; enable
+solace-backup# copy current-config /configs/sol_40151_prePatchCfg_backup
+solace-backup# copy /configs/sol_40151_prePatchCfg_backup &lt;destination&gt;</pre></li>
+      <li>On the backup appliance, ensure direct shell access is enabled:
+<pre class="Code" xml:space="preserve">
+solace-backup&gt; show authentication
+
+. . .
+
+Shell Users                                        Direct shell login enabled
+================================================== ==========================
+support                                                                   Yes</pre><p>To enable direct shell access, run the following commands:</p><pre class="Code" xml:space="preserve">solace-backup&gt; enable
+solace-backup# configure
+solace-backup# authentication allow-direct-shell-login</pre></li>
+      <li>Copy the patch package to the backup appliance:
+<pre class="Code">$ scp patch-sol-40151.tgz support@&lt;appliance-mgmt-ip&gt;:</pre></li>
+      <li>Log in to the backup appliance with the support account over an SSH connection
+<pre class="Code">$ ssh support@&lt;appliance-mgmt-ip&gt;</pre><p class="Caution">Do not run this procedure by dropping to the support shell from the CLI. If you do this, your shell session will become unresponsive while applying this patch.</p></li>
+      <li>Unpack the patch package:
+<pre class="Code">$ cd /usr/sw/support
+$ tar zxf patch-sol-40151.tgz</pre></li>
+      <li>Change to the <code>patch-sol-40151</code> directory:
+<pre class="Code">$ cd /usr/sw/support/patch-sol-40151</pre></li>
+      <li>Verify whether the appliance needs this patch (the root password is required):
+<pre class="Code">$ sudo ./patch-sol-40151 -c</pre><ul><li>If the output is <code>Patch is not installed</code>, proceed to Step 11.</li><li>If the output is <code>Patch is installed</code> or <code>This patch does not apply to this platform. Supported platform:
+                CHS-3530AC-02-A, CHS-3560AC-03-A, and CHS-3560AC-06-A</code>, patching is not required for the backup appliance. Proceed to Step 22.</li></ul></li>
+      <li>On the backup appliance, release activity to the primary appliance before installing the patch:
+<pre class="Code">solace-backup# configure
+solace-backup(configure)# redundancy
+solace-backup(configure/redundancy)# release-activity
+solace-backup(configure/redundancy)# end</pre></li>
+      <li>On the primary appliance, ensure that the redundancy state is correct by running the <code>show redundancy</code> command:<p>If the HA pair is using the Active/Active redundancy mode, the <code>Activity Status</code> for both virtual routers should be <code>Local Active</code>. For example (output may vary by appliance version):</p><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example <code>show redundancy</code> output (Active/Active):</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code" xml:space="preserve">solace-primary# show redundancy 
+Configuration Status     : Enabled
+Redundancy Status        : Down
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                              Primary Virtual Router  Backup Virtual Router 
+                              ----------------------  ----------------------
+Activity Status                Local Active            Local Active          
+Routing Interface              1/6/lag1:1              1/6/lag1:2            
+VRRP VRID                      50                      197                   
+Routing Interface Status       Up                      Up                    
+VRRP Status                    Master                  Master                
+VRRP Priority                  250                     250                   
+Message Spool Status           AD-Active               AD-Disabled           
+Priority Reported By Mate      Release                 Release</pre></MadCap:dropDownBody></MadCap:dropDown></p><p>If the HA pair is using the Active/Standby redundancy mode, the <code>Activity Status</code> for the primary virtual router should be <code>Local Active</code>. For example (output may vary by appliance version):</p><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example <code>show redundancy</code> output (Active/Standby):</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code" xml:space="preserve">solace-primary# show redundancy 
+Configuration Status     : Enabled
+Redundancy Status        : Down
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                              Primary Virtual Router  Backup Virtual Router 
+                              ----------------------  ----------------------
+Activity Status                Local Active            
+Routing Interface              1/6/lag1:1              
+VRRP VRID                      50                      
+Routing Interface Status       Up                      
+VRRP Status                    Master                  
+VRRP Priority                  250                     
+Message Spool Status           AD-Active               
+Priority Reported By Mate      Release</pre></MadCap:dropDownBody></MadCap:dropDown></p><p class="Note">If the redundancy status on the primary appliance is not correct, do NOT proceed with the patch. Instead, <a href="../get-support.htm" class="link-internal">contact Solace</a> for further instructions.</p></li>
+      <li>On the backup appliance, disable the <code>solace</code> service and then reboot the appliance (the root password is required):
+<pre class="Code">$ sudo chkconfig solace off
+$ sudo /sbin/reboot</pre></li>
+      <li>Wait until the backup appliance has finished rebooting, then log in using an SSH connection. Rebooting has completed when you can connect over SSH as the support user.
+<pre class="Code">$ ssh support@&lt;appliance-mgmt-ip&gt;</pre><p class="Note">The Solace service is disabled and SolOS won't start.</p></li>
+      <li>Confirm that the <code>solace</code> service has stopped:
+<pre class="Code">$ sudo service solace status
+solace service is stopped
+[run] processes are enabled
+solacedaemon is stopped</pre><p class="Caution">Do NOT proceed with the installation until the <code>solace</code> service has stopped.</p></li>
+      <li>Enter the <code>patch-sol-40151</code> directory:
+            <pre class="Code">$ cd /usr/sw/support/patch-sol-40151</pre></li>
+      <li>On the backup appliance, run the patch script with <code>sudo</code> to install the patch. The installation may take
+up to 15 minutes (the root password is required):
+<pre class="Code">$ sudo ./patch-sol-40151 -i
+[sudo] password for root:
+Firmware update in progress. This may take up to 15 minutes to exit. Please wait...
+Firmware update succeeded!
+Patch was applied successfully</pre></li>
+      <li>Enable the <code>solace</code> service and then reboot the appliance (the root password is required):
+<pre class="Code">$ sudo chkconfig solace on
+$ sudo /sbin/reboot</pre></li>
+      <li>Wait until the appliance has finished rebooting and then verify the BIOS version by entering the <code>show hardware details</code> command in the CLI.
+The expected BIOS Version is: <code>SE5C610.86B.01.01.1029.C1.090220201031</code><pre class="Code">solace&gt; show hardware details</pre></li>
+      <li>On the backup appliance, allow messaging activity to resume:
+<pre class="Code">solace-backup# configure
+solace-backup(configure)# redundancy
+solace-backup(configure/redundancy)# no release-activity
+solace-backup(configure/redundancy)# end</pre></li>
+      <li>On the backup appliance, ensure that the redundancy state is correct by running the <code>show redundancy</code> command:
+            <p>If the HA pair is using the Active/Active redundancy mode, the output from the <code>show redundancy</code> command looks like the following (output may vary by appliance version):</p><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example <code>show redundancy</code> output (Active/Active):</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code">solace-backup# show redundancy
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                              Primary Virtual Router  Backup Virtual Router 
+                              ----------------------  ----------------------
+Activity Status                Mate Active             Mate Active           
+Routing Interface              1/6/lag1:1              1/6/lag1:2            
+VRRP VRID                      197                     50                    
+Routing Interface Status       Up                      Up                    
+VRRP Status                    Backup                  Backup                
+VRRP Priority                  100                     100                   
+Message Spool Status           AD-Disabled             AD-Standby            
+Priority Reported By Mate      Active                  Active </pre></MadCap:dropDownBody></MadCap:dropDown></p><p>If the HA pair is using the Active/Standby redundancy mode, the output from the <code>show redundancy</code> command  looks like the following (output may vary by appliance version):</p><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example <code>show redundancy</code> output (Active/Standby):</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code">solace-backup# show redundancy
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                              Primary Virtual Router  Backup Virtual Router 
+                              ----------------------  ----------------------
+Activity Status                Shutdown                Mate Active           
+Routing Interface                                      1/6/lag1:2            
+VRRP VRID                                              50                    
+Routing Interface Status                               Up                    
+VRRP Status                                            Backup                
+VRRP Priority                                          100                   
+Message Spool Status                                   AD-Standby            
+Priority Reported By Mate                              Active</pre></MadCap:dropDownBody></MadCap:dropDown></p><p>It may take several minutes for the backup redundancy status to transition to <code>Up</code> 
+as the backup router synchronizes its states from the primary appliance.</p><p class="Caution">If the redundancy status on the backup appliance is not correct, do NOT 
+proceed with the patch. Instead, <a href="../get-support.htm" class="link-internal">contact Solace</a> Support for further instructions.</p></li>
+      <li>On the backup appliance, if you had to enable direct shell access in Step 5 to run the procedure, turn it off now:
+<pre class="Code">solace-backup&gt; enable
+solace-backup# configure
+solace-backup# no authentication allow-direct-shell-login</pre></li>
+      <li>On the primary appliance, ensure direct shell access is enabled:
+<pre class="Code" xml:space="preserve">
+solace-primary&gt; show authentication
+
+. . .
+
+Shell Users                                        Direct shell login enabled
+================================================== ==========================
+support                                                                   Yes</pre><p>To enable direct shell access, run the following commands:</p><pre class="Code">solace-primary&gt; enable
+solace-primary# configure
+solace-primary# authentication allow-direct-shell-login</pre></li>
+      <li>Copy the patch package to the primary appliance:<pre class="Code">$ scp patch-sol-40151.tgz support@&lt;appliance-mgmt-ip&gt;:</pre></li>
+      <li>Log in to the primary appliance with the support account over an SSH connection:
+            <pre class="Code">$ ssh support@&lt;appliance-mgmt-ip&gt;</pre><p class="Caution">Do not run this procedure by dropping to the support shell from the CLI. If you do this, your shell session will become unresponsive while applying this patch.</p></li>
+      <li>Unpack the patch package:
+<pre class="Code">$ cd /usr/sw/support
+$ tar zxf patch-sol-40151.tgz</pre></li>
+      <li>Enter the <code>patch-sol-40151</code> directory:
+<pre class="Code">$ cd /usr/sw/support/patch-sol-40151</pre></li>
+      <li>Check whether the appliance needs this patch (the root password is required):
+<pre class="Code">$ sudo ./patch-sol-40151 -c</pre><ul><li><p>If the output is <code>Patch is not installed</code>, proceed to Step 29.</p></li><li><p>If the output is <code>Patch is installed</code> or <code>This patch does not apply to this platform. Supported platform:
+    CHS-3530AC-02-A, CHS-3560AC-03-A, and CHS-3560AC-06-A</code>, patching is not required for the primary appliance. Proceed to Step 43.</p></li></ul></li>
+      <li>On the primary appliance, release messaging activity to the backup appliance before installing the patch:
+<pre class="Code">solace-primary# configure
+solace-primary(configure)# redundancy
+solace-primary(configure/redundancy)# release-activity
+solace-primary(configure/redundancy)# end</pre></li>
+      <li>On the backup appliance, confirm that the redundancy status is correct by running the <code>show redundancy</code> command:
+            <p>If the HA pair is using the Active/Active redundancy mode, the output from the <code>show redundancy</code> command looks like the following (output may vary by appliance version):</p><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example <code>show redundancy</code> output (Active/Active):</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code" xml:space="preserve">solace-backup# show redundancy
+
+Configuration Status     : Enabled
+Redundancy Status        : Down
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Local Active            Local Active           
+Routing Interface              1/6/lag1:1              1/6/lag1:2            
+VRRP VRID                      197                     50                    
+Routing Interface Status       Up                      Up                    
+VRRP Status                    Master                  Master                
+VRRP Priority                  250                     240                   
+Message Spool Status           AD-Disabled             AD-Active            
+Priority Reported By Mate      Release                 Release</pre></MadCap:dropDownBody></MadCap:dropDown></p><p>If the HA pair is using the Active/Standby redundancy mode, the output from the <code>show redundancy</code> command on the backup appliance looks like the following (output may vary by appliance version):</p><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example <code>show redundancy</code> output (Active/Standby):</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code" xml:space="preserve">solace-backup# show redundancy
+
+Configuration Status     : Enabled
+Redundancy Status        : Down
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Shutdown                Local Active           
+Routing Interface                                      1/6/lag1:2            
+VRRP VRID                                              50                    
+Routing Interface Status                               Up                    
+VRRP Status                                            Master                
+VRRP Priority                                          240                   
+Message Spool Status                                   AD-Active            
+Priority Reported By Mate                              Release</pre></MadCap:dropDownBody></MadCap:dropDown></p><p class="Note">If the redundancy status on the backup appliance is not correct, do NOT proceed 
+with the patch. Instead, <a href="../get-support.htm" class="link-internal">contact Solace</a> Support for further instructions.</p></li>
+      <li>On the primary appliance, disable the <code>solace</code> service and then reboot the appliance (the root password is required):
+<pre class="Code">$ sudo chkconfig solace off
+$ sudo /sbin/reboot</pre></li>
+      <li>Wait until the appliance has finished rebooting, then log in using an SSH connection. Rebooting has completed when you can connect over SSH as the support user.
+<pre class="Code">$ ssh support@&lt;appliance-mgmt-ip&gt;</pre><p class="Note">The Solace service is disabled and SolOS won't start.</p></li>
+      <li>Confirm that the <code>solace</code> service has stopped:
+<pre class="Code">$ sudo service solace status
+solace service is stopped
+[run] processes are enabled
+solacedaemon is stopped</pre><p class="Caution">Do NOT proceed with the installation until the <code>solace</code> service has stopped.</p></li>
+      <li>Change to the <code>patch-sol-40151</code> directory:<pre class="Code">$ cd /usr/sw/support/patch-sol-40151</pre></li>
+      <li>Run the patch script with sudo to install the patch (the root password is required). The installation may take
+up to 15 minutes.
+<pre class="Code">$ sudo ./patch-sol-40151 -i
+[sudo] password for root:
+Firmware update in progress. This may take up to 15 minutes to exit. Please wait...
+Firmware update succeeded!
+Patch was applied successfully</pre></li>
+      <li>Enable the <code>solace</code> service and then reboot the appliance (the root password is required):
+<pre class="Code">$ sudo chkconfig solace on
+$ sudo /sbin/reboot</pre></li>
+      <li>Wait until the appliance has finished rebooting and then verify the BIOS version by entering the <code>show hardware details</code> command in the CLI.
+The expected BIOS version is: <code>SE5C610.86B.01.01.1029.C1.090220201031</code><pre class="Code">solace&gt; show hardware details</pre></li>
+      <li>Now that the patch has been installed on both the primary appliance and the backup appliance, allow 
+activity on the primary appliance:
+<pre class="Code">solace-primary# configure
+solace-primary(configure)# redundancy
+solace-primary(configure/redundancy)# no release-activity
+solace-primary(configure/redundancy)# end</pre></li>
+      <li>On the primary appliance, confirm the redundancy status by running the <code>show redundancy</code> command:
+<p>If the HA pair is using the Active/Active redundancy mode, the output from the <code>show redundancy</code> command looks like the following (output may vary by appliance version):</p><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example <code>show redundancy</code> output (Active/Active):</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code">solace-primary# show redundancy
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Mate Active             Mate Active           
+Routing Interface              1/6/lag1:1              1/6/lag1:2            
+VRRP VRID                      50                      197                    
+Routing Interface Status       Up                      Up                    
+VRRP Status                    Backup                  Backup                
+VRRP Priority                  150                     100                   
+Message Spool Status           AD-Standby              AD-Disabled
+Priority Reported By Mate      Active                  Active</pre></MadCap:dropDownBody></MadCap:dropDown></p><p>If the HA pair is using the Active/Standby redundancy mode, the output from the <code>show redundancy</code> command looks like the following (output may vary by appliance version):</p><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example <code>show redundancy</code> output (Active/Standby):</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code">solace-primary# show redundancy
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Mate Active             Shutdown           
+Routing Interface              1/6/lag1:2            
+VRRP VRID                      50                    
+Routing Interface Status       Up                    
+VRRP Status                    Backup                
+VRRP Priority                  150                   
+Message Spool Status           AD-Standby            
+Priority Reported By Mate      Active</pre></MadCap:dropDownBody></MadCap:dropDown></p><p>It may take several minutes for the primary redundancy status to transition to <code>Up</code> as the backup router synchronises its states from the primary appliance.</p></li>
+      <li>If auto-revert is not configured, revert activity to the primary appliance from the backup appliance:
+<pre class="Code">solace-backup# admin
+solace-backup(admin)# redundancy revert-activity
+solace-backup(admin)# end</pre></li>
+      <li>Ensure that the primary appliance is in the correct redundancy state by running the <code>show redundancy</code> command:
+          <p>If the HA pair is using the Active/Active redundancy mode, the output from the <code>show redundancy</code> command looks like the following (output may vary by appliance version):</p><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example <code>show redundancy</code> output (Active/Active):</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code" xml:space="preserve">solace-primary# show redundancy
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Local Active            Mate Active           
+Routing Interface              1/6/lag1:1              1/6/lag1:2            
+VRRP VRID                      50                      197                   
+Routing Interface Status       Up                      Up                    
+VRRP Status                    Master                  Backup                
+VRRP Priority                  250                     100                   
+Message Spool Status           AD-Active               AD-Disabled           
+Priority Reported By Mate      Standby                 Active</pre></MadCap:dropDownBody></MadCap:dropDown></p><p>If the HA pair is using the Active/Standby redundancy mode, the output from the <code>show redundancy</code> command looks like the following (output may vary by appliance version):</p><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example <code>show redundancy</code> output (Active/Standby):</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code" xml:space="preserve">solace-primary# show redundancy
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Local Active            Shutdown           
+Routing Interface              1/6/lag1:1                          
+VRRP VRID                      50                                         
+Routing Interface Status       Up                                          
+VRRP Status                    Master                                  
+VRRP Priority                  250                                        
+Message Spool Status           AD-Active                          
+Priority Reported By Mate      Standby</pre></MadCap:dropDownBody></MadCap:dropDown></p><p class="Note">The Auto Revert value is a configurable option and may be set to Yes depending on the redundant system configuration.</p></li>
+      <li>On the backup appliance, ensure that the  redundancy state is correct by running the <code>show redundancy</code> command:
+<p>If the HA pair is using the Active/Active redundancy mode, the output from the <code>show redundancy</code> command looks like the following (output may vary by appliance version):</p><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example <code>show redundancy</code> output (Active/Active):</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code" xml:space="preserve">solace-backup# show redundancy
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Local Active            Mate Active           
+Routing Interface              1/6/lag1:1              1/6/lag1:2            
+VRRP VRID                      197                     50                    
+Routing Interface Status       Up                      Up                    
+VRRP Status                    Master                  Backup                
+VRRP Priority                  250                     100                   
+Message Spool Status           AD-Disabled             AD-Standby            
+Priority Reported By Mate      Standby                 Active</pre></MadCap:dropDownBody></MadCap:dropDown></p><p>If the HA pair is using the Active/Standby redundancy mode, the output from the <code>show redundancy</code> command looks like the following (output may vary by appliance version):</p><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example <code>show redundancy</code> output (Active/Standby):</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code">solace-backup# show redundancy
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Standby
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router 
+                               ----------------------  ----------------------
+Activity Status                Shutdown                Mate Active           
+Routing Interface                                      1/6/lag1:2            
+VRRP VRID                                              50                    
+Routing Interface Status                               Up                    
+VRRP Status                                            Backup                
+VRRP Priority                                          100                   
+Message Spool Status                                   AD-Standby            
+Priority Reported By Mate                              Active</pre></MadCap:dropDownBody></MadCap:dropDown></p><p class="Note">The Auto Revert value is a configurable option and may be set to Yes depending on the redundant system configuration.</p></li>
+      <li>If you had to enable direct shell access in Step 23 to run the procedure, turn it off now.
+<pre class="Code">solace-primary&gt; enable
+solace-primary# configure
+solace-primary# no authentication allow-direct-shell-login</pre></li>
+    </ol>
+    <p>You have completed this procedure.</p>
+  </body>
+</html>

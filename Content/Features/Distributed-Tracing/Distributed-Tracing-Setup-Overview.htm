@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Configuring Distributed Tracing<MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"> using the <MadCap:variable name="Product-Names.solace_cli"/></MadCap:conditionalText></h1>
+    <p MadCap:conditions="SAP.SapHideFromOutput">When distributed tracing is enabled, the event broker generates special guaranteed messages when certain operations happen. A purpose-built client (an instance of the <MadCap:xref href="Distributed-Tracing-Receiver.htm">[%=Variables.CompanyName%] OpenTelemetry Receiver</MadCap:xref>) then consumes these messages from a particular queue and  converts them to a format that can be received, processed, and viewed using common Open Telemetry backends such as Jaeger and DataDog. For more information, see <MadCap:xref href="Distributed-Tracing-Overview.htm">Distributed Tracing Overview</MadCap:xref>.</p>
+    <p>To configure distributed tracing<MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"> using the <MadCap:variable name="Product-Names.solace_cli"/></MadCap:conditionalText>, follow these steps:</p>
+    <ol>
+      <li MadCap:conditions="SAP.SapOnlyOutput">Log in to the CLI using a terminal like <a href="https://putty.org/" title="PuTTY.org" class="link-offsite">PuTTY</a> and provide the following commands:
+				<pre xml:space="preserve" MadCap:conditions="SAP.SapOnlyOutput">SolaceCLI &gt; enable
+SolaceCLI # configure</pre></li>
+      <li><a href="#telemetry-profiles" class="link-internal">Create a telemetry profile</a> for the Message VPN.</li>
+      <li MadCap:conditions="SAP.SapHideFromOutput">Create a <a href="../../Security/Configuring-Client-Usernames.htm" class="link-internal">client username</a>.</li>
+      <li MadCap:conditions="SAP.SapOnlyOutput">Create a <a href="../../Cloud/client-profiles.htm" class="link-internal">client username</a>.</li>
+      <li MadCap:conditions="SAP.SapHideFromOutput">Bind the client username to the <a href="../../Security/Configuring-Client-Usernames.htm#Assigning-Client-Profiles" class="link-internal">client profile</a> and the <a href="../../Security/Configuring-Client-Usernames.htm#Assigning-ACL-Profiles" class="link-internal">ACL</a> associated with the telemetry profile.</li>
+      <li MadCap:conditions="SAP.SapOnlyOutput">Bind the client username to the <a href="../../Cloud/client-profiles.htm#Assigning-Client-Profiles" class="link-internal">client profile</a> and the ACL associated with the telemetry profile.</li>
+      <li><a href="#tracing" class="link-internal">Configure</a> and <a href="#enable-tracing" class="link-internal">enable</a> tracing.</li>
+    </ol>
+    <p MadCap:conditions="SAP.SapHideFromOutput">The following sections describe how to configure a telemetry profile and enable telemetry tracing. For a detailed example that walks through all the steps required to set up a working distributed tracing scenario, see <MadCap:xref href="Distributed-Tracing-Example.htm">Distributed Tracing Example</MadCap:xref>. </p>
+    <h2><a name="telemetry-profiles"/>Configuring Telemetry Profiles</h2>
+    <p>On the event broker, distributed tracing is enabled by a telemetry profile, which is configured at the message VPN level. You can give the telemetry profile any name. When you create a telemetry profile (with a name, <code>&lt;profileName&gt;</code>) for a message VPN, the event broker automatically creates the following objects:</p>
+    <ul>
+      <li>a special-purpose queue, named <code>#telemetry-&lt;profileName&gt;</code>. This queue is used only for telemetry messages. For details about configuring this queue, see <MadCap:xref href="#telemetry-queue-settings">Configuring Telemetry Queue Settings</MadCap:xref>.</li>
+      <li>a client profile, named <code>#telemetry-&lt;profileName&gt;</code>, that controls certain configuration settings for telemetry receivers (or simply receivers). Receivers are clients that bind to the telemetry queue and consume trace messages. To obtain the receiver configuration from the telemetry profile, this client profile must be assigned to the client username or authorization group object the receiver uses for authorization. An attempt to bind to the telemetry queue from a client using a different client profile will fail. Note that the telemetry ACL profile is the object that explicitly allows binding to the telemetry queue, but an additional check is made to ensure the ACL profile name and client profile name match in order to prevent accidental misconfiguration.</li>
+      <li>an ACL profile, also named <code>#telemetry-&lt;profileName&gt;</code>, that controls whether clients can bind to the profile's corresponding telemetry queue. For a client to be permitted to bind to the telemetry queue, its  ACL profile name must match the telemetry queue name during bind.</li>
+    </ul>
+    <p> There can be only one telemetry profile per Message VPN.</p>
+    <p>The telemetry profile also has a <code>trace</code> property that you configure to control the nature of the data that goes into the queue, and a <code>receiver</code> property to control how data gets out of the queue. For details about these properties, see <MadCap:xref href="#tracing">Configuring Trace Filters and Enabling Tracing</MadCap:xref> and <MadCap:xref href="#receiver-connection-settings">Configuring Receiver Client Connection Settings</MadCap:xref>.</p>
+    <p>
+      <img src="../../Resources/Images/Distributed-Tracing/distributed-tracing-object-model.png" style="border-left-style: solid;border-left-width: 0px;border-left-color: ;border-right-style: solid;border-right-width: 0px;border-right-color: ;border-top-style: solid;border-top-width: 0px;border-top-color: ;border-bottom-style: solid;border-bottom-width: 0px;border-bottom-color: ;"/>
+    </p>
+    <p>To create a telemetry profile, enter the following commands: </p>
+    <pre xml:space="preserve">solace(configure)# message-vpn &lt;message-vpn-name&gt;
+solace(configure/message-vpn)# create telemetry-profile &lt;telemetry-profile-name&gt;
+</pre>
+    <p>To configure an existing telemetry profile:</p>
+    <pre>solace(configure/message-vpn)# telemetry-profile &lt;telemetry-profile-name&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;message-vpn-name&gt;</code> is the name of the Message VPN where you want to create the telemetry profile. </p>
+    <p><code>&lt;telemetry-profile-name&gt;</code> is the name of the telemetry profile.</p>
+    <p>The configuration tasks you can perform for a telemetry profile include:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#telemetry-queue-settings">Configuring Telemetry Queue Settings</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#receiver-connection-settings">Configuring Receiver Client Connection Settings</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#tracing">Configuring Tracing</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="telemetry-queue-settings"/>Configuring Telemetry Queue Settings</h3>
+    <p>A telemetry queue is a special-purpose queue,  used only for telemetry messages. </p>
+    <p>The configuration tasks you can perform for a telemetry queue include:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#max-flows-telemetry-queue">Configuring the Maximum Number of Flows that May Bind to the Telemetry Queue</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#max-spool-telemetry-queue">Configuring  Maximum Spool Usage Values for the Telemetry Queue</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#event-thresholds-telemetry-queue">Configuring Event Thresholds for the Telemetry Queue </MadCap:xref>
+      </li>
+    </ul>
+    <h4><a name="max-flows-telemetry-queue"/>Configuring the Maximum Number of Flows that May Bind to the Telemetry Queue</h4>
+    <p>To configure the maximum number of flows that may bind to the telemetry queue, enter the following commands:</p>
+    <pre xml:space="preserve">solace(configure)# message-vpn &lt;message-vpn-name&gt;
+solace(configure/message-vpn)# telemetry-profile &lt;telemetry-profile-name&gt;
+solace(configure/message-vpn/telemetry-profile)# queue
+solace(...e/message-vpn/telemetry-profile/queue)# max-bind-count &lt;value&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is the integer value specifying the maximum number of flows that can bind the queue. The valid range is 0 to 10,000. The default value is 1,000.</p>
+    <p>The no version of this command, <code>no max-bind-count</code>, returns the value to the default.</p>
+    <h4><a name="max-spool-telemetry-queue"/>Configuring  Maximum Spool Usage Values for the Telemetry Queue</h4>
+    <p>To configure the maximum amount of message spool that the telemetry queue may use, enter the following  commands:</p>
+    <pre xml:space="preserve">solace(configure)# message-vpn &lt;message-vpn-name&gt;
+solace(configure/message-vpn)# telemetry-profile &lt;telemetry-profile-name&gt;
+solace(configure/message-vpn/telemetry-profile)# queue
+solace(...e/message-vpn/telemetry-profile/queue)# max-spool-usage &lt;size&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;size&gt;</code> is an integer value specifying the maximum amount of message spool disk space permitted for the queue in MB.</p>
+    <p>The no version of this command, <code>no max-spool-usage</code>, resets the permitted message spool usage quota available for use by the queue back to the default.</p>
+    <h4><a name="event-thresholds-telemetry-queue"/>Configuring Event Thresholds for the Telemetry Queue </h4>
+    <p>Event thresholds control when various  events are generated by the event broker. You can configure the following event thresholds for a telemetry queue:</p>
+    <ul>
+      <li>Bind Count Thresholds</li>
+      <li>Spool Usage Thresholds</li>
+    </ul>
+    <p>To configure the event thresholds  for a telemetry queue, enter the following commands:</p>
+    <pre xml:space="preserve">solace(configure)# message-vpn &lt;message-vpn-name&gt;
+solace(configure/message-vpn)# telemetry-profile &lt;telemetry-profile-name&gt;
+solace(configure/message-vpn/telemetry-profile)# queue
+solace(...e/message-vpn/telemetry-profile/queue)# event
+</pre>
+    <p>The CLI is now at a level at which you can configure the bind count or spool usage set and clear thresholds for  the telemetry queue.<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> For more information about queue event thresholds, see <MadCap:xref href="../../Monitoring/Configuring-VPN-M-Spool-Event-Thresholds.htm#montoring_and_management_1462237600_255601">Queue Event Thresholds</MadCap:xref>.</MadCap:conditionalText></p>
+    <h5 MadCap:conditions="SAP.SapOnlyOutput">Bind Count Thresholds</h5>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CoreForSAP/bind-count-threshold.flsnp" MadCap:conditions="SAP.SapOnlyOutput"/>
+    <h5 MadCap:conditions="SAP.SapOnlyOutput">Spool Usage Thresholds</h5>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CoreForSAP/spool-usage-threshold.flsnp" MadCap:conditions="SAP.SapOnlyOutput"/>
+    <h3><a name="receiver-connection-settings"/>Configuring Receiver Client Connection Settings</h3>
+    <p>A receiver is a client application that binds to the telemetry queue and consumes trace messages.<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> For more information, see <MadCap:xref href="Distributed-Tracing-Receiver.htm">[%=Variables.CompanyName%] OpenTelemetry Receiver</MadCap:xref>.</MadCap:conditionalText></p>
+    <p>The configuration tasks you can perform for receiver client connections include:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#max-connections-receiver">Configuring the Maximum Number of Receiver Client Connections Per Client Username</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#event-thresholds-receiver">Configuring Event Thresholds for Receiver Client Connections</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#tcp-receiver">Configuring TCP Settings for Receiver Client Connections</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#enable-receiver">Enabling or Disabling Receiver Client Connections</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#acl-receiver">Configuring ACL Settings for Receiver Clients</MadCap:xref>
+      </li>
+    </ul>
+    <h4><a name="max-connections-receiver"/>Configuring the Maximum Number of Receiver Client Connections Per Client Username</h4>
+    <p>To configure the maximum number of receiver client connections per client username, enter the following commands:</p>
+    <pre xml:space="preserve">solace(configure)# message-vpn &lt;message-vpn-name&gt;
+solace(configure/message-vpn)# telemetry-profile &lt;telemetry-profile-name&gt;
+solace(configure/message-vpn/telemetry-profile)# receiver
+solace(...essage-vpn/telemetry-profile/receiver)# max-connections-per-client-username &lt;value&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;value&gt;</code> is an integer value specifying the maximum number of simultaneous client connections that are permitted.</p>
+    <p>The no version of this command, <code>no max-connections-per-client-username</code>, resets the maximum number of client connections back to the default value.</p>
+    <h4><a name="event-thresholds-receiver"/>Configuring Event Thresholds for Receiver Client Connections</h4>
+    <p>Event thresholds control when various events are generated by the event broker. You can configure the following event thresholds for receiver client connections:</p>
+    <ul>
+      <li>Connections Per Client Username Thresholds</li>
+    </ul>
+    <p>To configure event thresholds for receiver client connections, enter the following commands:</p>
+    <pre xml:space="preserve">solace(configure)# message-vpn &lt;message-vpn-name&gt;
+solace(configure/message-vpn)# telemetry-profile &lt;telemetry-profile-name&gt;
+solace(configure/message-vpn/telemetry-profile)# receiver
+solace(...essage-vpn/telemetry-profile/receiver)# event
+</pre>
+    <p>The CLI is now at a level at which you can configure the set and clear  thresholds.<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> For more information about client event thresholds, see <MadCap:xref href="../../Monitoring/Configuring-Client-Event-Thresholds.htm">Configuring Client Event Thresholds</MadCap:xref>.</MadCap:conditionalText></p>
+    <h5 MadCap:conditions="SAP.SapOnlyOutput">Connections Per Client Username Thresholds</h5>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CoreForSAP/connections-per-dlient-username-thresholds.flsnp" MadCap:conditions="SAP.SapOnlyOutput"/>
+    <h4><a name="tcp-receiver"/>Configuring TCP Settings for Receiver Client Connections</h4>
+    <p>To configure the TCP keepalive for receiver client connections, enter the following commands:</p>
+    <pre xml:space="preserve">solace(configure)# message-vpn &lt;message-vpn-name&gt;
+solace(configure/message-vpn)# telemetry-profile &lt;telemetry-profile-name&gt;
+solace(configure/message-vpn/telemetry-profile)# receiver
+solace(configure/message-vpn/telemetry-profile/receiver)# tcp
+solace(configure/message-vpn/telemetry-profile/receiver/tcp)# keepalive
+solace(configure/message-vpn/telemetry-profile/receiver/tcp)# count &lt;num&gt;
+solace(configure/message-vpn/telemetry-profile/receiver/tcp)# idle &lt;seconds&gt;
+solace(configure/message-vpn/telemetry-profile/receiver/tcp)# interval &lt;seconds&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>count &lt;num&gt;</code> sets the maximum number of keepalive probes (from 2 to 5 ) TCP should send before dropping the connection. The default value is 5.</p>
+    <p><code>idle &lt;seconds&gt;</code> sets the time (from 3 to 120 seconds) a connection must remain idle before TCP begins sending keepalive probes. The default value is 3. </p>
+    <p><code>interval &lt;seconds&gt;</code> sets the time (from 1 to 30 seconds) to set as the interval between individual keepalive probes. The default value is 1.</p>
+    <p>The no version of these commands resets the values to back to the defaults.</p>
+    <p>To configure initial congestion window sizes for receiver client connections, enter the following commands:</p>
+    <pre xml:space="preserve">
+solace(configure/message-vpn/telemetry-profile/receiver)# tcp
+solace(configure/message-vpn/telemetry-profile/receiver/tcp)# initial-cwnd &lt;num-mss&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>initial-cwnd &lt;num-mss&gt;</code> is an integer specifying the size of the TCP initial congestion window measured in number of TCP maximum segment size (MSS). Valid values are 2 through 7826. The default value is 2.</p>
+    <p>To configure max window sizes for receiver client connections, enter the following commands:</p>
+    <pre xml:space="preserve">
+solace(configure/message-vpn/telemetry-profile/receiver)# tcp
+solace(configure/message-vpn/telemetry-profile/receiver/tcp)# max-wnd &lt;num-kilo-bytes&gt;
+</pre>
+    <p><u>Where</u>:</p>
+    <p><code>max-wnd &lt;num-kilo-bytes&gt;</code> is an integer specifying the size of the TCP maximum window measured in number of kilobytes (KB). Valid values are 32 through 65536. The default value is 256.</p>
+    <p>To configure max segment sizes for receiver client connections, enter the following commands:</p>
+    <pre xml:space="preserve">
+solace(configure/message-vpn/telemetry-profile/receiver)# tcp
+solace(configure/message-vpn/telemetry-profile/receiver/tcp)# mss &lt;byte-count&gt;
+</pre>
+    <p><u>Where</u>:</p>
+    <p><code>mss &lt;byte-count&gt;</code> is the size of the maximum segment size in bytes (256 through 1460). The default value is 1460. </p>
+    <h4><a name="enable-receiver"/>Enabling or Disabling Receiver Client Connections</h4>
+    <p>To enable connecting receiver clients to connect to and consume from the telemetry queue, enter the following command:</p>
+    <pre xml:space="preserve">
+solace(configure/message-vpn/telemetry-profile/receiver)# no shutdown</pre>
+    <p>To disable connecting receiver clients from connecting to and consuming from the telemetry queue, enter the following command:</p>
+    <pre xml:space="preserve">
+solace(configure/message-vpn/telemetry-profile/receiver)# shutdown</pre>
+    <h4><a name="acl-receiver"/>Configuring ACL Settings for Receiver Clients</h4>
+    <p>You can use ACLs to control which receiver clients may connect to the event broker. </p>
+    <p>To set the default action for receiver client connection attempts to the event broker, enter the following commands:</p>
+    <pre xml:space="preserve">solace(configure)# message-vpn &lt;message-vpn-name&gt;
+solace(configure/message-vpn)# telemetry-profile &lt;telemetry-profile-name&gt;
+solace(configure/message-vpn/telemetry-profile)# receiver
+solace(...essage-vpn/telemetry-profile/receiver)# acl
+solace(...ge-vpn/telemetry-profile/receiver/acl)# connect
+solace(...elemetry-profile/receiver/acl/connect)# default-action {allow | disallow}</pre>
+    <p><u>Where</u>:</p>
+    <p><code>allow</code> sets the default action to allow receiver client connection attempts.</p>
+    <p><code>disallow</code> sets the default action to disallow receiver client connection attempts. This is the default value. </p>
+    <p>To set exceptions to the default action for receiver client connection attempts, enter the following commands:</p>
+    <pre xml:space="preserve">
+solace(...elemetry-profile/receiver/acl/connect)# exception &lt;cidr-addr&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>exception &lt;cidr-addr&gt;</code> is the IP address and network mask combination of the excepted client in Classless Inter-Domain Routing (CIDR) form: nnn.nnn.nnn.nnn/dd (where nnn is 0-255, dd is 1-32).</p>
+    <p>Changing the default client connect action, or removing clients from the exceptions list, does not immediately affect clients that already have an established connection to the event broker. They remain connected.</p>
+    <h3><a name="tracing"/>Configuring Trace Filters and Enabling Tracing</h3>
+    <p>When you enable tracing for a telemetry profile, the event broker generates spans at certain points in the lifecycle of an event message. A span represents a single operation on the event broker, such as receiving a message or acknowledging a message.</p>
+    <p>To configure tracing, follow these steps:</p>
+    <ol>
+      <li>Create a trace filter</li>
+      <li>Configure subscriptions for the filter</li>
+      <li>Enable the trace filter</li>
+      <li>Enable tracing </li>
+    </ol>
+    <h4><a name="trace-filters"/>Configuring Trace Filters</h4>
+    <p> You use a trace filter  to group together  subscriptions that fulfill a particular tracing use case (in other words, subscriptions that you would want to enable or disable together). If an application's messages can be described by a set of subscriptions, then grouping those subscriptions into a trace filter would allow you to start or stop debugging simply by enabling or disabling that single trace filter.</p>
+    <p>To create a trace filter, enter the following commands:</p>
+    <pre xml:space="preserve">solace(configure)# message-vpn &lt;message-vpn-name&gt;
+solace(configure/message-vpn)# telemetry-profile &lt;telemetry-profile-name&gt;
+solace(configure/message-vpn/telemetry-profile)# trace
+solace(configure/message-vpn/telemetry-profile/trace)# create filter &lt;filter-name&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;filter-name&gt;</code> is the name used to identify the trace filter.</p>
+    <p>The no version of this command, <code>no filter &lt;filter-name&gt;</code>, removes the trace filter.</p>
+    <h4><a name="trace-subscriptions"/>Configuring Trace Subscriptions</h4>
+    <p> Trace subscriptions control which messages received by the broker will be traced. If an incoming message matches an enabled trace filter's subscription, the message will be traced as it passes through the broker. </p>
+    <p>To configure a subscription for a trace filter, enter the following commands:</p>
+    <pre xml:space="preserve">
+solace(...ge-vpn/telemetry-profile/trace/filter)# create subscription &lt;subscription&gt; [smf | mqtt]</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;subscription&gt;</code> is the name of the topic subscription to be added to the filter in the form a/b/c. </p>
+    <p><code>smf</code> specifies that the subscription uses SMF syntax. This is the default setting. For more information about SMF topic syntax, see <MadCap:xref href="../../Messaging/SMF-Topics.htm" MadCap:conditions="SAP.SapHideFromOutput">SMF Topics</MadCap:xref><a href="https://docs.solace.com/Messaging/SMF-Topics.htm" target="_blank" class="link-offsite" MadCap:conditions="SAP.SapOnlyOutput">SMF Topics</a>.</p>
+    <p><code>mqtt</code> specifies that the subscription uses MQTT syntax. For more information, see <MadCap:xref href="../../API/MQTT/MQTT-Topics.htm" MadCap:conditions="SAP.SapHideFromOutput">MQTT Topic Structure and Syntax</MadCap:xref><a href="https://docs.solace.com/API/MQTT/MQTT-Topics.htm" target="_blank" class="link-offsite" MadCap:conditions="SAP.SapOnlyOutput">MQTT Topic Structure and Syntax</a>.</p>
+    <p class="Note" MadCap:conditions="SAP.SapHideFromOutput"> Trace subscriptions are not exported. For more information, see <MadCap:xref href="../VPN/Configuring-VPNs.htm#Enable-Sub-Export">Enabling Subscription Export</MadCap:xref>.</p>
+    <h4><a name="enable-trace-filters"/>Enabling or Disabling Trace Filters</h4>
+    <p>To enable a trace filter, enter the following commands:</p>
+    <pre xml:space="preserve">solace(...ge-vpn/telemetry-profile/trace/filter)# no shutdown</pre>
+    <p>To disable a trace filter, enter the following commands:</p>
+    <pre xml:space="preserve">solace(...ge-vpn/telemetry-profile/trace/filter)# shutdown</pre>
+    <h4><a name="enable-tracing"/>Enabling or Disabling Tracing</h4>
+    <p>Typically you would leave tracing enabled, but  enable or disable trace filters to control what gets traced. </p>
+    <p>To enable  tracing for a Message VPN, enter the following commands:</p>
+    <pre xml:space="preserve">solace(...ge-vpn/telemetry-profile/trace)# no shutdown</pre>
+    <p>To disable tracing, enter the following commands:</p>
+    <pre xml:space="preserve">solace(...ge-vpn/telemetry-profile/trace)# shutdown</pre>
+  </body>
+</html>

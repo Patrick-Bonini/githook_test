@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Message Delivery Modes</h1>
+    <p><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">PubSub+ event brokers </MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><MadCap:variable name="Product-Names.broker_cloud_short_intitalcap"/>s</MadCap:conditionalText> support the following message delivery modes:    </p>
+    <dl>
+      <dt>At-most-once delivery</dt>
+      <dd><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">PubSub+ event brokers </MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><MadCap:variable name="Product-Names.broker_cloud_short_intitalcap"/>s</MadCap:conditionalText> provide two options: <MadCap:xref href="#Direct">Direct</MadCap:xref> and <MadCap:xref href="#NonPersistent">Non-Persistent</MadCap:xref> message delivery.<p>Non-Persistent message delivery mode is  used to fulfill JMS specification requirements. For Solace Messaging APIs, non-persistent messages perform the same function as Persistent messages.</p></dd>
+      <dt>At-least-once delivery</dt>
+      <dd><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">PubSub+ event brokers </MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><MadCap:variable name="Product-Names.broker_cloud_short_intitalcap"/>s</MadCap:conditionalText> provide this through <MadCap:xref href="#Persiste">Persistent (Guaranteed)</MadCap:xref> messaging, which is often referred to as Guaranteed messaging.</dd>
+      <dt>Transacted delivery</dt>
+      <dd><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">PubSub+ event brokers </MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><MadCap:variable name="Product-Names.broker_cloud_short_intitalcap"/>s</MadCap:conditionalText> support session based and <a href="../Solace-JMS-API/Using-XA-Transactions.htm" class="link-internal">XA transactions</a>.</dd>
+    </dl>
+    <h2 class="with-rule"><a name="Direct"/>Direct</h2>
+    <p>
+		Direct messaging is meant for use with high-speed applications that can tolerate occasional message loss. Producers can publish messages to a topic, and when these messages are received by the event broker, they are delivered to Consumers with matching topic subscriptions. Direct messages are neither spooled on the event broker for consuming clients (in other words, they're not persisted) nor acknowledged when received.</p>
+    <p>
+      <img src="../../Resources/Images/API/direct-messaging.png" alt=""/>
+    </p>
+    <p style="font-weight: bold;" MadCap:conditions="SAP.SapHideFromOutput">Learn More:</p>
+    <ul>
+      <li MadCap:conditions="SAP.SapHideFromOutput">
+        <MadCap:xref href="../../Messaging/Direct-Msg/Direct-Messages.htm">Direct Messages</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Persiste"/>Persistent (Guaranteed)</h2>
+    <p>Persistent, or Guaranteed, messaging is a combination of: sending Persistent messages with proper publication confirmation handling, and at least once delivery. And, equally important, Guaranteed messages are never lost. There are two aspects to Guaranteed messaging: <MadCap:xref href="#Guarante">Publishing Guaranteed Messages</MadCap:xref> and <MadCap:xref href="#Guarante2">Receiving Guaranteed Messages</MadCap:xref>.</p>
+    <p style="font-weight: bold;" MadCap:conditions="SAP.SapHideFromOutput">Learn More:</p>
+    <ul>
+      <li MadCap:conditions="SAP.SapHideFromOutput">
+        <MadCap:xref href="../../Messaging/Guaranteed-Msg/Guaranteed-Messages.htm">Guaranteed Messages</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="Guarante"/>Publishing Guaranteed Messages</h3>
+    <p>Clients can publish to either a queue or a topic 
+		when Persistent messaging is used to send messages to an event broker.</p>
+    <p>
+      <img src="../../Resources/Images/API/guaranteed_message_pub_pattern.png" alt=""/>
+    </p>
+    <p>
+		When the messages are received by the event broker, they are saved in the event broker's message spool—that is, they're persisted—before they're acknowledged back to the producers. The acknowledgment is confirmation to the publisher that  the event broker accepted the message and it won't be lost.</p>
+    <h3><a name="Guarante2"/>Receiving Guaranteed Messages</h3>
+    <p>Messages are delivered to consumers that are bound to the endpoints that have received the guaranteed messages.
+			Those messages are persisted on the event broker until they expire, or the consuming client acknowledges the messages, indicating they have been consumed.
+		</p>
+    <p>
+      <img src="../../Resources/Images/API/guaranteed_message_recv_pattern.png" alt=""/>
+    </p>
+    <h2 class="with-rule"><a name="NonPersistent"/>Non-Persistent</h2>
+    <p> Non-Persistent messaging delivery mode is  used to fulfill JMS specification requirements. It's also used in message promotion and demotion, which is explained in <MadCap:xref href="#Message">Message Promotion and Demotion</MadCap:xref>. Only JMS client applications should use this mode directly when publishing.</p>
+    <h2 class="with-rule"><a name="Message"/>Message Promotion and Demotion</h2>
+    <p>
+		In the previous discussions of <MadCap:xref href="#Direct">Direct</MadCap:xref> and <MadCap:xref href="#Persiste">Persistent (Guaranteed)</MadCap:xref> messaging, both the producers and consumers made use of the same message delivery mode. However, it's possible for the producers and consumers to use different message delivery modes, thereby ending up with a hybrid of Direct and Persistent messaging, and this is achieved using message promotion and demotion.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/message-prom-dem-caution.flsnp"/>
+    <h3><a name="Message3"/>Message promotion</h3>
+    <p>
+		Message promotion is the situation where the producer sends Direct messages, and the consumer receives these message from a Guaranteed messaging endpoint. In this case the consumer will receive Non-Persistent messages. </p>
+    <p>This is a typical scenario in applications where there is a real-time publisher sending events, and it's critical that this publisher never be back pressured. However, at the same time, there are some consumers that would like to receive the data in the most fault tolerant, Persistent way. In this scenario the consumers can receive the events using a queue endpoint with mapped topics. If the consumer application is ever offline, then messages will accumulate in the queue endpoint. The consumer application won't miss messages if it's offline or slow.</p>
+    <h3><a name="Message4"/>Message demotion</h3>
+    <p>Message demotion is the situation where the producer sends Persistent messages, and there are consumers that want to receive these messages, but can tolerate lost messages. These consumers can add a topic subscription matching these messages, and receive them in real time as Direct messages. These consumers won't back pressure the publisher application, and if they go offline, those consumers will simply miss messages. Overall, the producer application is sending mission critical data, but some consumers of this data are not mission critical, and should never be allowed to affect the publishers. </p>
+    <p>
+		From a consumer’s point-of-view, the only way to ensure fully guaranteed messaging is if the messages are received from an endpoint with a delivery mode of Persistent. That means the messages were sent persistently, and received on a Guaranteed messaging endpoint. All other combinations are examples of at-most-once messaging, and the Consumer will receive them either as Direct or Non-Persistent messages.</p>
+    <h4>Summary</h4>
+    <p>The following table outlines message promotion and demotion in <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">PubSub+ event brokers </MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><MadCap:variable name="Product-Names.broker_cloud_short_intitalcap"/>s</MadCap:conditionalText>.</p>
+    <table style="width: 95%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Delivery Mode of Published Message</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Received by Endpoint as…</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Received by a Client with a Matching Topic Subscription as…</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <strong>Direct</strong>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Non-Persistent</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Direct</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <strong>Non-Persistent</strong>
+          </td>
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Non-Persistent</td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">Direct</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <strong>Persistent</strong>
+          </td>
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">Persistent</td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">Direct</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-weight: bold;" MadCap:conditions="SAP.SapHideFromOutput">Learn More:</p>
+    <ul>
+      <li MadCap:conditions="SAP.SapHideFromOutput">
+        <MadCap:xref href="../../Messaging/Guaranteed-Msg/Topic-Matching-and-Delivery-Modes.htm">Topic Matching and Message Delivery Modes</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Message2"/>Message Delivery Modes Terminology</h2>
+    <p>
+		Different protocols and APIs use different terminology to describe delivery modes. The following table provides a summary across the various protocols supported by the event broker.</p>
+    <table style="mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Message QoS</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Solace APIs</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">JMS</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">MQTT</th>
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">AMQP</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Solace REST</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td width="130" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <strong>At-most-once delivery</strong>
+          </td>
+          <td width="130" class="TableStyle-Table_Num-BodyH-Column1-Body1">Direct (default)</td>
+          <td width="130" class="TableStyle-Table_Num-BodyH-Column1-Body1">Non-Persistent</td>
+          <td width="130" class="TableStyle-Table_Num-BodyH-Column1-Body1">QoS 0 (default)</td>
+          <td width="130" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>Direct for publishers only </p>
+            <p>(Direct subscribers not supported)</p>
+          </td>
+          <td width="130" class="TableStyle-Table_Num-BodyG-Column1-Body1">Direct</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td width="130" class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <b>At-least-once delivery</b>
+          </td>
+          <td width="130" class="TableStyle-Table_Num-BodyH-Column1-Body1">Persistent</td>
+          <td width="130" class="TableStyle-Table_Num-BodyH-Column1-Body1">Persistent</td>
+          <td width="130" class="TableStyle-Table_Num-BodyH-Column1-Body1">QoS 1</td>
+          <td width="130" class="TableStyle-Table_Num-BodyH-Column1-Body1">Persisted</td>
+          <td width="130" class="TableStyle-Table_Num-BodyG-Column1-Body1">Persistent (default)</td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td width="130" class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <b>Transacted</b>
+          </td>
+          <td width="130" class="TableStyle-Table_Num-BodyB-Column1-Body1">Session Based</td>
+          <td width="130" class="TableStyle-Table_Num-BodyB-Column1-Body1">Session + XA</td>
+          <td width="130" class="TableStyle-Table_Num-BodyB-Column1-Body1">N/A</td>
+          <td width="130" class="TableStyle-Table_Num-BodyB-Column1-Body1">N/A</td>
+          <td width="130" class="TableStyle-Table_Num-BodyA-Column1-Body1">N/A</td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

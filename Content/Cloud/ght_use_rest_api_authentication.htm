@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/><MadCap:concept term="Cloud"/>Managing Authentication with the <MadCap:variable name="Product-Names.cloud_product_titlecase"/> REST API</h1>
+    <p>With REST API and API token support for authentication, you can configure the authentication mechanism for <MadCap:variable name="Product-Names.broker_cloud_short"/>s.</p>
+    <p>This tutorial shows you how to:</p>
+    <ul>
+      <li>
+        <a href="#configure-client-authentication" class="link-internal">Configure Client Certificate Authentication</a>
+      </li>
+      <li>
+        <a href="#ldap-management-profile" class="link-internal">Create an LDAP Profile</a>
+      </li>
+      <li>
+        <a href="#ldap-management-access-rest" class="link-internal">Configure LDAP Management Access</a>
+      </li>
+    </ul>
+    <h2>Before you Begin</h2>
+    <p>Before you can start this tutorial, you'll require the following:</p>
+    <ul>
+      <li>An account in  <MadCap:variable name="Product-Names.broker_cloud_long"/> and an <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li>
+      <li>The service ID of the <MadCap:variable name="Product-Names.broker_cloud_short"/>.  The <code>{serviceId}</code> is the last value of the specified service's URL. For example, in this URL <code><MadCap:variable name="Manifest-Products-Links.CloudConsoleOnly"/>services/d4g5cxzcrhk</code>, the service ID is<code> d4g5cxzcrhk</code>. The service identifier is required for many of the REST API calls.</li>
+      <li>Your account must be assigned the Administrator or <MadCap:variable name="Product-Names.cluster_mgr"/> Editor role.</li>
+      <li>An API token with the  following permissions:<ul><li>From <b>Mission Control</b>:<ul><li><b><b>Get My Services with Management Credentials</b></b></li></ul></li></ul><ul><li>From <b>Organization Services</b>:<ul><li><b>Get Services with Management Credentials</b></li><li><b>Enable/Disable LDAP Management Access to the Broker</b></li><li><b>Enable / Disable Basic and Certificate Authentication</b></li></ul></li></ul><p>To learn how to create an API token, see <MadCap:xref href="ght_api_tokens.htm#Create">Creating an API Token</MadCap:xref>.</p></li>
+      <li>
+        <p>A REST client of your choice. Postman is a good choice if you want a visual REST API development tool. At this time, there is no Solace Blog available so if you use Postman, simply make each call by typing the REST API call after you've set up the environment in Postman to use your API token. For more information about setting up Postman, see <MadCap:xref href="ght_api_tokens.htm">Using an API Token with Postman</MadCap:xref>.</p>
+        <MadCap:snippetBlock src="../Resources/Snippets/Cloud/restapi_checktoken_nosolaceblog.flsnp"/>
+      </li>
+    </ul>
+    <h2><a name="configure-client-authentication"/>Configuring Client Certificate Authentication For <MadCap:variable name="Product-Names.broker_cloud_short_title"/>s</h2>
+    <p>You can enable client certificate authentication or mutual TLS (mTLS) on <MadCap:variable name="Product-Names.broker_cloud_short"/>s using the REST API. Before you enable client certificate authentication, you must add certificates to the <MadCap:variable name="Product-Names.broker_cloud_short"/>.  For more information, see <MadCap:xref href="ght_use_rest_api_certificates.htm">Managing Certificates with the PubSub+ Rest API</MadCap:xref>.</p>
+    <p>The minimum permission required in the API Token to use the REST API call is  Enable / Disable Basic and Certificate Authentication.</p>
+    <p>To enable or disable client certificate authentication, you issue a POST call to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{serviceId}/requests/updateAuthenticationRequests</code>.</p>
+    <p>A successful request returns <code>202</code> (Accepted); otherwise the following error codes are returned:</p>
+    <ul>
+      <li><code>5000</code> — with a support code of <code>102</code> if the <code>updateAuthenticationRequest</code> was passed an invalid format or missing a parameter in the body of the POST request. The request must include all parameters specified in the payload above.</li>
+      <li><code>5000</code> — with a support code of <code>106</code> if the update authentication permission (<b>Enable / Disable Basic and Certificate Authentication</b>) is not in the API token that was used.</li>
+    </ul>
+    <p>The POST call requires the following parameters in the body:</p>
+    <ul>
+      <li>
+        <p><code>authenticationBasicEnabled</code> — A boolean value to enable (<code>true</code>) or disable (<code>false</code>) basic authentication for the client applications. </p>
+        <p class="Warning">Do not disable (set to <code>false</code>), otherwise your <MadCap:variable name="Product-Names.broker_cloud_short"/> is accessible by everyone.</p>
+      </li>
+      <li>
+        <p><code>authenticationClientCertEnabled</code> — A boolean value to enable (<code>true</code>) or disable (<code>false</code>) Client Certificate Authentication for client applications.</p>
+      </li>
+      <li>
+        <p><code>authenticationClientCertValidateDateEnabled</code> — A boolean value to enable (<code>true</code>) or disable (<code>false</code>) the requirement to validate the certificate date.</p>
+      </li>
+      <li>
+        <p><code>authenticationOauthEnabled</code> — A boolean value to enable (<code>true</code>) or disable (<code>false</code>) OAuth authentication for client applications. This will enable clients to connect and authenticate applications and IoT devices with OAuth's advanced security features.</p>
+      </li>
+    </ul>
+    <p>The <code>serviceId</code> is the unique identifier for the service, which you can determine using a call such as <MadCap:xref href="ght_use_rest_api_services.htm#getdetails-service">Getting the Connection Details for the Event Broker Service using the REST API.</MadCap:xref></p>
+    <p>For example, if the identifier for the service identifier of <code>v0q6d1xqg7g</code>, a POST call to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/v0q6d1xqg7g/requests/updateAuthenticationRequests</code> with the payload looks like this:</p>
+    <pre xml:space="preserve">{
+  "authenticationBasicEnabled": "true",
+  "authenticationClientCertEnabled": "true",
+  "authenticationClientCertValidateDateEnabled": "false",
+  "authenticationOauthEnabled" "false"
+}</pre>
+    <p>Upon success, a response is returned:</p>
+    <pre xml:space="preserve">{
+  "data": {
+    "id": "0b4tesmsn2b",
+    "creationTimestamp": 1631111411837,
+    "authenticationBasicEnabled": "true",
+    "authenticationClientCertEnabled": "true",
+    "authenticationClientCertValidateDateEnabled": "false",
+    "authenticationOauthEnabled": "false",
+    "type": "updateAuthenticationRequest"
+  }
+}</pre>
+    <p>Since this operation is asynchronous, you must issue a <code>GET</code> call to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{serviceId}/requests/{requestId}</code>  to check the progress of the operation, where <code>serviceId</code> is the identifier for the <MadCap:variable name="Product-Names.broker_cloud_short"/> and <code>requestId</code> is the value from <code>id</code> parameter that was returned in the response from the POST call.   Continuing from the previous example,  if you issue the   <code>GET</code> call to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/v0q6d1xqg7g/requests/0b4tesmsn2b</code>, you can see the status is <code>completed</code> in the <code>adminProgress</code> progress in the response as follows:<br/></p>
+    <pre xml:space="preserve">{
+  "data": {
+    "id": "0b4tesmsn2b",
+    "creationTimestamp": 1631111411837,
+    <b>"adminProgress": "completed"</b>,
+    "authenticationBasicEnabled": "true",
+    "authenticationClientCertEnabled": "true",
+    "authenticationClientCertValidateDateEnabled": "false",
+    "authenticationOauthEnabled": "false",
+    "type": "updateAuthenticationRequest"
+  },
+  "meta": {
+    "currentTime": 1631111490000
+  }
+}</pre>
+    <h2><a name="ldap-management-profile"/>Creating an LDAP Profile</h2>
+    <p>For LDAP authentication of users and/or LDAP authorization of clients, LDAP profiles must be configured on the event broker service and be enabled. You can create the following LDAP profiles:</p>
+    <ul>
+      <li><b>default</b> profile to authenticate clients</li>
+      <li><b>management</b> profile to authenticate users. To learn more about LDAP for Management Access, refer to <MadCap:xref href="#LDAP Man">Configuring LDAP for Management Access Using REST</MadCap:xref>.<br/><br/></li>
+    </ul>
+    <p>To create an LDAP profile for an existing service, send a POST request to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{id}/requests/ldapAuthenticationProfileRequests</code>. A successful response returns 202 (Accepted). The <code>{id}</code> is the last value in the specified service's URL. For example, in this URL, <code><MadCap:variable name="Manifest-Products-Links.CloudConsoleOnly"/>/services/d4g5cxzcrhk</code>, the service ID is<code> d4g5cxzcrhk</code>.</p>
+    <p>The following example payload will create an LDAP management profile. For detailed information on the attributes and parameters, refer to <MadCap:xref href="ght_authentication.htm#ldap-authentication">Configure LDAP Authentication</MadCap:xref>.</p>
+    <pre xml:space="preserve">{
+  "operation":"create",
+  "ldapAuthenticationProfile":
+    {
+      "profileName": "management",
+      "enabled":false,
+      "adminDn":"solly@example.com",
+      "adminPassword":"somesuperotter",
+      "allowUnauthenticatedAuthentication":false,
+      "startTls":true,
+      "ldapServerOne":"ldap:myldapserver:1234",
+      "ldapServerTwo":null,
+      "ldapServerThree":null,
+      "searchBaseDn":"apple23",
+      "searchDeref":"SEARCH",
+      "searchFilter":"(cn=$CLIENT_USERNAME)23",
+      "searchScope":"BASE",
+      "searchFollowContinuationReferences":true,
+      "searchTimeout":3,
+      "groupMembershipSecondarySearchEnabled":false,
+      "groupMembershipSecondarySearchBaseDn":"",
+      "groupMembershipSecondarySearchFilterAttributeFromPrimarySearch":"",
+      "groupMembershipSecondarySearchDeref":"ALWAYS",
+      "groupMembershipSecondarySearchFilter":"",      
+      "groupMembershipSecondarySearchScope":"SUBTREE",
+      "groupMembershipSecondarySearchFollowContinuationReferences":false,
+      "groupMembershipSecondarySearchTimeout":2
+    }
+}</pre>
+    <p>Here is an example of a successful 202 response:</p>
+    <pre xml:space="preserve">{
+  "data" : {
+    "id" : "zl8oa476l",
+    "creationTimestamp" : 0,
+    "operation" : "update",
+    "type" : "ldapAuthenticationProfileRequest"
+  }
+}</pre>
+    <p>To verify that the LDAP profile was successfully created, send a GET request to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{id}/requests/ldapAuthenticationProfileRequests/&lt;ldap-profile-name&gt;</code>. A successful response returns 200 (OK).</p>
+    <p>The following is an example response for an LDAP management profile that was successfully created.</p>
+    <pre xml:space="preserve">
+{
+  "data" : {
+    "id" : "management",
+    "profileName" : "management",
+    "enabled" : true,
+    "allowUnauthenticatedAuthentication" : false,
+    "startTls" : true,
+    "adminDn" : "solly@example.com",
+    "adminPassword" : "somesuperotter",
+    "groupMembershipSecondarySearchEnabled" : false,
+    "groupMembershipSecondarySearchBaseDn" : "",
+    "groupMembershipSecondarySearchDeref" : "ALWAYS",
+    "groupMembershipSecondarySearchFilter" : "",
+    "groupMembershipSecondarySearchFilterAttributeFromPrimarySearch" : "",
+    "groupMembershipSecondarySearchFollowContinuationReferences" : false,
+    "groupMembershipSecondarySearchScope" : "SUBTREE",
+    "groupMembershipSecondarySearchFollowContinuationShutdown" : false,
+    "groupMembershipSecondarySearchTimeout" : 2,
+    "ldapServerOne" : "ldap://macafee.ca:1234",
+    "ldapServerTwo" : null,
+    "ldapServerThree" : null,
+    "searchBaseDn" : "apple23",
+    "searchDeref" : "SEARCH",
+    "searchFilter" : "(cn=$CLIENT_USERNAME)23",
+    "searchFollowContinuationReferences" : true,
+    "searchScope" : "BASE",
+    "searchTimeout" : 3,
+    "type" : "ldapAuthenticationProfile"
+  }
+}
+        </pre>
+    <p>To configure LDAP management access through the <MadCap:variable name="Product-Names.cloud_product_short"/> console, refer to <MadCap:xref href="ght_authentication.htm#ldap-authentication">Configure LDAP Authentication</MadCap:xref>.</p>
+    <h2><a name="ldap-management-access-rest"/>Configuring LDAP for Management Access</h2>
+    <p>Before you begin this tutorial, make sure you've created an <a href="#Creating" class="link-internal">LDAP Management Profile</a>.</p>
+    <p>To set LDAP for management access, you must configure the following:</p>
+    <ul>
+      <li>configure an LDAP management profile.</li>
+      <li>set the LDAP attribute to check for groups. A group attribute name is retrieved from the LDAP server as part of the LDAP search to authenticate users. The <code>groupAttributeName</code> indicates that a user belongs to a particular group that exists on the LDAP server.</li>
+      <li>provide <code>global-read</code> and/or <code>vpn-read-write</code> access to one or more groups. A user may belong to one or more LDAP groups, and each group's access level may differ. You can provide <code>readOnlyGroupNames</code> and/or <code>readWriteGroupNames</code> to member groups.</li>
+    </ul>
+    <p>To configure LDAP for Management Access through the <MadCap:variable name="Product-Names.cloud_product_short"/> console, refer to <MadCap:xref href="ght_authentication.htm#Configur">Configure LDAP Management Access</MadCap:xref>.</p>
+    <h3>Enable LDAP for Management Access </h3>
+    <p>To enable the LDAP for Management Access for an existing service, send a POST request to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{serviceId}/requests/ldapManagementAccessRequest</code>. A successful response returns 202 ACCEPTED. </p>
+    <p>The following example payload will enable the LDAP management access, where we set the <code>groupAttributeName</code> and the <code>readOnlyGroupNames</code> and <code>readWriteGroupNames</code> access for specific groups.</p>
+    <pre xml:space="preserve">
+{
+   "operation":"create",
+   "managementProfileName":"&lt;created-management-profile-name&gt;",
+   "groupAttributeName":"&lt;group-membership-attribute-name&gt;",
+   "readOnlyGroupNames":["&lt;group-name-1&gt;","&lt;group-name-2&gt;"],
+   "readWriteGroupNames":["&lt;group-name-1&gt;", "&lt;group-name-3&gt;"]
+}</pre>
+    <p>Here is an example of a successful 202 Accepted response:</p>
+    <pre xml:space="preserve">
+{
+   "data": {
+      "id": "&lt;serviceRequestId&gt;",
+      "creationTimestamp": 0,
+      "managementProfileName": "&lt;created-management-profile-name&gt;",
+      "operation": "create",
+      "groupAttributeName": "&lt;group-membership-attribute-name&gt;",
+      "readOnlyGroupNames": [
+         "&lt;group-name-1&gt;",
+         "&lt;group-name-2&gt;"
+      ],
+      "readWriteGroupNames": [
+         "&lt;group-name-1&gt;",
+        "&lt;group-name-3&gt;"
+      ],
+      "type": "ldapManagementRequest"
+   }
+}</pre>
+    <h3>Update/Disable LDAP for Management Access </h3>
+    <p>To update the LDAP for Management Access for an existing service, send a POST request to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{serviceId}/requests/ldapManagementAccessRequest</code>. A successful response returns 202 ACCEPTED. </p>
+    <p>The following example payload will update the LDAP management access, where we set <code>"operation: update"</code> and <code>enableManagementProfileAuthentication: true</code>. Setting <code>enableManagementProfileAuthentication: false</code> will disable the LDAP for Management Access.</p>
+    <pre xml:space="preserve">
+{
+    "operation":"update",
+    "managementProfileName":"&lt;created-management-profile-name&lt;",
+    "groupAttributeName":"&lt;group-membership-attribute-name&lt;",
+    "readOnlyGroupNames":["&lt;group-name-1&lt;","&lt;group-name-2&lt;","&lt;group-name-4&lt;"],
+    "readWriteGroupNames":[],
+    "enableManagementProfileAuthentication": true
+}</pre>
+    <p>Here is an example of a successful 202 Accepted response:</p>
+    <pre xml:space="preserve">
+{
+   "data": {
+      "id": "&lt;serviceRequestId&gt;",
+      "creationTimestamp": 0,
+      "managementProfileName": "&lt;created-management-profile-name&gt;",
+      "operation": "create",
+      "groupAttributeName": "&lt;group-membership-attribute-name&gt;",
+      "readOnlyGroupNames": [
+         "&lt;group-name-1&gt;",
+         "&lt;group-name-2&gt;",
+         "&lt;group-name-4&gt;"
+      ],
+        "readWriteGroupNames": [],
+        "enableManagementProfileAuthentication": true,
+        "type": "ldapManagementRequest"
+    }
+}</pre>
+    <h3>Remove LDAP for Management Access </h3>
+    <p>To remove the LDAP for Management Access for an existing service, send a POST request to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{serviceId}/requests/ldapManagementAccessRequest</code>. A successful response returns 202 ACCEPTED. </p>
+    <p>The following example payload will remove the LDAP management access, where we set <code>"operation: delete"</code> and <code>enableManagementProfileAuthentication: false</code>.</p>
+    <pre xml:space="preserve">
+{
+    "operation":"delete",
+    "managementProfileName":"&lt;created-management-profile-name&lt;",
+    "groupAttributeName":"&lt;group-membership-attribute-name&lt;",
+    "readOnlyGroupNames":["&lt;group-name-1&lt;","&lt;group-name-2&lt;","&lt;group-name-4&lt;"],
+    "readWriteGroupNames":[],
+    "enableManagementProfileAuthentication": false
+}</pre>
+    <p>Here is an example of a successful 202 response:</p>
+    <pre xml:space="preserve">
+{
+    "data": {
+      "id": "&lt;serviceRequestId&gt;",
+      "creationTimestamp": 0,
+      "managementProfileName": "&lt;created-management-profile-name&gt;",
+      "operation": "create",
+      "groupAttributeName": "&lt;group-membership-attribute-name&gt;",
+      "readOnlyGroupNames": [
+         "&lt;group-name-1&gt;",
+         "&lt;group-name-2&gt;",
+         "&lt;group-name-4&gt;"
+      ],
+        "readWriteGroupNames": [],
+        "enableManagementProfileAuthentication": false,
+        "type": "ldapManagementRequest"
+    }
+}</pre>
+    <h3>Get LDAP for Management Access Information</h3>
+    <p>To retrieve the information for LDAP for Management Access, send a GET request to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{service-id}/ldapManagementAccess</code>. A successful response returns 200 OK. If the event broker service was deleted or disabled, the response will be 404 NOT FOUND.</p>
+    <p>The following is an example response for LDAP management access information that is enabled.</p>
+    <pre xml:space="preserve">
+{
+   "data": {
+        "id": "{vmrId}/{vpn}/ldapManagement",
+        "creationTimestamp": 0,
+        "adminProgress": "completed",
+        "managementProfileName": "&lt;created-management-profile-name&gt;",
+        "operation": "create",
+        "groupAttributeName": "&lt;group-membership-attribute-name&gt;",
+        "readOnlyGroupNames": [
+            "&lt;group-name-1&gt;",
+            "&lt;group-name-2&gt;"
+        ],
+        "readWriteGroupNames": [
+            "&lt;group-name-1&gt;",
+            "&lt;group-name-3&gt;"
+        ],
+        "enableManagementProfileAuthentication": true,
+        "type": "ldapManagementRequest"
+    }
+}</pre>
+    <h3>Check Status of LDAP for Management Access Service Request</h3>
+    <p>To verify that the LDAP for Management Access was successfully enabled, updated, or deleted, send a GET request to <code><MadCap:variable name="Manifest-Products-Links.CloudRESTAPIPrefix"/>services/{serviceId}/requests/{serviceRequestId}</code>. A successful response returns 200 OK. If the event broker service was deleted or disabled, the response will be 404 NOT FOUND.</p>
+    <p>The following is an example response for LDAP management access that is enabled.</p>
+    <pre xml:space="preserve">{
+  "data": {
+        "id": "&lt;serviceRequestId&gt;",
+        "creationTimestamp": 0,
+        "adminProgress": "completed",
+        "managementProfileName": "&lt;created-management-profile-name&gt;",
+        "operation": "create",
+        "groupAttributeName": "&lt;group-membership-attribute-name&gt;",
+        "readOnlyGroupNames": [
+            "&lt;group-name-1&gt;",
+            "&lt;group-name-2&gt;"
+        ],
+        "readWriteGroupNames": [
+            "&lt;group-name-1&gt;",
+            "&lt;group-name-3&gt;"
+        ],
+        "type": "ldapManagementRequest"
+    },
+    "meta": {
+        "currentTime": 1622142431031
+  }
+}</pre>
+  </body>
+</html>

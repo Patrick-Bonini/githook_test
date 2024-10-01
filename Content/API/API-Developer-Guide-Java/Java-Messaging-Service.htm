@@ -1,0 +1,455 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><a name="Messaging-Service"/>Messaging Service</h1>
+    <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Java provides the <code>MessagingService</code> interface, which allows you to connect to an event broker. The <code>MessagingService</code> interface handles all the functionality for interacting with a <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker. To create a <code>MessagingService</code> object, you must first configure a <code>Properties</code> object with the information required to establish a connection to the event broker, including the host details and the authentication scheme.</p>
+    <p> To ensure backwards compatibility with future versions of the API, you must pass a <a href="#Configuration-Profiles" class="link-internal">Configuration Profile</a> as a parameter when you create the <code>MessagingService</code> object. </p>
+    <h2 class="with-rule"><a name="Creating-A-Properties-Object"/>Creating a Properties Object </h2>
+    <p>A <code>Properties</code> (<code>SolaceProperties</code> interface) object can have a number of properties, however at least one property object must have a <code>SolaceProperties.TransportLayerProperties.HOST</code> and a <code>SolaceProperties.TransportLayerProperties.VPN</code> configured and passed to a <code>MessagingService.builder()</code> to configure the connection to the event broker. There are five categories of properties that can be configured in a <code>Properties</code> object.</p>
+    <ul>
+      <li><code>ServiceProperties</code>(required for the <code>VPN </code>property)</li>
+      <li><code>TransportLayerProperties</code> (required for the <code>HOST </code>property )</li>
+      <li>
+        <code>AuthenticationProperties</code>
+      </li>
+      <li>
+        <code>ClientProperties</code>
+      </li>
+      <li>
+        <code>TransportLayerSecurityProperties</code>
+      </li>
+    </ul>
+    <p>For more information,  see the <a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Java reference</a>.</a></p>
+    <p>An example of a <code>Properties</code> object for a basic connection can be seen below. After you create a <code>Properties</code> object, you can use setter methods to configure the connection. In the following example, the fields have been hard-coded  as <code>string</code> values for readability. In your own code, change these values as required based on your event broker. </p>
+    <pre xml:space="preserve">import com.solace.messaging.MessagingService;
+import com.solace.messaging.config.SolaceConstants.AuthenticationConstants;
+import com.solace.messaging.config.SolaceProperties.AuthenticationProperties;
+import com.solace.messaging.config.SolaceProperties.TransportLayerProperties;
+import com.solace.messaging.config.profile.ConfigurationProfile;
+import java.util.Properties;
+...
+...
+...						
+final Properties properties = new Properties();
+properties.setProperty(TransportLayerProperties.HOST, "host");
+properties.setProperty(ServiceProperties.VPN_NAME,  "vpn");
+properties.setProperty(AuthenticationProperties.SCHEME_BASIC_USER_NAME, "userName");
+properties.setProperty(AuthenticationProperties.SCHEME_BASIC_PASSWORD, "password");
+properties.setProperty(ServiceProperties.RECEIVER_DIRECT_SUBSCRIPTION_REAPPLY, "true");</pre>
+    <p>Alternatively if you're running samples, the configuration you want to use can be passed into the client application via the command line using the <code>args[]</code>array in the <code>main</code> method or loaded using a properties file. The following sample code shows how you can create a <code>Properties</code> object and load its values using a properties file. For a comprehensive list of the constant field values, see <code>AuthenticationProperties</code>.</p>
+    <pre xml:space="preserve">/* Creating a Properties object and setting its values using a FileInputStream file reader */
+try (InputStream input = new FileInputStream("path/to/properties/file")) {
+    Properties properties = new Properties();
+    properties.load(input);
+} catch (IOException e) {
+    e.printStackTrace();
+}    
+</pre>
+    <h2><a name="Message"/>End-to-End Payload Compression</h2>
+    <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Java API can perform end-to-end payload compression to allow for: </p>
+    <ul>
+      <li>
+        <p>faster message throughput </p>
+      </li>
+      <li>
+        <p>reduced bandwidth usage</p>
+      </li>
+      <li>
+        <p>improved performance in your applications</p>
+      </li>
+    </ul>
+    <p>While end-to-end payload compression creates more work for individual <MadCap:variable name="Product-Names.pubsub_brand_only"/> APIs, it enables faster aggregate rates of message publishing and message receiving. The <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker offers transport message compression that compresses the entire message, see <MadCap:xref href="../../Messaging/Message-Compression.htm#top">Streaming Compressed Connections</MadCap:xref>. However, when you send and receive large messages, compressing the entire message creates a lot of work for the event broker, which can result in slower throughput. If your application needs to send and receive large messages, we recommend you use end-to-end payload compression to improve performance.</p>
+    <ol>
+      <li>
+        <p>
+          <MadCap:xref href="#Consider">Considerations When Compressing Message Payloads</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Compress">Compressing Message Payloads in the [%=Product-Names.pubsub_brand_only%] Java API</MadCap:xref>
+        </p>
+      </li>
+    </ol>
+    <MadCap:snippetBlock src="../API-Developer-Guide/Snippets/message-payload-compression.flsnp"/>
+    <h2><a name="Compress"/>Compressing Message Payloads in the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Java API</h2>
+    <p>Your publisher application can compress the payload of any message before you publish it. To compress a message payload, you must set <code>PAYLOAD_COMPRESSION_LEVEL</code>, which tells the API you want end-to-end payload compression enabled. The payload compression level property can be set to an integer from 0-9:</p>
+    <ul>
+      <li>
+        <p><code>0</code>—Payload compression is disabled. This is the default setting.</p>
+      </li>
+      <li>
+        <p><code>1 - 9</code>—Payload compression is enabled. 1 is the lowest level of compression with the fastest data throughput, and 9 is the highest level of compression with the slowest data throughput.</p>
+      </li>
+    </ul>
+    <p>Your payload compression level should be adjusted according to your network and performance requirements. The following code snippet shows how to set <code>PAYLOAD_COMPRESSION_LEVEL</code> in a broker properties dictionary:</p>
+    <pre xml:space="preserve">
+Properties properties = new Properties();
+// Payload compression enabled with max compression:
+properties.setProperty(SolaceProperties.ServiceProperties.PAYLOAD_COMPRESSION_LEVEL, "9");</pre>
+    <h2 class="with-rule"><a name="Establish-conneection-to-event-broker"/>Establishing a Connection to an Event Broker </h2>
+    <p>When the necessary properties have been set and stored in a <code>Properties</code> object, you can call <code>MessagingService.build()</code> to create a <code>MessagingService</code> object. The <code>MessagingService</code> object allows the API to establish a connection to the event broker. The following is a list of commonly used methods to create the necessary <code>MessagingService</code> object using the <code>MessagingServiceClientBuilder</code> interface and establish a connection to the event broker:</p>
+    <ul>
+      <li>
+        <code>builder(ConfigurationProfile activeProfile)</code>
+      </li>
+      <li style="font-weight: normal;font-size: 11pt;">
+        <code>withAuthenticationStrategy(AuthenticationStrategy authenticationProvider)</code>
+      </li>
+      <li>
+        <code>fromProperties(Properties properties)</code>
+      </li>
+      <li>
+        <code>build()</code>
+      </li>
+    </ul>
+    <p>For more information,  see the <a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Java reference</a>.</a></p>
+    <p>After you create the <code>MessagingService</code> object, you call the <code>connect()</code> method. </p>
+    <p>The following sample code shows how to create a simple <code>MessagingService</code> object that connects to an event broker:</p>
+    <pre xml:space="preserve">
+final MessagingService messagingService = MessagingService.builder(ConfigurationProfile.V1)
+    .fromProperties(properties)    // Enables property based configuration, required to set host and VPN properties
+                                   <b>// withAuthenticationStrategy() can be called here to use one of the strategies listed below</b>
+    .build()                       // Returns a MessagingService object based on the provided configuration
+    .connect();                    // A synchronous connection is established with an event broker.
+</pre>
+    <h2 class="with-rule"><a name="Transport-Layer-Security"/>Using Transport Layer Security</h2>
+    <p>Transport Layer Security (TLS) allows for encrypted authentication and data transmission between the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Java API and a <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker. The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Java API supports Transport Layer Security versions: TLS 1.0, TLS 1.1, and TLS 1.2 . The recommended version to use is the most recent version of TLS. Secure Socket Layer (SSL) protocol, version 3 (SSLv3) is also supported. We don't recommend that you use SSL unless it's required for backwards compatibility.</p>
+    <p>You can use  <code>TransportSecurityStrategy.TLS.create()</code> to configure the TLS connection properties, such as the Java Key Store (JKS) to use, or whether to disable certificate validation. When you use TLS, you must always use  secure TCP  protocol (<code>tcps</code> or <code>https</code>) in  setting the <code>TransportLayerProperties.HOST</code> property for your connection, for example:</p>
+    <p>
+      <pre xml:space="preserve">properties.setProperty(TransportLayerProperties.HOST, "<b>tcps</b>://my-host-connection.messaging.solace.cloud:11111");</pre>
+    </p>
+    <p>The following sample code shows the recommended security setup for client applications when you use TLS: </p>
+    <pre xml:space="preserve">/* An entry point to create a service builder using a configuration profile (V1 sets it to default values). */
+MessagingService.builder(ConfigurationProfile.V1)
+    .withTransportSecurityStrategy(
+        TLS.create()                                      // Creates a new transport security layer instance(required). Can configure or override authentication manually.
+        <b>.withCertificateHostValidation()</b>                  // Configures transport layer security (TLS) to validate the host against one from a server certificate.
+        <b>.withCertificateValidation("changeme", false)</b>     // changeme is the default truststore password, ignoreExpiration is set to false which rejects expired certificates
+        <b>.withExcludedProtocols(SecureProtocols.TLSv1_1, SecureProtocols.TLSv1, SecureProtocols.SSLv3)</b>   // Excludes dated SSL protocols 
+    .withAuthenticationStrategy(                          // Enables/overrides the existing authentication strategy with AuthenticationStrategy.
+        ClientCertificateAuthentication         
+        .of(myKeystoreUrl, myKeystorePassword)            // A factory method that creates an instance to be used for Client Certificate Authentication. 
+            )
+    .build()                                         
+    .connect(); </pre>
+    <p>There are also a number of methods that you may find useful to configure the TLS connection using <code>TransportSecurityStrategy.TLS</code>. Here are three methods commonly used to configure the TLS connection:</p>
+    <ul>
+      <li>
+        <p><code>withCipherSuites()</code>—The list of cipher suites used when negotiating the TLS connection can be configured. You can configure the Java API to limit it to use a set of stronger ciphers and to help <MadCap:annotation MadCap:createDate="2022-10-07T17:59:25.9763670-04:00" MadCap:creator="GilYu" MadCap:initials="GI" MadCap:comment="The list of Cipher Suites used when negotiating the TLS connection can be configured. Limiting the API to a set of stronger ciphers can guarantee a more secure connection between applications and an event broker." MadCap:editor="GilYu" MadCap:editDate="2022-10-07T17:59:26.7709784-04:00">guarantee</MadCap:annotation> a more secure connection between the client applications and event brokers.</p>
+        <p>Cipher suites are a useful method of encrypting communication through a TLS handshake and offer improved security between applications connected through the  event broker. For a more detailed explanation and a list of supported cipher suites see <a href="../../Security/TLS-SSL-Message-Encryption-Overview.htm#Cipher" class="link-internal">Cipher Suites</a>.</p>
+        <p>The following code sample shows how to use the <code>withCipherSuites()</code> method:</p>
+        <p>
+          <pre xml:space="preserve">
+/* An entry point to create a service builder using a configuration profile (V1 sets it to default values). */
+MessagingService.builder(ConfigurationProfile.V1)
+    <b>.withTransportSecurityStrategy(TLS.create()</b>      // Creates a new transport security layer instance(required). Can configure or override authentication manually.
+    <b>.withCipherSuites("CipherSuite1,</b>                 // A comma separated list of cipher suites in order of preference used for SecureSocket Layer (SSL) connections.
+                        <b>CipherSuite2")</b>               // Cipher suites can be specified using their JSSE name or openSSL name.
+        )
+    .withAuthenticationStrategy(                     // Enables/overrides the existing authentication strategy with AuthenticationStrategy.
+        ClientCertificateAuthentication         
+        .of(myKeystoreUrl, myKeystorePassword)       // A factory method that creates an instance to be used for Client Certificate Authentication. 
+        )
+    .build()        // Returns a PubSub+ MessagingService object based on the provided configuration and number of authentication parameters.
+    .connect();     // A synchronous connection is established with a PubSub+ event broker.            </pre>
+        </p>
+      </li>
+      <li>
+        <p><code>withExcludedProtocols()</code>—You may not want to use specific protocols to connect with microservices. For example, you may not want to use legacy protocols. Use this method to specify the Secure Socket Layer (SSL) and Transport Layer Security (TLS) protocols not to use. Here is sample code that shows you how to exclude a specific protocol: </p>
+        <p>
+          <pre xml:space="preserve">
+/* An entry point to create a service builder using a configuration profile (V1 sets it to default values). */
+MessagingService.builder(ConfigurationProfile.V1)
+    .withTransportSecurityStrategy(
+        TLS.create()       // Creates a transport security layer instance. You can configure or override authentication manually.
+        <b>.withExcludedProtocols(TransportSecurityStrategy.TLS.SecureProtocols.TLS1.1)  // Excludes TLS1.1 from accessing micro service.</b>
+        )
+    .withAuthenticationStrategy(               // Enables or overrides the existing authentication strategy with AuthenticationStrategy.
+        ClientCertificateAuthentication          
+        .of(myKeystoreUrl, myKeystorePassword) // A factory method that creates a new instance to be used for Client Certificate Authentication. 
+        )
+    .build()        // Returns a MessagingService object based on the provided configuration and number of authentication parameters.
+    .connect();     // A synchronous connection is established with an event broker.            </pre>
+        </p>
+      </li>
+      <li>
+        <p><code>withoutCertificateValidation()</code>—This method configures your TLS connection not to  validate server certificates. </p>
+        <p class="Warning">Only use this method in development environments. We recommend that you never use this method in production environments because it creates a security vulnerability.</p>
+        <p> The following sample code shows how to use the <code>withoutCertificateValidation()</code> method:</p>
+        <p>
+          <pre xml:space="preserve">
+/* An entry point to create a service builder using a configuration profile (V1 sets it to default values). */
+MessagingService.builder(ConfigurationProfile.V1)
+    .withTransportSecurityStrategy(
+        TLS.create()                      // Creates a transport security layer instance. Can configure or override authentication manually.
+        <b>.withoutCertificateValidation()   // Configures transport layer security (TLS) to not validate server certificates.</b>
+        )
+    .withAuthenticationStrategy(                 // Enables/overrides the existing authentication strategy with AuthenticationStrategy.
+        ClientCertificateAuthentication          // Configures transport layer security (TLS) not to validate server certificates.
+        .of(myKeystoreUrl, myKeystorePassword)   // A factory method that creates an instance to be used for Client Certificate Authentication. 
+        )
+    .build()        // Returns a MessagingService object based on the provided configuration and number of authentication parameters.
+    .connect();     // A synchronous connection is established with an event broker.            </pre>
+        </p>
+      </li>
+    </ul>
+    <p>You can also configure the aspects of the TLS connection using  <code>TransportLayerSecurityProperties</code> and the  <code>Properties</code> object. The TLS connection can be configured using various fields found in  <code>SolaceProperties.TransportLayerSecurityProperties</code>. We recommend that you use the default settings (set to <code>true</code> and enabled) to ensure secure connections for the following properties: </p>
+    <ul>
+      <li>
+        <code>CERT_REJECT_EXPIRED</code>
+      </li>
+      <li>
+        <code>CERT_VALIDATE_USERNAME</code>
+      </li>
+      <li>
+        <code>CERT_VALIDATED</code>
+      </li>
+    </ul>
+    <p>For more information about the object, methods, and properties,  see the <a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Java reference</a>.</a></p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/API-Guide/NG-API/AuthenticationNote.flsnp"/>
+    <h2 class="with-rule"><a name="Using"/>Using Websockets
+		</h2>
+    <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Java API supports the use of WebSockets, which allows data transmission that can bypass typical barriers like firewalls and proxies. WebSockets allow your applications to connect over ports 80 (<code>HTTP</code>) and 443 (<code>HTTPS</code>). Because these ports are usually open in most firewall configurations, WebSockets can establish connections without requiring additional port openings or configurations. To use Websockets, use one of the following prefixes in your <code>HOST</code> URL property:</p>
+    <ul>
+      <li><code>ws:</code> or <code>ws://</code>—Use WebSockets for unsecured communication between your application and the event broker. 
+            </li>
+      <li><code>wss:</code> or <code>wss://</code>—Use a TLS/SSL channel over WebSockets for secure communication between your application and the event broker.
+            </li>
+    </ul>
+    <p> The following sample code shows how to set an example WebSocket <code>HOST</code> property:</p>
+    <pre xml:space="preserve">final Properties properties = new Properties();
+properties.setProperty(TransportLayerProperties.HOST, "wss://my-websocket.example:443");
+</pre>
+    <h2 class="with-rule"><a name="Authentication"/>Authentication </h2>
+    <p> The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Java API supports a number of  authentication schemes (or strategies). that you can choose from. The scheme that you choose may depend on the credentials that the connecting client is required to provide. You can use one of the following  authentication schemes:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Basic">Basic Authentication </MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Kerberos">Kerberos Authentication </MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Client">Client Certificate Authentication </MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#OAuth">OAuth Certification </MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Basic"/>Basic Authentication </h2>
+    <p>Basic authentication is the default client authentication scheme  which allows a client to authenticate with an event broker using a client username and password. To specify basic authentication, create an instance of a <code>MessagingService</code> object and specify the following as the parameter for the <code>withAuthenticationStrategy()</code> method:</p>
+    <ul>
+      <li>
+        <code>BasicUserNamePassword</code>
+      </li>
+      <ul>
+        <li>
+          <code>of(String userName, String password)</code>
+        </li>
+      </ul>
+    </ul>
+    <p>For details about object and method,  see the <a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Java reference</a>.</p>
+    <p>The following sample code shows how to use basic authentication:</p>
+    <pre xml:space="preserve">
+final String username = "solace01";
+final String password = "12345678";
+            
+/* An entry point to create a service builder using ConfigurationProfile (see section below on ConfigurationProfile). */
+final MessagingService messagingService = MessagingService.builder(ConfigurationProfile.V1)
+    .withAuthenticationStrategy(BasicUserNamePassword      // Overrides/Enables the existing authentication strategy with strategy passed into parameter.
+    .of(username,password))    // Creates an instance of BasicUserNamePassword.                     
+    .build()                
+    .connect();                </pre>
+    <MadCap:snippetBlock src="../../Resources/Snippets/API-Guide/NG-API/AuthenticationNote.flsnp"/>
+    <h2 class="with-rule"><a name="Kerberos"/>Kerberos Authentication </h2>
+    <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Java API provides support for  <a href="../../Security/Configuring-Client-Authentication.htm#Config-Kerberos" class="link-internal">Kerberos Authentication</a>. Connecting using this method requires both a valid <code>jaas</code> login configuration file, as well as a valid Kerboros configuration file. Call the <code>withAuthenticationStrategy()</code> method and pass the following object and methods as the parameters:</p>
+    <ul>
+      <li>
+        <code>Kerboros</code>
+        <ul>
+          <li>
+            <code>of(String jaasLoginContextName, String kerberosPrincipalInstanceName)</code>
+          </li>
+          <li>
+            <code>withUserName(String userName)</code>
+          </li>
+          <li>
+            <code>withMutualAuthentication() </code>
+          </li>
+          <li>
+            <code>withReloadableJaasConfiguration()</code>
+          </li>
+        </ul>
+      </li>
+    </ul>
+    <p>For details about object and methods,  see the <a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Java reference</a>.</a></p>
+    <p>The following sample code shows how to use Kerboros for authentication and requires that you create these files as shown in the examples from the <a href="https://tutorials.solace.dev/java" target="_blank" class="link-offsite"><MadCap:variable name="Variables.CompanyName"/> Developer Hub</a>:</p>
+    <ul>
+      <li><code>jaas.conf</code> for the login configuration file</li>
+      <li><code>krb5.conf</code> for the Kerberos configuration file</li>
+    </ul>
+    <pre xml:space="preserve">
+final String kerberosPrincipalInstanceName = "solace01";
+final String jaasLoginContextName = "SolaceGSS";           // jaasLoginContextName correlates to the entry in resources/jaas.conf file.
+final String myUserNameOnBroker = "myUserNameOnBroker";    // myUserNameOnBroker should be setup on a broker, enable mutual authentication and JAAS config file reloading.
+
+//An entry point to create a service builder using a configuration profile (V1 sets it to default values)
+MessagingService.builder(ConfigurationProfile.V1)
+    .fromProperties(serviceConfiguration)                           //Uses authentication properties passed in through command line or hard-coded into program.
+    .withAuthenticationStrategy(                                    //Enables or overrides the existing authentication strategy with AuthenticationStrategy.
+        Kerberos
+        .of(kerberosPrincipalInstanceName, jaasLoginContextName)    // Creates an instance of Kerboros. 
+        .withUserName(myUserNameOnBroker)                           // A factory method to configure non default user name when using Kerberos. 
+        .withMutualAuthentication()                                 // A factory method to configure mutual authentication when using Kerberos.
+        .withReloadableJaasConfiguration())                         // A factory method to configure reloading behavior of a (jaas.conf) file.
+    .build()                                                        
+    .connect();                                                  </pre>
+    <MadCap:snippetBlock src="../../Resources/Snippets/API-Guide/NG-API/AuthenticationNote.flsnp"/>
+    <h2 class="with-rule"><a name="Client"/>Client Certificate Authentication </h2>
+    <p>To use the <a href="../../Security/Configuring-Client-Authentication.htm#Client-Cert" class="link-internal">Client certificate authentication</a> scheme, the following steps are required: </p>
+    <ol>
+      <li>
+        <p>You must configure the host event broker to use TLS connections (see <MadCap:xref href="#Transport-Layer-Security">Using Transport Layer Security</MadCap:xref>).</p>
+      </li>
+      <li>
+        <p>Your application must connect to the broker using TLS.</p>
+      </li>
+      <li>
+        <p>You must enable Client certificate verification on the Message VPN that the application uses to connect.</p>
+      </li>
+      <li>
+        <p>In your client application, the client-side certificate must be present in a keystore file and you configure the certificate using the <code>ClientCertificateAuthentication.of(String keystoreURL, String keystorePassword)</code> method.</p>
+      </li>
+    </ol>
+    <p>For details about object and method, see the  <a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Java reference</a>.</p>
+    <p> The following sample code shows how to configure client certificate authentication:</p>
+    <pre xml:space="preserve">
+MessagingService.builder(ConfigurationProfile.V1)
+    .withTransportSecurityStrategy(TLS.create())    // Creates a new transport security layer instance(required). Can configure or override authentication manually.
+    .withAuthenticationStrategy(                    // Enables/overrides the existing authentication strategy with AuthenticationStrategy.
+        ClientCertificateAuthentication
+        .of(myKeystoreUrl, myKeystorePassword)      // A factory method that creates an instance to be used for Client Certificate Authentication. 
+        )
+    .build()                                       
+    .connect();                                   </pre>
+    <MadCap:snippetBlock src="../../Resources/Snippets/API-Guide/NG-API/AuthenticationNote.flsnp"/>
+    <h2 class="with-rule"><a name="OAuth"/>OAuth 2.0 Authentication</h2>
+    <p>The OAuth authentication scheme allows a client application to use the OAuth mechanism to authenticate its connection with an event broker. To use OAuth 2.0 authentication, configure the host event broker to use TLS connections (see <a href="#Transport-Layer-Security" class="link-internal">Using Transport Layer Security</a>) and ensure your application connects to the event broker using TLS. For more information see <MadCap:xref href="../../Security/Client-Authentication-Overview.htm#OAuth">OAuth Authentication</MadCap:xref>. </p>
+    <p><MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers support the following OAuth authentication mechanisms:</p>
+    <ul>
+      <li>
+        <p>
+          <MadCap:xref href="#OAuth2">OAuth 2.0</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#OpenID C">OpenID Connect</MadCap:xref>
+        </p>
+      </li>
+    </ul>
+    <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Java API supports different fields that can be sent to the event broker:</p>
+    <ul>
+      <li>
+        <p><code>accessToken</code>—a <code>String</code> for applications to make requests for data access</p>
+        <p>
+          <b>and/or</b>
+        </p>
+        <p><code>idToken</code>—a <code>String</code> for Open ID Connect (OIDC) connections</p>
+      </li>
+      <li><code>issuerIdentifier</code>—(Optional) a <code>String</code> to identify the appropriate OAuth provider configuration</li>
+    </ul>
+    <p>OAuth authentication requires an <code>accessToken</code>, an <code>idToken</code>, or both to be enabled using these methods from the AuthenticationStrategy.OAuth2:</p>
+    <ul>
+      <li>
+        <code>of(String token)</code>
+        <ul>
+          <li> the <code>idToken</code> or <code>accessToken</code> can be used for this method </li>
+        </ul>
+      </li>
+      <li>
+        <code>of(String accessToken, String idToken)</code>
+        <ul>
+          <li>if you are use both tokens, the <code>accessToken</code> must be the first parameter</li>
+        </ul>
+      </li>
+      <li>
+        <code>withIssuerIdentifier(String issuerIdentifier)</code>
+        <ul>
+          <li>an optional Authorization Server Issuer Identifier</li>
+        </ul>
+      </li>
+    </ul>
+    <p>For details about the object and methods, refer to the  <a href="../../API-Developer-Online-Ref-Documentation/pubsubplus-java/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Java reference</a>.</p>
+    <h3><a name="OAuth2"/>OAuth 2.0</h3>
+    <p>OAuth2.0 is an open standard for access delegation and authorization. It is commonly used as a mechanism  to grant websites or applications access to users' information on other websites without giving them access to sensitive credentials. The  OAuth authentication scheme allows access through the use of tokens issued to third-party clients by an authorization server that provides access to Message VPNs on <MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers.  For more information, see <MadCap:xref href="../../Security/Configuring-Client-Authentication.htm#OAuth">OAuth Authentication</MadCap:xref>.</p>
+    <ul>
+      <li>
+        <p>(Mandatory) An access token as defined in OAuth. Access tokens are issued by the authorization server after successfully authenticating the user and obtaining their consent. The access token is the artifact that allows an OAuth client application to access the user's resource. The <code>issuerIdentifier</code> claim in the token, if present, is used to identify which OAuth profile the event broker will use for token validation. If no profile with a matching issuer is found, the default profile is used.</p>
+      </li>
+    </ul>
+    <ul>
+      <li>
+        <p>(Optionally) An Authorization Server Issuer Identifier (<code>issuerIdentifier</code>).  If provided, this parameter must match the issuer of an OAuth profile on the event broker. That profile will be used for token validation, rather than the profile with the issuer provided in the token’s <code>iss</code> claim, if any, or the default profile configured on the event broker.</p>
+      </li>
+    </ul>
+    <p>The following sample code shows how to use  OAuth2 authentication with the issue:</p>
+    <pre xml:space="preserve">
+/* Configure service access to use OAuth 2 authentication with an access token and an optional issuer identifier. */
+MessagingService.builder(ConfigurationProfile.V1)
+    // Configures service with an accessToken and an issuerIdentifier:
+    .withAuthenticationStrategy(OAuth2.of(accessToken).withIssuerIdentifier(issuerIdentifier)) 
+    .build()                                
+    .connect(); </pre>
+    <h3><a name="OpenID C"/>OpenID Connect</h3>
+    <p>The event broker is configured for OpenID Connect authentication (<code>oauth-role</code> is set to <code>client</code>), you must provide the following properties for the event broker to authenticate the client application:</p>
+    <ul>
+      <li>
+        <p>Open ID Connect Token: (Required) Defined by the OpenID Connect (OIDC), OIDC tokens are an extension to OAuth2.0. ID tokens are issued by the authorization server and contain claims that carry information about the user. An ID token is an artifact that proves that the user has been authenticated. The <code>issuerIdentifier</code> claim in the token is used to identify which OAuth profile the event broker will use for token validation. If no profile with a matching issuer is found, the default profile is used.</p>
+      </li>
+    </ul>
+    <ul>
+      <li>
+        <p>Access token: (Optional) This access token is an optional access that your organization may require that the event broker uses to determine the authorizations available to the authenticated client application.</p>
+      </li>
+    </ul>
+    <pre xml:space="preserve">
+/* Configure service access to use a OpenID Connect authentication with an ID token and an optional access token. */
+MessagingService.builder(ConfigurationProfile.V1)
+    .withAuthenticationStrategy(OAuth2.of(accessToken,idToken))    // Configures service with an accessToken and an idToken. 
+    .build()                                                        
+    .connect();                                                   </pre>
+    <h3>Required Event Broker Configurations</h3>
+    <p>For a client application to use an OAuth authentication scheme, a Message VPN OAuth  profile must be configured for the host event broker and OAuth authentication must be configured and enabled for any Message VPNs to which a client connects. For more information, see <MadCap:xref href="../../Security/Configuring-Client-Authentication.htm#OAuth">OAuth Authentication</MadCap:xref>.</p>
+    <h3>Refreshing Expired OAuth Tokens</h3>
+    <p>By default, event brokers disconnect clients when their tokens expire (see <MadCap:xref href="../../Security/Configuring-Client-Authentication.htm#Disconnect-Token-Expiry">Disconnect on Token Expiration</MadCap:xref>). When a client session  is disconnected, the client application tries to reconnect a number of times using the same OAuth token based on the <code>RECONNECTION_ATTEMPTS</code> property. If the connection can't be reestablished due to token expiration, the client application must recreate the session with all its subscriptions.</p>
+    <p>To update the OAuth token, use the <code>updateProperty(String, Object)</code> method, which allows you to set a modifable service property after the creation of the <code>MessagingService</code> object. The first parameter is one of the following strings and the second parameter is the token:</p>
+    <ul>
+      <li><code>SolaceProperties.AuthenticationProperties.SCHEME_OAUTH2_ACCESS_TOKEN</code> to update an expired access token</li>
+      <li><code>SolaceProperties.AuthenticationProperties.SCHEME_OAUTH2_OIDC_ID_TOKEN</code> to update an expired ID token</li>
+    </ul>
+    <p class="Note">Modifiable service properties may not update immediately and may require the next reconnection attempt to update.</p>
+    <p>Refreshing the expired token can happen while:</p>
+    <ul>
+      <li>
+        <p>the client application is connected. In this case, the client contacts the authentication server to refresh the token and modifies the session to use the updated token the next time the API connects to the event broker.</p>
+      </li>
+      <li>
+        <p style="font-weight: normal;">the client application is reconnecting. The reconnecting event includes a diagnostic subCode.  If this subCode is <code>Login Failure</code>, this may indicate that your token has expired.   In this case, the API tries to reconnect (using the expired token). The client  then contacts the authentication server to refresh the token and modifies the session to use the updated token the next time the API attempts to reconnect to the event broker.</p>
+      </li>
+    </ul>
+    <p style="font-weight: normal;">In general, it is better if the client application is aware of potential token expiry and refreshes the token before it expires.</p>
+    <p class="Note">When the client application's session is reconnected, the Java API re-applies the client application's direct subscriptions. If there is a change in the ACLs as a result of the refreshed token, the subscriptions may be rejected by the event broker.</p>
+    <h2 class="with-rule"><a name="Configuration-Profiles"/>Configuration Profiles</h2>
+    <p>To ensure that your application remains compatible with future versions of this API, you must pass a predefined Configuration Profile enumeration (as <code>ConfigurationProfile.V1</code>) to the <code>MessagingService.builder()</code> method. The V1 (Version 1) refers to the currently available configuration profile.</p>
+    <p>The following sample code shows how to configure your application for backwards compatibility using the configuration profile:</p>
+    <pre xml:space="preserve">
+final MessagingService messagingService = MessagingService.builder(<b>ConfigurationProfile.V1</b>)
+    .fromProperties(properties)     // Uses authentication properties passed in through command line or hard-coded into program.
+    .build()                  
+    .connect();                   </pre>
+  </body>
+</html>

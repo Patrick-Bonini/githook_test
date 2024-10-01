@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Global Forward Proxy Configuration</h1>
+    <p>Depending on your deployment, you may require that communication between <MadCap:variable name="Variables.CompanyName"/> event brokers and endpoint servers  goes through a global forward proxy. This is often the case if the event broker sits behind a firewall and  egress traffic  needs to connect to a proxy server to go outside the firewall.</p>
+    <p>In this scenario, you can create a global forward proxy configuration object on the event broker to direct traffic to the proxy server before it is forwarded to the endpoint server. Global forward proxies differ from Message VPN forward proxies in that they handle system-level communication such as management user authentication. </p>
+    <p>To create a global forward proxy, enter the following commands:</p>
+    <pre xml:space="preserve">solace(configure)#
+solace(configure)# create proxy &lt;proxy-name&gt;</pre>
+    <p>To enable a global forward proxy once it has been configured, enter the following command:</p>
+    <pre xml:space="preserve">
+solace(configure/proxy)# no shutdown</pre>
+    <p>To remove a global forward proxy, enter the following command:</p>
+    <pre xml:space="preserve">
+solace(configure)# no proxy &lt;proxy-name&gt;</pre>
+    <p>
+      <u>Where:</u>
+    </p>
+    <p><code>&lt;proxy-name&gt;</code> specifies the name of the global forward proxy configuration object. This name is used in the configuration of other broker objects (for example <a href="Configuring-OAuth-for-Management-Access.htm#Global-Forward-Proxy">OAuth profiles</a>) to refer to the global forward proxy. You can configure up to five global forward proxy objects on an event broker. </p>
+    <p class="Note">Global forward proxy configuration objects are only synchronized in high-availability (HA) deployments, and not disaster recover (DR) deployments as different sites may need different proxy configurations.  The proxy reference (the reference in the OAuth profile for example) is both HA and replication synchronized, so that once the appropriate proxies are set up on each site, each referencing object doesn’t need any special handling on replicated sites.</p>
+    <p>You can configure the following parameters for a global forward proxy:</p>
+    <ul>
+      <li>
+        <p>
+          <MadCap:xref href="#Global-Proxy-Auth-Scheme">Configuring the Global Forward Proxy Authentication Scheme</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Global-Proxy-IP-Address">Configuring the Global Forward Proxy IP Address or Hostname</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Global-Proxy-Port">Configuring the Global Forward Proxy Port</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#Global-Proxy-Type">Configuring the Global Forward Proxy Type</MadCap:xref>
+        </p>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Global-Proxy-Auth-Scheme"/>Configuring the Global Forward Proxy Authentication Scheme</h2>
+    <p>To configure the authentication scheme that the event broker will use to establish a connection to the proxy server, enter the following commands:</p>
+    <pre xml:space="preserve">
+solace(configure/proxy)# authentication
+solace(configure/proxy/authentication)# auth-scheme {none | basic}</pre>
+    <p>
+      <u>Where:</u>
+    </p>
+    <p><code>none</code> specifies to login with no authentication. This is the default authorization scheme. For more information, see <MadCap:xref href="#None">None</MadCap:xref>.</p>
+    <p><code>basic</code> specifies to login with a username and password. For more information, see <MadCap:xref href="#Basic-Auth">Basic Authentication</MadCap:xref>.</p>
+    <p>The no version of this command, <code>no auth-scheme</code>, resets the authorization scheme to the default. </p>
+    <h3><a name="None"/>None</h3>
+    <p>If no authentication scheme  is configured, the event broker will not use an authentication scheme when connecting to the proxy server. This may be useful for anonymous connections or when a proxy server does not require authentication.</p>
+    <h3><a name="Basic-Auth"/>Basic Authentication</h3>
+    <p>If you configure a basic authentication scheme, the event broker authenticates to the proxy server with a username and password combination.</p>
+    <p>To configure settings for an basic authentication scheme, enter the following  commands:</p>
+    <pre xml:space="preserve">
+solace(configure/proxy)# authentication
+solace(configure/proxy/authentication)# basic
+solace(configure/proxy/authentication/basic)# username &lt;value&gt;
+solace(configure/proxy/authentication/basic)# password &lt;value&gt;</pre>
+    <p>
+      <u>Where:</u>
+    </p>
+    <p><code>username &lt;value&gt;</code> is the client username to use for authentication to the proxy server.</p>
+    <p><code>password &lt;value&gt;</code> is the password to use with the specified username.</p>
+    <p>The no version of either command removes any configured value. </p>
+    <h2 class="with-rule"><a name="Global-Proxy-IP-Address"/>Configuring the Global Forward Proxy IP Address or Hostname</h2>
+    <p>To configure the IP address or hostname of the proxy server, enter the following commands:</p>
+    <pre xml:space="preserve">
+solace(configure/proxy)# host &lt;value&gt;
+</pre>
+    <p>
+      <u>Where:</u>
+    </p>
+    <p><code>&lt;value&gt;</code> specifies the IP address or DNS name to which the event broker will connect. It can contain up to 253 characters.</p>
+    <p>The no version of this command, <code>no host</code>, removes any configured value.</p>
+    <h2 class="with-rule"><a name="Global-Proxy-Port"/>Configuring the Global Forward Proxy Port</h2>
+    <p>To configure the port to connect to on the proxy server, enter the following commands:</p>
+    <pre xml:space="preserve">
+solace(configure/proxy)# port &lt;value&gt;
+</pre>
+    <p>
+      <u>Where:</u>
+    </p>
+    <p><code>&lt;value&gt;</code> specifies the port number. The valid range of values is 0 to 65535. The default is 0.</p>
+    <p>The no version of this command, <code>no port</code>, resets the value to the default. </p>
+    <h2 class="with-rule"><a name="Global-Proxy-Type"/>Configuring the Global Forward Proxy Type</h2>
+    <p>To configure the global forward proxy type, enter the following commands:</p>
+    <pre xml:space="preserve">
+solace(configure/proxy)# proxy-type {direct | http}
+</pre>
+    <p>
+      <u>Where:</u>
+    </p>
+    <p><code>direct</code> specifies a direct connection to the endpoint server, in other words no proxy is used. If you configure this proxy type, the only other configuration that has effect is whether the proxy is enabled or not. This is useful when one replication site might need a proxy and another might not, so for the second site you would set the proxy  type to direct. This is the default.</p>
+    <p><code>http</code> specifies that the connection from the event broker to the proxy server is HTTP. Note that this applies only to communication between the event broker and the proxy server. Event broker objects that use the global forward proxy often provide the ability to configure TLS/SSL separately. </p>
+    <p>The no version of this command, <code>no proxy-type</code>, resets the value to the default. </p>
+  </body>
+</html>

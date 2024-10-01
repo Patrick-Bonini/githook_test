@@ -1,0 +1,343 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Cloud;Software"/>Step 2: Solace EDA Basics</h1>
+    <p>You've completed the first part of the tutorial: <MadCap:xref href="event-broker-set-up.htm">Step 1: Set up Your First Event Broker</MadCap:xref>.</p>
+    <p>In step 2, you'll learn how  events, messages, and topics work to propagate information through your event-driven architecture (EDA). Understanding the interrelationships of events, messaging, exchange patterns, event brokers, and topics is essential in establishing a responsive EDA for your organization.</p>
+    <p class="with-rule">In an EDA, an event signifies a change of state, such as a sensor signaling a change in temperature, a field changing in a database, a ship changing course, a bank deposit being completed, or a checkout button being clicked in an e-commerce app. When an event happens, an application sends a message. Messaging is the conduit that facilitates message exchanges between participants – namely, publishers and subscribers. So, in simple terms, events flow across event brokers as messages from publishers that send messages when events happen to subscribers that need to know about the event. </p>
+    <p>Messages have a simple structure consisting of metadata and a payload. A message has three parts: the header and properties contain the metadata for the message. The body includes the message payload, or the information about the event that the message is conveying.</p>
+    <p>
+      <img src="../../Resources/Images/Getting-Started/event-msg-properties.png" alt="Illustration depicting the concepts described in the surrounding text."/>
+    </p>
+    <p>In a Solace EDA, event messages are usually published to topics, which allow event brokers to route them where they need to go. The topic is included in an event message as a string composed of one or more levels added to the message header. However, a topic is more than just a string providing address or routing info. Topics function as organized channels for categorizing and directing events to the appropriate recipients. You can also think of a topic as a hierarchical definition of the subject of an event message. A well-defined topic structure is critical to enabling re-use of your events and getting the most value out of your EDA.</p>
+    <p>To continue your Solace journey, we'll examine the concept of topics and their syntax. In Solace EDAs, topics follow a hierarchical structure consisting of multiple levels, each of which provides contextual details about the event. This structure allows a topic to describe the event itself. </p>
+    <h2>Topic Architecture</h2>
+    <p>A typical topic structure includes these elements:</p>
+    <p><span style="font-weight: bold;">Domain</span> / <b style="color: #C33135;">Noun</b><span style="color: #C33135;"> (object)</span> / <b style="color: #2B71B1;">Verb</b><span style="color: #2B71B1;"> (action)</span> / <b style="color: #E1681F;">Property</b></p>
+    <ul>
+      <li>
+        <p><b>Domain</b> represents the organizational element responsible for the system. Some examples could be a company name, business unit, application domain, or a combination of these elements.</p>
+      </li>
+      <li>
+        <p><b>Noun (object)</b> represents the subject of the information carried by the event, which could be a system or a type of record.</p>
+      </li>
+      <li>
+        <p><b>Verb (action)</b> represents a performed or intended action related to the noun.</p>
+      </li>
+      <li>
+        <p><b>Property</b>  represents supplementary information to clarify the context. This can be anything related to the object such as version, location, qualifier, identifier, and other relevant data. It's common for the topic to have multiple properties.</p>
+      </li>
+    </ul>
+    <p>Consider the following topic examples. The braces "{ }" indicate a variable in the topic that is replaced in the message by data specific to the event.</p>
+    <dl>
+      <dt>coffeeshop / <span style="color: #C33135;">order</span> / <span style="color: #2B71B1;">new</span> / <span style="color: #E1681F;">v1</span> / <span style="color: #E1681F;">{source}</span> / <span style="color: #E1681F;">{country}</span> / <span style="color: #E1681F;">{storeId}</span> / <span style="color: #E1681F;">{requestId}</span></dt>
+      <dd>
+        <p>This example could result in an event topic of <b>coffeeshop</b> / <span style="color: #C33135; font-weight: bold;">order</span> / <span style="color: #2B71B1; font-weight: bold;">new</span> / <span style="color: #E1681F; font-weight: bold;">v1</span> / <span style="color: #E1681F; font-weight: bold;">mobile</span> /  <b style="color: #E1681F;">ca</b> / <span style="color: #E1681F; font-weight: bold;">3244</span> / <span style="color: #E1681F; font-weight: bold;">829222</span> where:</p>
+        <p>
+          <ul>
+            <li>
+              <p>the domain is <b>coffeeshop</b></p>
+            </li>
+            <li>
+              <p>the noun is <span style="color: #C33135; font-weight: bold;">order</span></p>
+            </li>
+            <li>
+              <p>the verb is <span style="color: #2B71B1; font-weight: bold;">new</span></p>
+            </li>
+            <li>
+              <p>the properties are <span style="color: #E1681F; font-weight: bold;">v1</span> / <span style="color: #E1681F; font-weight: bold;">mobile</span> /  <b style="color: #E1681F;">ca</b> / <span style="color: #E1681F; font-weight: bold;">3244</span> / <span style="color: #E1681F; font-weight: bold;">829222</span></p>
+            </li>
+          </ul>
+        </p>
+      </dd>
+      <dt>acme / retail / supplyChain / <span style="color: #C33135;">partnerOrder</span> / <span style="color: #2B71B1;">shipped</span> / <span style="color: #E1681F;">v1</span> / <span style="color: #E1681F;">{department}</span> / <span style="color: #E1681F;">{upcCode}</span></dt>
+      <dd>
+        <p>This example could result in an event topic of <b>acme</b> / <b>retail</b> / <b> supplyChain</b> / <span style="color: #C33135; font-weight: bold;">partnerOrder</span> / <span style="color: #2B71B1; font-weight: bold;">shipped</span> / <span style="color: #E1681F; font-weight: bold;">v1</span> / <span style="color: #E1681F; font-weight: bold;">home</span> /  <b style="color: #E1681F;">987654321</b> where:</p>
+        <p>
+          <ul>
+            <li>
+              <p>the domain is <b>acme</b> / <b>retail</b> / <b> supplyChain</b> </p>
+            </li>
+            <li>
+              <p>the noun is <span style="color: #C33135; font-weight: bold;">partnerOrder</span></p>
+            </li>
+            <li>
+              <p>the verb is <span style="color: #2B71B1; font-weight: bold;">shipped</span></p>
+            </li>
+            <li>
+              <p>the properties are <span style="color: #E1681F; font-weight: bold;">v1</span> / <span style="color: #E1681F; font-weight: bold;">home</span> /  <b style="color: #E1681F;">987654321</b></p>
+            </li>
+          </ul>
+        </p>
+      </dd>
+      <dt>cyberdyne / skynet / <span style="color: #C33135;">terminator</span> / <span style="color: #2B71B1;">created</span> / <span style="color: #E1681F;">v1</span> / <span style="color: #E1681F;">{model_num}</span> / <span style="color: #E1681F;">{microprocessor}</span> / <span style="color: #E1681F;">{terminatorId}</span></dt>
+      <dd>
+        <p>This example could result in an event topic of <b>cyberdyne / skynet</b> / <span style="color: #C33135; font-weight: bold;">terminator</span> / <span style="color: #2B71B1; font-weight: bold;">created</span> / <span style="color: #E1681F; font-weight: bold;">v1</span> / <span style="color: #E1681F; font-weight: bold;">T800</span> /  <b style="color: #E1681F;">neuralnetv1</b> / <span style="color: #E1681F; font-weight: bold;">T1234567Z</span> where:</p>
+        <p>
+          <ul>
+            <li>
+              <p>the domain is <b>cyberdyne / skynet</b></p>
+            </li>
+            <li>
+              <p>the noun is <span style="color: #C33135; font-weight: bold;">terminator</span></p>
+            </li>
+            <li>
+              <p>the verb is <span style="color: #2B71B1; font-weight: bold;">created</span></p>
+            </li>
+            <li>
+              <p>the properties are <span style="color: #E1681F; font-weight: bold;">v1</span> / <span style="color: #E1681F; font-weight: bold;">T800</span> /  <b style="color: #E1681F;">neuralnetv1</b> / <span style="color: #E1681F; font-weight: bold;">T1234567Z</span></p>
+            </li>
+          </ul>
+        </p>
+      </dd>
+    </dl>
+    <p>You likely noticed that reading the topics gives you a logical understanding of the event itself and the data its payload probably includes. For more extensive information about constructing topics, see <MadCap:xref href="../../Messaging/Topic-Architecture-Best-Practices.htm" target="_blank">Topic Architecture Best Practices</MadCap:xref>. You can also watch our <MadCap:variable name="Variables.CompanyName"/> Developer Advocate walk through how topics are implemented in Solace and how event brokers filter and route messages based on subscriptions and wildcard characters.</p>
+    <div class="vid-wrapper">
+      <div class="vid-container">
+        <iframe width="560" height="315" src="https://www.youtube.com/embed/PP1nNlgERQI?modestbranding=1&amp;showinfo=0&amp;rel=0&amp;cc_lang_pref=en&amp;cc_load_policy=1" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen="allowfullscreen"/>
+      </div>
+      <div>All About Solace Topics!</div>
+    </div>
+    <h2>Topic Subscriptions</h2>
+    <p>Subscribers, also known as consumers, use topic subscriptions to tell the event broker which topics  to receive messages from. Consumers can subscribe to one or many topics. To enable consumers to subscribe to exactly the topics they want, <MadCap:variable name="Variables.CompanyName"/> allows both static subscriptions and the use of single and multi-level wildcards.</p>
+    <p>Let's look more closely at the coffee shop example topic where the source, country, storeId and requestId are variables that capture the event details:</p>
+    <p><b>coffeeshop</b> / <span style="color: #C33135; font-weight: bold;">order</span> / <span style="color: #2B71B1; font-weight: bold;">new</span> / <span style="color: #E1681F; font-weight: bold;">v1</span> / <span style="color: #E1681F;">{<b>source</b>}</span> / <span style="color: #E1681F;">{<b>country</b>}</span> / <span style="color: #E1681F;">{<b>storeId</b>}</span> / <span style="color: #E1681F;">{<b>requestId</b>}</span></p>
+    <p>In this example: </p>
+    <ul>
+      <li>
+        <p><b>source</b> is the order medium, such as web or mobile</p>
+      </li>
+      <li>
+        <p><b>country</b> is a 2-letter country code</p>
+      </li>
+      <li>
+        <p><b>storeId</b> identifies the store that the order is placed to</p>
+      </li>
+      <li>
+        <p><b>requestId</b> identifies the order request, which serves as the key for order interaction</p>
+      </li>
+    </ul>
+    <p>A consumer could specify a single topic such as mobile orders, in the US, for store 3244 and request 829222. For example:</p>
+    <p>coffeeshop / order / new / v1 / mobile / us / 3244 / 829222</p>
+    <p>However, more often a consumer needs to receive messages for many topics. In the previous example, a consumer likely would want to subscribe to orders from a specific store but would also likely want to subscribe to events for all order requests rather than just for a single requestId. To subscribe to multiple topics, consumers can use two wildcard characters: <b>*</b> and <b>&gt;</b>.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/wildcards.flsnp"/>
+    <p>Consider these subscription examples for the coffee shop topic:</p>
+    <ul>
+      <li>
+        <p><b>coffeeshop / order / new / v1 / mobile / ca / 3244/ *</b> subscribes to all new coffeeshop order events of version v1 from the mobile app to Canadian store number 3244.</p>
+      </li>
+      <li>
+        <p><b>coffeeshop / order / * / v1 / mobile / ca / &gt;</b> subscribes to all coffeeshop order events of version v1 from the mobile app to any store in Canada.</p>
+      </li>
+      <li>
+        <p><b>coffeeshop / order / * / v1 / * / * / &gt;</b> subscribes to all coffeeshop order events of version v1 from any source to any store in any country</p>
+      </li>
+      <li>
+        <p><b>coffeeshop / order / &gt;</b>  subscribes to all coffeeshop order events.</p>
+      </li>
+      <li>
+        <p><b>&gt;</b> subscribes to all events flowing across your event broker.</p>
+      </li>
+    </ul>
+    <p>These examples show how using the <b>*</b> and <b>&gt;</b> wildcards in a subscription allows consumers use simple, yet flexible filtering to get exactly the events they want to receive. This filtering allows consumers to process only events of interest and avoid spending resources processing events that they would just discard.</p>
+    <p>For more information, watch our <MadCap:variable name="Variables.CompanyName"/> Developer Advocate walk through smart topics and wildcards.</p>
+    <div class="vid-wrapper">
+      <div class="vid-container">
+        <iframe width="560" height="315" src="https://www.youtube.com/embed/U_LBjqk9VZw?modestbranding=1&amp;showinfo=0&amp;rel=0&amp;cc_lang_pref=en&amp;cc_load_policy=1" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen="allowfullscreen"/>
+      </div>
+      <div>All About Solace Topics!</div>
+    </div>
+    <h2>Try It Now</h2>
+    <p>It's time to see topics and subscriptions in action using the <b>Try Me!</b> tool in <MadCap:variable name="Product-Names.pubsubmanager_long"/>.</p>
+    <p>The steps to open <MadCap:variable name="Product-Names.pubsubmanager_short"/> and set up the <b>Try Me!</b> tool differ depending on whether you are using a <MadCap:xref href="#try-me-software">Software Event Broker</MadCap:xref> or <MadCap:xref href="#try-me-cloud">[%=Product-Names.cloud_product_short%]</MadCap:xref>.</p>
+    <h3><a name="try-me-software"/>Software Event Broker</h3>
+    <p>To use the <b>Try Me!</b> tool in  for a <MadCap:variable name="Product-Names.broker_sw_short"/>, perform these steps:</p>
+    <ol>
+      <li>
+        <p>Open a browser and navigate to <code>http://&lt;localhost&gt;:8080</code>.</p>
+        <p>Where <code>&lt;localhost&gt;</code> is the IP address or hostname of your event broker.</p>
+      </li>
+      <li>Log in using the credentials you set when setting up the event broker. The default username and password are both <code>admin</code>.</li>
+      <li>In the <b>Message VPN</b> list, click <b>default</b>.</li>
+      <li>On the left navigation bar, select <b>Try Me!</b></li>
+      <li>
+        <p>The <MadCap:variable name="Product-Names.broker_sw_short"/> has a default messaging client username (default) that doesn’t require a password to connect. If you haven’t changed any usernames, passwords, or URLs, you can use the provided default values to connect the Publisher and Subscriber to the event broker.</p>
+        <p>
+          <div class="thumbnail-container">
+            <img src="../../Resources/Images/Broker-Manager/manager-software-tryme.png" alt="Screenshot showing the settings described in the surrounding text." class="solacethumbnail"/>
+          </div>
+        </p>
+      </li>
+    </ol>
+    <p>Now let's <a href="#pub_and_sub" class="link-internal">publish and subscribe to messages</a>.</p>
+    <h3>
+      <a name="try-me-cloud"/>
+      <MadCap:variable name="Product-Names.cloud_product_short"/>
+    </h3>
+    <p>To use the Try Me! tool  for an <MadCap:variable name="Product-Names.broker_cloud_short"/>, perform these steps:</p>
+    <ol>
+      <li>In your browser, visit the <a href="[%=Manifest-Products-Links.CloudConsoleLogin%]" class="link-offsite" target="_blank">PubSub+ Cloud login page</a>.</li>
+      <li>Enter the email address and password that you used when you signed up and click <b>Sign in</b>.
+</li>
+      <li>From the navigation bar, select <b>Cluster Manager</b> <img src="../../Resources/Images/Cloud/reusable-icons/navbar_cluster_manager.png" alt=""/>. </li>
+      <li>Select the <MadCap:variable name="Product-Names.broker_cloud_short"/> that you want to try.</li>
+      <li>On the <b>Service Details</b> page, select the <b>Try Me!</b> tab.</li>
+      <li>
+        <p> You can copy the connection information the publisher and subscriber need to connect to the <MadCap:variable name="Product-Names.broker_cloud_short"/>  by clicking <b>Copy</b><img src="../../Resources/Images/Cloud/reusable-icons/copy-connection.png"/>.</p>
+        <p>
+          <div class="thumbnail-container">
+            <img src="../../Resources/Images/Broker-Manager/Connection-Information.png" class="solacethumbnail" alt="Screenshot showing the settings described in the surrounding text."/>
+          </div>
+        </p>
+      </li>
+      <li>Click <b>Open </b><MadCap:variable name="Product-Names.pubsubmanager_long" style="font-weight: bold;"/>.</li>
+      <li>
+        <p>In <MadCap:variable name="Product-Names.pubsubmanager_short"/>, on the left navigation bar, select <b>Try Me!</b></p>
+        <p>
+          <div class="thumbnail-container">
+            <img src="../../Resources/Images/Broker-Manager/manager-software-tryme.png" alt="Screenshot showing the settings described in the surrounding text." class="solacethumbnail"/>
+          </div>
+        </p>
+      </li>
+      <li>In the <b>Publisher</b> panel, in the <b>Establish Connection</b> section, click the expand icon <img src="../../Resources/Images/Cloud/reusable-icons/expand-arrow.png" style="width: 18px;height: 18px;" alt=""/>.</li>
+      <li>Connect to the <MadCap:variable name="Product-Names.broker_cloud_short"/> by entering the connection information you found in step 6.</li>
+      <ol style="list-style-type: lower-alpha;">
+        <li>Paste the value for <b>Username</b> into <b>Client Username</b> field. </li>
+        <li>Paste the value for <b>Password</b> into <b>Client Password</b> field. </li>
+      </ol>
+      <li>In the <b>Subscriber</b> panel, make sure that <b>Same as Publisher</b> is selected for each field. </li>
+      <li>Under the <b>Publisher</b> panel, click <b>Connect</b>. Once the connection is established, in the <b>Subscriber</b> panel, click <b>Connect</b>.</li>
+    </ol>
+    <h3><a name="pub_and_sub"/>Publish and Subscribe to Messages</h3>
+    <p>Now that you've set up the TryMe! tool in <MadCap:variable name="Product-Names.pubsubmanager_short"/>, you can subscribe to and receive published messages by performing these steps:</p>
+    <ol>
+      <li>To configure the <b>Publisher</b> to publish messages to a topic, perform these steps:<ol style="list-style-type: lower-alpha;"><li>Select <b>Topic</b> as the <b>Publish</b> option.</li><li>Click <b>Clear All</b> to delete the topic builder example. </li><li>In the <b>Publish to topic</b> field, enter: <code>coffeeshop/order/new/v1/mobile/ca/437/44334</code></li><li>Set <b>Direct</b> as the <b>Delivery Mode</b>.</li><li><p>Copy the following JSON content into the <b>Message Content</b> field.</p><p><pre>{
+  "source": "mobile",
+  "device": "app-android",
+  "country" : "Canada",
+  "region" : "Ontario",
+  "storeID" : 437,
+  "requestId": 44334,
+  "customer": {
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "phone": "123-456-7890"
+	},
+  "items": [
+    {
+      "productID": "COF001",
+      "productName": "Americano",
+      "quantity": 2,
+      "size": "Medium",
+      "options": ["Extra Shot", "Whipped Cream"]
+    },
+    {
+      "productID": "PST001",
+      "productName": "Chocolate Croissant",
+      "quantity": 1
+    }
+  ],
+  "totalPrice": 12.50,
+  "pickupTime": "2024-01-05T14:30:00",
+  "specialInstructions": "Please make it extra hot."
+}</pre></p></li></ol></li>
+      <li>
+        <p>To configure the <b>Subscriber</b>, in the <b>Topic Subscriber</b> field, enter <code>coffeeshop/order/new/v1/*/ca/&gt;</code> and click <b>Subscribe</b>.</p>
+        <p>
+          <div class="thumbnail-container">
+            <img src="../../Resources/Images/Broker-Manager/manager-tryme-topic.png" alt="Screenshot showing the settings described in the surrounding text." class="solacethumbnail"/>
+          </div>
+        </p>
+      </li>
+      <li>Click <b>Publish</b>.<p>The event is published by the Publisher and received by the Subscriber. </p><p>You've now seen how a simple publish-subscribe operation works using subscriptions with wildcards. You can try altering the topic and subscription to see what the subscriber receives and doesn't receive.</p></li>
+    </ol>
+    <h2 class="with-rule">Tutorial Steps</h2>
+    <p>You've completed the second step in the tutorial. Click the link to the next lesson to continue.</p>
+    <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');border-left-style: solid;border-left-width: 1px;border-left-color: #e1e1e1;border-right-style: solid;border-right-width: 1px;border-right-color: #e1e1e1;border-top-style: solid;border-top-width: 1px;border-top-color: #e1e1e1;border-bottom-style: solid;border-bottom-width: 1px;border-bottom-color: #e1e1e1;margin-left: 0;margin-right: auto;" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <col class="TableStyle-Table_Num-Column-Column1"/>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Step</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/num1.png" alt="Step 1"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="font-weight: bold;">Set up Your First Event Broker - Complete</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/num2.png" alt="Step 2"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p style="font-weight: bold;">Solace EDA Basics   - Complete</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/num3.png" alt="Step 3"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p style="font-weight: bold;">Set up the <MadCap:variable name="Product-Names.try-me-cli"/> Tool  - <a href="try-me-cli-tool.htm" class="link-internal">Next Lesson</a></p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyE-Column1-Body1" style="background-color: #F7F8F9">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/num4.png" alt="Step 4"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyD-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="font-weight: bold;">Try  a Publish-Subscribe Message Exchange Pattern</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/num5.png" alt="Step 5"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="font-weight: bold;">Try a Request-Reply Message Exchange Pattern</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/num6.png" alt="Step 6"/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="font-weight: bold;">Explore Consumer Scaling Patterns</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="text-align: center;">
+              <img src="../../Resources/Images/Cloud/reusable-icons/complete.png" alt=""/>
+            </p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1" style="background-color: #F7F8F9;">
+            <p style="font-weight: bold;">Next Steps</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>You can return to the main <a href="../Getting-Started-Try-Broker.htm" class="link-internal">Tutorial page</a> at any time.</p>
+  </body>
+</html>

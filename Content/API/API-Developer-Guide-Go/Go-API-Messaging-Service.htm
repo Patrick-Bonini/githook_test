@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><a name="Messaging-Service"/>Messaging Service</h1>
+    <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Go provides the <code>MessagingService</code> interface, which makes it easy to connect to an event broker. The <code>MessagingService</code> interface handles all the functionality for interacting with a <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker. To create a <code>MessagingService</code> instance, you must first configure a <code>ServicePropertyMap</code> with the information required to establish a connection to the event broker, including the host details and the authentication scheme.</p>
+    <h2 class="with-rule"><a name="Creating-A-Properties-Object"/>Creating a Property Map</h2>
+    <p>A <code>ServicePropertyMap</code> (accessed through the <code>config</code> package which is included in the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Go API) can have a number of properties, however the <code>ServicePropertyMap</code> must contain the keys <code>config.TransportLayerPropertyHost</code> and <code>config.ServicePropertyVPNName</code>. The <code>ServicePropertyMap</code> is passed to the <code>MessagingServiceBuilder</code> to configure the connection to the event broker. There are five categories of properties that can be configured in a <code>ServicePropertyMap</code> using the <code>config</code> package:.</p>
+    <ul>
+      <li><code>config.ServiceProperty</code>(required for the <code>VPN</code> property)</li>
+      <li><code>config.TransportLayerProperty</code> (required for <code>HOST</code> property )</li>
+      <li>
+        <code>config.AuthenticationProperty</code>
+      </li>
+      <li>
+        <code>config.ClientProperty</code>
+      </li>
+      <li>
+        <code>config.TransportLayerSecurityProperty</code>
+      </li>
+    </ul>
+    <p>For more information,  see the <a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Go reference</a></a>.</p>
+    <p>The code below shows how to use a <code>ServicePropertyMap</code> for establishing a connection to an event broker using basic authentication:</p>
+    <pre xml:space="preserve">package main
+
+import (
+	"fmt"
+	"os"
+	"os/signal"
+	"strconv"
+	"time"
+
+	"solace.dev/go/messaging"
+	"solace.dev/go/messaging/pkg/solace/config"
+	"solace.dev/go/messaging/pkg/solace/resource"
+)					
+...
+...
+// Configuration parameters
+brokerConfig := config.ServicePropertyMap{
+config.TransportLayerPropertyHost:                 "tcps://messaging.solace.cloud:55443",
+config.ServicePropertyVPNName:                     "MyVPN",
+config.AuthenticationPropertySchemeBasicPassword:  "MyPassword123",
+config.AuthenticationPropertySchemeBasicUserName:  "MyUsername",
+}</pre>
+    <p>Alternatively if you're running samples, the configuration you want to use can be passed into the client application via a JSON file. The following sample code shows how you can use the <code>UnmarshalJSON()</code> function to parse JSON data and use it to create a <code>ServicePropertyMap</code>:</p>
+    <pre xml:space="preserve">
+var configMap config.ServicePropertyMap
+data,err := os.ReadFile("/path/to/config.json")  // ReadFile reads the named file and returns the contents.
+error := json.Unmarshal(data, &amp;configMap)         // Parses the JSON-encoded data and stores the result in the value pointed to by 2nd paramater.
+if error != nil {
+panic(error)
+}
+// Use FromConfigurationProvider(configMap) to use JSON data when creating your MessagingService instance</pre>
+    <h2><a name="Establish-conneection-to-event-broker"/>Establishing a Connection to an Event Broker </h2>
+    <p>When the necessary properties have been set and stored in a <code>ServicePropertyMap</code>, you can use the <code>messaging</code> package to call <code>NewMessagingServiceBuilder()</code> function. This function returns an instance of <code>MessagingServiceBuilder</code> that you call the <code>Build()</code> function on to return a <code>MessagingService</code> instance. A <code>MessagingService</code> instance allows the API to establish a connection to the event broker. The following is a list of commonly used functions to create the necessary <code>MessagingService</code> instance:</p>
+    <ul>
+      <li>
+        <code>messaging.NewMessagingServiceBuilder()</code>
+      </li>
+      <li style="font-weight: normal;font-size: 11pt;">
+        <code>WithAuthenticationStrategy(AuthenticationStrategy authenticationProvider)</code>
+      </li>
+      <li>
+        <code>FromConfigurationProvider(provider config.ServicePropertiesConfigurationProvider)</code>
+      </li>
+      <li>
+        <code>Build()</code>
+      </li>
+    </ul>
+    <p>For more information,  see the <a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Go reference</a></a>.</p>
+    <p>After you create the <code>MessagingService</code> instance, you call the <code>Connect()</code> function on it to connect to the event broker. </p>
+    <p>The following sample code shows how to create a simple <code>MessagingService</code> instance and connect it to an event broker:</p>
+    <pre xml:space="preserve">
+messagingService, err := messaging.NewMessagingServiceBuilder().      // Returns an instance of solace.MessagingServiceBuilder.
+FromConfigurationProvider(brokerConfig).                              // An example configuration provider is ServicePropertyMap
+WithTransportSecurityStrategy(config.NewTransportSecurityStrategy().  // Configures the resulting messaging service with the specified transport security strategy.
+WithCertificateValidation(false, true, "./trust_store", "")).         // With Certificate Validation. Note: Make sure you have a trust_store directory with the .pem file stored in it.
+WithAuthenticationStrategy(config.BasicUserNamePasswordAuthentication("myUsername", "myPassword123")). // Configures the resulting messaging service with the specified authentication configuration.
+Build()     // Creates and returns the built MessagingService instance based on the provided configuration.				
+if err != nil {
+	panic(err)
+}
+
+if err := messagingService.Connect(); err != nil {   // Connects the messaging service to the event broker. This function blocks until the connection attempt is completed.
+	panic(err)
+}	</pre>
+    <h2 class="with-rule"><a name="Connecting-Through-Proxies"/>Connecting to a Host Event Broker Through Proxies</h2>
+    <p>You can establish a connection to an  event broker within your private network via an HTTP or SOCKS5 proxy server. This allows you to make one firewall exception for the external proxy server, so any clients who authenticate with the proxy server can access your event broker. Proxy servers eliminate the need to make firewall exceptions for each connecting client.</p>
+    <p>To connect to an event broker through an HTTP or SOCKS protocol version 5 proxy server, the host property <code>config.TransportLayerPropertyHost</code> must include the parameters required for a standard connection to an event broker, but it must also include a <code>ProxyService</code> string:</p>
+    <p class="Code" xml:space="preserve">brokerConfig := config.ServicePropertyMap{
+config.TransportLayerPropertyHost:   "[Protocol:]Host[:Port][%ProxyService]",
+// ...
+}</p>
+    <p><u>Where</u>:</p>
+    <p><code>ProxyService</code>—The proxy server that is used to connect to event broker. The proxy service string format is specified as:</p>
+    <p class="Code">[ProxyProtocol]://[username:password@]proxyHost[:proxyPort]</p>
+    <p><u>Where</u>:</p>
+    <ul>
+      <li><code>ProxyProtocol</code>—The protocol used to communication with the proxy server. The valid values are:
+			<ul><li><code>socks5</code>—Connect to the server with the SOCKS Protocol Version 5, RFC 1928 (IETF Standards Track Document).</li><li><code>httpc</code>—Connect to the server with the HTTP Connect Protocol, RFC 2817 (IETF Standards Track Document).</li></ul></li>
+      <li><code>username:password@</code>—If authentication is required for the proxy server, the username and password may be specified before the proxy host.
+			</li>
+      <li><code>proxyHost</code>—The IP address (or hostname) of the proxy server.
+			</li>
+      <li><code>proxyPort</code>—The port to connect to for a connection. If the port number is not specified, the default is port 1080 for SOCKS5 and port 3128 default for HTTP Connect.
+			</li>
+    </ul>
+    <p><u>Examples</u>:</p>
+    <p>The following examples show how to connect to an event broker through a proxy server.</p>
+    <ul>
+      <li><code>192.168.160.28%socks5://192.168.1.1</code>—Connects to an event broker at 192.168.160.28 through a SOCKS5 proxy server at 192.168.1.1.</li>
+      <li><code>192.168.160.28%httpc://192.168.1.1</code>—Connects to an event broker at 192.168.160.28 through an HTTP-Connect proxy server at 192.168.1.1.</li>
+      <li><code>tcps:solace.company.com%socks5://User:PassWord@proxy.company.com:13128</code>—Connect to an event broker at <code>solace.company.com</code> using SSL over TCP through a SOCKS5 proxy server at <code>proxy.company.com</code>, port 13128. Authenticate with the proxy server using username <code>User</code> and password <code>PassWord</code>.</li>
+      <li><code>http://192.168.160.28:44444%httpc://proxy.company.com:11050</code>—Connect to the event broker at 192.168.160.28, port 44444, using HTTP. Connect through the proxy server at proxy.company.com, port 11050.</li>
+    </ul>
+    <h2 class="with-rule"><a name="Transport-Layer-Security"/>Using Transport Layer Security</h2>
+    <p>Transport Layer Security (TLS) allows for encrypted authentication and data transmission between the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Go API and a <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker. The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Go API supports Transport Layer Security versions TLS 1.0, TLS 1.1, and TLS 1.2 . The recommended version to use is the most recent version of TLS. Secure Socket Layer (SSL) protocol, version 3 (SSLv3) is also supported. We don't recommend that you use SSL unless it's required for backwards compatibility.</p>
+    <p>You can use  <code>WithTransportSecurityStrategy()</code> with the <code>config</code> package to configure the TLS connection properties to use, or whether or not to disable certificate validation entirely. When you use TLS, you must always use the secure TCP  protocol (<code>tcps</code> or <code>https</code>) in  setting the <code>config.TransportLayerPropertyHost</code> property for your connection, for example:</p>
+    <p>
+      <pre xml:space="preserve">brokerConfig := config.ServicePropertyMap{
+	config.TransportLayerPropertyHost:  "<b>tcps</b>://messaging.solace.cloud:55443",
+	config.ServicePropertyVPNName:      "MyVPN",
+}</pre>
+    </p>
+    <p>We recommend using certificate validation when configuring your messaging service. The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Go API's <code>config</code> package provides the following function for configuring certificate validation:</p>
+    <ul>
+      <li>
+        <p>
+          <code>WithCertificateValidation(ignoreExpiration bool, validateServerName bool, trustStoreFilePath string, trustedCommonNameList string)</code>
+        </p>
+        <ul>
+          <li><code>ignoreExpiration</code>— When set to true, expired certificates are accepted.
+
+						</li>
+          <li><code>validateServerName</code>— When set to true, certificates without the matching host are not accepted.</li>
+          <li><![CDATA[
+
+						]]><code>trustStoreFilePath</code>— The location of the trust store files. If an empty string is passed, no file path will be set.</li>
+          <li><![CDATA[
+
+						]]><code>trustedCommonNameList</code>— A comma-separated list of acceptable common names for matching with server certificates. An empty string will match no names.
+						</li>
+        </ul>
+      </li>
+    </ul>
+    <p>The following sample code shows the recommended security setup for client applications when you use TLS: </p>
+    <pre xml:space="preserve">
+messagingService0, err := messaging.NewMessagingServiceBuilder().
+FromConfigurationProvider(brokerConfig).
+WithTransportSecurityStrategy(
+	<b>config.NewTransportSecurityStrategy().</b>                         // creates a default transport security strategy. Properties can be overwritten by calling configuration functions.
+	<b>WithCertificateValidation(false, true, "./trust_store", "").</b>   // Configures TLS validation on certificates. By default, validation is performed.<b>
+		WithExcludedProtocols(</b>                                  // Specifies the list of SSL or TLS protocols to not use. <b>
+		config.TransportSecurityProtocolTLSv1,</b>                  // Excludes dated protocols TLSv1, TSLv1_1 and SSLv3.<b>
+		config.TransportSecurityProtocolTLSv1_1,
+		config.TransportSecurityProtocolSSLv3)).</b>
+WithAuthenticationStrategy(config.BasicUserNamePasswordAuthentication("myUserName123", "myPassword123")).
+Build()	</pre>
+    <p>There are also a number of functions that you may find useful to configure the TLS connection using the <code>WithTransportSecurityStrategy()</code> function. Here are three functions commonly used to configure the TLS connection:</p>
+    <ul>
+      <li>
+        <p><code>WithCipherSuites()</code>—The list of cipher suites used when negotiating the TLS connection can be configured. You can configure the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Go API to limit it to use a set of stronger ciphers and to help <MadCap:annotation MadCap:createDate="2022-10-07T17:59:25.9763670-04:00" MadCap:creator="GilYu" MadCap:initials="GI" MadCap:comment="The list of Cipher Suites used when negotiating the TLS connection can be configured. Limiting the API to a set of stronger ciphers can guarantee a more secure connection between applications and an event broker." MadCap:editor="GilYu" MadCap:editDate="2022-10-07T17:59:26.7709784-04:00">guarantee</MadCap:annotation> a more secure connection between the client applications and event brokers.</p>
+        <p>Cipher suites are a useful method of encrypting communication through a TLS handshake and offer improved security between applications connected through the  event broker. For a more detailed explanation and a list of supported cipher suites see <a href="../../Security/TLS-SSL-Message-Encryption-Overview.htm#Cipher" class="link-internal">Cipher Suites</a>.</p>
+        <p>The following code sample shows how to use the <code>WithCipherSuites()</code> function:</p>
+        <p>
+          <pre xml:space="preserve">
+messagingService00, err := messaging.NewMessagingServiceBuilder().
+FromConfigurationProvider(brokerConfig).
+WithTransportSecurityStrategy(
+config.NewTransportSecurityStrategy().
+<b>WithCipherSuites("CipherSuite1, CipherSuite2").   // Comma separated list that configures cipher suites to use.</b>
+WithAuthenticationStrategy(config.ClientCertificateAuthentication("certFile", "keyFile", "keyPassword")).
+Build()	 </pre>
+        </p>
+      </li>
+      <li>
+        <p><code>WithExcludedProtocols()</code>—You may not want to use specific protocols to connect with microservices. For example, you may not want to use legacy protocols. Use this function to specify the Secure Socket Layer (SSL) and Transport Layer Security (TLS) protocols not to use. Here is sample code that shows you how to exclude a specific protocol: </p>
+        <p>
+          <pre xml:space="preserve">
+messagingService00, err := messaging.NewMessagingServiceBuilder().
+FromConfigurationProvider(brokerConfig).
+WithTransportSecurityStrategy(
+config.NewTransportSecurityStrategy().
+<b>WithExcludedProtocols(config.TransportSecurityProtocolTLSv1).   // Specifies the list of SSL or TLS protocols to not use.</b>
+WithAuthenticationStrategy(config.ClientCertificateAuthentication("certFile", "keyFile", "keyPassword")).
+Build()        </pre>
+        </p>
+      </li>
+      <li>
+        <p><code>WithoutCertificateValidation()</code>—This function configures your TLS connection not to  validate server certificates. </p>
+        <p class="Warning">Only use this function  in development environments. We recommend that you never use this function in production environments because it creates a security vulnerability.</p>
+        <p> The following sample code shows how to use the <code>WithoutCertificateValidation()</code> function:</p>
+        <p>
+          <pre xml:space="preserve">messagingService, err := messaging.NewMessagingServiceBuilder().
+FromConfigurationProvider(brokerConfig).
+WithTransportSecurityStrategy(
+config.NewTransportSecurityStrategy().
+<b>WithoutCertificateValidation().   // Configures TLS to not validate the server certificate configured on the remote broker.</b>
+WithAuthenticationStrategy(config.ClientCertificateAuthentication("certFile", "keyFile", "keyPassword")).
+Build()        </pre>
+        </p>
+      </li>
+    </ul>
+    <p>You can also configure the aspects of the TLS connection using  <code>TransportLayerSecurityProperty</code> in the  <code>ServicePropertyMap</code>. The TLS connection can be configured using various fields found in  <code>config.TransportLayerSecurityProperty</code>. We recommend that you use the default settings (set to <code>true</code> and enabled) to ensure secure connections for the following properties: </p>
+    <ul>
+      <li>
+        <code>config.TransportLayerSecurityPropertyCertRejectExpired</code>
+      </li>
+      <li>
+        <code>config.TransportLayerSecurityPropertyCertValidateServername</code>
+      </li>
+      <li>
+        <code>config.TransportLayerSecurityPropertyCertValidated</code>
+      </li>
+    </ul>
+    <p>For more information about the functions and properties,  see the <a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Go reference</a></a>.</p>
+    <h2><a name="Authentication"/>Authentication </h2>
+    <p> The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Messing API for Go supports a number of  authentication schemes (or strategies). that you can choose from. The scheme that you choose may depend on the credentials that the connecting client is required to provide. You can use one of the following  authentication schemes:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Basic">Basic Authentication </MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Kerberos">Kerberos Authentication </MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Client">Client Certificate Authentication </MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#OAuth">OAuth Certification </MadCap:xref>
+      </li>
+    </ul>
+    <h3 class="with-rule"><a name="Basic"/>Basic Authentication </h3>
+    <p>Basic authentication is the default client authentication scheme  which allows a client to authenticate with an event broker using a client username and password. To specify basic authentication, create an instance of a <code>MessagingService</code> and specify the following as the parameter for the <code>WithAuthenticationStrategy()</code> function:</p>
+    <ul>
+      <li>
+        <code>config.BasicUserNamePasswordAuthentication("myUsername", "myPassword")</code>
+      </li>
+    </ul>
+    <p>For details see the <a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"> Messaging API for Go reference</a>.</p>
+    <p>The following sample code shows how to use basic authentication:</p>
+    <pre xml:space="preserve">
+messagingService, err := messaging.NewMessagingServiceBuilder().      // Returns an instance of solace.MessagingServiceBuilder.
+FromConfigurationProvider(brokerConfig).                              // An example configuration provider is ServicePropertyMap
+WithAuthenticationStrategy(config.BasicUserNamePasswordAuthentication("myUsername", "myPassword123")). // Configures the resulting messaging service with the specified authentication configuration.
+Build()     // Creates and returns the built MessagingService instance based on the provided configuration.		</pre>
+    <h3 class="with-rule"><a name="Kerberos"/>Kerberos Authentication </h3>
+    <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Go API provides support for  <a href="../../Security/Configuring-Client-Authentication.htm#Config-Kerberos" class="link-internal">Kerberos Authentication</a>. Connecting using this function requires you to load a Kerberos Keytab on the  broker (see <a href="https://docs.solace.com/Admin/Managing-Event-Broker-Files.htm" class="link-offsite">Managing Event Broker Files</a>) and Kerberos authentication must be configured and enabled for any Message VPNs that Kerberos-authenticated clients connect to.</p>
+    <p>. Call the <code>WithAuthenticationStrategy()</code> function and pass the following as the parameters:</p>
+    <ul>
+      <li><code>config.KerberosAuthentication(serviceName string)</code> If the service name is not required, an empty string can be passed to the <code>serviceName </code>argument.</li>
+    </ul>
+    <p>For additional details,  see the <a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"> Messaging API for Go reference</a></a>.</p>
+    <p>The following sample code shows how to use Kerboros for authentication:</p>
+    <pre xml:space="preserve">
+messagingService, err := messaging.NewMessagingServiceBuilder().              // Returns an instance of solace.MessagingServiceBuilder.
+FromConfigurationProvider(brokerConfig).				       // An example configuration provider is ServicePropertyMap
+WithAuthenticationStrategy(config.KerberosAuthentication("serviceName")).     // Configures the resulting messaging service with the specified authentication configuration.
+Build()	   // Creates and returns the built MessagingService instance based on the provided configuration.	</pre>
+    <h3 class="with-rule"><a name="Client"/>Client Certificate Authentication </h3>
+    <p>To use the <a href="../../Security/Configuring-Client-Authentication.htm#Client-Cert" class="link-internal">Client certificate authentication</a> scheme, the following steps are required: </p>
+    <ul>
+      <li>
+        <p>Configure the host event broker to use TLS connections (see <MadCap:xref href="#Transport-Layer-Security">Using Transport Layer Security</MadCap:xref>).</p>
+      </li>
+      <li>
+        <p>Your application must connect to the broker using TLS.</p>
+      </li>
+      <li>
+        <p>Enable Client certificate verification on the Message VPN that the application uses to connect.</p>
+      </li>
+      <li>
+        <p>The client-side certificate must be present in a keystore file and configured using the following:</p>
+        <ul>
+          <li>
+            <p>
+              <code>config.ClientCertificateAuthentication(certificateFile, keyFile, keyPassword string)</code>
+            </p>
+          </li>
+        </ul>
+      </li>
+    </ul>
+    <p>For additional details  see the  <a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Go reference</a>.</p>
+    <p> The following sample code shows how to configure client certificate authentication:</p>
+    <pre xml:space="preserve">
+messagingService, err := messaging.NewMessagingServiceBuilder().              // Returns an instance of solace.MessagingServiceBuilder.
+FromConfigurationProvider(brokerConfig).				       // An example configuration provider is ServicePropertyMap
+WithTransportSecurityStrategy(config.NewTransportSecurityStrategy().          // Configures the resulting messaging service with the specified transport security strategy.
+WithCertificateValidation(false, true, "./trust_store", "")).                 // With Certificate Validation. Note: Make sure you have a trust_store directory with the .pem file stored in it.).
+WithAuthenticationStrategy(config.ClientCertificateAuthentication("certFile", "keyFile", "keyPassword")).  // Configures the resulting messaging service with the specified authentication configuration.
+Build()	   // Creates and returns the built MessagingService based on the provided configuration.			</pre>
+    <h3 class="with-rule"><a name="OAuth"/>OAuth 2.0 Authentication</h3>
+    <p>OAuth2.0 is an open standard for access delegation and authorization. It is commonly used as a mechanism  to grant websites or applications access to users' information on other websites without giving them access to sensitive credentials. The  OAuth authentication scheme allows access through the use of tokens issued to third-party clients by an authorization server that provides access to Message VPNs on <MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers. To use OAuth 2.0 authentication, configure the host event broker to use TLS connections (see <MadCap:xref href="#Transport-Layer-Security">Using Transport Layer Security</MadCap:xref>) and make sure your application connects to the event broker using TLS. For more information, see <MadCap:xref href="../../Security/Configuring-Client-Authentication.htm#OAuth">OAuth Authentication</MadCap:xref>.</p>
+    <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> Go API supports different fields that can be sent to the event broker:</p>
+    <ul>
+      <li>
+        <p><code>accessToken</code>—a <code>String</code> for applications to make requests for data access</p>
+        <p>
+          <b>and/or</b>
+          <br/>
+        </p>
+        <p><code>idToken</code>—a <code>String</code> for Open ID Connect (OIDC) connections </p>
+      </li>
+      <li><code>issuerIdentifier</code>—(Optional) a <code>String</code> to identify the appropriate OAuth provider configuration</li>
+    </ul>
+    <p>OAuth authentication requires an <code>accessToken</code>, an <code>idToken</code>, or both to be enabled using this function:</p>
+    <ul>
+      <li>
+        <code>config.OAuth2Authentication(accessToken string, oidcIDToken string, issuerIdentifier string)</code>
+        <ul>
+          <li> At least one of <code>accessToken </code>or <code>oidcIDToken</code> must be provided. If any of the parameters is not required, an empty string can be passed.</li>
+        </ul>
+      </li>
+    </ul>
+    <p>For additional details, refer to the  <a href="../../API-Developer-Online-Ref-Documentation/go/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Go reference</a>.</p>
+    <p> The following sample code shows how to use  OAuth authentication with OpenID Connect (OIDC):</p>
+    <pre xml:space="preserve">
+/* Configure service access to use a Open ID connect authentication with an ID token and an optional access token. */
+messagingService, err := messaging.NewMessagingServiceBuilder().              // Returns an instance of solace.MessagingServiceBuilder.
+FromConfigurationProvider(brokerConfig).				       // An example configuration provider is ServicePropertyMap
+WithTransportSecurityStrategy(config.NewTransportSecurityStrategy().          // Configures the resulting messaging service with the specified transport security strategy.
+WithCertificateValidation(false, true, "./trust_store", "")).                 // With Certificate Validation. Note: Make sure you have a trust_store directory with the .pem file stored in it.).
+WithAuthenticationStrategy(config.OAuth2Authentication("accessToken", "oidcIDToken", "")).  // Configures the resulting messaging service with the specified authentication configuration.
+Build()	   // Creates and returns the built MessagingService instance based on the provided configuration.		.</pre>
+    <pre xml:space="preserve">
+/* Configure service access to use OAuth 2 authentication with an access token and an optional issuer identifier. */
+messagingService, err := messaging.NewMessagingServiceBuilder().              // Returns an instance of solace.MessagingServiceBuilder.
+FromConfigurationProvider(brokerConfig).				       // An example configuration provider is ServicePropertyMap
+WithTransportSecurityStrategy(config.NewTransportSecurityStrategy().          // Configures the resulting messaging service with the specified transport security strategy.
+WithCertificateValidation(false, true, "./trust_store", "")).                 // With Certificate Validation. Note: Make sure you have a trust_store directory with the .pem file stored in it.).
+WithAuthenticationStrategy(config.OAuth2Authentication("accessToken", "", "issuerIdentifier")).  // Configures the resulting messaging service with the specified authentication configuration.
+Build()	   // Creates and returns the built MessagingService instance based on the provided configuration.		</pre>
+    <h3><a name="Refreshi"/>Refreshing Expired OAuth Tokens</h3>
+    <p>By default, event brokers disconnect clients when their tokens expire (see <MadCap:xref href="../../Security/Configuring-Client-Authentication.htm#Disconnect-Token-Expiry">Disconnect on Token Expiration</MadCap:xref>). When a client session  is disconnected, the client application tries to reconnect a number of times using the same OAuth token based on the <code>RECONNECTION_ATTEMPTS</code> property. If the connection can't be reestablished due to token expiration, the client application must recreate the session with all its subscriptions.</p>
+    <p>To update the OAuth token, use the <code>UpdateProperty(property config.ServiceProperty, value interface{})</code> method, which allows you to set a modifable service property after the creation of the <code>MessagingService</code> instance. The first parameter is one of the following strings and the second parameter is the token:</p>
+    <ul>
+      <li><code><a href="https://github.com/SolaceDev/pubsubplus-go-client/blob/dev/pkg/solace/config/messaging_service_properties.go#L132" class="link-offsite">solace.messaging.authentication.oauth2.access-token</a></code> to update an expired access token</li>
+      <li><code><a href="https://github.com/SolaceDev/pubsubplus-go-client/blob/dev/pkg/solace/config/messaging_service_properties.go#L138" class="link-offsite">solace.messaging.authentication.oauth2.oidc-id-token</a></code> to update an expired ID token</li>
+    </ul>
+    <p class="Note">Modifiable service properties may not update immediately and may require the next reconnection attempt to update.</p>
+    <p>Refreshing the expired token can happen while:</p>
+    <ul>
+      <li>
+        <p>the client application is connected. In this case, the client contacts the authentication server to refresh the token and modifies the session to use the updated token the next time the API connects to the event broker.</p>
+      </li>
+      <li>
+        <p style="font-weight: normal;">the client application is reconnecting. The reconnecting event includes a diagnostic subCode.  If this subCode is <code><a href="https://github.com/SolaceDev/pubsubplus-go-client/blob/dev/pkg/solace/subcode/subcode_generated.go#L60" class="link-offsite">Login Failure</a></code>, this may indicate that your token has expired.   In this case, the API tries to reconnect (using the expired token). The client  then contacts the authentication server to refresh the token and modifies the session to use the updated token the next time the API attempts to reconnect to the event broker.</p>
+      </li>
+    </ul>
+    <p style="font-weight: normal;">In general, it is better if the client application is aware of potential token expiry and refreshes the token before it expires.</p>
+    <p class="Note">When the client application's session is reconnected, the Go API re-applies the client application's direct subscriptions. If there is a change in the ACLs as a result of the refreshed token, the subscriptions may be rejected by the event broker.</p>
+  </body>
+</html>

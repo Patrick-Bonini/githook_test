@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Configuring OCSP Certificate Revocation Checking</h1>
+    <p> To configure a Solace PubSub+ event broker to use a certificate authority (CA) with Open Certificate Status Protocol (OCSP) revocation checking, complete the following steps:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Step-review">Step 1: Review Prerequisites </MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Step-ca">Step 2: Configure Certificate Authorities</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Step-ocsp">Step 3: Configure OCSP Parameters </MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Step-ca-check">Step 4: Enable CA Revocation Checking</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Step-vpn-overrides">Step 5: Configure Message VPN Overrides</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#step-enable-ocsp">Step 6: Enable OCSP Certificate Revocation Checking</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Step-review"/>Step 1: Review Prerequisites </h2>
+    <MadCap:snippetBlock src="../Resources/Snippets/Prereq-Cert-Revocation.flsnp"/>
+    <h2 class="with-rule"><a name="Step-ca"/>Step 2: Configure Certificate Authorities</h2>
+    <p>To configure a CA, see <MadCap:xref href="Managing-Certificate-Authorities.htm#configure-client-ca-list">Configuring Certificate Authorities</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Step-ocsp"/>Step 3: Configure OCSP Parameters </h2>
+    <p>    You can optionally configure any of the following parameters for the OCSP:		                
+  <ul><li><p>It is possible to configure an override URL on the certificate authority to ignore the URLs supplied in the client certificates. The override URL will then be used to find the OCSP responder.<br/>To configure an override URL, enter the following commands:</p><p class="Code">solace(configure/authentication/client-certificate-authority)# revocation-check ocsp<br/>solace(configure/authentication/client-certificate-authority/revocation-check/ocsp)# override-url &lt;url&gt; &lt;port&gt;<br/></p><p><u>Where</u>:</p><p><code>url</code> is the URL of the OCSP responder. The <code>url</code> must be a complete URL including <code>http://</code>. Only HTTP URLs are supported.</p><p><code>&lt;port&gt;</code> is the port number on which the OCSP responder is listening.</p></li><li>You can place multiple OSCP responders behind a load balancer. The responders will be required to sign the OCSP responses with certificates issued to specific common names. You can configure up to 8 unique common names per CA as valid response signers.<p>To configure a responder common name, enter the following commands:</p><p class="Code">solace(configure/authentication/client-certificate-authority)# revocation-check ocsp<br/>solace(configure/authentication/client-certificate-authority/revocation-check/ocsp)# responder-common-name {empty | name &lt;common-name&gt;}
+</p><p><u>Where</u>:
+					<br/><code>empty</code> removes all common names from the list.
+					<br/><code>name &lt;common-name&gt;</code> adds a common name to the list. You can configure up to eight unique common names per CA as valid responders.</p></li><li><p>You can configure a non-responder certificate to sign an OCSP response. This is typically used with an OCSP override in cases where a single certificate is used to sign client certificate and OCSP responses.</p><p> To configure a non-responder certificate, enter the following commands:</p><p class="Code">solace(configure/authentication/client-certificate-authority)# revocation-check ocsp<br/>solace(configure/authentication/client-certificate-authority/revocation-check/ocsp)# allow-non-responder-certificate</p></li><li><p> If the event broker does not receive a response from the OCSP responder within the default timeout, the OCSP request is considered to have failed. A timeout can be configured to wait for a response from the OCSP responder.</p><p>To configure an OCSP timeout, enter the following commands:</p><p class="Code">solace(configure/authentication/client-certificate-authority)# revocation-check ocsp<br/>solace(configure/authentication/client-certificate-authority/revocation-check/ocsp)# timeout &lt;seconds&gt;
+        </p><p><u>Where</u>:</p><p><code>seconds</code> is the OCSP timeout in seconds that is used in the initial connection attempt with the OCSP responder. The default <code>timeout</code> value is 5 seconds.</p></li></ul></p>
+    <h2 class="with-rule"><a name="Step-ca-check"/>Step 4: Enable CA Revocation Checking</h2>
+    <p>For the event broker to successfully use the CA, enable the revocation checking:</p>
+    <p>
+      <p class="Code">solace(configure/authentication/client-certificate-authority/revocation-check/ocsp)# exit<br/>solace(configure/authentication/client-certificate-authority/revocation-check)# no shutdown<br/></p>
+    </p>
+    <h2 class="with-rule"><a name="Step-vpn-overrides"/>Step 5: Configure Message VPN Overrides</h2>
+    <p>You can optionally configure revocation overrides for specific Message VPNs, based on the revocation status of the client certificates.</p>
+    <p>To configure the revocation checking overrides, see <MadCap:xref href="../Features/VPN/Configuring-VPNs.htm#Configur">Configuring Message VPN Overrides</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="step-enable-ocsp"/>Step 6: Enable OCSP Certificate Revocation Checking</h2>
+    <p>Once CA and CRL configurations are completed, certificate revocation checking can be enabled for the event broker.</p>
+    <ol>
+      <li>Enable OCSP certificate revocation checking for the event broker:<p class="Code">solace(configure)# authentication<br/>solace(configure/authentication)# client-certificate-revocation-checking ocsp</p></li>
+      <li>Verify if the OCSP certificate revocation checking has been enabled:
+
+
+
+			<p class="Code">solace(configure/authentication)# show authentication</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p class="Code">CLI and SEMP user class:<br/>    radius-domain:<br/>    auth-type: Internal database authentication <br/>    profile-name:<br/><br/>Replace Duplicate Client Connections:   yes<br/>Client Certificate Revocation Checking: ocsp<br/><br/>Shell Users                                            Direct shell login enabled<br/>=====================================================  ==========================<br/>support                                                                       Yes<br/></p></MadCap:dropDownBody></MadCap:dropDown></li>
+    </ol>
+  </body>
+</html>

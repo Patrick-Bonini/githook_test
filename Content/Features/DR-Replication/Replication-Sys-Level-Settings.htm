@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Configuring System-Level Replication Settings</h1>
+    <p>You can perform the following system-level replication configuration tasks:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Config-Replication-Mates">Configuring Replication Mates</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Config-Rep-Sync-Bridges">Configuring Replication Config-Sync Bridges</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Config-Rep-Interfaces">Configuring Replication Interfaces</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Config-SSL">Configuring TLS/SSL for Replication</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Replication-Compat-Mode">Configuring Replication Compatibility Mode for Transactions</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Config-Replication-Mates"/>Configuring Replication Mates</h2>
+    <p>The replication facility requires that the event brokers at both replication sites know of their respective replication mates. For the event brokers at each replication site, you must indicate the virtual router name used by their replication mates and the address to use to connect to them. You can also configure whether the event brokers’ connect ports will use compressed or non-compressed data. (If no connect port configuration is provided, the default setting of non-compressed is used.)</p>
+    <p>Replication mate information that is set at the system level is applied to all Message VPNs on that event broker.</p>
+    <p class="Note">To configure replication mates, replication service must be disabled for each Message VPN on the event broker (refer to <MadCap:xref href="Monitoring-Replication.htm">Monitoring Replication Operation</MadCap:xref>).</p>
+    <h3><a name="Config-Rep-Mates-Appliances"/>Configuring Replication Mates for Appliances</h3>
+    <p>When indicating a replication mate for an appliance, a combination of the virtual router name and a unique address is used. The port number and type of connection (plain text, SSL, or compressed) used is set separately.</p>
+    <h4>Setting Replication Mate Virtual Router Names and Connect Addresses</h4>
+    <p>To set the virtual router name and unique address used for the replication mate, enter the following CONFIG commands:</p>
+    <pre>solace(configure/replication)# mate
+solace(configure/replication/mate)# virtual-router-name &lt;virtual-router-name&gt; connect-via &lt;addr&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;virtual-router-name&gt;</code> is the name of the virtual router where the specified replication mate is located. This name must begin with "v:", as that indicates a virtual router, and it must match the virtual router name of the replication mate. Event broker names can contain up to 66 characters, composed of alphanumeric characters 0 to 9, a to z, A to Z, underscore '_', dot '.', and hyphen '-'. Note that '_', '.' and '-' cannot be used at the beginning or end of an event broker name. Event broker names must be unique among all configured event brokers.</p>
+    <p><code>&lt;addr&gt;</code> is the IP address or hostname of the mate event broker in the form <code>IP_address[:port]</code> or <code>hostname[:port]</code>, where the IP address is specified in the dotted decimal notation form <code>nnn.nnn.nnn.nnn</code> and <code>port</code> is the port number on the replication mate virtual router. <MadCap:snippetText src="../../Resources/Snippets/ip-address-format.flsnp" MadCap:conditions="Default.HideFromAllOutput"/></p>
+    <p>The no version of this command, <code>no mate</code>, removes a configured replication mate.</p>
+    <h4>Setting Replication Mate Connect Ports</h4>
+    <p>To set a connect port for a replication mate's virtual router, enter the following CONFIG command:</p>
+    <pre>solace(configure/replication)# mate
+solace(configure/replication/mate)# connect-port &lt;port&gt; [compressed] [ssl]</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;port&gt;</code> is the port number on the replication mate virtual router. This number is specified as a decimal value from 0 to 65535. This command does not need to be executed if the default values are appropriate. Default values are 55555 for non-compressed data, 55003 for compressed data, and 55443 for TLS/SSL data.</p>
+    <p><code>compressed</code> indicates that the port is for compressed data traffic.</p>
+    <p><code>ssl</code> indicates that the port is for TLS/SSL data traffic.</p>
+    <h3><a name="Config-Rep-Mates-VMRs"/>Configuring Replication Mates for Software Event Brokers</h3>
+    <p>When indicating a replication mate for a software event broker, the virtual router name of the replication mate is set separately from its connect-via information, which provides a unique combination of an address, a port, and the type of connection (plain text, SSL, or compressed).</p>
+    <p>Configuring the connect-via information separately allows you to set multiple connect addresses for the virtual router used by the replication mate. This is important, for example, if the replication mate is in an event broker HA pair with host list takeover mode. In this case, you must set a connect-via address for both the primary and standby nodes.</p>
+    <h4>Setting Replication Mate Virtual Router Names</h4>
+    <p>To configure the virtual router name for the replication mate, enter the following CONFIG commands:</p>
+    <pre>solace(configure/replication)# mate
+solace(configure/replication/mate)# virtual-router-name &lt;virtual-router-name&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;virtual-router-name&gt;</code> is the name of the virtual router where the specified replication mate is located. This name must begin with "v:", as that indicates a virtual router, and it must match the virtual router name of the replication mate. Event broker names can contain up to 66 characters, composed of alphanumeric characters 0 to 9, a to z, A to Z, underscore '_', dot '.', and hyphen '-'. '-'. Note that '_', '.' and '-' cannot be used at the beginning or end of an event broker name. Event broker names must be unique among all configured event brokers.</p>
+    <p>The no version of this command, <code>no mate</code>, removes a configured replication mate.</p>
+    <p class="Note">If the replication mate is in an event broker HA pair, use the virtual router name of the primary event broker in the HA pair.</p>
+    <h4>Configuring Replication Mate Connect Addresses and Ports</h4>
+    <p>To configure a unique address and connect port for a replication mate’s virtual router, enter the following CONFIG command:</p>
+    <pre>solace(configure/replication)# mate
+solace(configure/replication/mate)#  connect-via &lt;addr-port&gt; [compressed] [ssl]</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;addr-port&gt;</code> is the IP address or hostname of the event broker in the form <code>IP_address:port</code> or <code>hostname:port</code>, where the IP address is specified in the dotted decimal notation form <code>nnn.nnn.nnn.nnn</code> and <code>port</code> is the port number on the replication mate virtual router (specified as a decimal value from 0 to 65535). <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">The port number is not required if the default value is appropriate. Default values are 55555 for non‑compressed data, 55003 for compressed data, and 55443 for TLS/SSL data.</MadCap:conditionalText></p>
+    <p><code>compressed</code> indicates that the port is for compressed data traffic.</p>
+    <p><code>ssl</code> indicates that the port is for TLS/SSL data traffic.</p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example of Multiple Connect Addresses and Ports:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <p>In this example, the mate replication site that uses the virtual name <code>solace1-site2</code> is provided with two connect-via addresses for TLS/SSL data traffic.</p>
+        <pre>solace1-site1(configure/replication/mate)# connect-via 192.168.132.26:55443 ssl
+solace1-site1(configure/replication/mate)# connect-via 192.168.132.31:55443 ssl
+
+solace1-site1(configure/replication/mate)# show replication
+Replication Interface:
+Replication Mate:                  v:solace1-site2
+Plain Text:
+Compressed:
+SSL:                           192.168.132.26:55443
+192.168.132.31:55443
+</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <h2 class="with-rule"><a name="Config-Rep-Sync-Bridges"/>Configuring Replication Config-Sync Bridges</h2>
+    <p>When replication is enabled on an event broker, a replication Config-Sync bridge is automatically created from one replication site to its mate. You can modify the default Config-Sync parameters for this replication Config-Sync bridge. The configuration tasks that you can perform are:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Auth-Schemes">Setting Authentication Schemes</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Compression">Enabling Data Compression</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Window-Sizes">Configuring Message Spool Window Sizes</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Retry-Delay">Configuring Retry Delay Times</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#SSL">Enabling SSL</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Cert-Validation">Configuring SSL Server Certificate Validation Settings</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Enable-Bridges">Enabling Replication Config-Sync Bridges</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="Auth-Schemes"/>Setting Authentication Schemes</h3>
+    <p>Replication Config-Sync bridges can be configured to use authenticated connections. Basic and client certificate authentication modes are available.</p>
+    <p>To configure the authentication scheme to be used for replication Config-Sync bridge connections, enter the following CONFIG commands:</p>
+    <pre>solace(configure)# replication
+solace(configure/replication)# config-sync bridge
+solace(configure/replication/config-sync/bridge)# authentication auth-scheme {basic | client-certificate}</pre>
+    <p><u>Where</u>:</p>
+    <p><code>basic</code> specifies that basic username and password authentication should be used for Config-Sync bridge connections.</p>
+    <p><code>client-certificate</code> specifies that client certificate authentication should be used for Config-Sync bridge connections.</p>
+    <p>When client certificate authentication is used, remote event brokers will treat the server certificate of the event broker as a client certificate. Therefore, the server certificate of an event broker should adhere to the Config-Sync client certificate authentication settings that are set on the remote event broker.</p>
+    <h3><a name="Compression"/>Enabling Data Compression</h3>
+    <p>By default, no compression is applied to data transferred over the replication Config-Sync bridge.</p>
+    <p>To enable data compression, enter the following CONFIG command:</p>
+    <pre>solace(configure)# replication
+solace(configure/replication)# config-sync bridge
+solace(configure/replication/config-sync/bridge)# compressed-data</pre>
+    <p class="Tip">When data compression is enabled for the bridge, compressed ports must be configured in the replication mate (see <MadCap:xref href="#Config-Replication-Mates">Configuring Replication Mates</MadCap:xref>).</p>
+    <p class="Tip">If compression is enabled along with SSL for the bridge, the SSL port must be configured in the replication mate.</p>
+    <p>The <code>no</code> version, <code>no compressed-data</code>, disables  data compression.</p>
+    <h3><a name="Window-Sizes"/>Configuring Message Spool Window Sizes</h3>
+    <p class="Caution">The default value for a replication Config-Sync bridge’s message spool window size is expected to work well in most typical deployments. Configuring an excessively large message spool window size can negatively impact network performance. Before changing this parameter, contact Solace for assistance in choosing the appropriate value for your network conditions.</p>
+    <p>The message spool window size dictates how many outstanding Config-Sync messages may be sent over a replication Config-Sync bridge before the active replication site must receive an acknowledgment.</p>
+    <p>To configure the message spool window size, enter the following CONFIG command:</p>
+    <pre>solace(configure)# replication
+solace(configure/replication)# config-sync bridge
+solace(configure/replication/config-sync/bridge)# message-spool
+solace(...tion/config-sync/bridge/message-spool)# window-size &lt;number&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;number&gt;</code> is an integer from 1 to 65535 that sets how many messages can be in the window. The default value is 65535.</p>
+    <p class="Note_-_text">The no version of this command (<b>no message-spool window-size</b>) resets the message spool window size value back to the default value.</p>
+    <h3><a name="Retry-Delay"/>Configuring Retry Delay Times</h3>
+    <p>To configure the amount of time that must pass before retrying a connection to the replication mate over the replication Config-Sync bridge, enter the following CONFIG command:</p>
+    <pre>solace(configure)# replication
+solace(configure/replication)# config-sync bridge
+solace(configure/replication/config-sync/bridge)# retry-delay &lt;seconds&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;seconds&gt;</code> is an integer from 1 to 255 that specifies the number of seconds to wait before retrying a connection to the replication mate. The default is 3.</p>
+    <p class="Note">The no version of this command (<b>no retry-delay</b>) resets the number of seconds to wait back to the default value.</p>
+    <h3><a name="SSL"/>Enabling SSL</h3>
+    <p>TLS/SSL encryption can be enabled on replication Config-Sync bridges to enable secure connections between event brokers that use Config-Sync.</p>
+    <p>To enable TLS/SSL for replication Config-Sync bridge connections, enter the following CONFIG command:</p>
+    <pre>solace(configure)# replication
+solace(configure/replication)# config-sync bridge
+solace(configure/replication/config-sync/bridge)# ssl</pre>
+    <div class="Note">
+      <ul>
+        <li>After TLS/SSL is enabled on the replication Config-Sync bridges, for authentication using SSL to succeed, the following must be also be configured:<ul><li>an SSL server certificate  on the remote  event broker</li><li> a matching trusted CA on the local event broker</li><li>the connect port used for the replication mate must be set as SSL</li></ul></li>
+        <li>When SSL is enabled for the bridge, the replication mates that you set must use SSL connection ports (see <MadCap:xref href="#Config-Replication-Mates">Configuring Replication Mates</MadCap:xref>).</li>
+      </ul>
+    </div>
+    <p>The no version of this command, <code>no ssl</code>, disables SSL encryption on replication Config-Sync bridges.</p>
+    <h3><a name="Cert-Validation"/>Configuring SSL Server Certificate Validation</h3>
+    <p>You can configure server certificate validation settings for replication Config-Sync bridges to make certificate validation more secure or less secure.</p>
+    <p>To configure SSL server certificate validation settings, enter the following  CONFIG command:</p>
+    <pre>solace(configure)# replication
+solace(configure/replication)# config-sync bridge
+solace(configure/replication/config-sync/bridge)# ssl-server-certificate-validation</pre>
+    <p>The CLI is now at the configuration mode to configure SSL server certificate validation settings for replication Config-Sync bridges. From here, you can configure the following parameters:</p>
+    <ul>
+      <li>validate-server-name</li>
+      <li>max-certificate-chain-depth</li>
+      <li>validate-certificate-date</li>
+      <li>enforce-trusted-common-name</li>
+    </ul>
+    <p>For descriptions of these parameters, refer to <MadCap:xref href="../../Security/Configuring-Server-Cert-Validation.htm">Configuring Server Certificate Validation Settings</MadCap:xref>.</p>
+    <h3><a name="Enable-Bridges"/>Enabling Replication Config-Sync Bridges</h3>
+    <ul>
+      <li>To enable the replication Config-Sync bridge, enter the following  CONFIG command:
+                <pre>solace(configure/replication/config-sync/bridge)# no shutdown</pre></li>
+      <li>To disable the replication Config-Sync bridge, enter the following CONFIG command:
+                <pre>solace(configure/replication/config-sync/bridge)# shutdown</pre></li>
+    </ul>
+    <h2 class="with-rule"><a name="Config-Rep-Interfaces"/>Configuring Replication Interfaces</h2>
+    <p>You can specify the physical network interface from which connections to the replication mate will originate. If no physical network interface is specified, an appropriate interface is automatically assigned.</p>
+    <p>To configure a specific replication interface for the event broker, enter the following CONFIG command:</p>
+    <pre>solace(configure/replication)# interface &lt;phys-intf&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;phys-intf&gt;</code> is an ASCII string specifying the physical Ethernet interface port or LAG of the local event broker. Valid values are <code>&lt;cartridge&gt;/&lt;slot&gt;/&lt;port&gt;</code> (for example, 1/1/8); <code>&lt;cartridge&gt;/&lt;slot&gt;/lag&lt;N&gt;</code> (for example, 1/1/lag1). Only a single LAG numbered 1 is supported.</p>
+    <p>The no version of this command, <code>no interface &lt;phys-intf&gt;</code>, removes a configured replication interface.</p>
+    <p class="Note">If you are using an HA redundant event broker pair, do not specify a replication interface if the configured interfaces for the HA pair do not match. If a replication interface is specified that does not exist on the mate event broker, when Config-Sync is enabled it will enter a blocked state on the mate because the non-existent interface cannot be configured.</p>
+    <h2 class="with-rule"><a name="Config-SSL"/>Configuring TLS/SSL for Replication</h2>
+    <p>If you are using TLS/SSL encryption with replication,  you can configure the cipher suites that the replication facility will use for authentication as well as the list of security certificates that replication links will accept.</p>
+    <h3><a name="Cipher-Suites"/>Configuring Cipher Suites for Replication Connections</h3>
+    <p>Any number of cipher suites can be used for encryption . These cipher suites are ordered from most secure to least secure. (For a full list of cipher suites supported by the event broker, refer to <MadCap:xref MadCap:unresolvedLink="import-link:transport_security_and_compression_445161506_28596" href="../../Security/TLS-SSL-Message-Encryption-Overview.htm#transport_security_and_compression_440573439_213360">Supported Cipher Suites</MadCap:xref>.)</p>
+    <p>By default, the entire list of cipher suites is used, for the strongest possible encryption. You may configure the feature to only use certain cipher suites.</p>
+    <p>To configure which cipher suites should be use on replication connections, enter the following  CONFIG CLI commands:</p>
+    <pre>solace(configure/replication)# ssl
+solace(configure/replication/ssl)# cipher-suite {default | empty | name &lt;suite-name&gt; [{before | after} &lt;existing-suite-name&gt;]}</pre>
+    <p><u>Where</u>:</p>
+    <p><code>default</code> specifies that the default list of cipher suites (that is, all of the cipher suites) should be used.</p>
+    <p><code>empty</code> removes all cipher suites from the list.</p>
+    <p><code>name &lt;suite-name&gt;</code> adds the specified cipher suite to the list of suites to be used.</p>
+    <p><code>before &lt;existing-suite-name&gt;</code> specifies that the suite specified by the <code>name</code> parameter should be inserted into the list immediately before (that is, with a higher priority than) the suite specified by the <code>before</code> parameter.</p>
+    <p><code>after &lt;existing-suite-name&gt;</code> specifies that the suite specified by the <code>name</code> parameter should be inserted into the list immediately after (that is, with a lower priority than) the suite specified by the <code>after</code> parameter.</p>
+    <p class="Note_-_text">The no version of this command, <code>no cipher suite name &lt;suite-name&gt;</code>, removes the specified cipher suite from the list of eligible cipher suites.</p>
+    <h3><a name="Trusted-CNs"/>Configuring Trusted Common Names for Replication</h3>
+    <p>The replication facility uses a list of trusted common names to determine which security certificates it accepts for authentication. By default, the list of trusted common names is empty, meaning that the bridge will not accept any certificates.</p>
+    <p>To configure a list of trusted common names for replication, enter the following CONFIG commands:</p>
+    <pre>solace(configure/replication)# ssl
+solace(configure/replication/ssl)# trusted-common-name {empty | name &lt;common-name&gt;}</pre>
+    <p><u>Where</u>:</p>
+    <p><code>empty</code> removes all previously specified common names from the list.</p>
+    <p><code>name &lt;common-name&gt;</code> specifies the name of a certificate to add to the list of trusted common names.</p>
+    <p>The no version of this command, <code>no trusted-common-name name &lt;common-name&gt;</code>, removes the specified common name from the list of trusted common names.</p>
+    <h2 class="with-rule"><a name="Replication-Compat-Mode"/>Configuring Replication Compatibility Mode for Transactions</h2>
+    <p>In previous releases, there was limited support for the replication of local and XA transactions—Guaranteed messages published in transactions were propagated to the replication standby site, but not within transactions. The legacy behavior is maintained for backwards compatibility and is the default setting, but it has several undesirable consequences. It is strongly recommended that you use the transacted mode that replicates Guaranteed messages published in transactions.</p>
+    <p class="Caution">Changing the compatibility mode will cause all in-flight transactions to be rolled back. This procedure should only be executed in a maintenance window.</p>
+    <p>To set the compatible mode to transacted, replication, enter the following CONFIG commands:</p>
+    <pre>solace(configure/hardware/message-spool)# transaction replication-compatibility-mode &lt;mode&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;mode&gt;</code> is either <code>legacy</code> or <code>transacted</code></p>
+    <div class="indent"><code>legacy</code>—all transactions originated by clients are replicated to the standby site without using transactions</div>
+    <div class="indent"><code>transacted</code>—all transactions originated by clients are replicated to the standby site using transactions</div>
+    <p class="Note">
+            Replication mates must use the same compatibility mode and the no version of this command sets the mode to legacy.
+           
+        </p>
+    <h3><a name="Changing"/>Changing Replication Compatibility Mode While In Service</h3>
+    <p>If event brokers are currently providing replication service, then the order in which the mode is changed at the sites is important. Follow the order of operations below to prevent service disruption.</p>
+    <ul>
+      <li>To change from legacy to transacted mode:</li>
+      <ol>
+        <li>Change the standby site to transacted.</li>
+        <li>Change the active site to transacted.</li>
+      </ol>
+      <li>To change from transacted to legacy mode (not recommended):</li>
+      <ol>
+        <li>Change the active site to legacy.</li>
+        <li>Change the standby site to legacy.</li>
+      </ol>
+    </ul>
+  </body>
+</html>

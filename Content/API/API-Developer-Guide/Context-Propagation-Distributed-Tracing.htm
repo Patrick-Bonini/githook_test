@@ -1,0 +1,678 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Context Propagation for Distributed Tracing</h1>
+    <MadCap:snippetBlock src="../../Resources/Snippets/otel-library-intro.flsnp"/>
+    <p>For information about instrumenting your code for distributed tracing, see:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Instrumenting-JCSMP-Distributed-Tracing">Instrumenting JCSMP for Distributed Tracing</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Instrumenting-DOTNET-Distributed-Tracing">Instrumenting .NET for Distributed Tracing</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Instrumenting-JS-NODEJS-Distributed-Tracing">Instrumenting JavaScript and Node.js for Distributed Tracing</MadCap:xref>
+      </li>
+    </ul>
+    <div class="Note">
+      <ul>
+        <li>The PubSub+ OpenTelemetry API Libraries support W3C propagators only.</li>
+        <li>For information about configuring OpenTelemetry SDK environment variables, see <a href="https://opentelemetry.io/docs/concepts/sdk-configuration/" class="link-offsite">OpenTelemetry SDK Configuration</a>.</li>
+        <li>By default, traces include command line parameters visible to backend applications like Jaeger.
+It is important to disable this feature for security purposes because these parameters may contain sensitive information such as your user name and password. For instructions, see <a href="https://github.com/open-telemetry/opentelemetry-java/blob/main/sdk-extensions/autoconfigure/README.md#resource-provider-spi" class="link-offsite">Disabling Automatic Resource Providers</a>	in the OpenTelemetry documentation in GitHub.			</li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="Instrumenting-JCSMP-Distributed-Tracing"/>Instrumenting JCSMP for Distributed Tracing</h2>
+    <p>Manual Instrumentation involves making changes to your enterprise application's source code, and allows you to inject and extract additional context, such as baggage and trace states, into messages. Context propagation makes it easy to debug and optimize your application. For more information about context propagation in <MadCap:variable name="Variables.CompanyName"/> event messages, see <a href="../../Features/Distributed-Tracing/Distributed-Tracing-Context-Propagation.htm#top" class="link-internal">Distributed Tracing Context Propagation</a>. The following examples show you how to create spans using the OpenTelemetry API.</p>
+    <h4>How Context Propagation Enables Distributed Tracing in the JCSMP <MadCap:variable name="Product-Names.pubsub_brand_only"/> API</h4>
+    <p>In your client application, you can use the OpenTelemetry API to create a span, which contains metadata about an operation in a distributed system. This span is associated with a context, which includes a unique <code>TraceID</code>. Next, when you use a <MadCap:variable name="Product-Names.pubsub_brand_only"/> message producer to publish a message, the <MadCap:variable name="Variables.CompanyName"/> OTel integration package injects the context, which contains the <code>TraceID</code>, into the message. As the message travels through the event broker and is received by a consuming application, spans are generated at each step and have the same <code>TraceID</code> present in the original message context.  When each span is closed in the publishing or consuming application, the Java OpenTelemetry API sends it to an OpenTelemetry collector, which collects, processes and exports the spans to a backend application that correlates the spans using their unique <code>TraceID</code>. A backend application uses the correlated spans to create a <i>trace</i>, which is an end-to-end snapshot detailing how the message traveled through the distributed system. If you do not use context propagation, then backend applications cannot use a unique TraceID to link the spans, making it difficult to trace the flow of messages through the distributed system.</p>
+    <h4>Dependencies</h4>
+    <p>To enable context propagation for distributed tracing, you must first add the <a href="https://mvnrepository.com/artifact/com.solace/solace-opentelemetry-jcsmp-integration" class="link-offsite" target="_blank">Solace PubSub+ OpenTelemetry Integration For Solace JCSMP API</a> library as a dependency in your application. This library automatically adds the OpenTelemetry API and SDK libraries, which are required for context propagation. For OpenTelemetry version compatibility see <MadCap:xref href="../../Features/Distributed-Tracing/Distributed-Tracing-Receiver-Versions.htm">Distributed Tracing Version Compatibility</MadCap:xref>. Adding the libraries gives you access to the following two interfaces:</p>
+    <ul>
+      <li><code>SolaceJCSMPTextMapSetter</code>—  This interface allows a <code>TextMapPropagator</code> to inject context into a message.
+            </li>
+      <li><code>SolaceJCSMPTextMapGetter</code>—  This interface allows a <code>TextMapPropagator</code> to  extract context from a message. </li>
+    </ul>
+    <div class="Note">
+      <p>This guide assumes you are familiar with configuring an instance of the OpenTelemetry class. For instructions for configuring OpenTelemetry objects, see <a href="https://opentelemetry.io/docs/instrumentation/java/manual/" class="link-offsite" target="_blank">OpenTelemetry Manual Instrumentation in Java</a> in the OpenTelemetry documentation.</p>
+    </div>
+    <h4>Generating a Send Span on Message Publish</h4>
+    <p>Your publishing application can generate a send span and export it to the OpenTelemetry Collector. The following steps show you how to inject context into a message and generate a send span for a published message:</p>
+    <ol>
+      <li>Create a new span and set span attributes with the <code>setAttribute()</code> method. Next, set the current context as the parent of this span. Start the span with the <code>startSpan()</code> method:</li>
+      <pre xml:space="preserve">
+final Span sendSpan = tracer
+	.spanBuilder("mySolacePublisherApp" + " " + MessagingOperationValues.PROCESS)
+	.setSpanKind(SpanKind.CLIENT)
+	//Publish to a non-temporary topic endpoint
+	.setAttribute(SemanticAttributes.MESSAGING_DESTINATION_KIND, MessagingDestinationKindValues.TOPIC)
+	.setAttribute(SemanticAttributes.MESSAGING_TEMP_DESTINATION, false)
+	//Set more attributes as needed
+	//.setAttribute(...)
+	//.setAttribute(...)
+	.setParent(Context.current()) //Set the current context as the parent span
+	.startSpan();</pre>
+      <li>
+        <p>Set the created span from Step 1   (<code>sendSpan</code> in this example) as the new current context. Next, inject the current context into your message and then publish the message. Call the <code>end()</code> method on the span to export the span data:</p>
+      </li>
+      <pre xml:space="preserve">
+try (Scope scope = sendSpan.makeCurrent()) {
+	final SolaceJCSMPCTextMapSetter setter = new SolaceJCSMPTextMapSetter();
+	final TextMapPropagator propagator = openTelemetry.getPropagators().getTextMapPropagator();
+	//Inject the current context with send span into the message
+	propagator.inject(Context.current(), message, setter);
+	//Publish the message to the given topic
+	messageProducer.send(message, messageDestination);
+} catch (Exception e) {
+	sendSpan.recordException(e);                          //Span can record an exception 
+	sendSpan.setStatus(StatusCode.ERROR, e.getMessage()); //Set span status as ERROR/FAILED
+} finally {
+	sendSpan.end(); //The span data is exported after you call end()
+}	</pre>
+    </ol>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example Function:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre class="Code" xml:space="preserve">
+package com.solace.samples.jcsmp.snippets;
+
+import com.solace.messaging.trace.propagation.SolaceJCSMPTextMapGetter;	
+import com.solace.messaging.trace.propagation.SolaceJCSMPTextMapSetter;
+import io.opentelemetry.api.OpenTelemetry;	
+import io.opentelemetry.api.trace.Span;	
+import io.opentelemetry.api.trace.SpanKind;	
+import io.opentelemetry.api.trace.StatusCode;	
+import io.opentelemetry.api.trace.Tracer;	
+import io.opentelemetry.context.Context;	
+import io.opentelemetry.context.Scope;	
+import io.opentelemetry.context.propagation.TextMapPropagator;
+import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
+import io.opentelemetry.semconv.trace.attributes.SemanticAttributes.MessagingDestinationKindValues;
+import io.opentelemetry.semconv.trace.attributes.SemanticAttributes.MessagingOperationValues;
+import java.util.function.Consumer;
+import com.solacesystems.jcsmp.Topic;
+import com.solacesystems.jcsmp.XMLMessage;
+import com.solacesystems.jcsmp.XMLMessageProducer;
+
+public class HowToImplementManualInstrumentation {
+
+/**
+* Example how to inject a tracing context in the Solace Message and generate a SEND span for the
+* published message
+*
+* @param message            A Solace message that support tracing context propagation.
+* @param messageProducer    JCSMP Message producer that can publish messages
+* @param messageDestination message will be published to this topic
+* @param openTelemetry      The entry-point to telemetry functionality for tracing, metrics and
+*                           baggage.
+* @param tracer             Tracer is the interface for Span creation and interaction with the
+*                           in-process context.
+*/
+void howToCreateSpanOnMessagePublish(XMLMessage message, XMLMessageProducer messageProducer,
+Topic messageDestination, OpenTelemetry openTelemetry, Tracer tracer) {
+
+//Create a new span with a current context as parent of this span
+final Span sendSpan = tracer
+	.spanBuilder("mySolacePublisherApp" + " " + MessagingOperationValues.PROCESS)
+	.setSpanKind(SpanKind.CLIENT)
+	// published to a topic endpoint (non temporary)
+	.setAttribute(SemanticAttributes.MESSAGING_DESTINATION_KIND, MessagingDestinationKindValues.TOPIC)
+	.setAttribute(SemanticAttributes.MESSAGING_TEMP_DESTINATION, false)
+	//Set more attributes as needed
+	//.setAttribute(...)
+	//.setAttribute(...)
+	.setParent(Context.current()) // set current context as parent
+	.startSpan();
+
+//set sendSpan as new current context
+try (Scope scope = sendSpan.makeCurrent()) {
+	final SolaceJCSMPTextMapSetter setter = new SolaceJCSMPTextMapSetter();
+	final TextMapPropagator propagator = openTelemetry.getPropagators().getTextMapPropagator();
+	//and then inject current context with send span into the message
+	propagator.inject(Context.current(), message, setter);
+	// message is being published to the given topic
+	messageProducer.send(message, messageDestination);
+} catch (Exception e) {
+	sendSpan.recordException(e); //Span can record exception if any
+	sendSpan.setStatus(StatusCode.ERROR, e.getMessage()); //Set span status as ERROR/FAILED
+} finally {
+	sendSpan.end(); //End sendSpan. Span data is exported when span.end() is called.
+}
+}
+}			</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <h4>Generating a Receive Span on Message Receive</h4>
+    <p>Your consuming application can generate a receive span and then export it to the OpenTelemetry Collector. The following steps show you how to extract tracing context from a received message and generate a receive span:</p>
+    <ol>
+      <li>Use a <code>SolaceJCSMPCTextMapGetter</code> to extract any existing context from the received message:</li>
+      <pre xml:space="preserve">
+final SolaceJCSMPTextMapGetter getter = new SolaceJCSMPTextMapGetter();
+final Context extractedContext = openTelemetry.getPropagators().getTextMapPropagator()
+	.extract(Context.current(), message, getter);</pre>
+      <li>Set the extracted context as the current context with the <code>makeCurrent()</code> method. Next create a child span (<code>receiveSpan </code>in this example) and set the extracted context as the parent of that child span. Start the span using the <code>startSpan()</code> method:</li>
+      <pre xml:space="preserve">
+try (Scope scope = extractedContext.makeCurrent()) {
+	//Create a child span and set extracted/current context as parent of this span
+	final Span receiveSpan = tracer
+		.spanBuilder("mySolaceReceiverApp" + " " + MessagingOperationValues.RECEIVE)
+		.setSpanKind(SpanKind.CLIENT)
+		// for the case the message was received on a non temporary queue endpoint
+		.setAttribute(SemanticAttributes.MESSAGING_DESTINATION_KIND,
+		MessagingDestinationKindValues.QUEUE)
+		.setAttribute(SemanticAttributes.MESSAGING_TEMP_DESTINATION, false)
+		//Set more attributes as needed
+		//.setAttribute(...)
+		//.setAttribute(...)
+		// creates a parent child relationship to a message publisher's application span is any
+		.setParent(extractedContext)
+		// starts span
+		.startSpan();
+//Try catch continues in next step...</pre>
+      <li>Accept and process the received message, then call the <code>end()</code> method on the receive span to export the span data:</li>
+      <pre xml:space="preserve">	try {
+		//Do something with the message in a callback function
+		messageProcessor.accept(receivedMessage);
+	} catch (Exception e) {
+		receiveSpan.recordException(e);                          //Span can record an exception 
+		receiveSpan.setStatus(StatusCode.ERROR, e.getMessage()); //and set span status as ERROR
+	} finally {
+		receiveSpan.end(); //Span data is exported when you call span.end()
+	}
+}</pre>
+    </ol>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example Function:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre class="Code" xml:space="preserve">
+package com.solace.samples.jcsmp.snippets;
+
+import com.solace.messaging.trace.propagation.SolaceJCSMPTextMapGetter;	
+import com.solace.messaging.trace.propagation.SolaceJCSMPTextMapSetter;
+import io.opentelemetry.api.OpenTelemetry;	
+import io.opentelemetry.api.trace.Span;	
+import io.opentelemetry.api.trace.SpanKind;	
+import io.opentelemetry.api.trace.StatusCode;	
+import io.opentelemetry.api.trace.Tracer;	
+import io.opentelemetry.context.Context;	
+import io.opentelemetry.context.Scope;	
+import io.opentelemetry.context.propagation.TextMapPropagator;
+import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
+import io.opentelemetry.semconv.trace.attributes.SemanticAttributes.MessagingDestinationKindValues;
+import io.opentelemetry.semconv.trace.attributes.SemanticAttributes.MessagingOperationValues;
+import java.util.function.Consumer;
+import com.solacesystems.jcsmp.Topic;
+import com.solacesystems.jcsmp.XMLMessage;
+import com.solacesystems.jcsmp.XMLMessageProducer;
+
+public class HowToImplementManualInstrumentation {
+					
+/**
+* Example how to extract a tracing context from the Solace Message and generate a RECEIVE span
+* for the received message
+*
+* @param receivedMessage  A Solace message.
+* @param messageProcessor A callback function that user could use to process a message
+* @param openTelemetry    The OpenTelemetry class is the entry point to telemetry functionality
+*                         for tracing, metrics and baggage from OpenTelemetry Java SDK.
+* @param tracer           OpenTelemetry Tracer is the interface from OpenTelemetry Java SDK for
+*                         span creation and interaction with the in-process context.
+*/
+void howToCreateNewSpanOnMessageReceive(XMLMessage receivedMessage,
+	Consumer&lt;XMLMessage&gt; messageProcessor,
+	OpenTelemetry openTelemetry, Tracer tracer) {
+
+//Extract tracing context from message, if any using the SolaceJCSMPTextMapGetter
+final SolaceJCSMPTextMapGetter getter = new SolaceJCSMPTextMapGetter();
+final Context extractedContext = openTelemetry.getPropagators().getTextMapPropagator()
+	.extract(Context.current(), receivedMessage, getter);
+
+//Set the extracted context as current context
+try (Scope scope = extractedContext.makeCurrent()) {
+	//Create a child span and set extracted/current context as parent of this span
+	final Span receiveSpan = tracer
+	.spanBuilder("mySolaceReceiverApp" + " " + MessagingOperationValues.RECEIVE)
+	.setSpanKind(SpanKind.CLIENT)
+	// for the case the message was received on a non temporary queue endpoint
+	.setAttribute(SemanticAttributes.MESSAGING_DESTINATION_KIND,
+	MessagingDestinationKindValues.QUEUE)
+	.setAttribute(SemanticAttributes.MESSAGING_TEMP_DESTINATION, false)
+	//Set more attributes as needed
+	//.setAttribute(...)
+	//.setAttribute(...)
+	// creates a parent child relationship to a message publisher's application span is any
+	.setParent(extractedContext)
+	// starts span
+	.startSpan();
+
+	try {
+		// do something with a message in a callback
+		messageProcessor.accept(receivedMessage);
+	} catch (Exception e) {
+		receiveSpan.recordException(e); //Span can record exception if any
+		receiveSpan.setStatus(StatusCode.ERROR, e.getMessage()); //and set span status as ERROR/FAILED
+	} finally {
+		receiveSpan.end(); //End receiveSpan. Span data is exported when span.end() is called.
+	}
+	}
+}
+}		</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <h2 class="with-rule"><a name="Instrumenting-DOTNET-Distributed-Tracing"/>Instrumenting .NET for Distributed Tracing</h2>
+    <p>Manual Instrumentation involves making changes to your enterprise application's source code, and allows you to inject and extract additional context, such as baggage and trace states, into messages. Context propagation makes it easy to debug and optimize your application. For more information about context propagation in <MadCap:variable name="Variables.CompanyName"/> event messages, see <a href="../../Features/Distributed-Tracing/Distributed-Tracing-Context-Propagation.htm#top" class="link-internal">Distributed Tracing Context Propagation</a>. The following examples show you how to create spans using the OpenTelemetry API.</p>
+    <h4>How Context Propagation Enables Distributed Tracing in the .NET <MadCap:variable name="Product-Names.pubsub_brand_only"/> API</h4>
+    <p>In your client application, you can use the OpenTelemetry API to create a span, which contains metadata about an operation in a distributed system. This span is associated with a context, which includes a unique <code>TraceID</code>. Next, when you use a <MadCap:variable name="Product-Names.pubsub_brand_only"/> message producer to publish a message, the <MadCap:variable name="Variables.CompanyName"/> OTel integration package injects the context, which contains the <code>TraceID</code>, into the message. As the message travels through the event broker and is received by a consuming application, spans are generated at each step and have the same <code>TraceID</code> present in the original message context.  When each span is closed in the publishing or consuming application, the .NET OpenTelemetry API sends it to an OpenTelemetry collector, which collects, processes and exports the spans to a backend application that correlates the spans using their unique <code>TraceID</code>. A backend application uses the correlated spans to create a <i>trace</i>, which is an end-to-end snapshot detailing how the message traveled through the distributed system. If you do not use context propagation, then backend applications cannot use a unique TraceID to link the spans, making it difficult to trace the flow of messages through the distributed system.</p>
+    <h4>Dependencies</h4>
+    <p>To enable context propagation for distributed tracing, you must first add the <a href="https://www.nuget.org/packages/Solace.Messaging.Trace.Propagation" class="link-offsite" target="_blank">Solace .NET OpenTelemetry Integration</a> NuGet package to your application. For OpenTelemetry version compatibility see <MadCap:xref href="../../Features/Distributed-Tracing/Distributed-Tracing-Receiver-Versions.htm">Distributed Tracing Version Compatibility</MadCap:xref>. The <MadCap:variable name="Variables.CompanyName"/> .NET OpenTelemetry Integration NuGet package contains the <code>SolaceMessageCarrier</code> class that gives your application access to the following:</p>
+    <ul>
+      <li>
+        <code>SolaceMessageCarrier.Setter</code>
+        <ul>
+          <li>use with the OpenTelemetry API's <code>TraceContextPropagator</code> to inject context into  an <code>IMessage</code>.</li>
+          <li>use with the OpenTelemetry API's <code>BaggagePropagator</code>to inject baggage into  an <code>IMessage</code>.</li>
+        </ul>
+      </li>
+      <li>
+        <code>SolaceMessageCarrier.Getter</code>
+        <ul>
+          <li>use with the OpenTelemetry API's <code>TraceContextPropagator</code> to extract context from an <code>IMessage</code>.</li>
+          <li>use with the OpenTelemetry API's <code>BaggagePropagator</code>to extract baggage from an <code>IMessage</code>.</li>
+        </ul>
+      </li>
+    </ul>
+    <div class="Note">
+      <p>This guide assumes you are familiar with configuring an instance of the OpenTelemetry class. For instructions for configuring OpenTelemetry objects, see <a href="https://opentelemetry.io/docs/instrumentation/net/manual/" class="link-offsite" target="_blank">OpenTelemetry Manual Instrumentation in .NET</a> in the OpenTelemetry documentation.</p>
+    </div>
+    <p>To use context propagation in the .NET <MadCap:variable name="Product-Names.pubsub_brand_only"/> API, include the following packages in your application:</p>
+    <pre xml:space="preserve">
+using OpenTelemetry.Context.Propagation;   // Required for trace propagation
+using OpenTelemetry;			   // Contains struct required for injecting and extracting Baggage 
+using Solace.Messaging.Trace.Propagation;  // Required for using context propagation in <MadCap:variable name="Variables.CompanyName"/> APIs
+using SolaceSystems.Solclient.Messaging;   // Required for using the .NET <MadCap:variable name="Product-Names.pubsub_brand_only"/> API
+using System.Diagnostics;		   // Required for creating activity instances </pre>
+    <h4>System.Diagnostics.Activity in the .NET <MadCap:variable name="Product-Names.pubsub_brand_only"/> API</h4>
+    <p>Microsoft's <code>System.Diagnostics.Activity</code> class is used for distributed tracing in the <MadCap:variable name="Product-Names.pubsub_brand_only"/> .NET API. An instance of this class, an <code>activity</code>, is similar to a span and represents an operation inside your application, for example publishing or receiving a message. These activities allow backend applications, like Jaeger or Datadog, to trace the flow of events across distributed systems. To create an <code>activity</code>, you must call the <code>StartActivity(String, ActivityKind)</code>method on an <code>ActivitySource</code> object:</p>
+    <pre xml:space="preserve">
+ActivitySource activitySource;
+using var activity = activitySource.StartActivity("activityName", ActivityKind.Producer);	</pre>
+    <p> You can also set optional attributes on an <code>activity</code> with the following methods to provide additional details or custom information about an <code>activity</code>'s execution:</p>
+    <ul>
+      <li>
+        <p><a href="https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.activity.settag?view=net-7.0" class="link-offsite" target="_blank">SetTag(String, Object)</a>—Set custom key-value attributes on an <code>activity</code> to provide additional information.</p>
+        <pre xml:space="preserve">
+activity?.SetTag("myKey1", "myValue1");				</pre>
+      </li>
+      <li>
+        <p><a href="https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.activity.addevent?view=net-7.0" class="link-offsite" target="_blank">AddEvent(ActivityEvent)</a>—Add an event to an activity's time line. This method takes an <code>ActivityEvent</code> instance as a parameter, which represents an event that occurred during the <code>activity</code>'s execution. The example below shows an exception event being created and added to an <code>activity</code>:</p>
+        <pre xml:space="preserve">
+ActivityTagsCollection tagsCollection = new()
+{
+	{ "exception.message", exceptionMessage }
+};
+activity?.AddEvent(new ActivityEvent("exceptions", tags: tagsCollection)); </pre>
+      </li>
+      <li>
+        <p><a href="https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.activity.setstatus?view=net-7.0" class="link-offsite" target="_blank">SetStatus(ActivityStatusCode, String)</a>—Set the status of an <code>activity</code>. Takes an <code>ActivityStatusCode</code> instance as a parameter, which represents the current status of the activity:</p>
+        <pre xml:space="preserve">
+activity?.SetStatus(ActivityStatusCode.Error, "statusErrorMessage");  	// Status code indicating an error is encountered during the operation.
+activity?.SetStatus(ActivityStatusCode.OK, "statusOKMessage"); 	// Status code indicating the operation has been validated and completed successfully.			</pre>
+      </li>
+    </ul>
+    <p>For more information see <a href="https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.activity?view=net-7.0" class="link-offsite" target="_blank">System.Diagnostics.Activity</a> on Microsoft's .NET documentation page</p>
+    <h4>Inject Context into an Outbound Message</h4>
+    <p>The following steps show you how to inject context into a message and generate an <code>activity</code> for a published message:</p>
+    <ol>
+      <li>Create your propagator instances. The .NET <MadCap:variable name="Product-Names.pubsub_brand_only"/> API supports trace context and baggage propagation. If you plan to use both in your application, we recommend you use a <code>CompositeTextMapPropagator</code> which takes in a list of <code>TextMapPropagators</code>  :</li>
+      <pre xml:space="preserve">
+List&lt;TextMapPropagator&gt; propagators = new List&lt;TextMapPropagator&gt;() { new TraceContextPropagator(), new BaggagePropagator() };
+CompositeTextMapPropagator compositeContextPropagator;
+// ...				
+compositeContextPropagator = new CompositeTextMapPropagator(propagators);</pre>
+      <li>
+        <p>Create an instance of <code>ActivitySource</code>, which allows you to create and start <code>activity</code> objects. Use <code>activitySource.StartActivity()</code> to start the <code>activity</code>:</p>
+      </li>
+      <pre xml:space="preserve">
+ActivitySource activitySource;
+// ...
+using var activity = activitySource.StartActivity("activityName", ActivityKind.Producer);	</pre>
+      <li>
+        <p>(Optional) Attach baggage to a message with the <code>Baggage</code> class and the <code>SetBaggage(key,value)</code> method:</p>
+        <pre xml:space="preserve">
+Baggage.SetBaggage("myBaggageKey", "myBaggageValue");	 </pre>
+      </li>
+      <li>
+        <p>Use your <code>compositeContextPropagator</code> to inject the context (and optional baggage) into a message:</p>
+        <pre xml:space="preserve">
+compositeContextPropagator.Inject(new PropagationContext(activity.Context, Baggage.Current), message, SolaceMessageCarrier.Setter);	</pre>
+      </li>
+      <li>
+        <p>Send the message and call the <code>Stop()</code> method to export the <code>activity</code> data: </p>
+        <pre xml:space="preserve">
+session.Send(message);
+activity?.Stop();				</pre>
+      </li>
+    </ol>
+    <h4>Extract Context from an Inbound Message</h4>
+    <p>The following steps show you how to extract tracing context from a received message and generate an <code>activity</code>:</p>
+    <ol>
+      <li>Create propagator and <code>ActivitySource</code> instances. The .NET <MadCap:variable name="Product-Names.pubsub_brand_only"/> API supports trace context and baggage propagation. If you plan to use both in your application, we recommend you use a <code>CompositeTextMapPropagator</code> which takes in a list of <code>TextMapPropagators</code>:</li>
+      <pre xml:space="preserve">
+List&lt;TextMapPropagator&gt; propagators = new List&lt;TextMapPropagator&gt;() { new TraceContextPropagator(), new BaggagePropagator() };
+CompositeTextMapPropagator compositeContextPropagator;
+ActivitySource activitySource;    // Allows you to create and start Activity objects
+// ...				
+compositeContextPropagator = new CompositeTextMapPropagator(propagators);</pre>
+      <li>
+        <p>In your receiver application's message handler, extract the context and baggage (if applicable) from a received message. Create a new <code>ActivityContext</code> object with the extracted message context (<code>parentContext</code> in the example below):</p>
+      </li>
+      <pre xml:space="preserve">
+private void HandleMessageEvent(object source, MessageEventArgs args)
+{
+	using (IMessage message = args.Message)
+	{
+		if (message == null) return;
+		var propagatorContext = compositeContextPropagator.Extract(default, message, SolaceMessageCarrier.Getter);
+		ActivityContext parentContext = propagatorContext.ActivityContext;
+		Baggage.Current = propagatorContext.Baggage;</pre>
+      <li>
+        <p>Create and start a consumer <code>activity</code> object with <code>activitySource.StartActivity()</code>:</p>
+        <pre xml:space="preserve">
+using var activity = activitySource.StartActivity("activityName", ActivityKind.Consumer, parentContext);			</pre>
+      </li>
+      <li>
+        <p>Set the parent ID with the <code>SetParentId()</code> method:</p>
+        <pre xml:space="preserve">
+activity?.SetParentId(parentContext.SpanId.ToString());				</pre>
+      </li>
+      <li>
+        <p>Call the <code>Stop()</code> method to export the <code>activity</code> data: </p>
+        <pre xml:space="preserve">
+activity?.Stop();			</pre>
+      </li>
+    </ol>
+    <h2 class="with-rule"><a name="Instrumenting-JS-NODEJS-Distributed-Tracing"/>Instrumenting JavaScript and Node.js for Distributed Tracing</h2>
+    <p>Manual Instrumentation involves making changes to your enterprise application's source code, and allows you to inject and extract additional context, such as baggage and trace states, into messages. Context propagation makes it easy to debug and optimize your application. For more information about context propagation in <MadCap:variable name="Variables.CompanyName"/> event messages, see <a href="../../Features/Distributed-Tracing/Distributed-Tracing-Context-Propagation.htm#top" class="link-internal">Distributed Tracing Context Propagation</a>. The following examples show you how to create spans using the OpenTelemetry API.</p>
+    <h4>Understanding How Context Propagation Enables Distributed Tracing in the JavaScript and Node.js <MadCap:variable name="Product-Names.pubsub_brand_only"/> APIs</h4>
+    <p>In your client application, you can use the OpenTelemetry API to create a span, which contains metadata about an operation in a distributed system. This span is associated with a context, which includes a unique <code>TraceID</code>. Next, when you use a <MadCap:variable name="Product-Names.pubsub_brand_only"/> message producer to publish a message, the <MadCap:variable name="Variables.CompanyName"/> OTel integration package injects the context, which contains the <code>TraceID</code>, into the message. As the message travels through the event broker and is received by a consuming application, spans are generated at each step and have the same <code>TraceID</code> present in the original message context.  When each span is closed in the publishing or consuming application, the JavaScript OpenTelemetry API sends it to an OpenTelemetry collector, which collects, processes and exports the spans to a backend application that correlates the spans using their unique <code>TraceID</code>. A backend application uses the correlated spans to create a <i>trace</i>, which is an end-to-end snapshot detailing how the message traveled through the distributed system. If you do not use context propagation, then backend applications cannot use a unique TraceID to link the spans, making it difficult to trace the flow of messages through the distributed system.</p>
+    <h4>Dependencies</h4>
+    <p>To enable context propagation for distributed tracing, you must first add the <a href="https://www.npmjs.com/package/pubsubplus-opentelemetry-js-integration" class="link-offsite">Solace  OpenTelemetry JavaScript Integration</a> artifact to your application. For OpenTelemetry version compatibility see <MadCap:xref href="../../Features/Distributed-Tracing/Distributed-Tracing-Receiver-Versions.htm">Distributed Tracing Version Compatibility</MadCap:xref>. Adding the libraries gives you access to the following two classes:</p>
+    <ul>
+      <li>
+        <code>SolaceW3CTextMapSetter</code>
+        <ul>
+          <li>use with the OpenTelemetry API's <code>W3CTraceContextPropagator</code> to inject context into  a <code>Message</code>.</li>
+          <li>use with the OpenTelemetry API's <code>W3CBaggagePropagator</code>to inject baggage into  a <code>Message</code>.</li>
+        </ul>
+      </li>
+      <li>
+        <code>SolaceW3CTextMapGetter</code>
+        <ul>
+          <li>use with the OpenTelemetry API's <code>W3CTraceContextPropagator</code> to extract context from a <code>Message</code>.</li>
+          <li>use with the OpenTelemetry API's <code>W3CBaggagePropagator</code>to extract baggage from a <code>Message</code>.</li>
+        </ul>
+      </li>
+    </ul>
+    <div class="Note">
+      <p>This guide assumes you are familiar with configuring an instance of the OpenTelemetry class. For instructions for configuring OpenTelemetry objects, see <a href="https://opentelemetry.io/docs/instrumentation/js/manual/" class="link-offsite">OpenTelemetry Manual Instrumentation in JavaScript</a> in the OpenTelemetry documentation.</p>
+    </div>
+    <p>To use context propagation in the <MadCap:variable name="Product-Names.pubsub_brand_only"/> JavaScript API and <MadCap:variable name="Product-Names.pubsub_brand_only"/> Node.js API, include the following modules in your application:</p>
+    <pre xml:space="preserve">
+import {
+    SemanticAttributes,
+    MessagingOperationValues,
+    MessagingDestinationKindValues,
+} from '@opentelemetry/semantic-conventions';
+
+const opentelemetry = require('@opentelemetry/api');
+const { CompositePropagator, W3CTraceContextPropagator, W3CBaggagePropagator, TraceState } = require("@opentelemetry/core");
+const { BasicTracerProvider } = require("@opentelemetry/sdk-trace-base");
+const { context, propagation, trace } = require("@opentelemetry/api");
+const { SemanticAttributes, MessagingDestinationKindValues } = require("@opentelemetry/semantic-conventions");
+const { SemanticResourceAttributes } = require('@opentelemetry/semantic-conventions');
+const { SolaceW3CTextMapSetter, SolaceW3CTextMapGetter } = require("pubsubplus-opentelemetry-js-integration");
+
+const api = require('@opentelemetry/api'); 
+var solace = require('solclientjs').debug; // with logging supported
+</pre>
+    <h4>Injecting Context into an Outbound Message</h4>
+    <p>Your publishing application can generate a send span and export it to the OpenTelemetry Collector. The following steps show you how to inject context into a message and generate a send span for a published message:</p>
+    <ol>
+      <li>Create propagator  instances. The JavaScript and Node.js APIs supports trace context and baggage propagation. If you plan to use both in your application, we recommend you use a <code>CompositePropagator</code> which takes in an array of propagators:
+				<pre xml:space="preserve">
+const compositePropagator = new CompositePropagator({
+   propagators: [
+     new W3CBaggagePropagator(),
+     new W3CTraceContextPropagator(),
+   ],
+});
+</pre></li>
+      <li>Set the global propagator with a <code>W3CTraceContextPropagator()</code> and optional <code>W3cCBaggagePropagator</code> that ensures all context propagation in your application follows the same rules and mechanisms. In the example below, both are contained in the <code>compositePropagator</code> created in step 1. Next create a <code>BasicTracerProvider</code> which allows your application to create and activate traces:</li>
+      <pre xml:space="preserve">
+propagation.setGlobalPropagator(compositePropagator);
+const tracerProvider = new BasicTracerProvider();</pre>
+      <li>
+        <p>Use the <code>register()</code> function to register the <code>tracerProvider</code> created in step 1 with the OpenTelemetry API. This lets you use tracer instances to create spans and record trace data. Next create a tracer. The parameter you pass to the <code>getTracer()</code> function represents the name of the tracer, which is used to associate the tracer with a specific component, service, or module within your application:</p>
+      </li>
+      <pre xml:space="preserve">
+tracerProvider.register();
+const tracer = opentelemetry.trace.getTracer("solace-pubsub-publisher-test");
+</pre>
+      <li>
+        <p>Use the OpenTelemetry API to retrieve the currently active context that will be propagated. Then, create a "publish span" and start it with the <code>startSpan()</code> function:</p>
+        <pre xml:space="preserve">
+let ctx = api.context.active();
+const span = tracer.startSpan(topicName+' send',{kind: opentelemetry.SpanKind.CLIENT}, ctx);	 </pre>
+      </li>
+      <li>
+        <p>Set span attributes using <code>setAttribute()</code> function. This lets you attach additional context and meta-data to a span. You can also use <code>setAttribute()</code> to  label the span with a descriptive name that indicates the type of operation the span represents. </p>
+        <pre xml:space="preserve">
+span.setAttribute('attributeKey','attributeValue');
+span.setAttribute(SemanticAttributes.MESSAGING_OPERATION, 'send');
+</pre>
+      </li>
+      <li>
+        <p>(Optional) Create baggage with the <code>createBaggage()</code> function and set it on the context by calling the <code>setBaggage()</code> function on your propagation instance:</p>
+        <pre xml:space="preserve">
+const baggage = propagation.createBaggage({
+  "baggageKey": {
+    value: 'baggageValue',
+    metadata: undefined,
+  },
+}); 
+ctx = propagation.setBaggage(ctx, baggage);		</pre>
+      </li>
+      <li>
+        <p>Create an instance of <code>SolaceContextSetter</code> and use it with a W3C context propagator to inject context into a <MadCap:variable name="Variables.CompanyName"/> message. Send the message and set the <code>SpanStatusCode</code> with the <code>setStatus()</code> function: </p>
+        <pre xml:space="preserve">
+var setter = new SolaceContextSetter();
+opentelemetry.propagation.inject(ctx,solaceMessage,setter)
+try {
+    solaceSession.send(solaceMessage);
+    span.setStatus({
+        code: opentelemetry.SpanStatusCode.OK,
+        message: 'Message Sent'
+     });
+} catch (error) {
+    span.setStatus({
+        code: opentelemetry.SpanStatusCode.ERROR,
+        message: error.toString()
+    });
+}				</pre>
+      </li>
+      <li>Call the <code>end()</code> function on the span to close it and export the data.<pre xml:space="preserve">
+span.end();		</pre></li>
+    </ol>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Complete Example:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre class="Code" xml:space="preserve">
+import {
+	SemanticAttributes,
+	MessagingOperationValues,
+	MessagingDestinationKindValues,
+} from '@opentelemetry/semantic-conventions';
+
+const opentelemetry = require('@opentelemetry/api');
+const { CompositePropagator, W3CTraceContextPropagator, W3CBaggagePropagator, TraceState } = require("@opentelemetry/core");
+const { BasicTracerProvider } = require("@opentelemetry/sdk-trace-base");
+const { context, propagation, trace } = require("@opentelemetry/api");
+const { SemanticAttributes, MessagingDestinationKindValues } = require("@opentelemetry/semantic-conventions");
+const { SemanticResourceAttributes } = require('@opentelemetry/semantic-conventions');
+const { SolaceW3CTextMapSetter } = require("pubsubplus-opentelemetry-js-integration");
+const api = require('@opentelemetry/api'); 
+var solace = require('solclientjs').debug; // with logging supported
+
+
+const compositePropagator = new CompositePropagator({
+   propagators: [
+     new W3CBaggagePropagator(),
+     new W3CTraceContextPropagator(),
+   ],
+});
+
+propagation.setGlobalPropagator(compositePropagator);
+const tracerProvider = new BasicTracerProvider();
+tracerProvider.register();
+const tracer = opentelemetry.trace.getTracer("solace-pubsub-publisher-test");					
+let ctx = api.context.active();
+const span = tracer.startSpan(topicName+' send',{kind: opentelemetry.SpanKind.CLIENT}, ctx);
+  					
+span.setAttribute('attributeKey','attributeValue');
+span.setAttribute(SemanticAttributes.MESSAGING_OPERATION, 'send');
+const baggage = propagation.createBaggage({
+  "baggageKey": {
+    value: 'baggageValue',
+    metadata: undefined,
+  },
+}); 
+ctx = propagation.setBaggage(ctx, baggage);
+					
+var setter = new SolaceContextSetter();
+opentelemetry.propagation.inject(ctx,solaceMessage,setter)
+try {
+    solaceSession.send(solaceMessage);
+    span.setStatus({
+        code: opentelemetry.SpanStatusCode.OK,
+        message: 'Message Sent'
+     });
+} catch (error) {
+    span.setStatus({
+        code: opentelemetry.SpanStatusCode.ERROR,
+        message: error.toString()
+    });
+}
+span.end(); 
+</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <h4>Extracting Context from an Inbound Message</h4>
+    <p>Your consuming application can generate a process span and then export it to the OpenTelemetry Collector. The following steps show you how to extract tracing context from a received message and generate a process span:</p>
+    <ol>
+      <li>Use the OpenTelemetry API to create a tracer: The parameter you pass to the <code>getTracer()</code> function represents the name of the tracer, which is used to associate the tracer with a specific component, service, or module within your application:</li>
+      <pre xml:space="preserve">
+const tracer = opentelemetry.trace.getTracer('solace-pubsub-receiver-test');
+</pre>
+      <li>In your event listener for messages, create a <code>SolaceContextGetter</code>. Extract the trace and context information from a received message  with the <code>extract()</code> function. Use this extracted context to create a <code>parentContext</code> for tracing subsequent operations:</li>
+      <pre xml:space="preserve">
+messageConsumer.on(solace.MessageConsumerEventName.MESSAGE, function (message) {
+    var getter = new SolaceContextGetter();
+    const parentContext = propagation.extract(opentelemetry.ROOT_CONTEXT,message,getter);
+</pre>
+      <li>Create a new process span and link it to the <code>parentContext</code> if it exists:<pre xml:space="preserve">
+if(!parentContext)
+    var span = tracer.startSpan(MessagingOperationValues.PROCESS,{kind: opentelemetry.SpanKind.CLIENT});
+else
+    var span = tracer.startSpan(MessagingOperationValues.PROCESS,{kind: opentelemetry.SpanKind.CLIENT},parentContext);		</pre></li>
+      <li>Set span attributes using <code>setAttribute()</code> function. This lets you attach additional context and meta-data to a span. You can also use <code>setAttribute()</code> to  label the span with a descriptive name that indicates the type of operation the span represents:<pre xml:space="preserve">
+span.setAttribute('attributeKey','attributeValue');
+span.setAttribute(SemanticAttributes.MESSAGING_OPERATION, 'process');
+</pre></li>
+      <li>
+			(Optional) Extract baggage from the parent context using the <code>getBaggage()</code> function:</li>
+      <pre xml:space="preserve">
+const baggage = propagation.getBaggage(parentContext);	</pre>
+      <li>Process the message and set  and set the <code>SpanStatusCode</code> with the <code>setStatus()</code> function: <pre xml:space="preserve">
+    try {
+        // Process the message here
+        span.setStatus({
+            code: opentelemetry.SpanStatusCode.OK,
+            message: 'Message processed'
+        });		
+        message.acknowledge();
+    }  catch (error) {
+        span.setStatus({
+            code: opentelemetry.SpanStatusCode.ERROR,
+            message: error.toString()
+        });
+    }
+</pre></li>
+      <li>Call the <code>end()</code> function on the span to close it and export the data:<pre xml:space="preserve">
+span.end(); 
+</pre></li>
+    </ol>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example Listener:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre class="Code" xml:space="preserve">
+import {
+	SemanticAttributes,
+	MessagingOperationValues,
+	MessagingDestinationKindValues,
+} from '@opentelemetry/semantic-conventions';
+
+const opentelemetry = require('@opentelemetry/api');
+const { CompositePropagator, W3CTraceContextPropagator, W3CBaggagePropagator, TraceState } = require("@opentelemetry/core");
+const { BasicTracerProvider } = require("@opentelemetry/sdk-trace-base");
+const { context, propagation, trace } = require("@opentelemetry/api");
+const { SemanticResourceAttributes } = require('@opentelemetry/semantic-conventions');
+const { SolaceW3CTextMapGetter } = require("pubsubplus-opentelemetry-js-integration");
+const api = require('@opentelemetry/api'); 
+var solace = require('solclientjs').debug; // with logging supported
+
+const tracer = opentelemetry.trace.getTracer('solace-pubsub-receiver-test');
+
+messageConsumer.on(solace.MessageConsumerEventName.MESSAGE, function (message) {
+    var getter = new SolaceContextGetter();
+    const parentContext = propagation.extract(opentelemetry.ROOT_CONTEXT,message,getter);
+    if(!parentContext)
+        var span = tracer.startSpan(MessagingOperationValues.PROCESS,{kind: opentelemetry.SpanKind.CLIENT});
+    else
+        var span = tracer.startSpan(MessagingOperationValues.PROCESS,{kind: opentelemetry.SpanKind.CLIENT},parentContext);
+					
+    span.setAttribute('attributeKey','attributeValue');
+    span.setAttribute(SemanticAttributes.MESSAGING_OPERATION, 'process');)
+    
+    const baggage = propagation.getBaggage(parentContext);
+
+    try {
+        // Process the message here
+        span.setStatus({
+            code: opentelemetry.SpanStatusCode.OK,
+            message: 'Message processed'
+        });		
+        message.acknowledge();
+    }  catch (error) {
+        span.setStatus({
+        code: opentelemetry.SpanStatusCode.ERROR,
+        message: error.toString()
+        });
+    }
+    span.end(); 
+});
+</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+  </body>
+</html>

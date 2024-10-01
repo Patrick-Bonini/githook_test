@@ -1,0 +1,617 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="Default.OnlyForPDF">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Configuring the Replication Mates for Migration</h1>
+    <p>You use a combination of <MadCap:variable name="Product-Names.solace_cli"/> commands, the <MadCap:variable name="Product-Names.console_ui_long"/>, and <MadCap:variable name="Product-Names.pubsubmanager_long"/> to complete the configuration of the replication feature on your <MadCap:variable name="Product-Names.broker_cloud_short"/>s.</p>
+    <p class="note">The <MadCap:variable name="Product-Names.solace_cli"/> is used to configure and monitor event brokers. The commands are organized in a tree-like hierarchy. When you the <MadCap:variable name="Product-Names.solace_cli"/> to configure a feature on an event broker, generally you start with  system-level configuration, proceed to Message VPN level configuration, and then more specific parameter changes to tune feature behavior. For more information, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../../Admin/Solace-CLI/Using-Solace-CLI.htm">Solace CLI</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Using-Solace-CLI.htm" class="link-offsite">Using the <MadCap:variable name="Product-Names.solace_cli"/> on the Solace website</a></MadCap:conditionalText>.</p>
+    <p>After you have  <a href="cloud-vmmig-configure-event-brokers.htm" class="link-internal">created a copy (Target service or the Backup site) of your VM-based  event broker service (the Source or Primary site)</a> and configured both as a replication pair, you use the following steps to configure the settings for replication. These steps assume that you have created the two <MadCap:variable name="Product-Names.broker_cloud_short"/>s as follows:</p>
+    <ul>
+      <li>the Message VPN name is the same on both <MadCap:variable name="Product-Names.broker_cloud_short"/>s</li>
+      <li>you have the CLI ports enabled on both <MadCap:variable name="Product-Names.broker_cloud_short"/>s</li>
+      <li>you have a Global-Admin account and CLI access. For more information, see <MadCap:xref href="getting-cliaccess-vmbased.htm"> Getting a CLI Access for an [%=Product-Names.broker_cloud_short_title%]s in VM-Based Deployments</MadCap:xref> and <MadCap:xref href="getting-global-admin-account.htm">Getting a Global-Admin Access Account</MadCap:xref>.</li>
+    </ul>
+    <p class="caution"><MadCap:variable name="Variables.CompanyName"/> recommends that you synchronize all service configuration in the <MadCap:variable name="Product-Names.console_ui_short"/> between the replicated pair <b>before</b> you enable the replication feature. For more information, see <MadCap:xref href="cloud-vmmig-overview.htm#Limitati">Limitations of Replication in [%=Product-Names.cloud_product_titlecase%]</MadCap:xref>.</p>
+    <p>The following is a summary of the steps to complete the configuration for replication:</p>
+    <ol>
+      <li>
+        <MadCap:xref href="#delete-cluster-name">Disable Dynamic Message Routing on the Backup Site</MadCap:xref>
+      </li>
+      <li><MadCap:xref href="#configure-replication-mates">Configure the Replication Mate Settings</MadCap:xref>.</li>
+      <li><MadCap:xref href="#configure-replication-config-sync">Configure the System-Level Replication Settings</MadCap:xref>.</li>
+      <li><MadCap:xref href="#configure-message-vpn-bridge">Configure the VPN-Level Settings</MadCap:xref>.</li>
+      <li><MadCap:xref href="#configure-replication-state">Set the Replication State of the Message VPN</MadCap:xref> as follows:<ul><li>For the <MadCap:variable name="Product-Names.broker_cloud_short"/> that has the custom hostname assigned, set it as the <code>active</code> state</li><li>For the other <MadCap:variable name="Product-Names.broker_cloud_short"/>, set it as <code>standby</code> state</li></ul></li>
+      <li><MadCap:xref href="#enable-replication">Enable Replication</MadCap:xref>.</li>
+      <li><MadCap:xref href="#verify-replication-status">Verify the Replication Configuration</MadCap:xref>.</li>
+      <li>
+        <MadCap:xref href="#add-back-to-cluster">Add the Backup Site to the DMR Cluster of the Primary Site</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#add-internal-link">Add the DMR Internal Link Between the Primary Site and Backup Site</MadCap:xref>
+      </li>
+      <li><MadCap:xref href="#configure-queues-topics-to-replicate">Configure the Queues and Topics for Replication</MadCap:xref>.</li>
+    </ol>
+    <p class="Note">For all examples and procedures, we assume that the Primary event broker is Active in the High-Availability Group.</p>
+    <h2><a name="delete-cluster-name"/>Disable Dynamic Message Routing on the Backup Site</h2>
+    <p>By default, <MadCap:variable name="Product-Names.broker_cloud_short"/>s are enabled with the Dynamic Message Routing (DMR) feature and hence are assigned a cluster name at creation time. This cluster name is stored  in <MadCap:variable name="Product-Names.cloud_product_firstuse"/>, but must be deleted prior to configuring the replication to disable DMR.</p>
+    <p class="Note">After you disable DMR and remove the cluster name, the cluster name still appears in the <b>Status</b> tab for the <MadCap:variable name="Product-Names.broker_cloud_short"/> in <MadCap:variable name="Product-Names.cluster_mgr"/>. This is expected and you will be re-adding it back later.</p>
+    <ol>
+      <li>
+        <p>If you haven't done so yet, use SSH to login to the <MadCap:variable name="Product-Names.broker_cloud_short"/> using its generated hostname and your  <a href="getting-global-admin-account.htm" class="link-internal">Global-Admin account</a>. For information, see <MadCap:xref href="getting-global-admin-account.htm">Accessing the CLI for [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>Run the <code>show cluster *</code> command to see the name of your cluster. For example:</p>
+        <pre xml:space="preserve">nano-production-azzn9vsqdk5-solace-primary-0&gt; show cluster *
+Cluster Name          : my-first-cluster
+Node Name             : nanoproductionazzn9vsqdk5csolaceprimary0
+Enabled               : Yes
+Operational           : Yes
+Fail Reason         :
+Uptime              : 5d 1h 0m 56s
+Links Up            : 1 of 1
+Channels Up         : 1 of 1
+Topology Issues     : 0</pre>
+      </li>
+      <li>
+        <p>Using the <MadCap:variable name="Product-Names.solace_cli"/>, delete the cluster name and disable the DMR feature <MadCap:variable name="Product-Names.solace_cli"/> on the Backup site (Target service). For example, run the following commands:</p>
+        <pre xml:space="preserve">
+SolaceCLI &gt; enable
+SolaceCLI # configure
+SolaceCLI (configure)# routing dynamic-message-routing cluster &lt;name-of-cluster&gt;
+SolaceCLI (...uting/dynamic-message-routing/cluster)# shutdown
+SolaceCLI (...uting/dynamic-message-routing/cluster)# exit</pre>
+        <p>For example, on the Backup (Target) site:</p>
+        <pre xml:space="preserve">nano-production-azzn9vsqdk5-solace-primary-0&gt; enable
+nano-production-azzn9vsqdk5-solace-primary-0# configure
+nano-production-azzn9vsqdk5-solace-primary-0(configure)# routing dynamic-message-routing cluster my-first-cluster
+nano-production-azzn9vsqdk5-solace-primary-0(...uting/dynamic-message-routing/cluster)# shutdown
+nano-production-azzn9vsqdk5-solace-primary-0(...uting/dynamic-message-routing/cluster)# exit
+nano-production-azzn9vsqdk5-solace-primary-0(...igure/routing/dynamic-message-routing)# no cluster my-first-cluster</pre>
+      </li>
+      <li>
+        <p>If you run the <code>show cluster *</code> command in the <MadCap:variable name="Product-Names.solace_cli"/>, no cluster is listed.</p>
+      </li>
+    </ol>
+    <p>You are now ready to configure being configuring replication.<br/></p>
+    <h2><a name="configure-replication-mates"/>Configure the Replication Mate Settings</h2>
+    <p>You can start configuring replication by setting up the replication mates. This step configures the replication mate's information for your replication pair. The router names of the Message VPN for of each <MadCap:variable name="Product-Names.broker_cloud_short"/>s and the generated hostnames are used.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For more details about configuration replication mates, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../../Features/DR-Replication/Replication-Sys-Level-Settings.htm#Config-Replication-Mates">Configuring Replication Mates</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Features/DR-Replication/Replication-Sys-Level-Settings.htm#Config-Replication-Mates" class="link-offsite">Configuring Replication Mates</a></MadCap:conditionalText>.</p>
+    <p>The following are the steps to configure the replication mates:</p>
+    <ol>
+      <li>
+        <p>If you haven't done so yet, use SSH to login to the <MadCap:variable name="Product-Names.broker_cloud_short"/> using its generated hostname and your  <a href="getting-global-admin-account.htm" class="link-internal">Global-Admin account</a>. For information, see <MadCap:xref href="getting-global-admin-account.htm">Accessing the CLI for [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref>. <br/></p>
+        <p>For example, <code>ssh to mr-connection-bo3i1bd7ewc.<MadCap:variable name="Manifest-Products-Links.CloudConsoleMessagingHostname"/></code> and <code>ssh mr-connection-u4ehjwoe9xa.<MadCap:variable name="Manifest-Products-Links.CloudConsoleMessagingHostname"/></code>, respectively.</p>
+      </li>
+      <li>
+        <p>Determine the router names of the Message VPN for each of the replication mates on both the Primary site (Source service) and  the Backup site (Target service) using the following USER command to determine the name of the router for each <MadCap:variable name="Product-Names.broker_cloud_short"/> in your replication pair:
+				</p>
+        <pre>SolaceCLI &gt; show router-name</pre>
+        <p>For example, when you connect to the  <b>Primary site</b> (Source service) for <code>mr-connection-bo3i1bd7ewc.messaging.solace.cloud</code>, you connect to the active event broker in the high-availability configuration (<code>nano-production-azzn9vsqdk5-solace-primary-0</code>). To find the virtual router name, perform the following steps:
+			</p>
+        <pre xml:space="preserve">ssh mycompany-global-admin@mr-connection-bo3i1bd7ewc.messaging.solace.cloud
+Solace PubSub+ Enterprise
+(mycompany-global-admin@mr-connection-bo3i1bd7ewc.messaging.solace.cloud) Password:
+
+Solace PubSub+ Enterprise Version 10.0.1.60
+This Solace product is proprietary software of
+Solace Corporation. By accessing this Solace product
+you are agreeing to the license terms and conditions
+located at http://www.solace.com/license-software
+
+Copyright 2004-2022 Solace Corporation. All rights reserved.
+
+Operating Mode: Message Routing Node
+
+nano-production-azzn9vsqdk5-solace-primary-0&gt;
+
+nano-production-azzn9vsqdk5-solace-primary-0&gt; show router-name
+
+Router Name:          nanoproductionazzn9vsqdk5solaceprimary0
+Mirroring Hostname:   No
+
+Deferred Router Name: nanoproductionazzn9vsqdk5solaceprimary0
+Mirroring Hostname:   No
+
+Unique Id:            ba:ee:93:f1:88:71:ba:76
+
+nano-production-azzn9vsqdk5-solace-primary-0&gt;</pre>
+        <p>When you connect to the <b>Backup site</b> (Target service) for <code>mr-connection-u4ehjwoe9xa.messaging.solace.cloud</code>, you connect to the active event broker in the high-availability configuration (<code>
+nano-production-89il3uubs0c-solace-primary-0</code>). To find the virtual router name, perform the following steps: 
+				    
+				</p>
+        <pre xml:space="preserve">ssh mycompany-global-admin@mr-connection-u4ehjwoe9xa.messaging.solace.cloud
+Solace PubSub+ Enterprise
+(mycompanys-global-admin@mr-connection-u4ehjwoe9xa.messaging.solace.cloud) Password:
+Solace PubSub+ Enterprise Version 10.0.1.60
+
+This Solace product is proprietary software of
+Solace Corporation. By accessing this Solace product
+you are agreeing to the license terms and conditions
+located at http://www.solace.com/license-software
+
+Copyright 2004-2022 Solace Corporation. All rights reserved.
+
+Operating Mode: Message Routing Node
+
+nano-production-89il3uubs0c-solace-primary-0&gt;
+nano-production-89il3uubs0c-solace-primary-0&gt; show router-name
+
+Router Name:          nanoproduction89il3uubs0csolaceprimary0
+Mirroring Hostname:   No
+
+Deferred Router Name: nanoproduction89il3uubs0csolaceprimary0
+Mirroring Hostname:   No
+
+Unique Id:            f3:05:a7:94:3f:64:15:59</pre>
+      </li>
+      <li>
+        <p>Configure the replication mate for each <MadCap:variable name="Product-Names.broker_cloud_short"/> using the router name and generated hostnames:</p>
+        <pre xml:space="preserve">
+SolaceCLI &gt; enable
+SolaceCLI # configure
+SolaceCLI (configure)# replication
+SolaceCLI (configure/replication)# mate virtual-router-name v:&lt;router-name-of-replication-mate&gt;
+SolaceCLI (configure/replication)# mate connect-via &lt;hostname-of-replication-mate&gt;:55443 ssl</pre>
+        <p>Where :</p>
+        <ul>
+          <li><code>&lt;router-name-of-replication-mate&gt;</code> is the router name that you determined from step 1. Ensure you use the replication mate (the other <MadCap:variable name="Product-Names.broker_cloud_short"/>) and the <MadCap:variable name="Product-Names.broker_cloud_short"/>'s own router name.</li>
+          <li><code>&lt;hostname-of-replication-mate&gt;</code> is the generated hostname of the <MadCap:variable name="Product-Names.broker_cloud_short"/>. Ensure you don't use your own hostname. We recommend that you use the Secured SMF Host port. The default is 55443, but this may depend on your <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><![CDATA[  ]]><a href="../edit-port-configuration.htm#Changing" class="link-internal"> port configuration for the service</a></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/edit-port-configuration.htm#Changing" class="link-offsite"> port configuration for the service</a></MadCap:conditionalText> .</li>
+        </ul>
+        <p>For example, on the Primary site (<code>nano-production-azzn9vsqdk5-solace-primary-0</code>), run the mate command using the virtual router name and generated hostname of the Backup site (Target service):
+				</p>
+        <pre>nano-production-azzn9vsqdk5-solace-primary-0&gt; enable
+nano-production-azzn9vsqdk5-solace-primary-0# configure
+nano-production-azzn9vsqdk5-solace-primary-0(configure)# replication
+nano-production-azzn9vsqdk5-solace-primary-0(configure/replication)# mate virtual-router-name v:nanoproduction89il3uubs0csolaceprimary0
+nano-production-azzn9vsqdk5-solace-primary-0(configure/replication)# mate connect-via mr-connection-u4ehjwoe9xa.messaging.solace.cloud:55443 ssl
+nano-production-azzn9vsqdk5-solace-primary-0(configure/replication)#</pre>
+        <p>On Backup site (<code>nano-production-89il3uubs0c-solace-primary-0</code>), run the mate command using the  virtual router name and generated hostname of the Primary site (Source service):
+				    
+				</p>
+        <pre>nano-production-89il3uubs0c-solace-primary-0&gt; enable
+nano-production-89il3uubs0c-solace-primary-0# configure
+nano-production-89il3uubs0c-solace-primary-0(configure)# replication
+nano-production-89il3uubs0c-solace-primary-0(configure/replication)# mate virtual-router-name v:nanoproductionazzn9vsqdk5solaceprimary0
+nano-production-89il3uubs0c-solace-primary-0(configure/replication)# mate connect-via mr-connection-bo3i1bd7ewc.messaging.solace.cloud:55443 ssl
+nano-production-89il3uubs0c-solace-primary-0(configure/replication)#</pre>
+        <p> </p>
+      </li>
+    </ol>
+    <h2><a name="configure-replication-config-sync"/>Configure the System-Level Replication Settings</h2>
+    <p>After you have formatted the virtual-router name and connect-address, configure the authentication schemes and validation name settings as system-level settings - namely the replication Config-Sync Bridge settings. We recommend that you at use at least basic authentication, SSL, Server Certificate Validation, enable SSL, and then configure the replication bridge to use the client username specific for replication you created on your <MadCap:variable name="Product-Names.broker_cloud_short"/>s.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For more information about other replication Config-Sync Bridge settings, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../../Features/DR-Replication/Replication-Sys-Level-Settings.htm#Config-Rep-Sync-Bridges">Configuring Replication Config-Sync Bridges</MadCap:xref></MadCap:conditionalText> <MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Features/DR-Replication/Replication-Sys-Level-Settings.htm" class="link-offsite">Configuring Replication Config-Sync Bridges</a></MadCap:conditionalText>.</p>
+    <p>The following are the steps to configure the replication Config-Sync:</p>
+    <ol>
+      <li>
+        <p>If you haven't already use SSH to login to the <MadCap:variable name="Product-Names.broker_cloud_short"/> using its generated hostname and your  <a href="getting-global-admin-account.htm" class="link-internal">Global-Admin account</a>. For information, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="getting-global-admin-account.htm">Accessing the CLI for [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/enable-cli-for-cloud.htm#Accessin" class="link-offsite">Accessing the CLI for [%=Product-Names.broker_cloud_short_title%]s</a></MadCap:conditionalText>. <br/></p>
+        <p>For example, <code>ssh to mr-connection-bo3i1bd7ewc.<MadCap:variable name="Manifest-Products-Links.CloudConsoleMessagingHostname"/></code> and <code>ssh mr-connection-u4ehjwoe9xa.<MadCap:variable name="Manifest-Products-Links.CloudConsoleMessagingHostname"/></code>, respectively.</p>
+      </li>
+      <li>
+        <p>Configure replication Config-Sync Bridge and run the following command to:</p>
+        <ul>
+          <li>
+            <p> shutdown the bridge</p>
+          </li>
+          <li>
+            <p>enable SSL for TLS/SSL encryption</p>
+          </li>
+          <li>
+            <p>configure the authentication scheme (in our example, we use basic)</p>
+          </li>
+          <li>
+            <p>enable SSL Server Certificate Validation</p>
+          </li>
+          <li>
+            <p>enable validate server name</p>
+            <MadCap:snippetBlock src="../../Resources/Snippets/CloudVMMigration/custom-host-name-warning-for-validate-server-name.flsnp" MadCap:conditions="SAP.SapHideFromOutput"/>
+          </li>
+          <li>
+            <p>restart the bridge</p>
+          </li>
+        </ul>
+        <p>The following are the CLI commands to use:</p>
+        <pre xml:space="preserve">
+SolaceCLI &gt; enable
+SolaceCLI # configure
+SolaceCLI (configure)# replication
+SolaceCLI (configure/replication)# config-sync bridge
+SolaceCLI (configure/replication/config-sync/bridge)# shutdown
+SolaceCLI (configure/replication/config-sync/bridge)# ssl
+SolaceCLI (configure/replication/config-sync/bridge)# authentication auth-scheme basic
+SolaceCLI (configure/replication/config-sync/bridge)# ssl-server-certificate-validation
+SolaceCLI (...dge/ssl-server-certificate-validation)# validate-server-name
+SolaceCLI (configure/replication/config-sync/bridge)# no shutdown</pre>
+        <p>For example, configure the Primary site (Source service) (<code>nano-production-azzn9vsqdk5-solace-primary-0</code>):
+				</p>
+        <pre xml:space="preserve">nano-production-azzn9vsqdk5-solace-primary-0&gt; enable
+nano-production-azzn9vsqdk5-solace-primary-0# configure
+nano-production-azzn9vsqdk5-solace-primary-0(configure)# replication
+nano-production-azzn9vsqdk5-solace-primary-0(configure/replication)# config-sync bridge
+nano-production-azzn9vsqdk5-solace-primary-0(configure/replication/config-sync/bridge)# shutdown
+nano-production-azzn9vsqdk5-solace-primary-0(configure/replication/config-sync/bridge)# ssl
+nano-production-azzn9vsqdk5-solace-primary-0(configure/replication/config-sync/bridge)# authentication auth-scheme basic
+nano-production-azzn9vsqdk5-solace-primary-0(configure/replication/config-sync/bridge)# ssl-server-certificate-validation
+nano-production-azzn9vsqdk5-solace-primary-0(...dge/ssl-server-certificate-validation)# validate-server-name
+nano-production-azzn9vsqdk5-solace-primary-0(configure/replication/config-sync/bridge)# no shutdown
+nano-production-azzn9vsqdk5-solace-primary-0(configure/replication/config-sync/bridge)#</pre>
+        <p>Then configure the Backup site (Target service) (<code>nano-production-89il3uubs0c-solace-primary-0</code>):
+				    
+				</p>
+        <pre xml:space="preserve">nano-production-89il3uubs0c-solace-primary-0&gt; enable
+nano-production-89il3uubs0c-solace-primary-0# configure
+nano-production-89il3uubs0c-solace-primary-0(configure)# replication
+nano-production-89il3uubs0c-solace-primary-0(configure/replication)# config-sync bridge
+nano-production-89il3uubs0c-solace-primary-0(configure/replication/config-sync/bridge)# shutdown
+nano-production-89il3uubs0c-solace-primary-0(configure/replication/config-sync/bridge)# ssl
+nano-production-89il3uubs0c-solace-primary-0(configure/replication/config-sync/bridge)# authentication auth-scheme basic
+nano-production-89il3uubs0c-solace-primary-0(configure/replication/config-sync/bridge)# ssl-server-certificate-validation
+nano-production-89il3uubs0c-solace-primary-0(...dge/ssl-server-certificate-validation)# validate-server-name
+nano-production-89il3uubs0c-solace-primary-0(configure/replication/config-sync/bridge)# no shutdown
+nano-production-89il3uubs0c-solace-primary-0(configure/replication/config-sync/bridge)#</pre>
+      </li>
+    </ol>
+    <p>You can run the USER command <code>show replication</code> following command to validate that  replication configuration is correct. For Config-Sync, the SSL and Validate Server Name are set to Yes on both <MadCap:variable name="Product-Names.broker_cloud_short"/>s (both the Primary and Backup sites (or the Source and Target services, respectively) ). For example:</p>
+    <pre xml:space="preserve">(configure)# show replication
+------------------
+nano-production-azzn9vsqdk5-solace-primary-0&gt; show replication
+
+Replication Interface:
+Replication Mate:                  v:nanoproduction89il3uubs0csolaceprimary0
+    Plain Text:
+
+    Compressed:
+
+    SSL:                           mr-connection-u4ehjwoe9xa.messaging.solace.cloud:5
+5443
+
+SSL:
+  Default Cipher Suite List:       Yes
+  Cipher Suites:                   ECDHE-RSA-AES256-GCM-SHA384
+                                   ECDHE-RSA-AES256-SHA384
+                                   ECDHE-RSA-AES256-SHA
+                                   AES256-GCM-SHA384
+                                   AES256-SHA256
+                                   AES256-SHA
+                                   ECDHE-RSA-AES128-GCM-SHA256
+                                   ECDHE-RSA-AES128-SHA256
+                                   ECDHE-RSA-AES128-SHA
+                                   AES128-GCM-SHA256
+                                   AES128-SHA256
+                                   AES128-SHA
+  Trusted Common Names:
+
+ConfigSync:
+  Bridge:
+    Admin State:                   Enabled
+    State:                         n/a
+    Authentication:
+      Scheme:                      Basic
+    Compressed:                    No
+    SSL:                           Yes
+    Message Spool:
+      Window Size:                 65535
+    Retry Delay:                   3
+    SSL Server Certificate Validation:
+      Enforce Trusted Common Name: No
+      Maximum Chain Depth:         3
+      Validate Certificate Dates:  Yes
+      Validate Server Name:        Yes
+
+nano-production-azzn9vsqdk5-solace-primary-0&gt;</pre>
+    <h2><a name="configure-message-vpn-bridge"/>Configure the VPN-Level Replication Settings</h2>
+    <p>You must configure a client username for the Message VPN. There is only one Message VPN for an <MadCap:variable name="Product-Names.broker_cloud_short"/>. We recommend that you enable Server Certificate Validation. You must also configure the VPN to use the client username and password you created for use for replication when you <a href="cloud-vmmig-configure-event-brokers.htm#replication-cloud-client-username" class="link-internal">created the <MadCap:variable name="Product-Names.broker_cloud_short"/></a>.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For information about the Settings to configure for replication on the Message VPN, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../../Features/DR-Replication/Replication-VPN-Level-Settings.htm">Configuring VPN-Level Replication Settings</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Features/DR-Replication/Replication-VPN-Level-Settings.htm" class="link-internal">Configuring VPN-Level Replication Settings</a></MadCap:conditionalText>.</p>
+    <p>The following are the steps to configure Message VPN for replication:  </p>
+    <ol>
+      <li>
+        <p>If you haven't already, use SSH to login to the <MadCap:variable name="Product-Names.broker_cloud_short"/> using its generated hostname and your  <a href="getting-global-admin-account.htm" class="link-internal">Global-Admin account</a>. For information, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="getting-global-admin-account.htm"><MadCap:xref href="getting-global-admin-account.htm">Accessing the CLI for [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref></MadCap:xref></MadCap:conditionalText><MadCap:xref href="getting-global-admin-account.htm"><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/enable-cli-for-cloud.htm#Accessin" class="link-offsite">Accessing the CLI for [%=Product-Names.broker_cloud_short_title%]s</a></MadCap:conditionalText></MadCap:xref>. <br/></p>
+        <p>For example, <code>ssh to mr-connection-bo3i1bd7ewc.<MadCap:variable name="Manifest-Products-Links.CloudConsoleMessagingHostname"/></code> and <code>ssh mr-connection-u4ehjwoe9xa.<MadCap:variable name="Manifest-Products-Links.CloudConsoleMessagingHostname"/></code>, respectively.</p>
+      </li>
+      <li>
+        <p>Use the <MadCap:variable name="Product-Names.solace_cli"/> to configure the Message VPN replication settings to use Server Certificate Validation:</p>
+        <MadCap:snippetBlock src="../../Resources/Snippets/CloudVMMigration/custom-host-name-warning-for-validate-server-name.flsnp" MadCap:conditions="SAP.SapHideFromOutput"/>
+        <pre xml:space="preserve">
+SolaceCLI &gt; enable
+SolaceCLI # configure
+SolaceCLI (configure)# message-vpn &lt;Message VPN name&gt;
+SolaceCLI (configure/message-vpn)# bridging ssl server-certificate-validation
+SolaceCLI (...ing/ssl/server-certificate-validation)# validate-server-name </pre>
+        <p>where:</p>
+        <ul>
+          <li><code>&lt;Message VPN name&gt;</code> is the Message VPN that is the same between your replication pair.</li>
+        </ul>
+        <p>For example, on the Primary site (Source service, which is  <code>nano-production-azzn9vsqdk5-solace-primary-0</code>):
+				</p>
+        <pre xml:space="preserve">nano-production-azzn9vsqdk5-solace-primary-0&gt; enable
+nano-production-azzn9vsqdk5-solace-primary-0# configure
+nano-production-azzn9vsqdk5-solace-primary-0(configure)# message-vpn myfirstservice
+nano-production-azzn9vsqdk5-solace-primary-0(configure/message-vpn)# bridging ssl server-certificate-validation
+nano-production-azzn9vsqdk5-solace-primary-0(...ing/ssl/server-certificate-validation)# validate-server-name
+</pre>
+        <p>Then on the  Backup site (Target service, which is   (<code>nano-production-89il3uubs0c-solace-primary-0</code>):
+				    
+				</p>
+        <pre xml:space="preserve">nano-production-89il3uubs0c-solace-primary-0&gt; enable
+nano-production-89il3uubs0c-solace-primary-0# configure
+nano-production-89il3uubs0c-solace-primary-0(configure)# message-vpn myfirstservice
+nano-production-89il3uubs0c-solace-primary-0(configure/message-vpn)# bridging ssl server-certificate-validation
+nano-production-89il3uubs0c-solace-primary-0(...ing/ssl/server-certificate-validation)# validate-server-name</pre>
+      </li>
+      <li>
+        <p>Use <MadCap:variable name="Product-Names.solace_cli"/> configure the Message VPN bridge authentication with the client username you created for replication.</p>
+        <pre xml:space="preserve">
+SolaceCLI &gt; enable
+SolaceCLI # configure
+SolaceCLI (configure)# message-vpn &lt;Message VPN name&gt;
+SolaceCLI (configure/message-vpn)# replication
+SolaceCLI (configure/message-vpn/replication)# bridge ssl
+SolaceCLI (configure/message-vpn/replication)# bridge authentication basic
+SolaceCLI (...plication/bridge/authentication/basic)# client-username &lt;dr-client-username&gt; password &lt;dr-clientname-password&gt;</pre>
+        <p>Where :</p>
+        <ul>
+          <li><code>&lt;Message VPN name&gt;</code> is the Message VPN that is the same between your replication pair.</li>
+          <li><code>&lt;dr-client-username&gt;</code> is the client username that was created on the <MadCap:variable name="Product-Names.broker_cloud_short"/>. This client username must use the a client profile with specific settings. For more information, see <MadCap:xref href="cloud-vmmig-configure-event-brokers.htm#replication-cloud-client-username">Creating a Client Profile and Client Username for Replication.</MadCap:xref></li>
+          <li><code>&lt;dr-clientname-password&gt;</code> the password for the client username.</li>
+        </ul>
+        <p>For example, on the Primary site (the Source, which is <code>nano-production-azzn9vsqdk5-solace-primary-0</code>):
+				</p>
+        <pre xml:space="preserve">nano-production-azzn9vsqdk5-solace-primary-0&gt; enable
+nano-production-azzn9vsqdk5-solace-primary-0# configure
+nano-production-azzn9vsqdk5-solace-primary-0(configure)# message-vpn myfirstservice
+nano-production-azzn9vsqdk5-solace-primary-0(configure/message-vpn)# replication
+nano-production-azzn9vsqdk5-solace-primary-0(configure/message-vpn/replication)# bridge ssl
+nano-production-azzn9vsqdk5-solace-primary-0(configure/message-vpn/replication)# bridge authentication basic
+nano-production-azzn9vsqdk5-solace-primary-0(...plication/bridge/authentication/basic)# client-username myfirstclientusername password Test12345</pre>
+        <p>and then on Backup site  (Target service, which is <code>nano-production-azzn9vsqdk5-solace-primary-0</code>):
+				    
+				</p>
+        <pre xml:space="preserve">nano-production-89il3uubs0c-solace-primary-0&gt; enable
+nano-production-89il3uubs0c-solace-primary-0# configure
+nano-production-89il3uubs0c-solace-primary-0(configure)# message-vpn myfirstservice
+nano-production-89il3uubs0c-solace-primary-0(configure/message-vpn)# replication
+nano-production-azzn9vsqdk5-solace-primary-0(configure/message-vpn/replication)# bridge ssl
+nano-production-89il3uubs0c-solace-primary-0(configure/message-vpn/replication)# bridge authentication basic
+nano-production-89il3uubs0c-solace-primary-0(...plication/bridge/authentication/basic)# client-username myfirstclientusername password Test12345</pre>
+      </li>
+    </ol>
+    <h2><a name="configure-replication-state"/>Set the Replication State of the Message VPN</h2>
+    <p>You must set the state of the Message VPN for each of the <MadCap:variable name="Product-Names.broker_cloud_short"/>s in your replication pair, which is referred to as the <i>replication state</i>. You must set the replication state to <code>active</code> for the <MadCap:variable name="Product-Names.broker_cloud_short"/> Primary site (Source service, which is where you assigned a custom hostname) and <code>standby</code> to its replication mate using the following <MadCap:variable name="Product-Names.solace_cli"/> command: </p>
+    <pre xml:space="preserve">SolaceCLI (configure/message-vpn/replication)# state &lt;status&gt;</pre>
+    <p>Where :</p>
+    <ul>
+      <li><code>&lt;status&gt;</code> is a value of <code>active</code> or <code>standby</code> for the state of the <MadCap:variable name="Product-Names.broker_cloud_short"/>. </li>
+    </ul>
+    <ol>
+      <li>
+        <p>If you haven't already, use SSH to log in to the <MadCap:variable name="Product-Names.broker_cloud_short"/> using its generated hostname and your  <a href="getting-global-admin-account.htm" class="link-internal">Global-Admin account</a>. For information, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="getting-global-admin-account.htm">Accessing the CLI for [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref></MadCap:conditionalText><MadCap:xref href="getting-global-admin-account.htm"><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/enable-cli-for-cloud.htm#Accessin" class="link-offsite">Accessing the CLI for [%=Product-Names.broker_cloud_short_title%]s</a></MadCap:conditionalText></MadCap:xref>. <br/></p>
+        <p>For example, <code>ssh</code> to <code>mr-connection-bo3i1bd7ewc.<MadCap:variable name="Manifest-Products-Links.CloudConsoleMessagingHostname"/></code> and <code>ssh mr-connection-u4ehjwoe9xa.<MadCap:variable name="Manifest-Products-Links.CloudConsoleMessagingHostname"/></code>, respectively.</p>
+      </li>
+      <li>
+        <p>Use <MadCap:variable name="Product-Names.solace_cli"/>  on the <MadCap:variable name="Product-Names.broker_cloud_short"/> (the Primary site or Source service) that has the hostname assigned to it and set the replication state to <code>active</code> using the following command:</p>
+        <pre xml:space="preserve">
+SolaceCLI &gt; enable
+SolaceCLI # configure
+SolaceCLI (configure)# message-vpn myfirstservice
+SolaceCLI (configure/message-vpn)# replication
+SolaceCLI (configure/message-vpn/replication)# state active</pre>
+        <p>Where :</p>
+        <ul>
+          <li><code>&lt;Message VPN name&gt;</code> is the Message VPN that is the same between your replication pair.</li>
+        </ul>
+        <p>For example, on the Primary site (Source service, which is  <code>nano-production-azzn9vsqdk5-solace-primary-0</code>):
+				</p>
+        <pre xml:space="preserve">nano-production-azzn9vsqdk5-solace-primary-0&gt; enable
+nano-production-azzn9vsqdk5-solace-primary-0# configure
+nano-production-azzn9vsqdk5-solace-primary-0(configure)# message-vpn myfirstservice
+nano-production-azzn9vsqdk5-solace-primary-0(configure/message-vpn)# replication
+nano-production-azzn9vsqdk5-solace-primary-0(configure/message-vpn/replication)# state active</pre>
+      </li>
+      <li>
+        <p>Use <MadCap:variable name="Product-Names.solace_cli"/> to set the replication mate (the <MadCap:variable name="Product-Names.broker_cloud_short"/>) that does not have the custom hostname assigned to it as <code>standby</code> using the following command:</p>
+        <pre xml:space="preserve">SolaceCLI (configure/message-vpn/replication)# state standby</pre>
+        <p>For example, on the Backup site (Target service, which is  <code>nano-production-89il3uubs0c-solace-primary-0</code>):
+				    
+				</p>
+        <pre xml:space="preserve">nano-production-89il3uubs0c-solace-primary-0&gt; enable
+nano-production-89il3uubs0c-solace-primary-0# configure
+nano-production-azzn9vsqdk5-solace-primary-0(configure)# message-vpn myfirstservice
+nano-production-azzn9vsqdk5-solace-primary-0(configure/message-vpn)# replication
+nano-production-azzn9vsqdk5-solace-primary-0(configure/message-vpn/replication)# state standby</pre>
+      </li>
+    </ol>
+    <h2><a name="enable-replication"/>Enable Replication</h2>
+    <p>Replication is not enabled by default on the Message VPN, so you must start replication on both <MadCap:variable name="Product-Names.broker_cloud_short"/>s (or replication mates) in the replication pair. </p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For more information, see<MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../../Features/DR-Replication/Replication-VPN-Level-Settings.htm#Enable-Replication">Enabling Replication</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Features/DR-Replication/Replication-VPN-Level-Settings.htm#Enable-Replication" class="link-internal">Enabling Replication</a></MadCap:conditionalText>.</p>
+    <ol>
+      <li>
+        <p>If you haven't already, use SSH to login to the <MadCap:variable name="Product-Names.broker_cloud_short"/> using its generated hostname and your  <a href="getting-global-admin-account.htm" class="link-internal">Global-Admin account</a>. For information, see <MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="getting-global-admin-account.htm">Accessing the CLI for [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/enable-cli-for-cloud.htm#Accessin" class="link-offsite">Accessing the CLI for [%=Product-Names.broker_cloud_short_title%]s</a></MadCap:conditionalText>. <br/></p>
+        <p>For example, <code>ssh to mr-connection-bo3i1bd7ewc.<MadCap:variable name="Manifest-Products-Links.CloudConsoleMessagingHostname"/></code> and <code>ssh mr-connection-u4ehjwoe9xa.<MadCap:variable name="Manifest-Products-Links.CloudConsoleMessagingHostname"/></code>, respectively.</p>
+      </li>
+      <li>
+        <p>Use the <MadCap:variable name="Product-Names.solace_cli"/> to restart the Message VPN using the following commands on the <MadCap:variable name="Product-Names.broker_cloud_short"/>:</p>
+        <pre xml:space="preserve">SolaceCLI &gt; enable
+SolaceCLI # configure
+SolaceCLI (configure)# message-vpn &lt;Message VPN name&gt;
+SolaceCLI (configure/message-vpn) # replication
+SolaceCLI (configure/message-vpn/replication)# no shutdown
+</pre>
+        <p>Where :</p>
+        <ul>
+          <li><code>&lt;Message VPN name&gt;</code> is the Message VPN that is the same between your replication pair.</li>
+        </ul>
+        <p>For example, on  the Primary site (Source service, which is <code>nano-production-azzn9vsqdk5-solace-primary-0</code>):
+				</p>
+        <pre xml:space="preserve">nano-production-azzn9vsqdk5-solace-primary-0&gt; enable
+nano-production-azzn9vsqdk5-solace-primary-0# configure
+nano-production-azzn9vsqdk5-solace-primary-0(configure)# message-vpn myfirstservice
+nano-production-azzn9vsqdk5-solace-primary-0(configure/message-vpn)# replication
+nano-production-azzn9vsqdk5-solace-primary-0(configure/message-vpn/replication)# no shutdown</pre>
+        <p>Then on the Backup site (Target service, which is  <code>nano-production-89il3uubs0c-solace-primary-0</code>):
+				    
+				</p>
+        <pre xml:space="preserve">nano-production-89il3uubs0c-solace-primary-0&gt; enable
+nano-production-89il3uubs0c-solace-primary-0# configure
+nano-production-azzn9vsqdk5-solace-primary-0(configure)# message-vpn myfirstservice
+nano-production-azzn9vsqdk5-solace-primary-0(configure/message-vpn)# replication
+nano-production-azzn9vsqdk5-solace-primary-0(configure/message-vpn/replication)# no shutdown</pre>
+      </li>
+    </ol>
+    <h2 class="with-rule"><a name="verify-replication-status"/>Validate the Replication Configuration</h2>
+    <p>To verify if replication is working, you check if the Replication Queue is bound.</p>
+    <p>You can run commands to see the  validate that the configuration is correct using the following command:</p>
+    <pre xml:space="preserve">SolaceCLI &gt; show message-vpn &lt;Message VPN name&gt; replication</pre>
+    <p>Where :</p>
+    <ul>
+      <li><code>&lt;Message VPN name&gt;</code> is the name of the Message VPN for the replication pair.</li>
+    </ul>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudVMMigration/boundvalues-replication-show-command.flsnp"/>
+    <p>For example, if you run the commands on the Primary site (Source service) for the Message VPN name of <code>myfirstservice</code>:</p>
+    <pre xml:space="preserve">nano-production-azzn9vsqdk5-solace-primary-0&gt; show message-vpn myfirstservice replication
+
+Flags Legend:
+A - Admin State (U=Up, D=Down, -=N/A)
+C - Config State (A=Active, S=Standby, -=N/A)
+B - Local Bridge State (U=Up, Q=Queue Unbound, D=Down, -=N/A)
+R - Remote Bridge State (U=Up, D=Down, -=N/A)
+Q - Queue State (U=Up, D=Down, -=N/A)
+S - Sync Replication Eligible (Y=Yes, N=No, -=N/A)
+M - Reject Msg When Sync Ineligible (Y=Yes, N=No, -=N/A)
+T - Transaction Replication Mode (A=Async, S=Sync, -=N/A)
+
+Message VPN                      A C B R Q S M T
+-------------------------------- - - - - - - - -
+myfirstservice                   U A - U U Y N A</pre>
+    <p>And then on the Backup site (Target service)  for the Message VPN name of <code>myfirstservice</code>:</p>
+    <pre>nano-production-89il3uubs0c-solace-primary-0(configure/message-vpn/replication)# show message-vpn myfirstservice replication
+
+Flags Legend:
+A - Admin State (U=Up, D=Down, -=N/A)
+C - Config State (A=Active, S=Standby, -=N/A)
+B - Local Bridge State (U=Up, Q=Queue Unbound, D=Down, -=N/A)
+R - Remote Bridge State (U=Up, D=Down, -=N/A)
+Q - Queue State (U=Up, D=Down, -=N/A)
+S - Sync Replication Eligible (Y=Yes, N=No, -=N/A)
+M - Reject Msg When Sync Ineligible (Y=Yes, N=No, -=N/A)
+T - Transaction Replication Mode (A=Async, S=Sync, -=N/A)
+
+Message VPN                      A C B R Q S M T
+-------------------------------- - - - - - - - -
+myfirstservice                   U S U - - - N A
+		</pre>
+    <p>Here's another example of the Primary site (Source service) for the Message VPN name of <code>myfirstservice</code>, if you use the <code>details</code> parameter, you can see the Queue state is bound:</p>
+    <pre xml:space="preserve">
+nano-production-azzn9vsqdk5-solace-primary-0&gt; show message-vpn myfirstservice replication detail
+
+Message VPN:                       myfirstservice
+Admin Status:                      enabled
+Config Status:                     active
+Local Bridge:
+  State:                           n/a
+  Name:                            n/a
+  Queue State:                     n/a
+  Authentication:
+    Scheme:                        Basic
+    Basic:
+      Client Username:             myfirstclientusername
+      Password Configured:         Yes
+    Client Certificate:
+      Certificate File:
+      Using Server Certificate:    Yes
+  Compressed:                      No
+  SSL:                             No
+  Message Spool:
+    Window Size:                   255
+  Unidirectional:
+    Client Profile:                #client-profile
+  Retry Delay:                     3
+Remote Bridge:
+  State:                           up
+  Name:                            #bridge/v:nanoproduction89il3uubs0csolaceprimary0/
+myfirstservice/1
+Queue:
+  State:                           bound
+  Quota (MB):                      60000
+  Reject Msg to Sender on Discard: Yes
+Ack Propagation:
+  Interval in Messages:            20
+Sync Replication:
+  Eligible:                        yes
+    Duration:                      0d 0h 2m 43s
+  Mate Flow Congested:             no
+    Duration:                      0d 0h 0m 0s
+  Reject Msg When Sync Ineligible: No
+Transaction Replication Mode:      async
+</pre>
+    <p>In <MadCap:variable name="Product-Names.pubsubmanager_long"/>, you can go to <b>Message VPN &gt; Replication &gt; Details</b> to see the status. If the Queue is Bound, you have correctly configured replication.</p>
+    <p MadCap:conditions="SAP.SAPTempHide">
+      <div class="thumbnail-container">
+        <img class="solacethumbnail" src="../../Resources/Images/Cloud-DR-Replication/verifying-replication-configuration.png" MadCap:conditions="SAP.SAPTempHide" alt=""/>
+      </div>
+    </p>
+    <p> </p>
+    <h2 class="with-rule"><a name="add-back-to-cluster"/>Add the Backup Site to the DMR Cluster of the Primary Site</h2>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudVMMigration/add-backup-to-primary-cluster.flsnp"/>
+    <h2 class="with-rule"><a name="add-internal-link"/>Add the DMR Internal Link Between the Primary Site and Backup Site</h2>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudVMMigration/dmr-configure-internal-link-bt-replication-mates.flsnp"/>
+    <h2 class="with-rule"><a name="configure-queues-topics-to-replicate"/>Specify the Queues and Topics for Replication</h2>
+    <p>After replication is configured, you can specify the topics and queues to be replicated. By default, nothing is replicated. </p>
+    <p>To add topics or queues to replicate, you specify a topic pattern that uses a similar<MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><a href="../../Get-Started/what-are-topics.htm" class="link-internal"> syntax as topic subscriptions</a></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Get-Started/what-are-topics.htm" class="link-internal"> syntax as topic subscriptions</a></MadCap:conditionalText>. This topic pattern can be a topic subscription or a queue name subscription (a subscription for a queue is <code class="File_Name">#P2P/QUE/&lt;queueName&gt;</code>). In addition, you can specify exceptions using  leading <code>!</code> character to the topic subscription.  </p>
+    <p>For each topic or queue add, you must also specify the replication mode of transactions is determined by the Message VPN setting. See <MadCap:xref href="#config-transaction-mode-broker-manager">Configuring the Replication Mode for the Message VPN</MadCap:xref> for more information:</p>
+    <ul>
+      <li>Sync Messages are acknowledged when replicated (spooled remotely).</li>
+      <li>Async Messages are acknowledged when pending replication (spooled locally).</li>
+    </ul>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For more information see:</p>
+    <ul MadCap:conditions="SAP.SapHideFromOutput">
+      <li>
+        <MadCap:conditionalText MadCap:conditions="Default.NotForPDF">
+          <MadCap:xref href="../../Features/DR-Replication/Select-Replication-Messages.htm">Selecting Which Messages to Replicate</MadCap:xref>
+        </MadCap:conditionalText>
+        <MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF">
+          <a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Features/DR-Replication/Select-Replication-Messages.htm" class="link-offsite">Selecting Which Messages to Replicate</a>
+        </MadCap:conditionalText>
+      </li>
+      <li>
+        <MadCap:conditionalText MadCap:conditions="Default.NotForPDF">
+          <MadCap:xref href="../../Features/DR-Replication/How-Replication-Works.htm">How Replication Works</MadCap:xref>
+        </MadCap:conditionalText>
+        <MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF">
+          <a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Features/DR-Replication/How-Replication-Works.htm" class="link-offsite">How Replication Works</a>
+        </MadCap:conditionalText>
+      </li>
+      <li>
+        <MadCap:conditionalText MadCap:conditions="Default.NotForPDF">
+          <MadCap:xref href="../../Features/DR-Replication/Sync-Asynch-Replication.htm">Synchronous and Asynchronous Message Replication </MadCap:xref>
+        </MadCap:conditionalText>
+        <MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF">
+          <a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Features/DR-Replication/Sync-Asynch-Replication.htm" class="link-offsite">Synchronous and Asynchronous Message Replication</a>
+        </MadCap:conditionalText>
+      </li>
+      <li>
+        <MadCap:conditionalText MadCap:conditions="Default.NotForPDF">
+          <MadCap:xref href="../../Features/DR-Replication/Replication-Best-Practices.htm">Replication Best Practices </MadCap:xref>
+        </MadCap:conditionalText>
+        <MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF">
+          <a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Features/DR-Replication/Replication-Best-Practices.htm" class="link-offsite">Replication Best Practices</a>
+        </MadCap:conditionalText>
+      </li>
+    </ul>
+    <p>The following are the steps to configure the topics from <MadCap:variable name="Product-Names.cloud_product_firstuse"/>:</p>
+    <ol>
+      <li>
+        <p>Log in to the <a href="[%=Manifest-Products-Links.CloudConsoleLogin%]" target="_blank" class="link-offsite"><MadCap:variable name="Product-Names.console_ui_long"/></a> if you have not done so yet. The URL to access the <MadCap:variable name="Product-Names.console_ui_short"/> differs based on your authentication scheme. For more information, see<MadCap:conditionalText MadCap:conditions="Default.NotForPDF"><MadCap:xref href="../cloud-login-urls.htm">Login URLs for [%=Product-Names.cloud_product_long%] Console</MadCap:xref></MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="Default.OnlyForPDF"><a href="[%=Manifest-Products-Links.WebsitePDFLinks%]/Cloud/cloud-login-urls.htm" class="link-offsite">Login URLs for [%=Product-Names.cloud_product_long%] Console</a></MadCap:conditionalText>.</p>
+      </li>
+      <li class="img.img-inline">Select <b>Cluster Manager</b><img src="../../Resources/Images/Cloud/reusable-icons/navbar_cluster_manager.png" alt="cluster manager icon"/> from the navigation bar. </li>
+      <li class="img.img-inline">On the <b>Services</b> page, select the <MadCap:variable name="Product-Names.broker_cloud_short"/> that has replication configured. </li>
+      <li>Select the <b>Manage</b> tab and click <b>Message VPN</b>.</li>
+      <li>In <MadCap:variable name="Product-Names.pubsubmanager_long"/>, on the <b>Message VPN</b> page, click <b>Replication</b>.</li>
+      <li>On the <b>Replication</b> tab, click <b>Replicated Topics</b>.</li>
+      <li>Click the <b>+Replicated Topics</b> button.</li>
+      <li>In the <b>Create Replicated Topic</b> dialog box, you can add  topics and queues. For each topic or queue want to replicate to the <MadCap:variable name="Product-Names.broker_cloud_short"/> replication mate:<ul><li>enter the topic or queue in the box</li><li>select the replication mode to use <b>Sync</b> or <b>Async</b> to specify whether to synchronously or asynchronously replicate the topic, from the list on right of the box</li><li> click the <b>Add New</b> link.</li><li>(optional) click the X on the box of the topic or queue you've added . </li></ul></li>
+      <li>Repeat the previous step and when you have the topics you want to replicate. click <b>Create</b>.</li>
+      <li>Click <b>Create</b> when you're ready to add the list of the topics.</li>
+    </ol>
+    <p> The list of topics appears on the <b>Replication Topics</b> page.</p>
+  </body>
+</html>

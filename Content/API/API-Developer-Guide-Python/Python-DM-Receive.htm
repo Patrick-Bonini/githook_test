@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><a name="Consuming-Direct-Messages-Python-API"/>Consuming Direct Messages Using the Python API </h1>
+    <p> Direct messaging is useful in scenarios where high-throughput and low-latency is required.  It is possible with the use of direct messages that some  message loss may occur due to external factors, such as network congestion or occasional client disconnections. Direct messages are suitable for applications that need the latest information but not necessarily every single message. Examples of these applications may be weather applications, price checkers, GPS tracking, and so on.</p>
+    <p>  No additional event broker configuration is required for direct messaging. If your application cannot tolerate message loss, we recommend that you use persistent messaging. </p>
+    <p>To consume direct messages using the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python, use the following steps:</p>
+    <ol>
+      <li><a href="#Creating-A-DirectMessageReceiver-Object" class="link-internal">Create a DirectMessageReceiver</a>.</li>
+      <li><a href="#Configuring-Back-Pressure" class="link-internal">Handling Back-Pressure When Subscribing to Direct Messages</a>.</li>
+      <li><a href="#Receiving-A-Direct-Message-Synchronously" class="link-internal">Receive a Direct Message Synchronously</a>.</li>
+      <li><a href="#Receiving-A-Direct-Message-Asynchronously" class="link-internal">Receive a Direct Message Asynchronously</a>.</li>
+      <li><a href="#Extract-Message-Props" class="link-internal">Extract Properties from an Inbound Message</a>. </li>
+      <li><a href="Python-API-PubSub-Cache.htm#Extract-Message-Props" class="link-internal">Using PubSub+ Cache With the Python API</a>. </li>
+    </ol>
+    <p>In some use cases, the API receives messages from the event broker faster than your application can process them. Messages can fill in the API's internal buffers causing <i>back-pressure</i>. If this scenario is possible, you may want to consider changing the default back-pressure settings to meet your requirements. For more information, see  <MadCap:xref href="#Configuring-Back-Pressure">Configuring Back-pressure</MadCap:xref>.</p>
+    <p>For examples of applications  that consume direct messages, see <a href="https://github.com/SolaceSamples/solace-samples-python/blob/main/patterns/direct_subscriber.py" class="link-offsite">direct_subscriber.py</a> on the <MadCap:variable name="Variables.CompanyName"/> GitHub page.</p>
+    <h2><a name="Creating-A-DirectMessageReceiver-Object"/>Creating a DirectMessageReceiver </h2>
+    <p>After a <code>MessagingService</code> instance has established a connection to an event broker, use a <code>DirectMessageReceiver</code>  to consume direct messages from the event broker. To create a <code>DirectMessageReceiver</code> object, do the following:</p>
+    <ol>
+      <li>
+        <p>Call the <code>create_direct_message_receiver_builder()</code> function on a <code>MessagingService</code> object. This returns a <code>DirectMessageReceiverBuilder</code> object.</p>
+      </li>
+      <li>
+        <p>You can now use the functions in the <code>DirectMessageReceiverBuilder</code> interface to configure a <code>DirectMessageReceiver</code> to use certain features of the API, such as topic subscriptions and back-pressure strategies.</p>
+      </li>
+      <li>
+        <p>Call the <code>build()</code> function on your <code>DirectMessageReceiverBuilder</code> to return a <code>DirectMessageReceiver</code> object.</p>
+      </li>
+      <li>
+        <p>To enable your <code>DirectMessageReceiver</code> to start receiving messages, call the <code>start()</code> function on it.</p>
+      </li>
+    </ol>
+    <p>For more information,  see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python reference</a>.</p>
+    <p>The following example shows how to add a list of topic subscriptions to a  <code>DirectMessageReceiver</code> and connect to the event broker:</p>
+    <pre xml:space="preserve">
+# Define Topic subscriptions 
+topics_sub = [TopicSubscription.of("solace/sample/1")]
+
+# Create a DirectMessageReceiver Builder which allows you to create a DirectMessageReceiver  and start it
+direct_receiver= messaging_service.create_direct_message_receiver_builder() \
+               .with_subscriptions(topics_sub)\
+               .build()
+
+# Start starts the configured DirectMessageReceiver synchronously. Before this function is called, the receiver is considered off-duty
+direct_receiver.start()		</pre>
+    <h3>Asynchronous Receivers </h3>
+    <p>Alternatively, it's  possible to start a direct message receiver using a callback listener to allow for asynchronous notifications when the start operation is complete. </p>
+    <p>In the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API, you can use the <code>start_async()</code> function to start a <code>DirectMessageReceiver</code> asynchronously.  This allows the receiver object to start in a separate background thread, which means your code can continue to execute and you do not have wait for the function to return. </p>
+    <pre xml:space="preserve">
+import concurrent.futures
+# ...
+receivers = [direct_message_receiver_builder.build() for _ in range(10)]
+futures_to_receiver = { receiver.start_async() : receiver for receiver in receivers}
+
+for future in concurrent.futures.as_completed(futures_to_receiver):
+    receiver = futures_to_receiver[future]
+    try:
+        # start async has no return but will raise an on start failure
+        future.result()
+        print(f'Receiver{id(receiver)} started successfully')
+    except Exception as err:
+        print(f'Receiver{id(receiver)} generated an error: {err}') </pre>
+    <p class="Note">Your receiver application is not operational until you call <code>start()</code> or <code>start_async()</code> on it.</p>
+    <h2 class="with-rule"><a name="Configuring-Back-Pressure"/>Handling Back-Pressure When Subscribing to Direct Messages</h2>
+    <MadCap:snippetBlock src="../../Resources/Snippets/API-Guide/NG-API/backpressureintro-consumer-direct-messages.flsnp"/>
+    <p>In the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API, the <code>DirectMessageReceiver</code> has the following mechanisms to handle back-pressure:</p>
+    <ul>
+      <li>
+        <a href="#no-limit" class="link-internal">ignore the limit (default)</a>
+      </li>
+      <li>
+        <a href="#drop-latest" class="link-internal">drop the latest message</a>
+      </li>
+      <li>
+        <a href="#drop-oldest" class="link-internal">drop the oldest message</a>
+      </li>
+    </ul>
+    <h3><a name="no-limit"/> Configuring an Unlimited Internal Buffer </h3>
+    <MadCap:snippetBlock src="../../Resources/Snippets/API-Guide/NG-API/subscribe-unlimited-buffer.flsnp"/>
+    <p>When you use an unlimited buffer, the Python API continuously  puts messages it receives from the event broker onto its internal buffer. The following example shows an explicit call to the  <code>on_back_pressure_elastic()</code> function, which is not required because it is the default behavior:</p>
+    <pre xml:space="preserve">
+# Create a DirectMessageReceiverBuilder which allows you to create a DirectMessageReceiver and start it
+direct_receiver= messaging_service.create_direct_message_receiver_builder() \
+                .with_subscriptions(topics_sub)\
+                .on_back_pressure_elastic() \
+                .build()
+
+# Start starts the configured DirectMessageReceiver synchronously. Before this function is called, the receiver is considered off-duty
+direct_receiver.start()		</pre>
+    <p>
+      <h3><a name="drop-latest"/>Dropping the Latest Message</h3>
+    </p>
+    <p>You can configure the API to drop the latest message when a specified capacity is reached in the API's internal buffer. When this capacity is reached, the most recent messages are not placed on the internal buffer because it is full and are instead dropped (lost). </p>
+    <p> To configure a different buffer size, call the <code>on_back_pressure_drop_latest(buffer_capacity: int)</code> function on the <code>DirectMessageReceiverBuilder</code> and then set the maximum number of messages that can accumulate (<code>buffer_capacity</code>) before messages are dropped. </p>
+    <p>The following example shows how to configure the application to drop messages if there are a thousand messages queued in the API's internal buffer:</p>
+    <pre xml:space="preserve">
+# Create a DirectMessageReceiverBuilder which allows you to create a DirectMessageReceiver and start it
+direct_receiver= messaging_service.create_direct_message_receiver_builder() \
+                .with_subscriptions(topics_sub)\
+                .on_back_pressure_drop_latest(1000) \
+                .build()
+
+# Start starts the configured DirectMessageReceiver synchronously. Before this function is called, the receiver is considered off-duty
+direct_receiver.start()		</pre>
+    <p>
+      <h3><a name="drop-oldest"/>Dropping the Oldest Message</h3>
+    </p>
+    <p>You can configure the API to drop the oldest message when a specified capacity is reached in the API's internal buffer. When this capacity is reached, the oldest item is removed from the internal queue to make room to receive the newer message. When the specified capacity is reached,  the oldest items in the receiver's buffer are dropped to allow for more recent messages to be queued.</p>
+    <p>To configure this mechanism, call the <code>on_back_pressure_drop_oldest(buffer_capacity: int)</code> function on the <code>DirectMessageReceiverBuilder</code> and then set the maximum number of messages that can accumulate (<code>buffer_capacity</code>) before the oldest messages are removed from the internal buffer. </p>
+    <p>The following example shows how to configure the application to drop the oldest message in the API's internal buffer if there are a thousand messages queued:</p>
+    <pre xml:space="preserve">
+# Create a DirectMessageReceiverBuilder which allows you to create a DirectMessageReceiver and start it
+direct_receiver= messaging_service.create_direct_message_receiver_builder() \
+                .with_subscriptions(topics_sub)\
+                .on_back_pressure_drop_oldest(1000) \
+                .build()
+
+# Start starts the configured DirectMessageReceiver synchronously. Before this function is called, the receiver is considered off-duty
+direct_receiver.start()		</pre>
+    <h2 class="with-rule"><a name="Receiving-A-Direct-Message-Synchronously"/>Receiving a Direct Message Synchronously </h2>
+    <p>After you have established a connection to the event broker using a <code>MessagingService</code> instance, you can use a <code>DirectMessageReceiver</code> to subscribe to messages. The <code>DirectMessageReceiver</code> must be subscribed to at least one topic for it to begin receiving messages. </p>
+    <p>The following   example shows how an  <code>InboundMessage</code> is received by the <code>DirectMessageReceiver</code>. Use the <code>receive_message(timeout: int)</code> function, which blocks the routine until:</p>
+    <ul>
+      <li>
+               Your receiver receives the next message.<![CDATA[           
+            ]]></li>
+      <li>
+                A timeout occurs, based on the provided <code>timeout</code> parameter.
+            </li>
+      <li>There is a service interruption, such as a receiver termination, <code>MessagingService</code> disconnect, or unrecoverable service interruption.</li>
+    </ul>
+    <pre xml:space="preserve">
+direct_receiver= messaging_service.create_direct_message_receiver_builder() \
+                .with_subscriptions(topics_sub)\
+                .build()
+direct_receiver.start()		
+
+# Blocking request to receive the next message. Usually used in a loop, the example below receives 1000 messages.			
+for _ in range(1000):			
+    inbound_message: 'InboundMessage' = direct_receiver.receive_message(1000) # Blocks for 1000 milliseconds to wait for a message to arrive.	 					</pre>
+    <h2 class="with-rule"><a name="Receiving-A-Direct-Message-Asynchronously"/>Receiving a Direct Message Asynchronously </h2>
+    <p>After you have established a connection to the event broker using a <code>MessagingService</code> instance, you can consume direct messages and handle them asynchronously using a <code>DirectMessageReceiver</code>. To handle direct messages asynchronously, you use  a <code>MessageHandler</code> to act as a callback function to let the application know when a message has been received. The abstract <code>MessageHandler</code> class contains the <code>on_message()</code> function you use to process instances of <code>InboundMessage</code>. </p>
+    <p> The following example shows an example implementation of a <code>MessageHandler</code> and the <code>on_message()</code> function you use to receive messages asynchronously:</p>
+    <pre xml:space="preserve">
+class MessageHandlerExample(MessageHandler):
+    def on_message(self, message: InboundMessage):
+        # Check if the payload is a String or Byte, decode if its the later
+        payload = message.get_payload_as_string() if message.get_payload_as_string() is not None else message.get_payload_as_bytes()
+        if isinstance(payload, bytearray):
+            print(f"Received a message of type: {type(payload)}. Decoding to string")
+            payload = payload.decode()
+
+# Register an asynchronous message receiver on the DirectMessageReceiver instance.			
+direct_receiver.receive_async(MessageHandlerExample())		</pre>
+    <h2 class="with-rule"><a name="Extract-Message-Props"/>Extracting Properties from an Inbound Message</h2>
+    <p>After you establish a connection to the event broker, your receiver application can subscribe to topics. Whenever your application receives a message from the broker with a matching topic, an <code>InboundMessage</code> instance is returned to the application. You can extract a number of properties from an <code>InboundMessage</code>, such as the sender ID. The following examples show how to extract properties from a message.</p>
+    <ul>
+      <li>
+        <p>Use a <code>MessageHandler</code> callback when you receive a message asynchronously:</p>
+        <pre xml:space="preserve">
+class MessageHandlerExample(MessageHandler):
+    def __init__(self, direct_receiver: DirectMessageReceiver):
+        self.receiver: DirectMessageReceiver = direct_receiver		
+			
+    def on_message(self, message: InboundMessage):
+        topic = message.get_destination_name()
+        payload_as_bytes = message.get_payload_as_bytes()
+        payload_as_string = message.get_payload_as_string()
+        sender_id = message.get_sender_id()
+        custom_property = message.get_property("custom_prop_name")
+						
+# Register an asynchronous message receiver on the DirectMessageReceiver instance.			
+direct_receiver.receive_async(MessageHandlerExample())		</pre>
+      </li>
+      <li>
+        <p>Use the <code>receive_message()</code> function when you receive a message synchronously:</p>
+        <pre xml:space="preserve">
+# Blocking request to receive the next message. Usually used in a loop, the example below receives 1000 messages.			
+for _ in range(1000):			
+    inbound_message: 'InboundMessage' = direct_receiver.receive_message(1000) # Blocks for 1000 milliseconds to wait for a message to arrive.
+    payload_as_bytes = inbound_message.get_payload_as_bytes()
+    payload_as_string = inbound_message.get_payload_as_string()
+    sender_id = inbound_message.get_sender_id()
+    custom_property = inbound_message.get_property("custom_prop_name")					</pre>
+      </li>
+    </ul>
+    <p>For a complete list of functions that you can use to extract properties from an <code>InboundMessage</code>, see the <a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><a href="../../API-Developer-Online-Ref-Documentation/python/index.html" class="link-internal"><MadCap:variable name="Product-Names.pubsub_brand_only"/> Messaging API for Python  reference</a></a>.</p>
+  </body>
+</html>

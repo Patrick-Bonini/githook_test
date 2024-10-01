@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Using Streaming Compressed Connections</h1>
+    <p><MadCap:variable name="Variables.CompanyName"/><MadCap:variable name="Product-Names.pubsub_brand_only"/> allows client applications connected to an event broker to send and receive compressed message data. When the use of channel compression is enabled on the event broker and for the session that the client application has established to the event broker, messages sent from both the event broker and the client application are compressed before transmission, and they are decompressed when received by the client application or the event broker.</p>
+    <h2 class="with-rule"><a name="Config-Compression"/>Configuring Streaming Compressed Connections for Data Connections</h2>
+    <p>To use the streaming compressed connection facility, you must perform the following steps:</p>
+    <ol>
+      <li>Configure a TCP listen port for clients to connect to for sending and receiving compressed message data.
+                <p>By default, the event broker listens for non-compressed connections on TCP port 55555, compressed connections on TCP port 55003, and compressed and encrypted connections on TCP port 55443. The listen ports are fully configurable, and for more information on configuration, see <MadCap:xref href="../Services/Managing-Services.htm">Managing Services</MadCap:xref>.</p></li>
+      <li>Configure whether you want the event broker to compress the data to optimize the size of transmitted messages or to optimize the speed at which messages are delivered.
+                <p>Refer to <MadCap:xref href="#Compression-Opt-Mode">Configuring the Data Compression Optimization Mode</MadCap:xref>.</p></li>
+      <li>On the client side, enable channel compression for the sessions that clients use to establish connections to the event broker.
+                <p>For information on how to enable message compression for a client session, see <MadCap:xref href="../API/API-Developer-Guide/Enabling-Channel-Compres.htm">Enabling Channel Compression for a Session</MadCap:xref> for Solace messaging APIs. For the Solace JMS API, the compression level is set through a JNDI or Data Connection property (see <MadCap:xref href="../API/Solace-JMS-API/JMS-Properties-Reference.htm">JMS Properties Reference</MadCap:xref>).</p></li>
+    </ol>
+    <h3><a name="Compression-Opt-Mode"/>Configuring the Data Compression Optimization Mode</h3>
+    <p>When a TCP listen port is configured to use compression, you can configure whether you want the event broker to compress the data in egress messages so that it is optimized for size or for transmission speed. In general, the optimize-for-size mode yields a higher compression ratio with lower throughput, while optimize-for-speed mode yields a higher throughput with lower compression ratio.</p>
+    <p>To configure the compression facility to compress the data to optimize the size of transmitted messages or to optimize the speed at which messages are delivered, enter the following CONFIG command:</p>
+    <p class="Code">solace(configure)# compression [mode]</p>
+    <p><u>Where</u>:</p>
+    <p><code>mode</code> is the compression mode to use. The two possible values are optimize-for-size (the default value) or optimize-for-speed.</p>
+    <p class="Note">While the compression level setting in the Solace messaging APIs can have a dramatic effect on the speed and level of compression achieved for published messages sent to the event broker, message data sent from the event broker is compressed in hardware that provides compression comparable to the most aggressive level offered by the APIs without sacrificing speed. Thus, the effect of the compression mode setting on the event broker is minimal for most situations.</p>
+    <h2 class="with-rule"><a name="Monitor-Compression"/>Monitoring Streaming Compressed Connections</h2>
+    <p>You can use several show commands to validate and monitor streaming compressed connection configuration and status on event brokers:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Show-Client-Connections">Show Client Connections</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Show-Client-Stats-Detail">Show Client Stats Detail</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Show-Compression">Show Compression</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Show-Service">Show Service</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="Show-Client-Connections"/>Show Client Connections</h3>
+    <p>To view whether a particular client is compressed or not, enter the following User EXEC command:</p>
+    <p class="Code">solace&gt; show client &lt;name&gt; connections</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the full name of the client, or part of the client name with the wildcard character ? used to represent one character of the name, or the wildcard character * used to represent zero or more characters of the name, where entering only the wildcard character * for the name displays all clients.</p>
+    <h3><a name="Show-Client-Stats-Detail"/>Show Client Stats Detail</h3>
+    <p>To view the compression statistics for a particular clients, enter the following User EXEC command:</p>
+    <p class="Code">solace&gt; show client &lt;name&gt; stats detail</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the full name of the client, or part of the client name with the wildcard character ? used to represent one character of the name, or the wildcard character * used to represent zero or more characters of the name, where entering only the wildcard character * for the name displays all clients. </p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example and Statistic Explanation:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <p class="Code">solace&gt; show client #00010001 stats detail</p>
+        <p>The output then includes (among other statistics):</p>
+        <pre class="Code">******************** Compression/Decompression Statistics ******************
+ 
+                                              Received                   Sent
+                                  --------------------   --------------------
+Compressed Bytes                               1265052                    221
+Uncompressed Bytes                             4012610                    292
+Compression Ratio                                 3.17                   1.32
+ 
+                                    Ingress (bytes/sec)    Egress (bytes/sec)
+                                   --------------------  --------------------
+Compressed Rate (1 sec)                            1050                     0
+Uncompressed Rate (1 sec)                        100506                     0
+Compressed Rate (60 sec)                           6292                     0
+Uncompressed Rate (60 sec)                        15401                     0</pre>
+        <p>The following table describes the compression statistics.</p>
+        <table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0">
+          <caption valign="top" style="padding-bottom: 3pt;">
+            <p class="TblCaption">Compression Statistics</p>
+          </caption>
+          <col width="25%" class="TableStyle-Table_Num-Column-Column1"/>
+          <col width="75%" class="TableStyle-Table_Num-Column-Column1"/>
+          <thead>
+            <tr class="TableStyle-Table_Num-Head-Header1">
+              <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Statistic</th>
+              <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p class="Tbl_Body">Compressed Bytes</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p class="Tbl_Body">The amount of compressed data (measured in bytes) received and sent by the event broker.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p class="Tbl_Body">Uncompressed Bytes</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p class="Tbl_Body">The amount of uncompressed data (measured in bytes) handled by the event broker.</p>
+                <p class="Tbl_Body">The statistic encompasses both uncompressed and compressed data, however the compressed data is measured after it is uncompressed.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p class="Tbl_Body">Compression Ratio</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p class="Tbl_Body">The ratio of uncompressed bytes/compressed bytes for data that is handled by the event broker.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+                <p class="Tbl_Body">Compressed Rate (1 sec sample)</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+                <p class="Tbl_Body">The calculated byte rate based on “Compressed Bytes” at a one second sample interval.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p class="Tbl_Body">Uncompressed Rate (1 sec sample)</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p class="Tbl_Body">The calculated byte rate based on “Uncompressed Bytes” at a one second sample interval.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p class="Tbl_Body">Compressed Rate (60 sec sample)</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p class="Tbl_Body">The calculated byte rate based on “Compressed Bytes” at a 60 second sample interval.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+                <p class="Tbl_Body">Uncompressed Rate (60 sec sample)</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+                <p class="Tbl_Body">The calculated byte rate based on “Unshow compressed Bytes” at a 60 second sample interval.</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <h3><a name="Show-Compression"/>Show Compression</h3>
+    <p>To view the compression configuration and statistics on an event broker, enter the following User EXEC command:</p>
+    <p class="Code">solace(configure)# show compression </p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre class="Code">solace(configure)# show compression
+ 
+Compression Mode: optimize-for-size
+ 
+Work queue depth
+    Current:         0
+    High Water Mark: 2
+ 
+Error count
+    Compression:     0
+    Decompression:   0</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <div class="Note">
+      <ul>
+        <li>The "Work queue depth" reflects outstanding compression/decompression requests. The "Current" reflects the number of requests currently held in the queue. The "High Water Mark" reflects the highest number of requests held in the queue since the last clearing of statistics through the <b>clear compression stats</b> Privileged EXEC command.</li>
+        <li>The number of bytes to be compressed/decompressed in a compression/decompression request varies on a per request basis.</li>
+      </ul>
+    </div>
+    <h4>Clear Compression Stats</h4>
+    <p>To clear the current compression statistics, enter the following Privileged EXEC command:</p>
+    <pre class="Code">solace# clear compression stats</pre>
+    <p>When this command is entered, all of the compression statistic counters are reset to 0, and compression statistics begin to be recorded again from this point.</p>
+    <h3><a name="Show-Service"/>Show Service</h3>
+    <p>To view the TCP listen ports for used by the event broker, enter the following User EXEC command:</p>
+    <pre class="Code">solace(configure)# show service</pre>
+  </body>
+</html>

@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Traffic Management to Microservices Example</h1>
+    <p>The following sections provide an example of how to use a Microgateway to configure basic traffic management to microservices with the Solace CLI. In the example, two queues are created and bound to a REST delivery point (RDP) to provide prioritized processing of POST requests to a single remote microservice instance. </p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Enable_Mode">Step 1: Enable REST Gateway Mode </MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Create_Queues">Step 2: Create the Appropriate Queues</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Configure_TTL">Step 3: Configure the Queues to Respect TTLs</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Add_Sub">Step 4: Add Topic Subscriptions to  Each Queue</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Enable_Queues">Step 5: Enable the Queues</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Create_RDP">Step 6: Create a REST Delivery Point</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Create_Queue_Bindings">Step 7: Create Queue Bindings</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Create_Consumers">Step 8: Create REST Consumers</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Specify_Destination">Step 9: Specify Remote Microservice Destinations</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Enable_Consumers">Step 10: Enable the REST Consumers</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Enable_RDP">Step 11: Enable the REST Delivery Point</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Verify">Step 12: Verify All Connections are Up</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Assumpti"/>Before you begin</h2>
+    <p>The example provided in the following sections assumes that the following parameters are already configured on the Solace PubSub+ event broker:</p>
+    <ul>
+      <li>System level parameters for incoming and outgoing REST connections.</li>
+      <li>The incoming REST service for the Message VPN, including the dedicated REST listen port and encryption method.</li>
+    </ul>
+    <h2 class="with-rule"><a name="Enable_Mode"/>Step 1: Enable REST Gateway Mode </h2>
+    <p>Before the event broker can act as a Microgateway, you must enable gateway mode on the Message VPN you want to use for the service. In this example, an existing Message VPN is used to enable the Microgateway deployment. Omitted from the example are the steps required to set up authentication or use ACLs to control client access to specific URIs and HTTP methods. For more information, refer to  <MadCap:xref href="../Security/Configuring-Client-Authentication.htm">Managing Client Authentication</MadCap:xref> and <MadCap:xref href="../Security/Managing-Access-Control-Lists.htm"> Configuring Access Control Lists</MadCap:xref>  . </p>
+    <p>
+      <img src="../Resources/Images/Microgateway-Tasks/microgateway-enable1.PNG" style="max-width: 750px;" alt=""/>
+    </p>
+    <p class="Code">solace(configure)# message-vpn microgateway<br/>solace(configure/message-vpn)# service rest<br/>solace(configure/message-vpn/service/rest)# mode gateway<br/>solace(configure/message-vpn/service/rest)# exit<br/>solace(configure/message-vpn/service)# exit<br/>solace(configure/message-vpn)# exit</p>
+    <h2 class="with-rule"><a name="Create_Queues"/>Step 2: Create the Appropriate Queues</h2>
+    <p>Once gateway mode is enabled on a Message VPN, the event broker encodes the HTTP method and path of incoming requests into a message topic for internal transportation. This process enables the event broker to deliver requests to specific queues. You can use this functionality to load balance requests by method or path, set up prioritized processing, and add eavesdropping applications to the service.</p>
+    <p>In this example, two queues (Queue A and Queue B) are created to enable prioritized processing of POST requests.</p>
+    <p>
+      <img src="../Resources/Images/Microgateway-Tasks/microgateway-queues1.PNG" style="max-width: 750px;" alt=""/>
+    </p>
+    <p class="Code">solace(configure)# message-spool message-vpn microgateway<br/>solace(configure/message-spool)# create queue A<br/>solace(configure/message-spool/queue)# exit<br/>solace(configure/message-spool)# create queue B</p>
+    <h2 class="with-rule"><a name="Configure_TTL"/>Step 3: Configure the Queues to Respect TTLs</h2>
+    <p>To prevent   wasted message exchanges and stop stale messages from persisting on each queue, Solace recommends that you configure queues used in Microgateway deployments to respect messages Time-to-Live (TTL) expiration values.</p>
+    <div class="Tip">When you configure queues for eavesdropping applications, be sure to ignore this configuration so that all messages  persist and are available for collection.</div>
+    <p>In this example, both queues are configured to respect TTLs. </p>
+    <p class="Code">solace(configure/message-spool/queue)# respect-ttl<br/>solace(configure/message-spool/queue)# exit<br/>solace(configure/message-spool)# queue A<br/>solace(configure/message-spool/queue)# respect-ttl</p>
+    <h2 class="with-rule"><a name="Add_Sub"/>Step 4: Add Topic Subscriptions to  Each Queue</h2>
+    <p>Topic subscriptions provide the necessary information for queues to receive incoming requests from REST clients. You can use topic subscriptions to route requests to specific queues for prioritized processing, or to route requests from associated queues to specific microservice instances. In addition, if you want to add eavesdropping applications to the service, you can add a matching topic subscription for the eavesdropping application (refer to <MadCap:xref href="Microgateway-Eavesdropping-App-Example.htm">Eavesdropping Application Configuration Example</MadCap:xref>).</p>
+    <p>In this example, topic subscriptions are added to each queue in the service for prioritized processing of POST requests. On Queue A, a subscription is added to attract all POST requests. On Queue B, subscriptions are added to attract all other request methods. Although each queue is serviced equally, adding a separate dedicated queue for POST requests ensures these requests receive faster treatment, especially during periods of overload.</p>
+    <p>
+      <img src="../Resources/Images/Microgateway-Tasks/microgateway-subscriptions1.PNG" style="max-width: 750px;" alt=""/>
+    </p>
+    <p class="Code">solace(configure/message-spool/queue)# subscription topic POST/&gt;<br/>solace(configure/message-spool/queue)# exit<br/>solace(configure/message-spool)# queue B<br/>solace(configure/message-spool/queue)# subscription topic GET/&gt;<br/>solace(configure/message-spool/queue)# subscription topic DELETE/&gt;<br/>solace(configure/message-spool/queue)# subscription topic PATCH/&gt;<br/>solace(configure/message-spool/queue)# subscription topic HEAD/&gt;<br/>solace(configure/message-spool/queue)# subscription topic OPTIONS/&gt;<br/>solace(configure/message-spool/queue)# subscription topic PUT/&gt;</p>
+    <h2 class="with-rule"><a name="Enable_Queues"/>Step 5: Enable the Queues</h2>
+    <p>Before any of the queues in the service can process requests, you must enable them. </p>
+    <p class="Code">solace(configure/message-spool/queue)# no shutdown<br/>solace(configure/message-spool/queue)# exit<br/>solace(configure/message-spool)# queue A<br/>solace(configure/message-spool/queue)# no shutdown<br/>solace(configure/message-spool/queue)# exit<br/>        solace(configure/message-spool)# exit</p>
+    <h2 class="with-rule"><a name="Create_RDP"/>Step 6: Create REST Delivery Points</h2>
+    <p>RDPs facilitate message delivery to REST consumers. For more information about this process, refer to <MadCap:xref href="../API/REST/REST-Consumers.htm#_Toc433874658">Solace Router Configuration Objects</MadCap:xref>. </p>
+    <p>In this example, a single RDP is created to provide connectivity to a corresponding REST consumer. </p>
+    <p>
+      <img src="../Resources/Images/Microgateway-Tasks/microgateway-rdp1.PNG" style="max-width: 750px;" alt=""/>
+    </p>
+    <p class="Code">solace(configure)# message-vpn microgateway<br/>solace(configure/message-vpn)# rest<br/>solace(configure/message-vpn/rest)# create rest-delivery-point RDP</p>
+    <h2 class="with-rule"><a name="Create_Queue_Bindings"/>Step 7: Create Queue Bindings</h2>
+    <p>Each RDP must be bound to one or more queues to enable requests to flow from REST clients to remote microservices. When you create queue bindings for Microgateway deployments, you can optionally configure how the event broker handles the authority value in outbound URIs. For more information refer to <MadCap:xref href="Managing-RDPs.htm#Replacin">Replacing the Authority Value in Outbound URIs.</MadCap:xref></p>
+    <p>In this example, each queue is bound to a single RDP. </p>
+    <p>
+      <img src="../Resources/Images/Microgateway-Tasks/microgateway-queue-binding1.PNG" style="max-width: 750px;" alt=""/>
+    </p>
+    <p class="Code">solace(.../message-vpn/rest/rest-delivery-point)# create queue-binding A<br/>solace(...est/rest-delivery-point/queue-binding)# exit<br/>solace(.../message-vpn/rest/rest-delivery-point)# create queue-binding B<br/>solace(...est/rest-delivery-point/queue-binding)# exit</p>
+    <h2 class="with-rule"><a name="Create_Consumers"/>Step 8: Create REST Consumers</h2>
+    <p>REST consumers provide connectivity between RDPs and remote microservices. More specifically, you must configure at least one REST consumer for each DNS name that you want to receive requests. For more information, refer to <MadCap:xref href="../API/REST/REST-Consumers.htm#_Toc433874661">REST Consumer</MadCap:xref>. </p>
+    <p>RDPs can contain multiple REST consumers, however, in this example the RDP contains a single REST consumer for final delivery to one microservice instance.</p>
+    <p>
+      <img src="../Resources/Images/Microgateway-Tasks/microgateway-rc1.PNG" style="max-width: 750px;" alt=""/>
+    </p>
+    <p class="Code">solace(.../message-vpn/rest/rest-delivery-point)# create rest-consumer RC</p>
+    <h2 class="with-rule"><a name="Specify_Destination"/>Step 9: Specify Remote Microservice Destinations</h2>
+    <p>To ensure delivery of requests to the appropriate remote microservice, you must configure the hostname and optionally the port of each destination.</p>
+    <p>In this example, a single microservice instance is configured as a remote destination for incoming requests.</p>
+    <p>
+      <img src="../Resources/Images/Microgateway-Tasks/microgateway-service-provider1.PNG" style="max-width: 750px;" alt=""/>
+    </p>
+    <p class="Code">solace(...est/rest-delivery-point/rest-consumer)# remote<br/>solace(...t-delivery-point/rest-consumer/remote)# host www.mystore.com/storefront/<br/>solace(...t-delivery-point/rest-consumer/remote)# port 8080<br/>solace(...t-delivery-point/rest-consumer/remote)# exit</p>
+    <h2 class="with-rule"><a name="Enable_Consumers"/>Step 10: Enable REST Consumers</h2>
+    <p>Before each REST consumer can process requests, you must enable it. </p>
+    <p class="Code">solace(...est/rest-delivery-point/rest-consumer)# no shutdown<br/>solace(...est/rest-delivery-point/rest-consumer)# exit</p>
+    <h2 class="with-rule"><a name="Enable_RDP"/>Step 11: Enable REST Delivery Points</h2>
+    <p>Before each RDP can process requests, you must enable it.</p>
+    <p class="Code">solace(.../message-vpn/rest/rest-delivery-point)# no shutdown</p>
+    <h2 class="with-rule"><a name="Verify"/>Step 12: Verify All Connections are Up</h2>
+    <p>After all components in the service are configured and enabled, you can issue the following show commands to verify that each component is operational and ready to process requests (both the <code>Admin State</code> and <code>Operational State</code> flag is <code>Up</code>).</p>
+    <p>Be aware that all components in the service do not receive an <code>Operational State</code> of <code>Up</code>, until connectivity is established to the corresponding remote destinations. </p>
+    <p class="Code">solace(.../message-vpn/rest/rest-delivery-point/)# show message-vpn &lt;message-vpn&gt; rest rest-delivery-point &lt;rdp-name&gt;</p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre xml:space="preserve" class="Code">Total REST Delivery Points (up):                       1
+Total REST Delivery Points (configured):               1
+Total REST Consumers (up):                             1
+Total REST Consumers (configured):                     1
+Total REST Consumer Outgoing Connections (up):         3
+Total REST Consumer Outgoing Connections (configured): 3
+Total Queue Bindings (up):                             1
+Total Queue Bindings (configured):                     1
+
+Flags Legend:
+A - Admin State (U=Up, D=Down)
+O - Oper State (U=Up, D=Down)
+
+                                                  REST
+                                                 Consumer
+                                                 Outgoing     Queue       Conns
+                                        Status    Conns      Bindings    Blocked
+RDP Name             Message VPN         A O    (up/conf)    (up/conf)     (%)
+-------------------- ------------------ ------ ----------- ------------- -------
+RDP                  microgateway        U U   3 / 3       1 / 1              0</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <p class="Code">solace(.../message-vpn/rest/rest-delivery-point/)# show message-vpn &lt;message-vpn&gt; rest rest-consumer &lt;rest-consumer-name&gt;</p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre class="Code" xml:space="preserve">Total REST Consumer Outgoing Connections (up):         3
+Total REST Consumer Outgoing Connections (configured): 3
+
+Flags Legend:
+A - Admin State (U=Up, D=Down)
+O - Oper State (U=Up, D=Down)
+
+                                                                  REST Consumer
+REST                                                       Status  Connections
+Consumer             RDP Name           Message VPN        A O      (up/conf)
+-------------------- ------------------ ------------------ ------ -------------
+RC                   RDP                microgateway       U U    3 / 3
+</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <p class="Code">solace(configure/message-vpn/rest/rest-delivery-point/)# show message-vpn &lt;message-vpn&gt; rest rest-delivery-point &lt;rdp-name&gt; queue-binding *</p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre class="Code" xml:space="preserve">REST Delivery Point:                                RDP
+  Message VPN:                                      microgateway
+  Admin State:                                      Up
+  Operational State:                                Up
+  Last Failure Reason:                              No REST Consumers Up
+  Last Failure Time:                                Feb 27 2018 17:18:17 UTC
+  Client Profile:                                   default
+  Client Name:                                      #rdp/RDP
+  REST Consumers (up):                              1
+  REST Consumers (configured):                      1
+  REST Consumers Outgoing Connections (up):         3
+  REST Consumers Outgoing Connections (configured): 3
+  Queue Bindings (up):                              1
+  Queue Bindings (configured):                      1
+  Blocked Connections %:                            0
+
+  Queue Name               Status     Uptime
+  ------------------------ ------ --------------
+  A                        Up     0d 0h 6m 30s
+</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <p> </p>
+  </body>
+</html>

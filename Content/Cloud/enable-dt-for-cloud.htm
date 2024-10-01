@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="Default.ContentProductLink" MadCap:searchable="True">
+  <head>
+    <link href="../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+    <meta name="keywords" content="distributed tracing, telemetry profile, tracing destination"/>
+  </head>
+  <body>
+    <h1 MadCap:conditions="Default.ContentProductLink"><MadCap:concept term="Cloud"/>Enabling Distributed Tracing</h1>
+    <p>When distributed tracing is enabled, the <MadCap:variable name="Product-Names.broker_cloud_short"/> generates trace messages when certain operations happen. A purpose-built client  then consumes these messages from the telemetry queue and converts them to the OpenTelemetry standard format that can be received, processed, and viewed in <MadCap:variable name="Product-Names.insights_long"/> (requires an <a href="Insights/Insights.htm" target="_blank" alt="link to Insights topic" class="link-internal"><MadCap:variable name="Product-Names.insights_long"/> account</a>), or various common tracing backends supporting OpenTelemetry protocols, such as Datadog, Jaeger, DynaTrace, New Relic, and Grafana, among others.</p>
+    <p>You can install a distributed tracing license, create a tracing profile, and a tracing client all from the <MadCap:variable name="Product-Names.cloud_product_long"/> and <MadCap:variable name="Product-Names.pubsubmanager_long"/>. During this process, a pod is created that contains the Collector and Receiver. The <MadCap:variable name="Product-Names.cloud_agent_short"/> creates the necessary telemetry queue, client username, and password for your <MadCap:variable name="Product-Names.broker_cloud_short"/>s. </p>
+    <p>To configure distributed tracing for your <MadCap:variable name="Product-Names.broker_cloud_short"/>, follow these steps:</p>
+    <ol>
+      <li>Ensure your deployment <a href="#dt-prerequisites" class="link-internal">meets the prerequisites for enabling distributed tracing</a>.</li>
+      <li>Create a tracing destination for the <MadCap:variable name="Product-Names.broker_cloud_short"/> in the <MadCap:variable name="Product-Names.console_ui_short"/>. See <MadCap:xref href="#Creating-Tracting-Dest">Creating a Tracing Destination</MadCap:xref>.</li>
+      <li>Create a telemetry profile for the <MadCap:variable name="Product-Names.broker_cloud_short"/> in <MadCap:variable name="Product-Names.pubsubmanager_short"/>. See <MadCap:xref href="#Telemetry-Profile">Creating a Telemetry Profile</MadCap:xref>.</li>
+      <li>Enable distributed tracing for your <MadCap:variable name="Product-Names.broker_cloud_short"/> in the <MadCap:variable name="Product-Names.console_ui_short"/>. See <MadCap:xref href="#Enabling">Enabling Distributed Tracing for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</li>
+    </ol>
+    <p>This process can also be performed using the <MadCap:variable name="Product-Names.solace_cli"/>. See <MadCap:xref href="#Enable-Using-CLI">Using the [%=Product-Names.solace_cli%] to Enable Distributed Tracing for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref></p>
+    <h2><a name="dt-prerequisites"/>Prerequisites for Enabling Distributed Tracing in <MadCap:variable name="Product-Names.cloud_product_short"/></h2>
+    <p>To use distributed tracing with your <MadCap:variable name="Product-Names.broker_cloud_short"/>s, you must meet these minimum requirements:</p>
+    <ul>
+      <li>
+        <p>Be using <MadCap:variable name="Product-Names.broker_cloud_short"/> 10.2 or later.</p>
+      </li>
+      <li MadCap:conditions="SAP.SapHideFromOutput">
+        <p>Have available distributed tracing limits. See <MadCap:xref href="#ViewingLimits">Viewing Your Distributed Tracing Licenses</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>Have basic authentication enabled for the <MadCap:variable name="Product-Names.broker_cloud_short"/>. See <MadCap:xref href="ght_authentication.htm" target="_blank">Configuring Authentication to [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>An AMQP port for the <MadCap:variable name="Product-Names.broker_cloud_short"/> must be enabled and set to 5671. See <MadCap:xref href="edit-port-configuration.htm#edit-port-config" target="_blank">Editing the Existing Port Configuration for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>For <MadCap:variable name="Product-Names.customer-controlled_region"/>s, you must be able to pull docker images from either the <code>gcr.io/gcp-maas-prod/solace-distributed-tracing-collector</code> repository or the Azure China registry. If you require access to the Azure China registry, <a href="../get-support.htm" target="_blank" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a>.</p>
+      </li>
+      <li>
+        <p>If you are using a proxy in a <MadCap:variable name="Product-Names.customer-controlled_region"/>, you must also meet additional prerequisites. See <MadCap:xref href="#prereq_proxy_cust_cont">Prerequisites for Using a Proxy in a [%=Product-Names.customer-controlled_region%]</MadCap:xref>.</p>
+      </li>
+    </ul>
+    <h2><a name="ConsideratsDTDeployment"/><a name="performance"/>Infrastructure Impacts on the Performance of Distributed Tracing</h2>
+    <p>The performance of distributed tracing in <MadCap:variable name="Product-Names.cloud_product_short"/> is affected by your choice of Kubernetes provider, and OpenTelemetry backend. Performance is tied to the ability of the receiver to consume and the collector to process guaranteed messages.</p>
+    <p>On average, you can expect a performance of at least 1000 trace spans per second. Different factors, such as your Kubernetes environment and settings, can affect these results.</p>
+    <h2 MadCap:conditions="SAP.SapHideFromOutput"><a name="ViewingLimits"/>Viewing Your Distributed Tracing Licenses</h2>
+    <p MadCap:conditions="SAP.SapHideFromOutput">You must have a license for the <MadCap:variable name="Product-Names.broker_cloud_short"/> on which you intend to enable distributed tracing.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">Each license has a corresponding connection tier that indicates the largest service class of <MadCap:variable name="Product-Names.broker_cloud_short"/> it can be used with. For example, a distributed tracing license with a connection tier of 10K can be used for <MadCap:variable name="Product-Names.broker_cloud_short"/>s ranging from 1,000 up to 10,000 connections. See <MadCap:xref href="service-class-limits.htm">Service Class Options for [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref> for more information about service classes. </p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">To get licenses for distributed tracing, <a href="../get-support.htm" target="_blank" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a>.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">
+      <div class="thumbnail-container">
+        <img src="../Resources/Images/Cloud/DT_AccountLimits.png" class="solacethumbnail" alt="Screenshot showing the elements described in the surrounding text."/>
+      </div>
+    </p>
+    <ul MadCap:conditions="SAP.SapHideFromOutput">
+      <MadCap:snippetBlock src="../Resources/Snippets/Cloud/DistributedTracing/Tracing_Profile_Start.flsnp">
+            </MadCap:snippetBlock>
+      <p>The table located at the top contains the following information about your distributed tracing limits:</p>
+      <ul>
+        <li><b>Connection Tier</b>—The distributed tracing license tier.</li>
+        <li><b>In Use</b>—The number of licenses currently being used by your <MadCap:variable name="Product-Names.broker_cloud_short"/>s.</li>
+        <li><b>Available</b>—The number of licenses currently available to your <MadCap:variable name="Product-Names.broker_cloud_short"/>s.</li>
+        <li><b>Limits</b>—The number of event broker services for which you have a distributed tracing license. This number is the sum of the number of licenses shown in the In <b>Use</b> and <b>Available</b> columns.</li>
+      </ul>
+    </ul>
+    <h2><a name="Creating-Tracting-Dest"/>Creating a Tracing Destination</h2>
+    <p>The first step in deploying distributed tracing for your <MadCap:variable name="Product-Names.broker_cloud_short"/> is to create a tracing destination. The tracing destination configures your collector to send messages it receives from the receiver to your chosen tracing destination. You can create up to 10 tracing destinations. However, you can assign each <MadCap:variable name="Product-Names.broker_cloud_short"/> a single tracing destination. This allows your <MadCap:variable name="Product-Names.broker_cloud_short"/>s to send data to different observability backends. When creating a tracing destination, you have several destination options, including:</p>
+    <ul>
+      <li><MadCap:variable name="Product-Names.insights_long"/> (requires a <a href="Insights/Insights.htm" target="_blank" class="link-internal"><MadCap:variable name="Product-Names.insights_long"/> account</a>)</li>
+      <li>DataDog
+            </li>
+      <li>OTLP/gRPC endpoint
+            </li>
+      <li>OTLP/HTTP endpoint
+            </li>
+    </ul>
+    <p>The <MadCap:variable name="Product-Names.insights_long"/> option requires a <a href="Insights/Insights.htm" target="_blank" alt="link to Insights topic" class="link-internal">separate <MadCap:variable name="Product-Names.insights_long"/> account</a> and offers viewing of trace data in <MadCap:variable name="Product-Names.insights_short"/> without requiring additional configuration.</p>
+    <p>The other options on the list provide the ability to send trace data to the observability backends of your choice with some additional configuration. The OTLP options support sending your trace data using either gRPC or HTTP format, providing compatibility with a wide variety of observability backends, including Jaeger, DynaTrace, New Relic, and Grafana, among others. Observability backends may support one or both formats. When selecting a OTLP based option, you must select the format type and configure it so that it matches the format (HTTPS or gRPC) supported by your chosen observability backend. Refer to the documentation for your observability tool for information about the formats they support.
+</p>
+    <div class="Note">
+      <p>If you are deploying distributed tracing in a <MadCap:variable name="Product-Names.customer-controlled_region"/> with a proxy, you do not need to perform any additional configuration, other than to ensure your proxy does not block the tracing headers. The distributed tracing collector gets your proxy configuration from the <MadCap:variable name="Product-Names.cloud_agent_short"/> during initialization. See <MadCap:xref href="#UsingProxyCustControl">Using Distributed Tracing with a Proxy in a [%=Product-Names.customer-controlled_region%]</MadCap:xref>.</p>
+    </div>
+    <p>To create a tracing destination, perform these steps:
+        </p>
+    <ol>
+      <li>
+        <MadCap:snippetBlock src="../Resources/Snippets/Cloud/Task_UI_Snippets/login_console.flsnp"/>
+      </li>
+      <li>
+        <p>Click <b>User &amp; Account</b>, select <b>Account Details</b>, and then click the <b>Distributed Tracing</b> tab.</p>
+        <p>
+          <div class="thumbnail-container">
+            <img src="../Resources/Images/Cloud/DT_Account_to_DT.png" class="solacethumbnail" alt="Screenshot showing the elements described in the surrounding text."/>
+          </div>
+        </p>
+      </li>
+      <li>Click <b>Create Tracing Destination</b> to open the <b>Create Tracing Destination</b> dialog and use the fields on the information related to your tracing destination. Note that the fields change depending on the destination type you select.<ul><li><b>Name</b>—enter a name for the tracing destination.</li><li><b>Type</b>—select the service type and use the table below to guide your configuration options.</li><p><table style="width: 100%;mc-table-style: url('../Resources/TableStyles/Table_Num.css');border-left-style: solid;border-left-width: 1px;border-left-color: #e1e1e1;border-right-style: solid;border-right-width: 1px;border-right-color: #e1e1e1;border-top-style: solid;border-top-width: 1px;border-top-color: #e1e1e1;border-bottom-style: solid;border-bottom-width: 1px;border-bottom-color: #e1e1e1;margin-left: 0;margin-right: auto;" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Destination Type</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">Fields to configure</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><MadCap:variable name="Product-Names.insights_long"/></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1"><p>No additional configuration is required (requires a <a href="Insights/Insights.htm" target="_blank" class="link-internal"><MadCap:variable name="Product-Names.insights_long"/> account</a>).</p></td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Datadog</td><td class="TableStyle-Table_Num-BodyG-Column1-Body1"><ul><li><b>Region</b>—Select your Datadog region from the drop-down menu.<p>Your Datadog region is related to the URL you use to access your Datadog account. If you do not know your Datadog region, you can refer the table in the <a href="https://docs.datadoghq.com/getting_started/site/#access-the-datadog-site" target="_blank" class="link-offsite">Datadog documentation</a> to determine the region from the URL used to access your account. </p></li><li><b>API Key</b>—Enter your Datadog API key into the field.</li></ul></td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1">OTLP/gRPC endpoint</td><td class="TableStyle-Table_Num-BodyG-Column1-Body1" rowspan="2"><ul><li><p><b>Connection Type</b>—Select your connection type from the drop-down menu. You can choose secure (skips certificate authority validation) or insecure.</p><p><b>Note:</b> If your endpoint uses HTTPS and a self-signed certificate, you must choose <b>Secure (skips certificate authority validation)</b> for the connection type.</p></li><li><p><b>Endpoint</b>—Enter the host:port information for where the exporter will send the trace information using the protocol (HTTP or gRPC) supported by the observability backend. Refer to the documentation for your chosen observability backend for endpoint information and protocol support.</p></li><li><p><b>Header</b>—Enter the credentials required by your observability backend to send them your tracing data. </p></li></ul></td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1">OTLP/HTTP endpoint</td></tr></tbody></table></p></ul></li>
+      <li>
+        <p>Click <b>Save</b>.</p>
+      </li>
+      <li>Click <b>Create</b>. <p>The <b>Distributed Tracing</b> tab displays your tracing destination:</p><p><div class="thumbnail-container"><img src="../Resources/Images/Cloud/DT_TracingDestinationCreated.png" class="solacethumbnail" alt="Screenshot showing the elements described in the surrounding text."/></div></p></li>
+      <li>
+        <p>Optional: You can add additional tracing destinations by clicking <b>Create Tracing Destination</b> and repeating this procedure. You can create a maximum of 10 tracing destinations.</p>
+      </li>
+    </ol>
+    <h3><a name="EditingTracingDest"/>Editing a Tracing Destination</h3>
+    <p>You can edit your tracing destination if required. Note that updating your tracing destination does not update the distributed tracing service on the <MadCap:variable name="Product-Names.broker_cloud_short"/>s using that tracing destination automatically. You must update the <MadCap:variable name="Product-Names.broker_cloud_short"/> from the <b>Services Requiring Updates</b> window. See <MadCap:xref href="#Update">Updating the Tracing Destination</MadCap:xref>.</p>
+    <ol>
+      <MadCap:snippetBlock src="../Resources/Snippets/Cloud/DistributedTracing/Tracing_Profile_Start.flsnp"/>
+      <li>Click the <b>ellipsis </b><img src="../Resources/Images/Cloud/reusable-icons/more_actions_ellipsis.png" alt=""/> associated with the tracing destination you want to edit and select <b>Edit</b> to open the <b>Edit Tracing Destination</b> dialog.</li>
+      <li>Change the fields on the window as needed and click <b>Update.</b> <p>You must now update your <MadCap:variable name="Product-Names.broker_cloud_short"/>s to use the updated tracing destination. See <MadCap:xref href="#Update">Updating the Tracing Destination</MadCap:xref>.</p></li>
+    </ol>
+    <h3><a name="Update"/>Updating the Tracing Destination</h3>
+    <p>You can review and update the tracing destination for your <MadCap:variable name="Product-Names.broker_cloud_short"/>s as needed. </p>
+    <ol>
+      <MadCap:snippetBlock src="../Resources/Snippets/Cloud/DistributedTracing/Tracing_Profile_Start.flsnp"/>
+      <p>The notification banner under the <b>Tracing Destination</b> title indicates the number of <MadCap:variable name="Product-Names.broker_cloud_short"/>s that require updating, if any.</p>
+      <p MadCap:conditions="SAP.SapHideFromOutput">
+        <img src="../Resources/Images/Cloud/DT_ServicesNeedingUpdate.png" class="img-border" alt="Screenshot showing the elements described in the surrounding text."/>
+      </p>
+      <li>Click <b>View Services</b> to open the <b>Services Requiring Update</b>s dialog.
+        <p MadCap:conditions="SAP.SapHideFromOutput"><img src="../Resources/Images/Cloud/DT_ServicesRequiringUpdate.png" class="img-border" alt="Screenshot showing the elements described in the surrounding text."/></p></li>
+      <li>Click <b>Update</b> on any <MadCap:variable name="Product-Names.broker_cloud_short"/> that shows <b>Update</b> to upgrade the tracing destination for that <MadCap:variable name="Product-Names.broker_cloud_short"/>. From this dialog you can also click on the ellipsis <img src="../Resources/Images/Cloud/reusable-icons/more_actions_ellipsis.png" alt=""/> of any service and then click <b>Service Details</b> to open the <a href="cloud-configure-messaging-services.htm#service-details-information" target="_blank" class="link-internal">Status tab</a> of your service where you can view detailed service information, including whether you have deployed a license for distributed tracing to the service. </li>
+    </ol>
+    <h3><a name="DeletingTracingDestination"/>Deleting a Tracing Destination</h3>
+    <p>You can delete a tracing destination you have created. You should note that deleting a tracing destination will cause any enabled distributed tracing configurations on <MadCap:variable name="Product-Names.broker_cloud_short"/>s to fail. </p>
+    <ol>
+      <MadCap:snippetBlock src="../Resources/Snippets/Cloud/DistributedTracing/Tracing_Profile_Start.flsnp"/>
+      <li>Click the <b>ellipsis </b><img src="../Resources/Images/Cloud/reusable-icons/more_actions_ellipsis.png" alt=""/> associated with the tracing destination you want to delete and select <b>Delete</b>.</li>
+    </ol>
+    <h2><a name="Telemetry-Profile"/>Creating a Telemetry Profile</h2>
+    <p>The telemetry profile provides the information that your distributed tracing configuration requires to deploy the Collector and Receiver for your <MadCap:variable name="Product-Names.broker_cloud_short"/>.</p>
+    <ol>
+      <li>From the <MadCap:variable name="Product-Names.cluster_mgr"/> in the <MadCap:variable name="Product-Names.console_ui_short"/>, select an existing service, then click <b>More Actions</b> <img src="../Resources/Images/Cloud/reusable-icons/more_actions_ellipsis.png" alt=""/> and select <b>Open <MadCap:variable name="Product-Names.pubsubmanager_long"/></b>.<p><img src="../Resources/Images/Cloud/DT_GoTo_BrokerManager.png" class="img-border" alt="Screenshot showing the elements described in the surrounding text."/></p></li>
+      <li>In <MadCap:variable name="Product-Names.pubsubmanager_long"/>, click the <b>Telemetry</b> tab in the navigation bar and then click <b>Create Telemetry Profile</b> to open the <b>New Telemetry Profile</b> page.<p><img src="../Resources/Images/Cloud/DT_Create_Telemetry_Profile.png" class="img-border" alt="Screenshot showing the elements described in the surrounding text."/></p></li>
+      <li>Fill the following fields on the <b>New Telemetry Profile</b> page:<ul><li><b>Telemetry Profile</b>—Enter a name for the telemetry profile.</li><li><b>Trace</b>—Click to set to <b>Enabled</b>.</li><li><b>Receiver</b>—Click to set to <b>Enabled</b>.</li></ul><p>Optionally, fill the queue-related fields:</p><ul><li><b>Maximum Consumer Count</b>—Define the maximum number of consumer flows that can bind to the queue.</li><li><b>Message Queued Quota</b>—Define the maximum message spool usage allowed by the queue, in megabytes (MB).</li></ul><p>Optionally, click <b>Show Advanced Settings</b> to access settings such as alert thresholds and TCP settings for the receiver and alert thresholds for the queue.</p></li>
+      <li>
+        <p>When you have filled the appropriate fields, click <b>Apply</b> to create the telemetry profile and return to the <b>Telemetry Profile</b> page.</p>
+        <p>
+          <img src="../Resources/Images/Cloud/DT_New_Telemetry_Profile.png" class="img-border" alt="Screenshot showing the elements described in the surrounding text."/>
+        </p>
+      </li>
+      <li>Click the <b>Trace Filters</b> tab and then click <b>+ Trace Filters</b> to open the <b>Create Trace Filters</b> dialog.<p><img src="../Resources/Images/Cloud/DT_Create_Trace_Filters.png" class="img-border" alt="Screenshot showing the elements described in the surrounding text."/></p></li>
+      <li>In the <b>Trace Filter Name</b> field, enter a name for the trace filter and click <b>Create</b>.
+            <p>The <b>Edit Trace Filter Settings</b> page opens.</p></li>
+      <li>Click the <b>Enabled</b> toggle to enable the trace filter and then click <b>Apply</b>.<p><img src="../Resources/Images/Cloud/DT_Edit_Trace_Filter_window.png" class="img-border" alt="Screenshot showing the elements described in the surrounding text."/></p><p>You return to the <b>Telemetry Profile</b> page and <b>Yes</b> appears in the Enabled column for the trace filter you just created. </p></li>
+      <li> Click the trace filter to select it, select the <b>Subscriptions</b> tab, and then click <b>+ Subscription</b>.<p><img src="../Resources/Images/Cloud/DT_TraceFilter_SubsciptionsTab.png" class="img-border" alt="Screenshot showing the elements described in the surrounding text."/></p><p>The <b>Create Subscriptions</b> dialog opens. </p><p><div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/DT_Trace_Filter_Create_Sub.png" alt="Screenshot showing the elements described in the surrounding text."/></div></p></li>
+      <li>In the <b>Subscriptions</b> field, enter the subscriptions you want this trace filter to be subscribed to. You can add multiple subscriptions by pressing enter after each entry. You can optionally use the drop-down list to specify the protocol for each subscription—either SMF (Solace Message Format) or MQTT.</li>
+      <li> After adding your subscriptions, click <b>Create</b>. 
+            <p>You return to the Subscriptions tab.</p></li>
+      <li>Click the back arrow to return to the <b>Trace Filters</b> tab of the <b>Telemetry Profiles</b> page.<p><img src="../Resources/Images/Cloud/DT_Broker_Manager_Back.png" class="img-border" alt="Screenshot showing the elements described in the surrounding text."/></p></li>
+      <li>Select the <b>Receiver Connect ACLs</b> tab and click <b>Edit</b>.
+           
+                <p><img src="../Resources/Images/Cloud/DT_ReceiverConnectACLs_tab.png" class="img-border" alt="Screenshot showing the elements described in the surrounding text."/></p><p>The <b>Edit Receiver ACL Connect Settings</b> page opens.</p></li>
+      <li>In the <b>Client Connect Default Action</b> list, select <b>Allow</b>. <p><img src="../Resources/Images/Cloud/DT_ACLConnect_Allow.png" class="img-border" alt="Screenshot showing the elements described in the surrounding text."/></p></li>
+      <li>Click <b>Apply</b>.</li>
+      <p>You return to the <b>Telemetry Profile</b> page and your telemetry profile is ready to use once you enable distributed tracing on your <MadCap:variable name="Product-Names.broker_cloud_short"/>. See <MadCap:xref href="#Enabling">Enabling Distributed Tracing for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref> for more information.</p>
+    </ol>
+    <h3><a name="EditingTelemetryProfile"/>Editing a Telemetry Profile</h3>
+    <p>You can edit the various components of a telemetry profile that you have created. This does not affect the behavior of existing <MadCap:variable name="Product-Names.broker_cloud_short"/>s that have deployed distributed tracing using that telemetry profile. If you want the changes that you make to affect existing <MadCap:variable name="Product-Names.broker_cloud_short"/>s with distributed tracing, you must redeploy distributed tracing for the <MadCap:variable name="Product-Names.broker_cloud_short"/>s using the updated telemetry profile. See <MadCap:xref href="#Enabling">Enable Distributed Tracing for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref> for details.</p>
+    <ol>
+      <li>From the <b><MadCap:variable name="Product-Names.cluster_mgr"/></b> in the <MadCap:variable name="Product-Names.console_ui_short"/>, select an existing service. Click <b>Open <MadCap:variable name="Product-Names.pubsubmanager_long"/></b> and select the <b>Telemetry</b> tab.</li>
+      <li>Using the <b>Settings</b>, <b>Receiver Connect ACLs</b>, and <b>Trace Filters</b> tabs, navigate to the component you want to edit and click <b> Edit</b> <img src="../Resources/Images/Cloud/reusable-icons/brokermanager-edit-icon.png" alt=""/>.</li>
+      <li>Make the changes that you want and click <b>Apply</b>.</li>
+    </ol>
+    <h3><a name="DeletingTelemetryProfile"/>Deleting a Telemetry Profile</h3>
+    <p>You can delete a telemetry profile you have created. You should note that deleting a telemetry profile does not affect any <MadCap:variable name="Product-Names.broker_cloud_short"/>s that had deployed distributed tracing using that telemetry profile, but future distributed tracing deployments cannot use that telemetry profile. This action is permanent and cannot be reversed. </p>
+    <ol>
+      <li>From the <b><MadCap:variable name="Product-Names.cluster_mgr"/></b> in the <MadCap:variable name="Product-Names.console_ui_short"/>, select an existing service. </li>
+      <li>Click <b>Open <MadCap:variable name="Product-Names.pubsubmanager_long"/></b> and select the <b>Telemetry</b> tab.</li>
+      <li>Click <img src="../Resources/Images/Cloud/reusable-icons/brokermanager-action-icon.png" alt=""/> <b>Action</b> and select <img src="../Resources/Images/Cloud/reusable-icons/brokermanager-delete-icon.png" alt=""/> <b>Delete</b>.
+            <p>A confirmation window appears.</p></li>
+      <li>Click <b>OK</b>.</li>
+    </ol>
+    <h2><a name="Enabling"/>Enabling Distributed Tracing for an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h2>
+    <p>After you have created a <a href="#Creating-Tracting-Dest" class="link-internal">tracing destination</a> and <a href="#Telemetry-Profile" class="link-internal">telemetry profile</a>, you are ready to enable distributed tracing for your <MadCap:variable name="Product-Names.broker_cloud_short"/>.  </p>
+    <ol>
+      <MadCap:snippetBlock src="../Resources/Snippets/Cloud/DistributedTracing/DT_EnableDisableStart.flsnp"/>
+      <p>
+        <img src="../Resources/Images/Cloud/DT_AdvancedOptions.png" class="img-border" alt="Screenshot showing the elements described in the surrounding text."/>
+      </p>
+      <li>Scroll to <b>Distributed Tracing </b>and click <b>Enable</b>. A message appears, indicating that a license is being deployed to the <MadCap:variable name="Product-Names.broker_cloud_short"/>. After the operation completes, <b>Enabled</b> appears and a <b>Deploy Configuration</b> button appears.<p><img src="../Resources/Images/Cloud/DT_Enable_ForService.png" class="img-border" alt="Screenshot showing the elements described in the surrounding text."/></p></li>
+      <li>Click <b>Deploy Configuration</b> to open the Configure Data Collection dialog.<p><img src="../Resources/Images/Cloud/DT_Config_Data_Collection_Window.png" class="img-border" alt="Screenshot showing the elements described in the surrounding text."/></p></li>
+      <li>Click <b>Confirm and Deploy</b>. Note that if you  have multiple tracing destinations created, you must use the <b>Tracing Destination</b> field to select the tracing destination for the <MadCap:variable name="Product-Names.broker_cloud_short"/> and then click <b>Configure and Deploy</b>. A tracing destination and telemetry profile must already exist. See <MadCap:xref href="#Creating-Tracting-Dest">Creating a Tracing Destination</MadCap:xref> and <MadCap:xref href="#Telemetry-Profile">Creating a Telemetry Profile</MadCap:xref> for details.
+                <![CDATA[           ]]><p>You return to the Manage tab and a <b>Pending</b> status appears beside <b>Step 2: Trace Collection</b>. The configuration can take up to several minutes to complete and will remain in a <b>Pending</b> state until finalized. The status changes to <b>Active</b> after configuration is complete.</p><p><img src="../Resources/Images/Cloud/DT_Active_State.png" class="img-border" alt="Screenshot showing the elements described in the surrounding text."/></p></li>
+      <MadCap:snippetBlock src="../Resources/Snippets/Cloud/DistributedTracing/New_DT_username_for_Cloud.flsnp"/>
+      <p>You can disable distributed tracing for an <MadCap:variable name="Product-Names.broker_cloud_short"/>. See <MadCap:xref href="#Disable">Disable Distributed Tracing for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</p>
+    </ol>
+    <h3><a name="UsingProxyCustControl"/>Using Distributed Tracing with a Proxy in a <MadCap:variable name="Product-Names.customer-controlled_region"/></h3>
+    <p>You can use distributed tracing with a proxy in a <MadCap:variable name="Product-Names.customer-controlled_region"/>. This allows you to monitor the messages that travel through your estate while benefiting from the enhanced security features a proxy provides for your deployment. Using distributed tracing with a proxy is a hands-off experience: When you enable distributed tracing, the distributed tracing collector gets your proxy configuration from the <MadCap:variable name="Product-Names.cloud_agent_short"/> during initialization. Besides meeting the prerequisites listed <a href="#prereq_proxy_cust_cont" class="link-internal">below</a>, no additional configurations outside of the those detailed in this article are required.</p>
+    <h4><a name="prereq_proxy_cust_cont"/>Prerequisites for Using a Proxy in a <MadCap:variable name="Product-Names.customer-controlled_region"/></h4>
+    <p>To use distributed tracing with a proxy in your <MadCap:variable name="Product-Names.customer-controlled_region"/>, you must  configure the proxy in your environment so that it does not block the tracing headers. This ensures the distributed tracing spans reach their destination.</p>
+    <h4>Redeploying the Collectors Due to Proxy Changes</h4>
+    <p>If either of the following situations occur, you must redeploy the collectors by updating your distributed tracing configuration: </p>
+    <ul>
+      <li>
+        <p>If any changes are made to the proxy configurations contained in the <MadCap:variable name="Product-Names.cloud_agent_short"/></p>
+      </li>
+      <li>
+        <p>If you remove the proxy from your deployment.</p>
+      </li>
+    </ul>
+    <p>To update your distributed tracing configuration see <MadCap:xref href="#CheckStatusOf">Checking Status and Updating Distributed Tracing</MadCap:xref>.</p>
+    <h3><a name="CheckStatusOf"/>Checking Status and Updating Distributed Tracing</h3>
+    <p>You can check the status of distributed tracing on an <MadCap:variable name="Product-Names.broker_cloud_short"/>. Checking the status allows you to troubleshoot any issues with distributed tracing function or performance. You can also update the distributed tracing configuration for the <MadCap:variable name="Product-Names.broker_cloud_short"/> from the same window. </p>
+    <ol>
+      <MadCap:snippetBlock src="../Resources/Snippets/Cloud/DistributedTracing/DT_EnableDisableStart.flsnp"/>
+      <li>Scroll to <b>Distributed Tracing</b> and click <b>Check Status</b>. The status appears beside <b>Step 2: Trace Collection</b>. In the example below, the status is <b>Pending</b>.<p><img src="../Resources/Images/Cloud/DT_Check_DT_status.png" class="img-border"/></p></li>
+      <p>Trace collection can have one of the following statuses:</p>
+      <ul>
+        <li><b>Active</b>—Trace collection is active and trace events are being collected and delivered to your OpenTelemetry backend.</li>
+        <li><b>Pending</b>—Trace collection is pending. The status of distributed tracing is being queried or changes are being applied. </li>
+        <li><b>Failed</b>—Trace collection is not occurring. This status occurs for one or more of the following reasons: <ul><li>The collector is down.</li><li>The <MadCap:variable name="Product-Names.broker_cloud_short"/> cannot be found.</li><li>There was a timeout trying to connect to the <MadCap:variable name="Product-Names.broker_cloud_short"/>. </li><li>A connection cannot be made to the <MadCap:variable name="Product-Names.broker_cloud_short"/>.</li></ul></li>
+      </ul>
+      <li>Optionally, you can update the distributed tracing configuration for the <MadCap:variable name="Product-Names.broker_cloud_short"/>.  If you choose to update the distributed tracing configuration for an <MadCap:variable name="Product-Names.broker_cloud_short"/>, it updates all distributed tracing information, including any changes made to the telemetry profile and tracing destination. Updating the configuration may also resolve any failed status checks. <p>To update the distributed tracing configuration, click <b>Update Configuration</b> to open the <b>Configure Data Collection</b> dialog. If you have more than one tracing destination configured for the account, the <b>Tracing Destination</b> field shows the tracing destination assigned to the <MadCap:variable name="Product-Names.broker_cloud_short"/>. You can change the tracing destination by selecting a different one from the drop-down list..</p><p><img src="../Resources/Images/Cloud/DT_ConfigureDataCollection.png" class="img-border" alt="Screenshot showing the elements described in the surrounding text."/></p></li>
+      <li>Click <b>Confirm and Update</b>.</li>
+      <p> The status beside <b>Step 2: Trace Collection</b> displays <b>Pending</b>. When the update is complete, the status changes to one outlined in step 3. If the tracing status continues to return a failed state, <a href="../get-support.htm" target="_blank" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a> for support. </p>
+    </ol>
+    <h3><a name="Disable"/>Disabling Distributed Tracing</h3>
+    <p>You can disable distributed tracing for an <MadCap:variable name="Product-Names.broker_cloud_short"/>. Doing so releases the distributed tracing license so another <MadCap:variable name="Product-Names.broker_cloud_short"/> can use it. It also releases the collector, removing the telemetry profile you created for the <MadCap:variable name="Product-Names.broker_cloud_short"/>. It does not affect the tracing destination.</p>
+    <ol>
+      <MadCap:snippetBlock src="../Resources/Snippets/Cloud/DistributedTracing/DT_EnableDisableStart.flsnp"/>
+      <li>Scroll to <b>Distributed Tracing</b> and click <b>Disable</b>. 
+			<p>A message appears indicating that the license is being redeployed. When the disable operation is complete, an <b>Enable</b> button appears.</p></li>
+    </ol>
+    <h2 MadCap:conditions="SAP.SapHideFromOutput"><a name="Enable-Using-CLI"/>Using the <MadCap:variable name="Product-Names.solace_cli"/> to Enable Distributed Tracing for an <MadCap:variable name="Product-Names.broker_cloud_short_title"/></h2>
+    <p MadCap:conditions="SAP.SapHideFromOutput">You can configure and enable distributed tracing for <MadCap:variable name="Product-Names.broker_cloud_short"/>s using the <MadCap:variable name="Product-Names.solace_cli"/> if you have it enabled. For details see <MadCap:xref href="enable-cli-for-cloud.htm" target="_blank">Enabling the Solace CLI for [%=Product-Names.broker_cloud_short_title%]s in [%=Product-Names.cloud_product_titlecase%]</MadCap:xref>.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">To get started, you must log in to the CLI using a terminal like <a href="https://putty.org/" title="PuTTY.org" class="link-offsite">PuTTY</a> and provide the following commands:</p>
+    <pre xml:space="preserve" MadCap:conditions="SAP.SapHideFromOutput">SolaceCLI &gt; enable
+SolaceCLI # configure</pre>
+    <p MadCap:conditions="SAP.SapHideFromOutput">The remaining steps are identical to those used to configure distributed tracing for a <MadCap:variable name="Product-Names.broker_sw_short"/>. See <MadCap:xref href="../Features/Distributed-Tracing/Distributed-Tracing-Setup-Overview.htm" target="_blank">Configuring Distributed Tracing using the [%=Product-Names.solace_cli%]</MadCap:xref> for information.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">You should note that while <MadCap:variable name="Product-Names.broker_cloud_short"/>s in <MadCap:variable name="Product-Names.cloud_product_short"/> are scoped to only one message VPN, you must still provide the Message VPN name when using the <MadCap:variable name="Product-Names.solace_cli"/> to set up distributed tracing for the <MadCap:variable name="Product-Names.broker_cloud_short"/>. You can locate the name of the Message VPN for your <MadCap:variable name="Product-Names.broker_cloud_short"/> by selecting your service from <b><MadCap:variable name="Product-Names.cluster_mgr"/></b> and looking in the <b>DMR Cluster</b> section of the <b>Status</b> tab.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">
+      <div class="thumbnail-container">
+        <img src="../Resources/Images/Cloud/DT_MessageVPN_Name.png" class="solacethumbnail" alt="Screenshot showing the elements described in the surrounding text."/>
+      </div>
+    </p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For instructions, see <MadCap:xref href="../Features/Distributed-Tracing/Distributed-Tracing-Setup-Overview.htm">Configuring Distributed Tracing using the [%=Product-Names.solace_cli%]</MadCap:xref>.</p>
+  </body>
+</html>

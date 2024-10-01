@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1>Configuring Replication with a DMR Network</h1>
+    <p>You can take advantage of disaster recovery (using replication and Config-Sync) while using Dynamic Message Routing (DMR) to dynamically route messages through your event mesh. DMR provides a means to interconnect instances of Solace PubSub+ event brokers so that messages published by clients hosted by one broker can be consumed by clients hosted on another. After the relationships between brokers are established, the broker automatically discovers how to route messages. Client applications don't need to take any action to publish or consume messages across the event mesh.</p>
+    <p>For more information, see the following:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="Replication-DMR-Overview.htm">Using Replication with DMR</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="Data-Center-Replication-Overview.htm">Disaster Recovery using Replication</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="../DMR/DMR-Overview.htm">DMR Overview</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="../Config-Sync/Config-Sync-Overview.htm">Config-Sync Overview</MadCap:xref>
+      </li>
+    </ul>
+    <h4>Using These Procedures</h4>
+    <p>The instructions that follow are  applicable for both appliances and software event brokers, and for both single brokers and HA pairs.</p>
+    <p>Where a broker A (or B, etc.) is referenced, it may have an HA mate A' (or B', etc.). These procedures assume the following:</p>
+    <ul>
+      <li>broker A may have an HA mate A'</li>
+      <li>A is the primary broker, A' is the backup, and A is active</li>
+      <li>the redundancy status is UP</li>
+      <li>Config-Sync is enabled, and A and A' are currently synchronized</li>
+      <li>all nodes in the network are at the same software level</li>
+    </ul>
+    <p class="Note">In versions earlier than 10.0.1 replication was required to be enabled on all DMR-enabled Message VPNs. In versions 10.0.1 and later, replication may be enabled or disabled on all DMR-enabled Message VPNs. </p>
+    <p>While Config-Sync is operational, you need to make configuration changes <b>only on the active broker</b>, which in this example is broker A of the A/A' pair. Any special considerations required are listed with each procedure.</p>
+    <p class="Caution">Failing to follow these procedures, or using a procedure not listed here, may result in message loss.</p>
+    <h2 class="with-rule" style="page-break-before: always;"><a name="Adding-replication-mate"/>Adding a Replication Mate to a Node in a DMR Network</h2>
+    <p>You can add a replication mate to a node in a DMR network  without causing a service interruption to existing clients. During the procedure it is expected that the state of the cluster will be reported as DOWN and topology errors will be raised while links are being established between nodes. In spite of these errors, traffic will continue to flow through the network and no message loss is expected.</p>
+    <h3>Assumptions</h3>
+    <ul>
+      <li>broker A in cluster C has existing DMR links (internal or external) to brokers X<sub>1</sub> through X<sub>n</sub></li>
+      <li>the state of the clusters on all of A and X<sub>1..n</sub> is UP</li>
+      <li>broker B is to be added as the replication mate of A</li>
+      <li>all brokers using HA or replication have Config-Sync enabled and UP</li>
+    </ul>
+    <div class="thumbnail-container">
+      <img src="../../Resources/Images/DMR/DMR-DR/dmr-dr-add-dr-mate-1.png" class="solacethumbnail" alt=""/>
+    </div>
+    <h3>High Availability Considerations</h3>
+    <p>For software event brokers, you may have to provide a second connect-via address when you configure replication and links in the steps that follow. For example, when you configure the cluster link on A to B/B', you may have to provide the addresses for both B and B'.</p>
+    <h3>Steps</h3>
+    <ol>
+      <li>
+        <p>Configure replication as normal between A and B, such that A is active and B standby:</p>
+        <ol style="list-style-type: lower-alpha;">
+          <li>Set the global replication attributes on both A and B, such that A is the replication mate of B and vice-versa. See <MadCap:xref href="Replication-Sys-Level-Settings.htm">Configuring System-Level Replication Settings</MadCap:xref>.</li>
+          <li>Create all Message VPNs on B that will be replicated from A. See <MadCap:xref href="../VPN/Configuring-VPNs.htm">Configuring Message VPNs</MadCap:xref>.</li>
+          <li>Enable  replication for Message VPNs of A (active) and B (standby). See <MadCap:xref href="Replication-VPN-Level-Settings.htm#Enable-Replication">Enabling Replication</MadCap:xref>.
+					<p><div class="thumbnail-container"><img src="../../Resources/Images/DMR/DMR-DR/dmr-dr-add-dr-mate-2.png" class="solacethumbnail" alt=""/></div></p></li>
+        </ol>
+      </li>
+      <li>Wait for Config-Sync on A and B to report all replicated Message VPNs as being <code>Ready-InSync</code>.</li>
+      <li>Create cluster C on broker B, and configure its authentication and other attributes as needed. See <MadCap:xref href="../DMR/DMR-Mgmt-Cluster-Config.htm">Cluster Configuration</MadCap:xref>.</li>
+      <li>Create a new cluster link on A to B and on B to A (see <MadCap:xref href="../DMR/DMR-Mgmt-Cluster-Link-Config.htm">Cluster Link Configuration</MadCap:xref>). At a minimum, configure these link attributes:<ul><li>span to be <code>internal</code></li><li>authentication settings</li><li>connect-via must NOT be set</li><li>enabled</li></ul></li>
+      <li>
+        <p>Verify that the link between A and B is UP. See <MadCap:xref href="../DMR/DMR-Mgmt-Monitor.htm#Show-Cluster-Link">Displaying Cluster Link  Information</MadCap:xref>.</p>
+        <p>
+          <div class="thumbnail-container">
+            <img class="solacethumbnail" src="../../Resources/Images/DMR/DMR-DR/dmr-dr-add-dr-mate-3.png" alt=""/>
+          </div>
+        </p>
+      </li>
+      <li>For each broker X<sub>1</sub> through X<sub>n</sub> do the following:<ol style="list-style-type: lower-alpha;"><li>Wait for the cluster on X to report a missing link between X and B.</li><li>Create a new cluster link on X to B and on B to X  (see <MadCap:xref href="../DMR/DMR-Mgmt-Cluster-Link-Config.htm">Cluster Link Configuration</MadCap:xref>). The new link attributes must match the existing ones to and from A, other than those that relate specifically to B: <ul><li>authentication settings</li><li>connect-via</li></ul></li><li>If a new link has a span of <code>external</code>, on X, create the DMR bridges for each VPN between X and B, identical to those between X and A. See <MadCap:xref href="../DMR/DMR-Mgmt-Msg-Vpn.htm#Create-DMR-Bridge">DMR Bridge Configuration</MadCap:xref>.</li></ol></li>
+      <li>
+        <p>Verify that the links between X<sub>1</sub> through X<sub>n</sub> and B are UP. See <MadCap:xref href="../DMR/DMR-Mgmt-Monitor.htm#Show-Cluster-Link">Displaying Cluster Link  Information</MadCap:xref>.</p>
+        <p>
+          <div class="thumbnail-container">
+            <img class="solacethumbnail" src="../../Resources/Images/DMR/DMR-DR/dmr-dr-add-dr-mate-4.png" alt=""/>
+          </div>
+        </p>
+      </li>
+      <li>Verify that the cluster is UP on all brokers. See <MadCap:xref href="../DMR/DMR-Mgmt-Monitor.htm#Show-Cluster-Info">Displaying Cluster Information</MadCap:xref>.</li>
+    </ol>
+    <p>The new replication mate B is now fully integrated into the DMR network.</p>
+    <p>Optional: You can now move selected replicated Message VPNs on A such that they are active on B.</p>
+    <h2 class="with-rule" style="page-break-before: always;"><a name="Removing-replication-mate"/>Removing a Replication Mate from a Node in a DMR Network</h2>
+    <p>You can remove a replication mate from a node in a DMR network  without causing a service interruption to existing clients if the node being removed is not hosting any clients (i.e. it is replication standby). During the procedure it is expected that the state of the cluster will be reported as DOWN and topology errors will be raised  while links are being removed between nodes.  In spite of these errors, traffic will continue to flow through the network and no message loss is expected.</p>
+    <h3>Assumptions</h3>
+    <ul>
+      <li>broker A in cluster C has existing DMR links (internal or external) to brokers X<sub>1</sub> through X<sub>n</sub></li>
+      <li>the state of the cluster(s) on broker A and all brokers X<sub>1..n</sub> is UP</li>
+      <li>broker B (to be removed) is the replication mate of A</li>
+      <li>all Message VPNs have an active replication state on broker A and a standby replication state on broker B</li>
+      <li>all brokers using redundancy or replication have Config-Sync enabled and UP</li>
+    </ul>
+    <p>
+      <div class="thumbnail-container">
+        <img class="solacethumbnail" src="../../Resources/Images/DMR/DMR-DR/dmr-dr-remove-dr-mate-1.png" alt=""/>
+      </div>
+    </p>
+    <h3>Steps</h3>
+    <ol>
+      <li>On each broker X<sub>1</sub> through X<sub>n</sub>, disable and remove the cluster link to B:<pre class="Code" xml:space="preserve">broker-X1(configure)# routing
+broker-X1(configure/routing)# dynamic-message-routing
+broker-X1(...igure/routing/dynamic-message-routing)# cluster cluster-C
+broker-X1(...uting/dynamic-message-routing/cluster)# link broker-B
+broker-X1(...uting/dynamic-message-routing/cluster)# shutdown
+broker-X1(...uting/dynamic-message-routing/cluster)# exit
+broker-X1(...uting/dynamic-message-routing/cluster)# no link broker-B
+</pre><pre class="Code" xml:space="preserve">broker-X2(configure)# routing
+broker-X2(configure/routing)# dynamic-message-routing
+broker-X2(...igure/routing/dynamic-message-routing)# cluster cluster-C
+broker-X2(...uting/dynamic-message-routing/cluster)# link broker-B
+broker-X2(...uting/dynamic-message-routing/cluster)# shutdown
+broker-X2(...uting/dynamic-message-routing/cluster)# exit
+broker-X2(...uting/dynamic-message-routing/cluster)# no link broker-B
+</pre><pre class="Code" xml:space="preserve">...</pre><p>The resulting cluster looks like the following:</p><p><div class="thumbnail-container"><img class="solacethumbnail" src="../../Resources/Images/DMR/DMR-DR/dmr-dr-remove-dr-mate-2.png" alt=""/></div></p></li>
+      <li>Disable and remove cluster C on B:
+<pre xml:space="preserve" class="Code">broker-B(configure)# routing
+broker-B(configure/routing)# dynamic-message-routing
+broker-B(...igure/routing/dynamic-message-routing)# cluster cluster-C
+broker-B(...igure/routing/dynamic-message-routing)# shutdown
+broker-B(...igure/routing/dynamic-message-routing)# exit
+broker-B(...igure/routing/dynamic-message-routing)# no cluster cluster-C
+</pre></li>
+      <li>Disable and remove the cluster link on A to B (as in step 1).<p>Node B is no longer part of the cluster, but remains the replication mate of A, as shown in the following diagram:</p><p><div class="thumbnail-container"><img class="solacethumbnail" src="../../Resources/Images/DMR/DMR-DR/dmr-dr-remove-dr-mate-3.png" alt=""/></div></p></li>
+      <li>If a topology issue <code>One-way link between B and A</code> is present on A, wait for it to clear. This may take several minutes. <p class="Note">Proceeding to the next step before this topology issue clears may result in loss of persistent messages. Note that the presence of topology issue <code>External link missing between B and X</code> is normal at this step.</p></li>
+      <li>Disable and remove replication as normal between A and B. <ol style="list-style-type: lower-alpha;"><li>Disable replication for all Message VPNs of both A and B:
+<pre xml:space="preserve" class="Code">broker-A(configure)# message-vpn vpn-one
+broker-A(configure/message-vpn)# replication shutdown
+broker-A(configure/message-vpn)# exit
+broker-A(configure)# message-vpn vpn-two
+broker-A(configure/message-vpn)# replication shutdown
+broker-A(configure/message-vpn)# exit
+...</pre><pre xml:space="preserve" class="Code">broker-B(configure)# message-vpn vpn-one
+broker-B(configure/message-vpn)# replication shutdown
+broker-B(configure/message-vpn)# exit
+broker-B(configure)# message-vpn vpn-two
+broker-B(configure/message-vpn)# replication shutdown
+broker-B(configure/message-vpn)# exit
+...</pre></li><li>Remove global replication attributes on both A and B: 
+<pre xml:space="preserve" class="Code">broker-A(configure)# replication
+broker-A(configure/replication)# no interface
+broker-A(configure/replication)# no mate broker-B
+broker-A(configure/replication)# no mate connect-via &lt;addr-port&gt;</pre><pre xml:space="preserve" class="Code">broker-B(configure)# replication
+broker-B(configure/replication)# no interface
+broker-B(configure/replication)# no mate broker-A
+broker-B(configure/replication)# no mate connect-via &lt;addr-port&gt;
+</pre><p>In the preceding code, <code>&lt;addr-port&gt;</code> is the IP address or hostname of the event broker in the form <code>IP-address:port</code> or <code>hostname:port</code>, where the IP address is specified in the dotted decimal notation form <code>nnn.nnn.nnn.nnn</code> and port is the port number on the replication mate virtual router (specified as a decimal value from 0 to 65535).</p></li></ol></li>
+      <li>Verify that the cluster is UP on all brokers. See <MadCap:xref href="../DMR/DMR-Mgmt-Monitor.htm#Show-Cluster-Info">Displaying Cluster Information</MadCap:xref>.</li>
+    </ol>
+    <p>At this point B is fully removed from the DMR network and is no longer the replication mate of A, as shown below:</p>
+    <p>
+      <div class="thumbnail-container">
+        <img class="solacethumbnail" src="../../Resources/Images/DMR/DMR-DR/dmr-dr-remove-dr-mate-4.png" alt=""/>
+      </div>
+    </p>
+    <h2 class="with-rule" style="page-break-before: always;"><a name="replication-pairing-dmr-nodes"/>Pairing Two Nodes for Replication in a DMR Cluster</h2>
+    <p>It is service interrupting to make two nodes already part of a DMR network into a replication group—any clients that were hosted by one broker must be rehosted on the other. During the procedure it is expected that the state of the cluster will be reported as DOWN and topology errors will be raised for a period of time as links are being adjusted between nodes. Regardless of these errors, traffic will continue to flow through the network. </p>
+    <p class="Caution">On one of the brokers to be paired (in this case, B), messages that are either destined for or currently enqueued on that broker will be lost.</p>
+    <h3>Assumptions</h3>
+    <ul>
+      <li>brokers A and B are both in cluster C, joined by an internal link</li>
+      <li>brokers A and B have existing DMR links (internal or external) to brokers X<sub>1</sub> through X<sub>n</sub></li>
+      <li>the state of the clusters on all of A, B, and X<sub>1..n</sub> is UP</li>
+      <li>broker B is to become the replication mate of A</li>
+      <li>all brokers using HA or replication have Config-Sync enabled and UP (however, if B is a non-redundant broker Config-Sync is operationally DOWN on B until step 7, below)</li>
+      <li>clients of the replication group A/B have been configured to include the addresses of both A and B in their host lists</li>
+    </ul>
+    <p>
+      <div class="thumbnail-container">
+        <img class="solacethumbnail" src="../../Resources/Images/DMR/DMR-DR/dmr-dr-pair-two-nodes-1.png" alt=""/>
+      </div>
+    </p>
+    <h3>High Availability Considerations</h3>
+    <ul>
+      <li>For software event brokers, you may have to provide a second connect-via address when you configure replication and links in the steps that follow. For example, when you configure the cluster link on A to B/B', you may have to provide the addresses for both B and B'.</li>
+      <li>Enabling/disabling of the msg-backbone must be done on both B and B'.</li>
+    </ul>
+    <h3>Steps</h3>
+    <ol>
+      <li>Shut down the msg-backbone service on B. Any clients connected to B will move to A.
+<pre class="Code">
+broker-B(configure)# service msg-backbone shutdown</pre></li>
+      <li>Shut down and remove all cluster links on B to brokers X<sub>1</sub> through X<sub>n</sub><pre class="Code" xml:space="preserve">broker-B(configure)# routing
+broker-B(configure/routing)# dynamic-message-routing
+broker-B(...igure/routing/dynamic-message-routing)# cluster cluster-C
+broker-B(...uting/dynamic-message-routing/cluster)# link broker-X1
+broker-B(...uting/dynamic-message-routing/cluster)# shutdown
+broker-B(...uting/dynamic-message-routing/cluster)# exit
+broker-B(...uting/dynamic-message-routing/cluster)# no link broker-X1
+broker-B(...uting/dynamic-message-routing/cluster)# link broker-X2
+broker-B(...uting/dynamic-message-routing/cluster)# shutdown
+broker-B(...uting/dynamic-message-routing/cluster)# exit
+broker-B(...uting/dynamic-message-routing/cluster)# no link broker-X2
+...
+broker-B(...uting/dynamic-message-routing/cluster)# link broker-Xn
+broker-B(...uting/dynamic-message-routing/cluster)# shutdown
+broker-B(...uting/dynamic-message-routing/cluster)# exit
+broker-B(...uting/dynamic-message-routing/cluster)# no link broker-Xn</pre></li>
+      <li>On each broker X<sub>1</sub> through X<sub>n</sub>, disable and remove the cluster link to B.
+<pre class="Code" xml:space="preserve">broker-X1(configure)# routing
+broker-X1(configure/routing)# dynamic-message-routing
+broker-X1(...igure/routing/dynamic-message-routing)# cluster &lt;cluster-name&gt;
+broker-X1(...uting/dynamic-message-routing/cluster)# link broker-B
+broker-X1(...uting/dynamic-message-routing/cluster)# shutdown
+broker-X1(...uting/dynamic-message-routing/cluster)# exit
+broker-X1(...uting/dynamic-message-routing/cluster)# no link broker-B</pre><pre class="Code" xml:space="preserve">broker-X2(configure)# routing
+broker-X2(configure/routing)# dynamic-message-routing
+broker-X2(...igure/routing/dynamic-message-routing)# cluster &lt;cluster-name&gt;
+broker-X2(...uting/dynamic-message-routing/cluster)# link broker-B
+broker-X2(...uting/dynamic-message-routing/cluster)# shutdown
+broker-X2(...uting/dynamic-message-routing/cluster)# exit
+broker-X2(...uting/dynamic-message-routing/cluster)# no link broker-B</pre><pre class="Code" xml:space="preserve">...</pre><p>Node B is now connected only to Node A, as shown below:</p><p><div class="thumbnail-container"><img class="solacethumbnail" src="../../Resources/Images/DMR/DMR-DR/dmr-dr-pair-two-nodes-2.png" alt=""/></div></p></li>
+      <li>Configure replication as normal between A and B, such that A is active and B standby: <ol style="list-style-type: lower-alpha;"><li>Set global replication attributes on both A and B, such that A is the replication mate of B and vice-versa. See <MadCap:xref href="Replication-Sys-Level-Settings.htm#Config-Replication-Mates">Configuring Replication Mates</MadCap:xref>.</li><li>Create all Message VPNs on B that will be replicated from A. See <MadCap:xref href="../VPN/Configuring-VPNs.htm">Configuring Message VPNs</MadCap:xref>.</li><li>Enable replication for Message VPNs of A (active) and B (standby). See <MadCap:xref href="Replication-VPN-Level-Settings.htm#Enable-Replication">Enabling Replication</MadCap:xref>.</li></ol><p><div class="thumbnail-container"><img class="solacethumbnail" src="../../Resources/Images/DMR/DMR-DR/dmr-dr-pair-two-nodes-3.png" alt=""/></div></p></li>
+      <li>Remove the connect-via settings of the cluster link on A to B and on B to A.
+<pre class="Code" xml:space="preserve">broker-A(configure)# routing
+broker-A(configure/routing)# dynamic-message-routing
+broker-A(...igure/routing/dynamic-message-routing)# cluster cluster-C
+broker-A(...uting/dynamic-message-routing/cluster)# link broker-B
+broker-A(.../dynamic-message-routing/cluster/link)# shutdown
+broker-A(.../dynamic-message-routing/cluster/link)# no connect-via &lt;addr-port&gt;
+…
+broker-A(...uting/dynamic-message-routing/cluster)# link broker-B
+broker-A(.../dynamic-message-routing/cluster/link)# no shutdown</pre><pre class="Code" xml:space="preserve">broker-B(configure)# routing
+broker-B(configure/routing)# dynamic-message-routing
+broker-B(...igure/routing/dynamic-message-routing)# cluster cluster-C
+broker-B(...uting/dynamic-message-routing/cluster)# link broker-A
+broker-B(.../dynamic-message-routing/cluster/link)# shutdown
+broker-B(.../dynamic-message-routing/cluster/link)# no connect-via &lt;addr-port&gt;
+…
+broker-B(...uting/dynamic-message-routing/cluster)# link broker-A
+broker-B(.../dynamic-message-routing/cluster/link)# no shutdown
+
+</pre><p>In the preceding code, <code>&lt;addr-port&gt;</code> is the IP address or hostname of the event broker in the form <code>IP-address:port</code> or <code>hostname:port</code>, where the IP address is specified in the dotted decimal notation form <code>nnn.nnn.nnn.nnn</code> and port is the port number on the replication mate virtual router (specified as a decimal value from 0 to 65535).</p><p><div class="thumbnail-container"><img class="solacethumbnail" src="../../Resources/Images/DMR/DMR-DR/dmr-dr-pair-two-nodes-4.png" alt=""/></div></p></li>
+      <li>For each broker X<sub>1</sub> through X<sub>n</sub> do the following:<ol style="list-style-type: lower-alpha;"><li>Wait for the cluster on X to report a missing link between X and B.</li><li>Create a new link on B to X (see <MadCap:xref href="../DMR/DMR-Mgmt-Cluster-Link-Config.htm">Cluster Link Configuration</MadCap:xref>). At a minimum, configure these link attributes: <ul><li>span to either <code>internal</code> or <code>external</code> as appropriate</li><li>authentication settings</li><li>connect-via</li><li>enabled</li></ul>If the span is external, create the corresponding DMR bridges on B (see <MadCap:xref href="../DMR/DMR-Mgmt-Msg-Vpn.htm#Create-DMR-Bridge">Configuring a DMR Bridge</MadCap:xref>).</li></ol><p><div class="thumbnail-container"><img class="solacethumbnail" src="../../Resources/Images/DMR/DMR-DR/dmr-dr-pair-two-nodes-5.png" alt=""/></div></p></li>
+      <li>Enable the msg-backbone service on B.<pre class="Code" xml:space="preserve">
+broker-B(configure)# no service msg-backbone shutdown</pre></li>
+      <li>Wait for Config-Sync on A and B to report all replicated Message VPNs as being in-sync.</li>
+      <li>Verify that the link between A and B is UP. See <MadCap:xref href="../DMR/DMR-Mgmt-Monitor.htm#Show-Cluster-Link">Displaying Cluster Link Information</MadCap:xref>.</li>
+      <li>For each broker X<sub>1</sub> through X<sub>n</sub> do the following:<p>Create a new link on X to B  (see <MadCap:xref href="../DMR/DMR-Mgmt-Cluster-Link-Config.htm">Cluster Link Configuration</MadCap:xref>). At a minimum, configure these link attributes: </p><ul><li>span to either <code>internal</code> or <code>external</code> as appropriate</li><li>authentication settings</li><li>connect-via</li><li>enabled</li></ul><p>If the span is external, create the corresponding DMR bridges on X (see <MadCap:xref href="../DMR/DMR-Mgmt-Msg-Vpn.htm#Create-DMR-Bridge">Configuring a DMR Bridge</MadCap:xref>).</p><p><div class="thumbnail-container"><img class="solacethumbnail" src="../../Resources/Images/DMR/DMR-DR/dmr-dr-pair-two-nodes-5.png" alt=""/></div></p></li>
+      <li>Verify that the links between X<sub>1</sub> through X<sub>n</sub> and B are UP. See <MadCap:xref href="../DMR/DMR-Mgmt-Monitor.htm#Show-Cluster-Link">Displaying Cluster Link  Information</MadCap:xref>.</li>
+      <li>Verify that the cluster is UP on all brokers. See <MadCap:xref href="../DMR/DMR-Mgmt-Monitor.htm#Show-Cluster-Info">Displaying Cluster Information</MadCap:xref>.</li>
+    </ol>
+    <p>The new replication mate B is now fully integrated into the DMR network. </p>
+    <p>Optional: You can now move selected replicated Message VPNs on A such that they are active on B.</p>
+    <h2 class="with-rule" style="page-break-before: always;"><a name="Adding-replication-pair"/>Adding a Replication Group to a DMR Cluster</h2>
+    <p>You can add an existing replication group as new nodes to a DMR network without causing a service interruption to existing clients. During the procedure it is expected that the state of the cluster will report as being DOWN and topology errors will be raised for a period of time as links are being added between nodes. Regardless of this, existing traffic flow through the network will continue, and no message loss is expected.</p>
+    <h3>Assumptions</h3>
+    <ul>
+      <li>brokers A and B are a replication group without a cluster configured</li>
+      <li>all replicated Message VPNs on A and B are <code>active</code> on A and <code>standby</code> on B</li>
+      <li>brokers X<sub>1</sub> through X<sub>n</sub> belong to cluster C</li>
+      <li>the state of the cluster on all of X<sub>1..n</sub> is UP</li>
+      <li>all brokers using HA or replication have Config-Sync enabled and UP</li>
+    </ul>
+    <p>
+      <div class="thumbnail-container">
+        <img class="solacethumbnail" src="../../Resources/Images/DMR/DMR-DR/dmr-dr-add-dr-group-1.png" alt=""/>
+      </div>
+    </p>
+    <h3>High Availability Considerations</h3>
+    <p>For software event brokers, you may have to provide a second connect-via address when you configure replication and links in the steps that follow. For example, when you configure the cluster link on A to B/B', you may have to provide the addresses for both B and B'.</p>
+    <h3>Steps</h3>
+    <ol>
+      <li>Create cluster C on brokers A and B, and configure its authentication and other attributes as needed. See <MadCap:xref href="../DMR/DMR-Mgmt-Cluster-Config.htm">Cluster Configuration</MadCap:xref>.
+				<p><div class="thumbnail-container"><img class="solacethumbnail" src="../../Resources/Images/DMR/DMR-DR/dmr-dr-add-dr-group-2.png" alt=""/></div></p></li>
+      <li>On A, enable DMR for every Message VPN on X<sub>1</sub> through X<sub>n</sub> for which DMR is enabled.<pre xml:space="preserve" class="Code">broker-A(configure)# message-vpn vpn-one
+broker-A(configure/message-vpn)# dynamic-message-routing
+broker-A(...e/message-vpn/dynamic-message-routing)# no shutdown
+broker-A(configure/message-vpn)# exit
+broker-A(configure)# message-vpn vpn-two
+broker-A(configure/message-vpn)# dynamic-message-routing
+broker-A(...e/message-vpn/dynamic-message-routing)# no shutdown
+broker-A(configure/message-vpn)# exit
+...</pre></li>
+      <li>Create new cluster links from A to B and from B to A (see <MadCap:xref href="../DMR/DMR-Mgmt-Cluster-Link-Config.htm">Cluster Link Configuration</MadCap:xref>). At a minimum, configure these link attributes:<ul><li>span to be <code>internal</code></li><li>authentication settings</li><li>connect-via must NOT be set<br/></li><li>enabled</li></ul><p><div class="thumbnail-container"><img class="solacethumbnail" src="../../Resources/Images/DMR/DMR-DR/dmr-dr-add-dr-group-3.png" alt=""/></div></p></li>
+      <li>Verify that the link between A and B is UP (see <MadCap:xref href="../DMR/DMR-Mgmt-Monitor.htm#Show-Cluster-Link">Displaying Cluster Link Information</MadCap:xref>), and that cluster C is UP on both A and B (see <MadCap:xref href="../DMR/DMR-Mgmt-Monitor.htm#Show-Cluster-Info">Displaying Cluster Information</MadCap:xref>.).</li>
+      <li>Create a new cluster link on A to each broker X<sub>1</sub> through X<sub>n</sub> (see <MadCap:xref href="../DMR/DMR-Mgmt-Cluster-Link-Config.htm">Cluster Link Configuration</MadCap:xref>). At a minimum, configure these link attributes: <ul><li>span to be <code>internal</code></li><li>authentication settings</li><li>connect-via</li><li>enabled</li></ul></li>
+      <li>On each broker X<sub>1</sub> through X<sub>n</sub>, create a new link to A (see <MadCap:xref href="../DMR/DMR-Mgmt-Cluster-Link-Config.htm">Cluster Link Configuration</MadCap:xref>). At a minimum, configure these link attributes: :<ul><li>span to be <code>internal</code></li><li>authentication settings</li><li>connect-via</li><li>enabled</li></ul></li>
+      <li>Verify that the links between X<sub>1</sub> through X<sub>n</sub> and A are UP (see <MadCap:xref href="../DMR/DMR-Mgmt-Monitor.htm#Show-Cluster-Link">Displaying Cluster Link  Information</MadCap:xref>).<p><div class="thumbnail-container"><img class="solacethumbnail" src="../../Resources/Images/DMR/DMR-DR/dmr-dr-add-dr-group-4.png" alt=""/></div></p></li>
+      <li>Configure a new link on B to each broker X<sub>1</sub> through X<sub>n</sub> (see <MadCap:xref href="../DMR/DMR-Mgmt-Cluster-Link-Config.htm">Cluster Link Configuration</MadCap:xref>). At a minimum, configure these link attributes: <ul><li>span to be <code>internal</code></li><li>authentication settings</li><li>connect-via</li><li>enabled</li></ul></li>
+      <li>For each broker X<sub>1</sub> through X<sub>n</sub> do the following:<ol><li>Wait for the cluster on X to report a topology issue which can be either:<ul><li>a missing link between X and B</li><li>a one-way link between X and B</li></ul></li><li>Create a new link on X to B (see <MadCap:xref href="../DMR/DMR-Mgmt-Cluster-Link-Config.htm">Cluster Link Configuration</MadCap:xref>). At a minimum, configure these link attributes: <ul><li>span to be <code>internal</code></li><li>authentication settings</li><li>connect-via</li><li>enabled</li></ul></li></ol></li>
+      <li>Verify that the cluster is UP on all brokers. See <MadCap:xref href="../DMR/DMR-Mgmt-Monitor.htm#Show-Cluster-Info">Displaying Cluster Information</MadCap:xref>.<p><div class="thumbnail-container"><img class="solacethumbnail" src="../../Resources/Images/DMR/DMR-DR/dmr-dr-add-dr-group-5.png" alt=""/></div></p></li>
+    </ol>
+    <p>At this point, the new replication group A/B is fully integrated into the DMR network. If required, you can move the selected replicated Message VPNs on A so that they are active on B.</p>
+  </body>
+</html>

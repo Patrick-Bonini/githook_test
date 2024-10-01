@@ -1,0 +1,95 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+    <body>
+        <p>After you've configured the Primary and Backup sites be in the same DMR&#160;cluster, you must configure an internal DMR&#160;link between the Primary and Backup sites. </p>
+        <p>To configure each link between a node within the DMR&#160;cluster, at minimum in <MadCap:variable name="Product-Names.cloud_product_short" /> , configure these  link attributes:</p>
+        <ul>
+            <li>span to be internal</li>
+            <li>authentication settings</li>
+            <li><code>connect-via</code> must not be set</li>
+            <li>TLS&#160;must be enabled</li>
+            <li>the link must be enabled</li>
+        </ul>
+        <p>To create an internal DMR link, you use the <MadCap:variable name="Product-Names.solace_cli" /> and your global-admin account. </p>
+        <p class="Note">If you have other services in your DMR&#160;cluster, you must also request the global-admin password to those <MadCap:variable name="Product-Names.broker_cloud_short" />s.</p>
+        <p>The following steps show you how to configure the internal link using the <MadCap:variable name="Product-Names.solace_cli" />:</p>
+        <ol>
+            <li>If you haven't done so yet, use SSH to log in to the <MadCap:variable name="Product-Names.broker_cloud_short" /> using its generated hostname and your  <a href="../../../Cloud/DR-Replication/getting-global-admin-account.htm" class="link-internal">Global-Admin account</a>.&#160;For information, see <MadCap:xref href="../../../Cloud/DR-Replication/getting-global-admin-account.htm">Accessing the CLI&#160;for [%=Product-Names.broker_cloud_short_title%]s</MadCap:xref>. </li>
+            <li>In the <MadCap:variable name="Product-Names.console_ui_long" />, get the primary router name and the cluster password for both the <b>Primary</b> and <b>Backup</b> site (see the <b>Status</b> tab in <MadCap:variable name="Product-Names.cluster_mgr" />) and get the cluster name of the services, the cluster name for each service, and the primary router name. For example, these are the names we'll use in our example:<ul><li>Cluster name:&#160;my-first-cluster</li><li>Primary site:<ul><li>Primary router name:&#160;nanoproductionazzn9vsqdk5solaceprimary0</li><li>Cluster Password:&#160;myprimarysiteclusterpassword</li></ul></li><li>Backup site:<ul><li>Primary router name:&#160;nanoproduction89il3uubs0csolaceprimary0</li><li>Cluster Password:&#160;mybackupsiteclusterpassword</li></ul></li></ul></li>
+            <li>
+                <p>Use the <MadCap:variable name="Product-Names.solace_cli" />&#160;to create an internal DMR&#160;link between the Backup site and Primary site. In this example, this is a two-step process for a single link that requires you to:</p>
+                <ul>
+                    <li> Access the  Primary site to:<ul><li>create an internal DMR&#160;link between the Primary and Backup site using the primary router name of the Backup site</li><li>enable SSL&#160;on the link</li><li>configure authentication (in our example, we use basic authentication using the cluster password for the Backup site)</li><li>enable the link</li></ul></li>
+                    <li>&#160; Access the  Backup site to: <ul><li>create an internal DMR&#160;link between the Backup and Primary site using the primary router name of the Primary site</li><li>enable SSL&#160;on the link</li><li>configure authentication (in our example, we use basic authentication using the cluster password for the Primary site)</li></ul></li>
+                </ul>
+                <p>You must complete these steps on each <MadCap:variable name="Product-Names.broker_cloud_short" /></p><pre xml:space="preserve">
+SolaceCLI &gt; enable
+SolaceCLI # configure
+SolaceCLI (configure)# routing dynamic-message-routing
+SolaceCLI (...igure/routing/dynamic-message-routing)# cluster &lt;cluster-name&gt;
+SolaceCLI (...uting/dynamic-message-routing/cluster)# create link &lt;other-site-primary-router-name&gt; 
+SolaceCLI (.../dynamic-message-routing/cluster/link)# span internal
+SolaceCLI (.../dynamic-message-routing/cluster/link)# transport ssl
+SolaceCLI (.../dynamic-message-routing/cluster/link)# authentication basic password &lt;other-site-cluster-pw&gt;</pre>
+                <p>For example, on the Primary site:</p><pre xml:space="preserve">
+nano-production-azzn9vsqdk5-solace-primary-0&gt; enable
+nano-production-azzn9vsqdk5-solace-primary-0# configure
+nano-production-azzn9vsqdk5-solace-primary-0(configure)# routing dynamic-message-routing
+nano-production-azzn9vsqdk5-solace-primary-0(...igure/routing/dynamic-message-routing)# cluster  my-first-cluster 
+nano-production-azzn9vsqdk5-solace-primary-0(...uting/dynamic-message-routing/cluster)# create link nanoproduction89il3uubs0csolaceprimary0
+nano-production-azzn9vsqdk5-solace-primary-0(.../dynamic-message-routing/cluster/link)# span internal
+nano-production-azzn9vsqdk5-solace-primary-0(.../dynamic-message-routing/cluster/link)# transport ssl
+nano-production-azzn9vsqdk5-solace-primary-0(.../dynamic-message-routing/cluster/link)# authentication basic password mybackupsiteclusterpassword
+nano-production-azzn9vsqdk5-solace-primary-0(.../dynamic-message-routing/cluster/link)# no shutdown
+</pre>
+                <p>For example, on the Backup site:</p><pre xml:space="preserve">
+nano-production-89il3uubs0c-solace-primary-0&gt; enable
+nano-production-89il3uubs0c-solace-primary-0# configure
+nano-production-89il3uubs0c-solace-primary-0(configure)# routing dynamic-message-routing
+nano-production-89il3uubs0c-solace-primary-0(...igure/routing/dynamic-message-routing)# cluster  my-first-cluster
+nano-production-89il3uubs0c-solace-primary-0(...uting/dynamic-message-routing/cluster)# create link nanoproductionazzn9vsqdk5solaceprimary0
+nano-production-89il3uubs0c-solace-primary-0(.../dynamic-message-routing/cluster/link)# span internal
+nano-production-89il3uubs0c-solace-primary-0(.../dynamic-message-routing/cluster/link)# transport ssl
+nano-production-89il3uubs0c-solace-primary-0(.../dynamic-message-routing/cluster/link)# authentication basic password myprimarysiteclusterpassword
+nano-production-89il3uubs0c-solace-primary-0(.../dynamic-message-routing/cluster/link)# no shutdown</pre>
+                <p class="Note">Typically, it takes under five minutes as the internal DMR&#160;link between the Primary and Backup site synchronize, but this may vary depending on network factors such as latency.</p>
+            </li>
+            <li>
+                <p>Run the <code>show cluster *&#160;link *</code>&#160;command to verify the internal DMR&#160;link you created is up (the name of the link is what you specified when you ran the <code>create link</code> command. </p><pre xml:space="preserve">show cluster *&#160;link *&#160;</pre>
+                <p>For example, on the Primary site:</p><pre xml:space="preserve">SolaceCLI&#160;&gt;&#160;show cluster *&#160;link *&#160;
+Cluster Name          : my-first-cluster
+Node Name             : nanoproductionazzn9vsqdk5solaceprimary0
+Link                                     Admin Oper  Fail Reason / Uptime
+---------------------------------------  ----- ----- ----------------------------
+#ACTIVE                                  Up    Up    43d 3h 45m 13s
+nanoproduction89il3uubs0csolaceprimary0  Up    Up    0d 9h 41m 55s</pre>
+                <p>To see the status of the individual link, run the following command:</p><pre xml:space="preserve">show cluster &lt;cluster-name&gt;&#160;link &lt;link-name&gt;</pre>
+                <p>For example, on the Primary site:</p><pre xml:space="preserve">show cluster  my-first-cluster link * detail
+...
+...
+Remote Node Name        : nanoproduction89il3uubs0csolaceprimary0 
+Enabled               : Yes
+Span                  : internal
+Initiator             : lexical
+Connect-Via           :
+Message Spool
+Window Size         : 255
+Transport
+Compressed          : No
+SSL                 : Yes
+Authentication
+Auth-Scheme         : Basic
+Basic
+Password?         : Yes
+Attributes
+nodeName            : nanoproductionazzn9vsqdk5solaceprimary0
+span                : internal
+Operational           : Yes
+Fail Reason         :
+Uptime              : 0d 9h 50m 14s
+Channels Up         : 1 of 1
+Remote Cluster Name : my-first-cluster</pre>
+            </li>
+        </ol>
+    </body>
+</html>

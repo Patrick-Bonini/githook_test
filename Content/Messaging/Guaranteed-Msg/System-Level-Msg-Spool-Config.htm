@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>System-Level Message Spool Configuration</h1>
+    <p>This section provides information on the system-level message spool parameters that you can configure for the <MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker. These parameters are critical to the operation of Guaranteed Messaging. This section also provides information on how to enable or disable message spooling for an event broker.</p>
+    <p>In addition to configuring the message spool parameters when using Guaranteed Messaging, it is important to consider the maximum number of messages that the event broker can store in the message spool. You can increase the number of queue messages supported by the event broker using the <code>max-queue-messages</code> system scaling parameter. For more information, see <MadCap:xref href="../../Software-Broker/System-Scaling-Parameters.htm#max-queue-messages">Maximum Number of Queue Messages</MadCap:xref>.</p>
+    <div class="Note">
+      <p class="Tbl_Body">Config-Sync will not automatically synchronize the hardware properties. Therefore, if the event broker is being used in a high-availability (HA) pair or in a replicated site, you must manually configure the hardware message-spool properties on each mate event broker or replicated Message VPN.</p>
+      <p> To determine whether an object or property is synchronized, look up the command used to configure the object or property in the <MadCap:xref href="../../Admin/Solace-CLI/Command-Line-Reference.htm">Command Line Interface Reference</MadCap:xref>, or, in the Solace CLI, end the command with "?". The Help will list whether the object/property is synchronized.</p>
+    </div>
+    <p class="Note">When high-availability (HA) redundant event brokers are used,  enable Config-Sync for each event broker in the redundant pair. Enabling Config-Sync can reduce possible configuration and input errors and increase the speed at which Guaranteed Messaging information is handled if a redundancy switchover occurs. For more, see <MadCap:xref MadCap:unresolvedLink="import-link:redundancy_and_fault_tolerance_506099482_55200" href="../../Features/Config-Sync/Config-Sync-Overview.htm">Config-Sync Overview</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Config-Ext-Disks"/>Configuring External Disk Arrays</h2>
+    <p>When using Guaranteed Messaging for either a standalone appliance or a redundant pair of appliances, an external disk storage array can be used for spooling messages.</p>
+    <p>To configure the Worldwide Name (WWN) used when accessing a LUN on an external disk storage array, enter the following  CONFIG commands:</p>
+    <p class="Code">solace# configure<br/>solace(configure)# hardware message-spool<br/>solace(configure/hardware/message-spool)# disk-array wwn &lt;wwn&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>wwn &lt;wwn&gt;</code> is the Worldwide Name. If in Network Address Authority (NAA) format, it is a unique 8-byte or 16-byte number represented as a string of hex characters separated by colons starting with 1, 2, 5, or 6 (for example: <code>50:00:2a:c0:00:f1:33:74</code> or <code>60:06:01:60:bf:51:12:00:9a:fb:40:97:83:3f:dc:11</code>). If not in NAA format, it can be any string without colons. The default is Null.</p>
+    <div class="Note">
+      <ul>
+        <li>Before configuring the WWN for an external disk storage array through the <code>disk-array</code> Message Spool CONFIG command, you must first (in the order given): <ul><li>delete all the messages spooled on the appliance for clients using the <code>delete-messages</code> Message Spool Admin EXEC command </li><li>enter the <code>shutdown</code> Message Spool CONFIG command to stop message spooling on the appliance (if started)</li><li>disable the internal disk drive on the appliance for message spooling through the <code>no internal-disk</code> Message Spool CONFIG command</li></ul></li>
+        <li>The no version of this command (<code>no disk-array</code>) resets the WWN to its default value of Null.</li>
+        <li>For information on how to configure the partitions and file system on the event broker once there is access to the LUN on the external disk storage array, see <MadCap:xref href="Configuring-External-Disk-Arrays.htm">Configuring External Disk Arrays for Guaranteed Messaging</MadCap:xref>.</li>
+      </ul>
+    </div>
+    <div class="Caution">
+      <p class="Tbl_Body">The file system of an external disk storage array can be corrupted if two or more non-redundant event brokers assert ownership for the same external disk storage array and successfully modify the same file system.</p>
+      <p>To avoid this, the mounting of the external disk storage array is stopped if a disk ownership conflict is detected, and declares the disk storage array unusable by the display of "Disk Contents Invalid" in the detailed status and usage item summary screen output by the <code>show message-spool detail</code> User EXEC command.</p>
+      <p>The system administrator can then make one of the event brokers take ownership of the conflicted disk storage array by using the <code>assert-disk-ownership</code> Message Spool Admin EXEC command.</p>
+    </div>
+    <h2 class="with-rule"><a name="Msg-Spool-Thresh"/>Configuring Event Thresholds for the System Message Spool </h2>
+    <p>To configure the thresholds that control when system-level message spool events are generated for the event broker, enter the following CONFIG commands:</p>
+    <p class="Code">solace# configure<br/>solace(configure)# hardware message-spool<br/>solace(configure/hardware/message-spool)# event</p>
+    <p>From this level of the CLI, you can now configure the thresholds at which the broker generates system-level events pertaining to the message spool.</p>
+    <p class="Note">For information on the available system-level message-spool events and how to set the thresholds for them, see <MadCap:xref href="../../Monitoring/Configuring-System-Event-Thresholds.htm#Msg-Spool">Configuring System Message Spool Event Thresholds</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Config-Max-Spool"/>Configuring Max Spool Usage</h2>
+    <p>To configure the maximum amount of disk space that can be used to spool messages, enter the following CONFIG commands:</p>
+    <p class="Code">solace# configure<br/>solace(configure)# hardware message-spool<br/>solace(configure/hardware/message-spool)# max-spool-usage &lt;size&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;size&gt;</code> is an integer that specifies the maximum amount of message spool disk space (in MB) the broker as a whole can use. The valid range is from 0 (in which case spooling is effectively disabled) to the maximum amount of message spool disk space supported for the entire system. For details about the default values for this setting, see <MadCap:xref href="Message-Spooling.htm#max-spool-usage">Maximum Spool Usage</MadCap:xref>.</p>
+    <p>The no version of this command, <code>no max-spool-usage</code>, resets the size of the Local Spool Quota for the event broker back to the default value.</p>
+    <p class="Note">When using an external disk storage array for Guaranteed Messaging with a redundant appliance pair, two partitions need to be created on the array—one partition for each appliance. The partition sizes required depend on the maximum size configured for the message spool disk space using this command. A general rule of thumb is to create two partitions that are 1.1 times the maximum size configured for the message spool disk space. For example, if  you configure the maximum spool usage for appliances to be 600,000 MB using this command (that is, 600 GB), then Solace recommends you create two partitions on the array sized 600 x 1.1. This equals 660 GB for each partition, for a total of 1,320 GB Logical Unit Number (LUN). For further information, see <MadCap:xref href="../../Features/HA-Redundancy/Appliance-Redundancy-and-Fault-Tolerance.htm#redundancy_and_fault_tolerance_344917737_295043">SAN Behavior for Guaranteed Messaging Through Active/Standby Redundancy</MadCap:xref>. For information on how to configure the partitions and file system on the Solace PubSub+ appliance once there is access to the LUN on the external disk storage array, see <MadCap:xref href="Configuring-External-Disk-Arrays.htm">Configuring External Disk Arrays for Guaranteed Messaging</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Config-Max-Cache"/>Configuring Max Cache Usage</h2>
+    <p>When an event broker is processing Guaranteed messages, its Guaranteed Message Cache can use some of the data buffer resources that are also used for its NAB egress queues (see <MadCap:xref href="../Managing-Event-Delivery-Resources.htm">Managing Message Delivery Resources</MadCap:xref>).</p>
+    <p>To configure the maximum percentage of the NAB data buffer resources that the Guaranteed Message Cache can use, enter the following CONFIG commands:</p>
+    <p class="Code">solace# configure<br/>solace(configure)# hardware message-spool<br/>solace(configure/hardware/message-spool)# max-cache-usage &lt;percent-usage&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;percent-usage&gt;</code> is the maximum amount of the NAB data buffers (as a percentage) that the Guaranteed Message Cache is allowed to use. The valid values are 0 (disables the Guaranteed Message Cache feature), or 1 through 50. The default is 10.</p>
+    <p>The no version of this command, <code>no max-cache-usage</code>, resets the maximum percentage of the NAB data buffers that the Guaranteed message cache can use back to the default value.</p>
+    <p class="Note">When the Guaranteed Message Cache's utilization reaches the maximum limit, the Guaranteed Message Cache is not used to process subsequent Guaranteed messages.
+        </p>
+    <h2 class="with-rule"><a name="Config-Active-Active-Role"/>Configuring the Active/Active HA Role for Guaranteed Messaging</h2>
+    <p>If the HA configuration is set to active/active, you must configure the HA role an appliance will take for Guaranteed Messaging.</p>
+    <p>If the HA configuration is not set to active/active (in other words if the active/standby role is set to something other than <code>none</code>), this setting is ignored by the appliance and has no impact on the Guaranteed Messaging configuration.  For more information about  the active/standby role, refer to <MadCap:xref href="../../Features/HA-Redundancy/Configuring-Appliance-Redundancy-Parameters.htm#Assignin">Assigning the Active/Standby Role</MadCap:xref>.</p>
+    <p>To configure the HA role an appliance will take for Guaranteed Messaging if the HA configuration is set to active/active, enter the following CONFIG commands:</p>
+    <p class="Code">solace# configure<br/>solace(configure)# hardware message-spool<br/>solace(configure/hardware/message-spool)# virtual-router-when-active-active {primary | backup}</p>
+    <p>
+      <u>Where:</u>
+    </p>
+    <p><code>primary</code> sets the HA role   to primary. In other words, this enables the message spool for the primary virtual router. </p>
+    <p><code>backup</code> sets the HA role   to backup. In other words, this enables the message spool for the backup virtual router.</p>
+    <p>The no version of this command, <code>no virtual-router-when-active-active</code>, resets the HA role back to the default value (primary). </p>
+    <h2 class="with-rule"><a name="Enable-Disk"/>Enabling the Internal Disk for Message Spooling</h2>
+    <p>By default, the internal physical disk drive of a appliance is disabled for message spooling with Guaranteed Messaging, and a customer-supplied external disk storage array must be used for message spooling with Guaranteed Messaging.</p>
+    <p class="Note">Solace recommends using a customer-supplied external disk storage array to support Guaranteed Messaging. Using the internal appliance disk drive for message spooling is not recommended. For more information, <a href="../../get-support.htm" class="link-internal">contact Solace</a>.</p>
+    <p>To enable an appliance's internal disk drive for message spooling, enter the following CONFIG commands:</p>
+    <p class="Code">solace# configure<br/>solace(configure)# hardware message-spool<br/>solace(configure/hardware/message-spool)# internal-disk</p>
+    <p>The no version of this command, <code>no internal-disk</code>, disables the internal disk drive for message spooling.</p>
+    <div class="Note">
+      <ul>
+        <li>Before changing between internal and external disks through the <code>internal-disk</code> Message Spool CONFIG command, you must first do the following (in the order given): <ol><li>Reset the message spool. See <MadCap:xref href="Sys-Level-Msg-Spool-Admin-Tasks.htm#Resettin">Resetting the Guaranteed Message Spool</MadCap:xref> for instructions.</li><li>Stop message spooling on the event broker (if started) using the <code>shutdown</code> Message Spool CONFIG command.</li></ol></li>
+        <li>The internal disk drive cannot be enabled for message spooling through the <code>internal-disk</code> Message Spool CONFIG command if event broker redundancy is enabled. In this case, you must first stop the event broker redundancy facility on the event broker (if running) through the <code>shutdown</code> Redundancy CONFIG command:</li>
+        <p class="Code">solace(configure)# redundancy<br/>solace(configure/redundancy)# shutdown</p>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="Enable-Guaranteed"/>Enabling Guaranteed Message Spooling</h2>
+    <div class="Caution">
+      <ul>
+        <li>Always perform message spool state changes within a maintenance window to prevent service interruption.<br/></li>
+        <li>Always disconnect all client connections before changing the message spool state on an event broker. To disconnect a client connection, either close the client Session through the Solace messaging API, or terminate the client application.<br/></li>
+        <li>After message spool state changes are completed on the event broker, clients may reconnect to it.</li>
+        <li>When setting up a network of event brokers for Guaranteed Messaging service, always perform the message spool state changes before configuring neighbor links between the event brokers. Otherwise, they may not advertise their Guaranteed Messaging capabilities correctly to each other.</li>
+      </ul>
+    </div>
+    <p>By default, Guaranteed Message spooling is not enabled for Solace PubSub+ appliances, but it is enabled for Solace PubSub+ software event brokers.</p>
+    <ul>
+      <li>To start Guaranteed Message spooling, enter the CONFIG commands:
+                <p class="Code">solace# configure<br/>solace(configure)# hardware message-spool<br/>solace(configure/hardware/message-spool)# no shutdown</p></li>
+      <li>To stop Guaranteed Message spooling on the event broker, enter the following CONFIG command:
+                <p class="Code">solace(configure/hardware/message-spool)# shutdown</p></li>
+    </ul>
+    <div class="Note">
+      <ul>
+        <li>The <code>no shutdown primary</code> Message Spool CONFIG command is not allowed if:<ul><li>The <code>no shutdown backup</code> Message Spool CONFIG command has been entered beforehand. In this case, you must enter the <code>shutdown</code> Message Spool CONFIG command first to disable the backup event broker configuration. </li><li>There are already messages spooled for the backup event broker (that is, backup VRID). In this case, you must first delete all spooled messages for all clients using the <code>delete-messages</code> Message Spool Admin EXEC command.</li><li>An appliance's internal disk is disabled for message spooling, and the worldwide name (WWN) used when accessing a LUN on an external disk storage array has not been configured beforehand through the <code>disk-array</code> Message Spool CONFIG command. In this case, you must first configure the WWN for the external disk storage array.</li></ul></li>
+        <li>The <code>no shutdown backup</code> Message Spool CONFIG command is not allowed if:<ul><li>The <code>no shutdown primary</code> Message Spool CONFIG command has been entered beforehand. In this case, you must enter the <code>shutdown</code> Message Spool CONFIG command first to disable the primary event broker configuration. </li><li>There are already messages spooled for the primary event broker (that is, primary VRID). In this case, you must first delete all spooled messages for all clients using the <code>delete-messages</code> Message Spool Admin EXEC command.</li><li>The event broker's internal disk drive is enabled for message spooling through the <code>internal-disk</code> Message Spool CONFIG command. In this case, you must first enter the <code>no internal-disk</code> Message Spool CONFIG command to disable the internal disk drive for message spooling.</li><li>The event broker's internal disk drive is disabled for message spooling through the <code>no internal-disk</code> Message Spool CONFIG command, and the worldwide name (WWN) used when accessing a LUN on an external disk storage array has not been configured beforehand through the <code>disk-array</code> Message Spool CONFIG command. In this case, you must first configure the WWN for the external disk storage array.</li></ul></li>
+        <li>Running the <code>no shutdown primary</code> or <code>no shutdown backup</code> Message Spool CONFIG commands automatically clear all current statistics for spooled messages.</li>
+      </ul>
+    </div>
+  </body>
+</html>

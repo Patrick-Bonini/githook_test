@@ -1,0 +1,443 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><MadCap:concept term="Appliance"/>Disk Drive Replacement</h1>
+    <p>This section describes how to replace a failed disk drive in the following Solace PubSub+ appliances:</p>
+    <ul>
+      <li>
+        <u>Solace PubSub+ 3230</u>
+      </li>
+      <p>A PubSub+ 3230 comes with two disk drives pre-installed in drive bays that are accessible from the front of the appliance. The disk drives are pre‑configured as a RAID 1 array.</p>
+      <li>
+        <u>Solace PubSub+ 3260</u>
+      </li>
+      <p>A PubSub+ 3260 comes with two disk drives pre-installed in drive bays that are accessible from the front of the appliance. The disk drives are pre-configured as a RAID 1 array.</p>
+      <li>
+        <u>Solace PubSub+ 3530/3560</u>
+      </li>
+      <p>A PubSub+ 3530 or PubSub+ 3560 has four system drive bays that are accessible from the front of the appliance. The drives are fully hot swappable, which allows you to remove and install a disk drive without powering down the appliance or removing it from its rack.</p>
+    </ul>
+    <h2 class="with-rule"><a name="ESD/Safe"/>ESD/Safety Precautions</h2>
+    <p>Before replacing appliance disk drives, review the following safety warning.</p>
+    <div class="Caution">
+      <p>To prevent equipment damage from Electrostatic Discharge (ESD), always ensure that the appliance chassis is electrically connected to earth ground. Always follow ESD prevention procedures when removing and replacing power supplies. Use an anti-static wrist strap, or another anti-static device. If no wrist strap or mat is available, touch the metal part of the chassis to ground yourself.</p>
+    </div>
+    <h2 class="with-rule"><a name="Tools"/>Tools and Equipment Requirements</h2>
+    <ul>
+      <li>No. 2 Phillips head screwdriver (Solace PubSub+ 3230s and 3260s)</li>
+      <li>Electrostatic discharge wrist strap </li>
+      <li>Anti-static mat </li>
+      <li>Replacement disk drive (supplied by Solace)</li>
+    </ul>
+    <h2 class="with-rule"><a name="hardware_maintenance_tasks_3613430003_439516"/>Replacing PubSub+ 3230 Disk Drives</h2>
+    <p>To replace a disk drive in a Solace PubSub+ 3230, perform the following steps:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_351372">Step 1: Shut Down a Failed Disk Drive</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_398299">Step 2: Remove the Appliance Faceplate</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_351503">Step 3: Remove a Failed Disk Drive</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_351563">Step 4: Install a New Disk Drive</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_351670">Step 5: Replace the Appliance Faceplate</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_376843">Step 6: Enable and Rebuild the Replaced Disk</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="hardware_maintenance_tasks_3613430003_351372"/>Step 1: Shut Down Failed Disk Drive</h3>
+    <p>To shut down a failed disk drive, use the following procedure:</p>
+    <ol>
+      <li>Enter the following command at the User EXEC Level prompt:
+        <p class="Code">solace&gt; enable<br/>solace# </p><p>The Solace CLI is now at the Privileged EXEC level. </p></li>
+      <li><u>Recommended</u>: As a precaution, enter the following Privileged EXEC command to copy the current configuration database file from the event broker to an external SFTP or SCP server (as applicable) for backup: 
+        <p class="Note">Ensure that you have an SFTP or SCP server on the event broker network to which you have IP connectivity. </p><p class="Code">solace# copy current-config sftp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt;</p><p>or</p><p class="Code">solace# copy current-config scp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt;</p><p><u>Where</u>:</p><p><code>&lt;username&gt;</code>is the CLI user name and <code>&lt;ip-addr&gt;</code> and <code>&lt;remote-pathname&gt;</code> point to the location where the current configuration database file is copied onto the SFTP or SCP server</p></li>
+      <li>To confirm that the disk drive has failed, enter the following User EXEC command:
+        <p class="Code">solace# show disk</p><p>An example display from <code>show disk</code> with a failed disk drive is:</p><pre xml:space="preserve">RAID in fully redundant state: No
+Reload required:               No
+
+Attribute                        Disk 1               Disk 2
+------------------ -------------------- --------------------
+Device Model                ST3250310NS          ST3250310NS
+Capacity (MB)                    238475               238475
+Admin State                     enabled              enabled
+Operational State                failed                   up</pre></li>
+      <li>Note which disk drive has failed.</li>
+      <li>To shut down the failed disk drive, enter the following commands:
+        <p class="Code">solace# configure <br/>solace(config)# hardware<br/>solace(config-hardware)# disk &lt;disk-name&gt; shutdown</p><p><u>Where</u>:</p><p><code>&lt;disk-name&gt;</code> is the number of the failed disk drive. Valid values are 1 or 2.</p></li>
+      <li>To confirm that the failed disk drive is shut down, enter the following command:<p class="Code">solace(config-hardware)# show disk</p><p>In the displayed output, the <code>Admin State</code> for the disk should be <code>shutdown</code>. </p></li>
+    </ol>
+    <h3><a name="hardware_maintenance_tasks_3613430003_398299"/>Step 2: Remove Appliance Faceplate</h3>
+    <p>To remove the faceplate from a Solace PubSub+ 3230, use the following procedure:</p>
+    <ol>
+      <li>Use an anti-static wrist strap, or other device to ground yourself.</li>
+      <li>To remove the appliance faceplate, use a No. 2 Philips screwdriver to remove the four retaining screws.
+        <p>Keep these screws for later so that you can reattach the faceplate.</p><p class="GraphicCaption">Solace PubSub+ 3230 Faceplate Retaining Screw Locations</p><p><img src="Images/2_76.jpg" style="width: 529.9997px;height: 93.99936px;" alt=""/></p></li>
+      <li>If you have a Solace PubSub+ 3230 with a CHS-3230AC-02 chassis, pull the disk cover latch to remove the disk drive cover plate.
+        <p class="GraphicCaption">Removing Disk Drive Cover Plate From a CHS-3230AC-02</p><p style="text-align: left;"><img src="Images/3230_front_latch.png" style="width: 322.5706px;height: 187.0954px;margin-left: 5.99976px;margin-top: 5.99976px;margin-right: 23.27185px;" alt=""/></p></li>
+      <li>Locate the disk drive you want to remove.
+        <p>The following figure shows the location of the disk 1 and disk 2 drive bays in both possible chassis types for a PubSub+ 3230—CHS-3230AC-01 and a CHS-3230AC-02. </p><p class="GraphicCaption">Solace PubSub+ 3230 Disk Drive Locations (CHS-3230AC-01)</p><p style="text-align: left;"><img src="Images/2_53.jpg" alt=""/></p></li>
+    </ol>
+    <h3><a name="hardware_maintenance_tasks_3613430003_351503"/>Step 3: Remove Failed Disk Drive </h3>
+    <p>The procedures to use to remove a failed disk drive from an appliance depend on whether the appliance uses a disk drive carrier: a Solace PubSub+ 3230 with a CHS‑3230AC-01 chassis uses a disk drive carrier; a Solace PubSub+ 3230 with a CHS‑3230AC-02 chassis doesn't.</p>
+    <div class="Caution">
+      <p> Do not attempt to remove a disk drive before completing <MadCap:xref href="#hardware_maintenance_tasks_3613430003_351372">Step 1: Shut Down a Failed Disk Drive</MadCap:xref>. Removing a disk drive from an appliance without performing a disk shutdown results in service interruption and/or data loss.</p>
+    </div>
+    <p>To remove a failed disk drive from an appliance that has its faceplate removed, use the following procedures.</p>
+    <p>To remove an HDD from a Solace PubSub+ 3230 with a CHS-3230AC-01 chassis, follow these sub-steps:</p>
+    <ol>
+      <li>Turn the thumbscrew on the drive latch counterclockwise, and then pull the drive latch to the left to the full open position (as shown below).        <p class="GraphicCaption">Opening the Drive Latch</p><p style="text-align: left;"><img src="Images/3230_disk_pull_out.png" style="width: 319.7731px;height: 236.975px;margin-left: 5.99976px;margin-top: 5.99976px;margin-right: 8.732861px;margin-bottom: 7.699688px;" alt=""/></p><p class="SWSubstepResultLine">The disk drive is now released from the system drive bay.</p></li>
+      <li>Holding the drive latch, pull the disk drive completely out of the system drive bay.
+       </li>
+    </ol>
+    <p>To remove an SSD from a Solace PubSub+ 3230 with a CHS‑3230AC‑02 chassis, follow these sub-steps:</p>
+    <ol>
+      <li>Push the release button beside the SSD that you want to replace to the right.
+        <p class="GraphicCaption">Ejecting an SSD from a Solace PubSub+ 3230 (CHS-3230AC-02)</p><p style="text-align: left;"><img src="Images/2_81.jpg" style="width: 382.7472px;height: 169.5575px;" alt=""/></p><p class="SWSubstepResultLineNHS">The disk drive slot door opens and the SSD is partially ejected from the slot.</p></li>
+      <li>Pull the SSD completely out of the slot.</li>
+    </ol>
+    <p>Return the failed disk drive to Solace.</p>
+    <p class="Note">If you are replacing an SSD that is in a disk drive carrier, refer to step 2 in <MadCap:xref href="#hardware_maintenance_tasks_3613430003_351563">Step 4: Install a New Disk Drive</MadCap:xref> for information on how to open the disk carrier and remove the hard disk.</p>
+    <h3><a name="hardware_maintenance_tasks_3613430003_351563"/>Step 4: Install New Disk Drive</h3>
+    <p>To install a new disk drive, use one of the following procedures:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_351574">Installing a Disk in a Solace PubSub+ 3230 (chassis CHS-3230AC-01)</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_351648">Installing a Disk in a Solace PuSub+ 3230 (Chassis CHS-3230AC-02)</MadCap:xref>
+      </li>
+    </ul>
+    <h4><a name="hardware_maintenance_tasks_3613430003_351574"/>Installing a Disk in a Solace PubSub+ 3230 (chassis CHS-3230AC-01)</h4>
+    <p>To install a new Solace-supplied HDD or SSD in a Solace PubSub+ 3230 that uses chassis CHS-3230AC-01, perform the following procedure:</p>
+    <div class="Caution">
+      <p> Only use a new Solace-approved replacement disk drive for this procedure. Attempting to use an existing disk drive from another appliance or any other source could result in communication problems, data loss, or both. Furthermore, never replace an existing HDD with a SDD, or vice versa.</p>
+    </div>
+    <ol>
+      <li>Turn the thumbscrew on the drive latch counterclockwise to release the drive latch on the new Solace-approved disk drive, and pull the drive latch to the left to the full open position (as shown below).
+        <p class="GraphicCaption">HDD Disk Drive with Open Latch </p><p style="text-align: left;"><img src="Images/HD Open Latch.jpg" style="width: 217.9997px;height: 342.9994px;" alt=""/></p></li>
+      <li>For a Solace PubSub+ 3230 (chassis CHS‑3230AC-01), perform the following sub-steps (otherwise go to step 3):
+        <ol style="list-style-type: lower-alpha;"><li>To open the lid on the disk drive carrier, use your thumbs to slide the lid back (as shown below).
+        <p class="GraphicCaption">Opening the Lid on the Disk Drive Carrier</p><p style="text-align: left;"><img src="Images/Opening Lid SSD_2.jpg" style="width: 255px;height: 259.9997px;margin-left: 5.19552px;margin-right: 6.122885px;margin-bottom: 9.294481px;" alt=""/></p></li><li>Gently lift the lid up to reveal the failed SSD.</li><li>Remove the failed SSD from the rail inside the disk drive carrier.</li><li>Set the new SSD flat onto the bottom of the rail inside the disk drive carrier, label side up, oriented (as shown below). 
+        <p class="GraphicCaption">Setting the SSD Inside the Disk Drive Carrier</p><p style="text-align: left;"><img src="Images/Setting SSD Inside Disk Drive.png" style="width: 326.8138px;height: 329.0669px;margin-left: 5.99976px;margin-top: 5.99976px;margin-right: 7.955288px;margin-bottom: 4.131359px;" alt=""/></p></li><li>Gently push the lid down, and to securely close the lid, use your thumbs to slide the lid to the front of the disk drive carrier until it clicks into place.</li></ol></li>
+      <li>Insert the disk drive into the appliance drive bay, and, using your hand, firmly push on the disk drive to ensure proper seating. Do not use excessive force when inserting the disk drive.
+        <div class="Caution"><p> Install the new disk drive into the vacant bay only. Moving the operational disk drive to the vacant bay may result in communication problems or data loss within the  event broker.</p></div><p class="GraphicCaption">Inserting a Disk Drive into a Vacant Drive Bay</p><p style="text-align: left;"><img src="Images/3230_disk_push_in.png" style="width: 356.7946px;height: 183.8035px;margin-left: 5.99976px;margin-top: 5.99976px;margin-right: 15.78961px;margin-bottom: 7.076885px;" alt=""/></p></li>
+      <li>Push the drive latch in to the closed position, and turn the thumbscrew clockwise to secure the drive latch on the disk drive.
+			<p>The new disk drive is now locked into the appliance bay.</p></li>
+    </ol>
+    <h4><a name="hardware_maintenance_tasks_3613430003_351648"/>Installing a Disk in a Solace PubSub+ 3230 (Chassis CHS-3230AC-02) </h4>
+    <p>To install a new SSD disk drive in a Solace PubSub+ 3230 that uses chassis CHS‑3230AC-02, perform the following procedure:</p>
+    <div class="Caution">
+      <p> Only use a new Solace-approved replacement SSD for this procedure. Attempting to use an existing disk drive from another appliance or any other source may result in communication problems, data loss, or both.</p>
+    </div>
+    <ol>
+      <li>Insert the drive SSD, label side up into the appliance drive bay, and gently press until it is firmly seated. Do not use excessive force when inserting the SSD.</li>
+      <li>Close the disk drive slot door. The release button should click into place.        <p class="GraphicCaption">Closing the Disk Drive Slot Door</p><p style="text-align: left;"><img src="Images/ssd_inserted_in_slot.png" alt=""/></p><p>The new disk drive is now locked into the appliance bay.</p></li>
+      <li>Replace the disk drive cover plate, and ensure that it is securely latched.
+        <p class="GraphicCaption">Replacing the Disk Drive Cover Plate</p><p style="text-align: left;"><img src="Images/disk_cover_install_process.png" style="width: 620.6313px;height: 144.6547px;margin-left: 7.0236px;margin-top: 5.25168px;margin-right: 7.503134px;margin-bottom: 2.837523px;" alt=""/></p></li>
+    </ol>
+    <h3><a name="hardware_maintenance_tasks_3613430003_351670"/>Step 5: Replace Appliance Faceplate</h3>
+    <div class="Caution">
+      <p>Carefully follow these steps when replacing the faceplate. Failure to do so could result in an accidental restart of the event broker, which can cause data loss.</p>
+    </div>
+    <p>To replace the faceplate on a Solace PubSub+ 3230, perform the following steps:</p>
+    <ol>
+      <li>Locate the four retaining screws that were removed in <MadCap:xref href="#hardware_maintenance_tasks_3613430003_398299">Step 2: Remove the Appliance Faceplate</MadCap:xref>.</li>
+      <li>Line up and insert the bottom two screws of the faceplate with the chassis openings.</li>
+      <li>Gently move the faceplate in a side-to-side motion to ensure the screws are properly aligned with the chassis openings.</li>
+      <li>Rotate the faceplate towards the appliance until the top two screws of the faceplate are aligned and inserted with the top chassis openings.</li>
+      <li>Gently move the faceplate in a side-to-side motion to ensure all four screws are properly aligned with the chassis openings.</li>
+      <li>Use a No. 2 Philips screwdriver to tighten the four retaining screws and fasten the faceplate to the chassis.
+			<p>When tightening the screws, do not turn them more than five times each.</p></li>
+    </ol>
+    <h3><a name="hardware_maintenance_tasks_3613430003_376843"/>Step 6: Enable and Rebuild New Disk</h3>
+    <p>To enable and rebuild a new disk drive, follow this procedure:</p>
+    <ol>
+      <li>To enable the new disk drive, enter the following Hardware CONFIG command:
+        <p class="Code">solace# configure<br/>solace(config)# hardware<br/>solace(config-hardware)# disk &lt;disk-name&gt; no shutdown</p><p><u>Where</u>:</p><p><code>&lt;disk-name&gt;</code> is the number of the failed disk drive. Valid values are 1 or 2.</p></li>
+      <li>To confirm that the new disk drive is in waiting for rebuild mode, enter the following command:
+        <p class="Code">solace(config-hardware)# show disk</p><p>An example display from <code>y</code> User EXEC command with a waiting for rebuild disk is:</p><pre xml:space="preserve">RAID in fully redundant state: Yes
+Reload required:               No
+
+Attribute                        Disk 1               Disk 2
+------------------ -------------------- --------------------
+Device Model                ST3250310NS          ST3250310NS
+Capacity (MB)                    238475               238475
+Admin State                     enabled              enabled
+Operational State   waiting-for-rebuild                   up</pre><p class="Note">It can take several seconds for the <code>Operational State</code> of a disk to change to <code>waiting-for-rebuild</code>.</p></li>
+      <li>Enter the following commands:
+        <p class="Code">solace(config-hardware)# end<br/>solace# admin<br/>solace(admin)#<br/>solace(admin)# disk</p></li>
+      <li>To start rebuilding the new disk drive, enter the following Admin EXEC commands:
+			<p class="Code">solace(admin-disk)# rebuild</p></li>
+      <li><u>Optional</u>: To shorten the disk rebuilding time, enter the following Disk Admin EXEC command, then <code>y</code> when prompted to continue:
+			<p class="Code">solace(admin-disk)# rebuild-speed high<br/>Changing the disk rebuild time may impact performance of the appliance.<br/>This should only be done if the appliance is not passing traffic.<br/>Do you want to continue (y/n)? <b>y</b></p></li>
+      <li>To confirm that the new disk drive is recovering, enter the following commands:
+        <p class="Code">solace(admin-disk)# exit<br/>solace(admin)# show disk</p><p class="Note">It can take several seconds for the <code>Operational State</code> of a disk to change to <code>recovering</code>.</p><p>An example display from <code>show disk</code> with a recovering disk drive is:</p><pre xml:space="preserve">RAID in fully redundant state: Yes
+Reload required:               No
+
+Attribute                        Disk 1               Disk 2
+------------------ -------------------- --------------------
+Device Model                ST3250310NS          ST3250310NS
+Capacity (MB)                    238475               238475
+Admin State                     enabled              enabled
+Operational State            recovering                   up</pre></li>
+      <li>After the disk rebuild and recovery process has completed, you'll see a CLI banner and Admin EXEC Level prompt on your computer screen similar to this one:<pre xml:space="preserve">#########################################################
+CLEAR: Disk 1 is up
+#######################################################
+solace(admin)#</pre></li>
+    </ol>
+    <h2 class="with-rule"><a name="hardware_maintenance_tasks_3613430003_427925"/>Replacing PubSub+ 3260 Disk Drives</h2>
+    <p>To replace a disk drive in a Solace PubSub+3260, perform the following steps:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_427974">Step 1: Shut Down a Failed Disk Drive</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_428012">Step 2: Remove the Appliance Faceplate</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_428037">Step 3: Remove a Failed Disk Drive </MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_428078">Step 4: Install a New Disk Drive</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Step2">Step 5: Replace the Appliance Faceplate</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Step">Step 6: Enable and Rebuild the Replaced Disk</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="hardware_maintenance_tasks_3613430003_427974"/>Step 1: Shut Down Failed Disk Drive</h3>
+    <p>To shut down a failed disk drive, use the following procedure:</p>
+    <ol>
+      <li>Enter the following command at the User EXEC Level prompt:
+        <p class="Code">solace&gt; enable<br/>solace# </p><p>The Solace CLI is now at the Privileged EXEC level. </p></li>
+      <li><u>Recommended</u>: As a precaution, enter the following Privileged EXEC command to copy the current configuration database file from the event broker to an external SFTP or SCP server (as applicable) for backup: 
+        <p class="Note">Ensure that you have an SFTP or SCP server on the event broker network to which you have IP connectivity. </p><p class="Code">solace# copy current-config sftp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt;</p><p>or</p><p class="Code">solace# copy current-config scp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt;</p><p><u>Where</u>:</p><p><code>&lt;username&gt;</code>is the CLI user name and <code>&lt;ip-addr&gt;</code> and <code>&lt;remote-pathname&gt;</code> point to the location where the current configuration database file is copied onto the SFTP or SCP server</p></li>
+      <li>To confirm that the disk drive has failed, enter the following User EXEC command:
+        <p class="Code">solace# show disk</p><p>An example display from <code>show disk</code> with a failed disk drive is:</p><pre xml:space="preserve">RAID in fully redundant state: No
+Reload required:               No
+
+Attribute                        Disk 1               Disk 2
+------------------ -------------------- --------------------
+Device Model                ST3250310NS          ST3250310NS
+Capacity (MB)                    238475               238475
+Admin State                     enabled              enabled
+Operational State                failed                   up</pre></li>
+      <li>Note which disk drive has failed.</li>
+      <li>To shut down the failed disk drive, enter the following commands:
+        <p class="Code">solace# configure <br/>solace(config)# hardware<br/>solace(config-hardware)# disk &lt;disk-name&gt; shutdown</p><p><u>Where</u>:</p><p><code>&lt;disk-name&gt;</code> is the number of the failed disk drive. Valid values are 1 or 2.</p></li>
+    </ol>
+    <h3><a name="hardware_maintenance_tasks_3613430003_428012"/>Step 2: Remove Appliance Faceplate</h3>
+    <p>To remove the faceplate from a Solace PubSub+ 3260 and expose the physical disk drives, use the following procedure:</p>
+    <ol>
+      <li>Use an anti-static wrist strap or other device to ground yourself.</li>
+      <li>To remove the appliance faceplate, firmly pull the faceplate off of the front of the chassis.</li>
+    </ol>
+    <h3><a name="hardware_maintenance_tasks_3613430003_428037"/>Step 3: Remove Failed Disk Drive</h3>
+    <div class="Caution">
+      <p> Do not attempt to remove a disk drive before shutting it down. Removing a disk drive from an appliance without performing a disk shutdown results in service interruption and/or data loss.</p>
+    </div>
+    <p>To remove a failed disk drive from an appliance that has its faceplate removed, use the following procedure:</p>
+    <ol>
+      <li>Turn the thumbscrew on the drive latch of the disk drive you want to remove counterclockwise, and then pull the drive latch to the left to the full open position (as shown below).
+        <p class="GraphicCaption">Opening the Drive Latch</p><p style="text-align: left;"><img src="Images/Release Drive Latch.jpg" style="width: 346.5341px;height: 228.0384px;" alt=""/></p><p>The disk drive is now released from the system drive bay.</p></li>
+      <li>Holding the drive latch, pull the disk drive completely out of the system drive bay .</li>
+      <li>Return the failed disk drive to Solace.</li>
+    </ol>
+    <p class="Note">If you are replacing an SSD that is in a disk drive carrier, refer to step 2 in <MadCap:xref href="#hardware_maintenance_tasks_3613430003_428078">Step 4: Install a New Disk Drive</MadCap:xref> for information on how to open the disk carrier and remove the SSD.</p>
+    <h3><a name="hardware_maintenance_tasks_3613430003_428078"/>Step 4: Install New Disk Drive</h3>
+    <p>To install a new Solace-supplied HDD or SSD in a Solace PubSub+ 3260, perform the following procedure:</p>
+    <div class="Caution">
+      <p> Only use a new Solace-approved replacement disk drive for this procedure. Attempting to use an existing disk drive from another appliance or any other source could result in communication problems, data loss, or both. Furthermore, never replace an existing HDD with a SDD, or vice versa.</p>
+    </div>
+    <ol>
+      <li>Turn the thumbscrew on the drive latch counterclockwise to release the drive latch on the new Solace-approved disk drive, and pull the drive latch to the left to the full open position (as shown below).        <p class="GraphicCaption">HDD Disk Drive with Open Latch</p><p style="text-align: left;"><img src="Images/HD_Open_Latch.jpg" style="width: 197.9559px;height: 335.1533px;margin-left: 5.99976px;margin-top: 5.99976px;margin-right: 219.3602px;" alt=""/></p></li>
+      <li>For a Solace PubSub+ 3260 with an SSD, perform the following sub-steps (otherwise go to step 3):
+        <ol style="list-style-type: lower-alpha;"><li>To open the lid on the disk drive carrier, use your thumbs to slide the lid back.
+        <p class="GraphicCaption">Opening the Lid on the Disk Drive Carrier</p><p style="text-align: left;"><img src="Images/2_126.jpg" alt=""/></p></li><li>Gently lift the lid up to reveal the failed SSD.</li><li>Remove the failed SSD from the rail inside the disk drive carrier.</li><li>Set the new SSD flat onto the bottom of the rail inside the disk drive carrier, label side up, oriented as shown below. 
+        <p class="GraphicCaption">Setting the SSD Inside the Disk Drive Carrier</p><p style="text-align: left;"><img src="Images/Setting SSD Inside Disk Drive_1.png" style="width: 349.0512px;height: 351.4579px;margin-top: 5.99976px;margin-right: 5.029202px;margin-bottom: 6.502316px;" alt=""/></p></li><li>Gently push the lid down, and to securely close the lid, use your thumbs to slide the lid to the front of the disk drive carrier until it clicks into place .</li></ol></li>
+      <li>Insert the disk drive into the appliance drive bay, and, using your hand, firmly push on the disk drive to ensure proper seating. Do not use excessive force when inserting the disk drive. 
+        <div class="Caution"><p> Install the new disk drive into the vacant bay only. Moving the operational disk drive to the vacant bay may result in communication problems or data loss within the event broker.</p></div><p class="GraphicCaption">Inserting a Disk Drive into a Vacant Drive Bay</p><p style="text-align: left;"><img src="Images/Push in HD.jpg" style="width: 330.1392px;height: 199.5072px;margin-left: 7.8552px;margin-top: 7.64496px;margin-right: 7.071833px;margin-bottom: 4.100386px;" alt=""/></p></li>
+      <li>Push the drive latch in to the closed position, and turn the thumbscrew clockwise to secure the drive latch on the disk drive.
+			<p>The new disk drive is now locked into the appliance bay.</p></li>
+    </ol>
+    <h3><a name="Step2"/>Step 5: Replace Appliance Faceplate</h3>
+    <div class="Caution">
+      <p>Carefully follow these steps when replacing the faceplate. Failure to do so could result in an accidental restart of the Solace appliance, which can cause data loss.</p>
+    </div>
+    <p>To replace a Solace PubSub+ 3260's faceplate, perform the following steps:</p>
+    <ol>
+      <li>Position the faceplate over the fan tray so that the bezel (front) aligns with the front of the chassis. </li>
+      <li>Align the four male push pins in the four corners of the faceplate with the female receptacles on the chassis (as shown below).
+        <p class="GraphicCaption"><a name="hardware_maintenance_tasks_3613430003_428163"/>Installing the Solace PubSub+ 3260 Faceplate</p><p style="text-align: left;"><img src="Images/Install Faceplate.jpg" style="width: 378.8074px;height: 209.6659px;margin-left: 5.99976px;margin-top: 5.99976px;margin-right: 6.385677px;margin-bottom: 3.409176px;" alt=""/></p></li>
+      <li>Press firmly on the faceplate until the push pins engage, and the faceplate is flat against the front of the chassis.</li>
+    </ol>
+    <h3><a name="Step"/>Step 6: Enable and Rebuild New Disk</h3>
+    <p>To enable and rebuild a new disk drive, follow this procedure:</p>
+    <ol>
+      <li>To enable the new disk drive, enter the following Hardware CONFIG command:
+        <p class="Code">solace# configure<br/>solace(configure)# hardware<br/>solace(configure-hardware)# disk &lt;disk-name&gt; no shutdown</p><p><u>Where</u>:</p><p><code>&lt;disk-name&gt;</code> is the number of the failed disk drive. Valid values are 1 or 2.</p></li>
+      <li>To confirm that the new disk drive is in waiting for rebuild mode, enter the following command:
+        <p class="Code">solace(config-hardware)# show disk</p><p>An example display from <code>show disk</code> with a waiting for rebuild disk is:</p><pre xml:space="preserve">RAID in fully redundant state: Yes
+Reload required:               No
+
+Attribute                        Disk 1               Disk 2
+------------------ -------------------- --------------------
+Device Model                ST3250310NS          ST3250310NS
+Capacity (MB)                    238475               238475
+Admin State                     enabled              enabled
+Operational State   waiting-for-rebuild                   up</pre><p class="Note">It can take several seconds for the <code>Operational State</code> of a disk to change to <code>waiting-for-rebuild</code>.</p></li>
+      <li>Enter the following commands:
+        <p class="Code">solace(configure-hardware)# end<br/>solace# admin<br/>solace(admin)#<br/>solace(admin)# disk</p></li>
+      <li>To start rebuilding the new disk drive, enter the following Admin EXEC commands:
+			<p class="Code">solace(admin-disk)# rebuild</p></li>
+      <li><u>Optional</u>: To shorten the rebuilding time, enter the following Admin EXEC command, then <code>y</code> when prompted to continue:
+			<p class="Code">solace(admin-disk)# rebuild-speed high<br/>Changing the disk rebuild time may impact performance of the appliance.<br/>This should only be done if the appliance is not passing traffic.<br/>Do you want to continue (y/n)? y</p></li>
+      <li>To confirm that the new disk drive is recovering, enter the following commands:<p class="Code">solace(admin-disk)# exit<br/>solace(admin)# show disk</p><p class="Note">It can take several seconds for the <code>Operational State</code> of a disk to change to <code>recovering</code>.</p><p>An example display from <code>show disk</code> with a recovering disk drive is:</p><pre xml:space="preserve">RAID in fully redundant state: Yes
+Reload required:               No
+
+Attribute                        Disk 1               Disk 2
+------------------ -------------------- --------------------
+Device Model                ST3250310NS          ST3250310NS
+Capacity (MB)                    238475               238475
+Admin State                     enabled              enabled
+Operational State            recovering                   up</pre></li>
+      <li>After the disk rebuild and recovery process has completed, you'll see a CLI banner and Admin EXEC Level prompt on your computer screen similar to this one:<pre xml:space="preserve">#########################################################
+CLEAR: Disk 1 is up
+#########################################################
+solace(admin)#</pre></li>
+    </ol>
+    <h2 class="with-rule"><a name="hardware_maintenance_tasks_3613430003_438377"/>Replacing PubSub+ 3530/3560 Disk Drives</h2>
+    <p>To replace a disk drive in a Solace PubSub+ 3530 or 3560, perform the following steps:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_438417">Step 1: Shut Down a Failed Disk Drive</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_438467">Step 2: Remove a Failed Disk Drive </MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_438503">Step 3: Install a New Disk Drive</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#hardware_maintenance_tasks_3613430003_438523">Step 4: Enable and Rebuild the Replaced Disk</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="hardware_maintenance_tasks_3613430003_438417"/>Step 1: Shut Down Failed Disk Drive</h3>
+    <p>To shut down a failed disk drive, use the following procedure:</p>
+    <ol>
+      <li>Enter the following command at the User EXEC Level prompt:        <p class="Code">solace&gt; enable<br/>solace# </p><p>The Solace CLI is now at the Privileged EXEC level.</p></li>
+      <li><u>Recommended</u>: As a precaution, enter the following Privileged EXEC command to copy the current configuration database file from the event broker to an external SFTP or SCP server (as applicable) for backup:
+        <p class="Note">Ensure that you have an SFTP or SCP server on the event broker network to which you have IP connectivity. </p><p class="Code">solace# copy current-config sftp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt;</p><p>or</p><p class="Code">solace# copy current-config scp://[&lt;username&gt;@]&lt;ip-addr&gt;/&lt;remote-pathname&gt;</p><p><u>Where</u>:</p><p><code>&lt;username&gt;</code> is the CLI user name and  <code>&lt;ip-addr&gt;</code> and <code>&lt;remote-pathname&gt;</code> point to the location where the current configuration database file is copied onto the SFTP or SCP server</p></li>
+      <li>To confirm that the disk drive has failed, enter the following User EXEC command:        <p class="Code">solace# show disk</p><p>An example display from <code>show disk</code> User EXEC command with a failed disk drive is:</p><pre xml:space="preserve">Reload required:               No
+
+
+Attribute                        Disk 1               Disk 2
+------------------ -------------------- --------------------
+Device Model        INTEL SSDSC2BB120G4  INTEL SSDSC2BB120G4
+Capacity (MB)                    114473               114473
+Admin State                     enabled              enabled
+Operational State                failed                   up
+
+RAID in fully redundant state: Yes
+
+Attribute                        Disk 3               Disk 4
+------------------ -------------------- --------------------
+Device Model
+Capacity (MB)
+Admin State                     shutdown              shutdown
+Operational State                   down                  down
+
+RAID in fully redundant state: No</pre><p>Note which disk drive has failed.</p></li>
+      <li>To shut down the failed disk drive, enter the following CONFIG commands:
+			
+			<p class="Code">solace# configure<br/>solace(configure)# hardware<br/>solace(configure/hardware)# disk &lt;disk-name&gt; shutdown</p><p><u>Where</u>:</p><p><code>&lt;disk-name&gt;</code> is the number of the failed disk drive. Valid values are 1, 2, 3, or 4.</p></li>
+      <li>To confirm that the failed disk drive is shut down, enter the following Global CONFIG command:
+        <p class="Code">solace(configure/hardware)# show disk</p><p>In the displayed output, the <code>Admin State</code> for the disk should be <code>shutdown</code>. </p></li>
+    </ol>
+    <h3><a name="hardware_maintenance_tasks_3613430003_438467"/>Step 2: Remove Failed Disk Drive</h3>
+    <div class="Caution">
+      <p>Do not attempt to remove a disk drive before completing <MadCap:xref href="#hardware_maintenance_tasks_3613430003_427974">Step 1: Shut Down a Failed Disk Drive</MadCap:xref>. Removing a disk drive from an appliance without performing a disk shutdown results in service interruption and/or data loss.</p>
+    </div>
+    <p>To remove a failed disk drive from an appliance, follow this procedure:</p>
+    <ol>
+      <li>To reveal the available disk drives, pull down the top of the hinged portion of the front panel.</li>
+      <li>Locate the disk drive you want to remove.</li>
+      <li>Slide the release button to the right (that is, toward the disk drive) to open the latch on the system drive bay.
+        <p class="GraphicCaption">Opening the System Drive Bay</p><p style="text-align: left;"><img src="Images/2_96.jpg" style="width: 433.0128px;height: 324.7594px;" alt=""/></p><p>The latch springs open and the disk drive is released from the system drive bay.</p></li>
+      <li>Pull the disk drive completely out of the system drive bay.
+        <p class="GraphicCaption">Removing a Disk Drive</p><p style="text-align: left;"><img src="Images/removing_disk.png" style="width: 376.1223px;height: 281.5469px;margin-left: 6.5052px;margin-top: 5.25384px;margin-right: 57.40923px;margin-bottom: 7.791127px;" alt=""/></p></li>
+      <li>Return the failed disk drive to Solace.</li>
+    </ol>
+    <h3><a name="hardware_maintenance_tasks_3613430003_438503"/>Step 3: Install New Disk Drive</h3>
+    <p>To install a new Solace-supplied disk drive in an appliance, follow this procedure:</p>
+    <div class="Caution">
+      <p> Only use a new Solace-approved replacement disk drive for this procedure. Attempting to use an existing disk drive from another appliance or any other source could result in communication problems and/or data loss.</p>
+    </div>
+    <ol>
+      <li>Insert the disk drive into the vacant appliance drive bay, and shut the latch on the system drive bay to return it to the full closed position.
+        <div class="Caution"><p> Install the new disk drive into the vacant bay only. Moving the operational disk drive to the vacant bay may result in communication problems or data loss within the event broker.</p></div><p>The new disk drive is now locked into the appliance bay</p></li>
+      <li>Close the hinged portion of the front panel.</li>
+    </ol>
+    <h3><a name="hardware_maintenance_tasks_3613430003_438523"/>Step 4: Enable and Rebuild New Disk</h3>
+    <p>To enable and rebuild a new disk drive, follow this procedure:</p>
+    <ol>
+      <li>To enable the new disk drive, enter the following Hardware CONFIG command:        <p class="Code">solace# configure<br/>solace(configure)# hardware<br/>solace(configure/hardware)# disk &lt;disk-name&gt; no shutdown</p><p><u>Where</u>:</p><p><code>&lt;disk-name&gt;</code> is the number of the failed disk drive. Valid values are 1, 2, 3, or 4.</p></li>
+      <li>To confirm that the new disk drive is in waiting for rebuild mode, enter the following command:        <p class="Code">solace(configure/hardware)# show disk</p><p>An example display from <code>show disk</code> with a waiting for rebuild disk is:</p><pre xml:space="preserve">Reload required:               No
+
+Attribute                        Disk 1               Disk 2
+------------------ -------------------- --------------------
+Device Mode         INTEL SSDSC2BB120G4  INTEL SSDSC2BB120G4
+Capacity (MB)                    114473               114473
+Admin State                     enabled              enabled
+Operational State   waiting-for-rebuild                   up
+
+RAID in fully redundant state: Yes
+
+Attribute                        Disk 3               Disk 4
+------------------ -------------------- --------------------
+Device Model
+Capacity (MB)
+Admin State                     shutdown              shutdown
+Operational State                   down                  down
+
+RAID in fully redundant state: No</pre><p class="Note">It can take several seconds for the <code>Operational State</code> of a disk to change to <code>waiting-for-rebuild</code>.</p></li>
+      <li>Enter the following commands:
+            
+                <p class="Code">solace(configure/hardware)# end<br/>solace# admin<br/>solace(admin)#<br/>solace(admin)# disk</p></li>
+      <li>To start rebuilding the new disk drive, enter the following commands:
+			<p class="Code">solace(admin/disk)# rebuild</p></li>
+      <li><u>Optional</u>: To shorten the rebuilding time, enter the following Disk Admin EXEC command, then <code>y</code> when prompted to continue:
+			<p class="Code">solace(admin/disk)# rebuild-speed high<br/>Changing the disk rebuild time may impact performance of the appliance.<br/>This should only be done if the appliance is not passing traffic.<br/>Do you want to continue (y/n)? y</p></li>
+      <li>To confirm that the new disk drive is recovering, enter the following commands:
+        <p class="Code">solace(admin/disk)# exit<br/>solace(admin)# show disk</p><p class="Note">It can take several seconds for the <code>Operational State</code> of a disk to change to <code>recovering</code>.</p><p>An example display from <code>show disk</code> with a recovering disk drive is:</p><pre xml:space="preserve">Reload required:               No
+
+Attribute                        Disk 1               Disk 2
+------------------ -------------------- --------------------
+Device Mode         INTEL SSDSC2BB120G4  INTEL SSDSC2BB120G4
+Capacity (MB)                    114473               114473
+Admin State                     enabled              enabled
+Operational State            recovering                   up
+
+RAID in fully redundant state: Yes
+
+Attribute                        Disk 3               Disk 4
+------------------ -------------------- --------------------
+Device Model
+Capacity (MB)
+Admin State                     shutdown              shutdown
+Operational State                   down                  down
+
+RAID in fully redundant state: No</pre></li>
+    </ol>
+  </body>
+</html>

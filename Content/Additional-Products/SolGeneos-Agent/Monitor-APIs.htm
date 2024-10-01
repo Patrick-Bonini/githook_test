@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Monitor APIs</h1>
+    <p>A data view object is the holding place for the actual data polled from the managed entity. A data view relies on the associated monitor to:</p>
+    <ul>
+      <li>collect data for the data view</li>
+      <li>determine which NetProbe instances to report the data view</li>
+      <li>format collected data for each NetProbe</li>
+      <li>send data view content to selected NetProbes</li>
+    </ul>
+    <p>Solace Geneos Agent provides a list of default data views, and each data view is associated with one monitor.</p>
+    <p>All monitors extend from the abstract <code>BaseMonitor</code> class, which allows them to interact with the agent framework. <code>BaseMonitor</code> class provides a default implementation. </p>
+    <p>The agent framework or JMX calls the following methods defined in <code>BaseMonitor</code> (they cannot be overwritten):</p>
+    <ul>
+      <li><code>initialize()</code>—initialize all the properties of the monitor</li>
+      <li><code>start()</code>—start the monitor</li>
+      <li><code>stop()</code>—stop the monitor</li>
+    </ul>
+    <p>The following data structures in <code>BaseMonitor</code> that are used by subclasses for collection and reporting data; they are initialized when the <code>initialize()</code> method is called:</p>
+    <ul>
+      <li><code>collectingContext</code>—a thread context where data collection tasks are executed. By default, it references the <code>DefaultCollectingContext</code> provided by Solace Geneos Agent. It is a single thread doing all the collection tasks in a serial manner.</li>
+      <li><code>reportingContext</code>—a thread context where data reporting tasks are executed. By default, it references the <code>DefaultReportingContext</code> provided by the Solace Geneos Agent. It is a single thread doing all the reporting tasks in a serial manner.</li>
+      <li><code>propertyMap</code>—a map that stores all the monitor properties understood by the Solace Geneos Agent; these are read from global and monitor-specific property files. To retrieve these monitor properties, call <code>getProperty(propertyName)</code>, or call specific getter methods provided by the <code>BaseMonitor</code>, such as <code>getSamplingRate()</code>, <code>getManagedEntities()</code>.</li>
+      <li><code>viewMap&lt;viewAlias, View&gt;</code>—a map to store data views. All the data views specified in monitor specific properties are initialized and cached in this map by the agent framework. The <code>View</code> object contains properties such as alias name, view content, view propertyMap.<ul><li><code>propertyMap</code>—a map which stores all the view properties read from global and monitor specific property files and are understood by the agent. To retrieve view properties, call <code>getProperty(propertyName)</code> or call specific getter methods provided by the View, such as <code>getViewName()</code>, <code>getManagedEntities()</code>.</li></ul></li>
+      <li><code>logger</code> class for logging—subclass can obtain the logger class by calling <code>getLogger()</code>.</li>
+    </ul>
+    <p>The agent framework calls the following methods defined in <code>BaseMonitor</code> (they can be overwritten):</p>
+    <ul>
+      <li><code>onPreInitialize()</code>—this is a subclass extension point for monitor initialization; it is called by <code>initialize()</code> method. Within this method, subclasses can:<ul><li>add new properties to the <code>propertyMap</code> by calling <code>addProperty(Property)</code>.</li><li>override the default collecting or reporting context by calling <code>setCollectingContext(ExecutionContext)</code> or <code>setReportingContext(ExecutionContext)</code>.</li></ul></li>
+      <li><code>onPostInitialize()</code>—this is a subclass extension point after a monitor is initialized but before the monitor is started. Within this method, subclasses can:<ul><li>retrieve properties from the <code>propertyMap</code> by calling <code>getProperty(propertyName)</code> or specific property getter methods.</li><li>initialize any instance variable or any object used by the monitor implementation. In the <code>UsersMonitor</code> bundled sample, the http client is created in this method.</li></ul></li>
+      <li><code>onCollect()</code>—this method is invoked when it is time to collect data. The subclass must override this method to:<ul><li>poll data using the event broker service and SEMP</li><li>convert collected data into NetProbe acceptable format and store them into the view map</li><li>return the monitor’s next state <code>State.REPORTING_QUEUE</code>.</li></ul></li>
+      <li><code>onReport()</code>—invoked when it is time to report. The <code>BaseMointor</code> class provides default implementation to iterate through the data views from the monitor’s view map and call <code>reportView(View, Netprobe, managedEntity)</code> method to send data to the selected NetProbes. When reporting is done, the method returns the monitor’s next state <code>State.WAITING</code>.</li>
+      <li><code>reportView(View, Netprobe, managedEntity)</code>—invoked by <code>onReport()</code> method. The <code>BaseMonitor</code> class provides a default implementation to send the already formatted view content to a NetProbe using ITRS XML-RPC APIs.</li>
+    </ul>
+  </body>
+</html>

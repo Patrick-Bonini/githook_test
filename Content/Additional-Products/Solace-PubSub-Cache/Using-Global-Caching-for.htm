@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Global Caching with Multi-Region Deployments</h1>
+    <p>When using Global Caching, a Distributed Cache in one region is designated as the Home Distributed Cache to indicate that it contains the definitive version of the cached data. Distributed Cache Clusters in other regions are then configured with Global Topics, which they fetch on demand from the Home Cache Clusters. For more information, refer to <MadCap:xref href="Using-Global-Caching.htm">Using Global Caching</MadCap:xref>.</p>
+    <p>The figure below shows a typical deployment model for Global Caching. Multiple-Node Routing neighbor links between the regions are assigned appropriate costs to ensure that published messages never cross the WAN link between regions more than once (in much the same way as within a region, neighbor link costs ensure that messages never cross the WAN between the primary and backup data center more than once).</p>
+    <p class="GraphicCaption">Global Caching Across Two Regions</p>
+    <p class="GraphicCaption">
+      <img src="Images/global_caching_across_two_regions.png" alt=""/>
+    </p>
+    <h2 class="with-rule"><a name="Config-Summary"/>Configuration Summary</h2>
+    <p>The configuration of Global Caching within each region is similar to the configuration of a single-region caching solution, with the following additional considerations:</p>
+    <ul>
+      <li>All Distributed Cache, Cache Cluster, and PubSub+ Cache Instance names in the network must be globally unique.</li>
+      <li>The Cache Clusters in the remote regions typically will not be configured with any local topics. Instead, they will only be configured with Global Topics which are fetched on-demand from the Home Cache Clusters.</li>
+      <li MadCap:conditions="Default.HideFromAllOutput">On release prior to 10.0.1, on only one router in the region, the Message VPN hosting each regional Distributed Cache must have distributed-cache-management enabled. This is typically the primary router in the primary data center for the region (for example, <code>Region1-PDC-Primary</code> and <code>Region2-PDC-Primary</code> should be the only event brokers in the figure<MadCap:xref href="PubSub-Cache-and-Data-Center.htm">PubSub+ Cache and Data Center Redundancy</MadCap:xref>that have distributed‑cache‑management enabled).</li>
+    </ul>
+    <h2 class="with-rule"><a name="Expanding-Beyond"/>Expanding PubSub+ Cache Beyond Two Regions</h2>
+    <p>The previous section illustrated the interconnection of two regions. This configuration model can easily be expanded to accommodate multiple regions, as shown below.</p>
+    <p class="GraphicCaption">Connectivity Across Four Regions</p>
+    <p style="text-align: left;">
+      <img src="Images/connectivity_across_four_regions.jpg" alt=""/>
+    </p>
+    <p>In this example, <code>Region 4</code> is a smaller region connected by expensive, low‑bandwidth WAN links, so the Multiple-Node Routing neighbor links to <code>Region 4</code> are costed much higher than the links between the other regions. This ensures that messaging traffic between two regions will never transit through <code>Region 4</code> unless there are no other paths available in the network.</p>
+    <p>Also, in this example, when messages flow between <code>Region 1</code> and <code>4</code> they must transit the routers in either <code>Region 2</code> or <code>Region 3</code>. Depending upon the underlying WAN connectivity model, this may or may not be desirable. It is possible to avoid transiting the routers in <code>Region 2</code> or <code>3</code> by configuring a set of high-costed neighbor links between <code>Region 1</code> and <code>4</code> so that there is full-mesh connectivity between the regions.</p>
+    <p>It is also possible to cascade the Distributed Caches in this topology so that, for example, the Home Cache for <code>Region 4</code> could be the Distributed Cache in <code>Region 2</code>; and the Home Cache for <code>Region 2</code> could be the Distributed Cache in <code>Region 1</code>. In such a topology, if a Cache Instance in <code>Region 4</code> receives a cache request for a topic that it has not yet cached, it would ask the Home Cache in <code>Region 2</code> for the data. If the Cache Instance in <code>Region 2</code> also does not have the topic cached yet, it would ask the Home Cache in <code>Region 1</code> for the data.</p>
+  </body>
+</html>

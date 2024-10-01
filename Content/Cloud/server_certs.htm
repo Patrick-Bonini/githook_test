@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="Default.ContentProductLink">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Managing Domain and Client Certificate Authorities</h1>
+    <MadCap:snippetBlock src="../Resources/Snippets/Cloud/MissionControl/certificates_common_info.flsnp"/>
+    <h2 class="with-rule"><a name="managing-certificates"/>Managing Certificates in the <MadCap:variable name="Product-Names.console_ui_short"/></h2>
+    <p>You can manage the domain CA certificates and client CA certificates for each <MadCap:variable name="Product-Names.broker_cloud_short"/> in the <MadCap:variable name="Product-Names.console_ui_long"/>. You can add and remove CA certificates and you can modify the Open Certificate Status Protocol (OCSP) revocation policies for client certificates. By default, the <MadCap:variable name="Product-Names.broker_cloud_short"/> also uses <a href="#standard_domain_CA" class="link-internal">standard domain CAs</a> for server certificate validation.</p>
+    <p>For information, see:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#adding-certificate-authoritity-certs">Adding  CAs for Server Certificates </MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#disable-enable-standard-certificates">Disabling the Standard Domain Certificate Authorities List</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#adding-client certificates">Adding CAs for Client Certificates</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#modify-existing-client-certificate">Modifying an Existing Client Certificate</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#removing-certificate-authoritity-certs">Removing CA Certificates</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="adding-certificate-authoritity-certs"/>Adding  Domain CA Certificates </h3>
+    <p>You can add domain CA certificates to an <MadCap:variable name="Product-Names.broker_cloud_short"/>'s trust store for CAs that issue server certificates. When a server presents a certificate to an event broker service to establish a TLS connection, the <MadCap:variable name="Product-Names.broker_cloud_short"/> authenticates that the server certificate was issued by a known CA whose certificate has been added to the  trust store. </p>
+    <p>To add a certificate to the domain CA trust store,  perform these steps:</p>
+    <ol>
+      <li>
+        <MadCap:snippetBlock src="../Resources/Snippets/Cloud/Task_UI_Snippets/login_console.flsnp">
+                </MadCap:snippetBlock>
+      </li>
+      <li>On the navigation bar, select <MadCap:variable name="Product-Names.cluster_mgr" style="font-weight: bold;"/><img src="../Resources/Images/Cloud/reusable-icons/navbar_cluster_manager.png" class="img.img-inline" alt=""/>, and then click the card of the <MadCap:variable name="Product-Names.broker_cloud_short"/> you want to configure.</li>
+      <li>Select the <b>Manage</b> tab and then click the <b>Certificate Authorities</b> tile.</li>
+      <li>Select the <b>Domain Certificate Authorities</b> tab.</li>
+      <li> Click <b>Add Domain Certificate Authority</b>.
+				<div class="thumbnail-container"><img class="solacethumbnail" src="../Resources/Images/Cloud/add_server_certs.png" alt="Screenshot showing the settings described in the surrounding text"/></div></li>
+      <li>
+        <p>In the <b>Add Domain Certificate Authorities</b> dialog, do the following:</p>
+        <ul>
+          <li>Enter a name for your certificate, such as <code>OurInternalServerCA</code> (the name should be alphanumeric only and cannot contain spaces or special characters).</li>
+          <li>Upload the PEM file using the <b>Upload</b> button or paste the contents of the certificate from your PEM file into the <b>Certificate Content</b> text box starting from (and including) the lines <code>-----BEGIN CERTIFICATE-----</code> to <code>-----END CERTIFICATE-----</code>.</li>
+        </ul>
+        <p>
+          <img class="img-border" src="../Resources/Images/Cloud/add_server_certs_dialog.png" alt="Screenshot showing the settings described in the surrounding text."/>
+        </p>
+      </li>
+      <li>Click <b>Save</b>.</li>
+    </ol>
+    <p>The certificate appears in the list, under the <b>Domain Certificate Authorities</b>.</p>
+    <h3><a name="disable-enable-standard-certificates"/>Disabling the Standard Domain Certificate Authorities List</h3>
+    <p>For <MadCap:variable name="Product-Names.broker_cloud_short"/>s, the standard domain CA list includes industry-standard, trusted CA certificates used to verify the server names for outgoing TLS connections. This list can't be modified and is enabled by default. If you want to use only your custom domain CA list, you can disable the standard domain CA list. </p>
+    <p>To disable the standard domain CA list, perform the follow steps:</p>
+    <ol>
+      <li>In <MadCap:variable name="Product-Names.cluster_mgr" style="font-weight: normal;"/>, click the card of the <MadCap:variable name="Product-Names.broker_cloud_short"/> you want to configure.</li>
+      <li>Select the <b>Manage</b> tab and then click <b>Certificate Authorities</b>.</li>
+      <li>Click the <b>Domain Certificate Authorities</b> tab.</li>
+      <li>Beside the <b>Standard Domain Certificate Authorities</b> entry, click <b>Disable</b>. 
+			</li>
+      <li>In the confirmation dialog, click <b>Disable</b>.</li>
+    </ol>
+    <h3><a name="adding-client certificates"/>Adding CAs for Client Certificates</h3>
+    <p>You can add certificates to an <MadCap:variable name="Product-Names.broker_cloud_short"/>'s trust store for CAs that issue client certificates. When a client application presents a certificate to establish a mutual TLS connection, the<MadCap:variable name="Product-Names.broker_cloud_short"/> validates that the client certificate was issued by a CA whose certificate has been added to the trust store. </p>
+    <p>You should be aware of these considerations when using client certificate authentication:</p>
+    <ul>
+      <li>
+        <p>While it's possible to use  certificates signed by a public CA, organizations often set up an internal CA to issue certificates - typically for client certificates. Certificates signed by a public CA are expensive and are generally unnecessary. You need to accept certificates signed by a public CA only if you want to allow clients from the public Internet to connect to your <MadCap:variable name="Product-Names.broker_cloud_short"/>. </p>
+        <p>Typically this is not the case, so an internal CA is suitable. An internal CA is also potentially more secure because your organization controls the entire certificate issuing process. For example, you can use  <a class="link-offsite" href="https://www.openssl.org/">OpenSSL tools</a>  to create an internal CA that can be used to sign the client certificates. For an end-to-end tutorial, see <MadCap:xref href="ght_client_certs.htm">Configuring an Event Broker Service to use Client Certificate Authentication</MadCap:xref>.</p>
+      </li>
+      <li>
+        <p>To use client certificate authentication  on the <MadCap:variable name="Product-Names.broker_cloud_short"/>, you must enable client authentication. For more information, see <MadCap:xref href="ght_authentication.htm#client-certificate-authentication">Configuring Client Certificate Authentication</MadCap:xref>. After you enable client certificate authentication on the <MadCap:variable name="Product-Names.broker_cloud_short"/>, you must configure the connecting client applications to use client certificate authentication.</p>
+      </li>
+    </ul>
+    <p>To add a CA certificate to the  client CA list,  perform these steps:</p>
+    <ol>
+      <li>In <MadCap:variable name="Product-Names.cluster_mgr" style="font-weight: normal;"/>, click the card of the <MadCap:variable name="Product-Names.broker_cloud_short"/> you want to configure.</li>
+      <li>Select the <b>Manage</b> tab and then click the <b>Certificate Authorities</b> tile.</li>
+      <li>
+        <p>On the <b>Client Certificates Authorities</b> tab, click <b>Add Client Certificate Authority</b>.</p>
+        <div class="thumbnail-container">
+          <img class="solacethumbnail" src="../Resources/Images/Cloud/oauth_client_authorities.png" alt="Screenshot showing the elements described in the surrounding text."/>
+        </div>
+      </li>
+      <li>
+        <p>In the <b>Add Client Certificate Authority</b> dialog, do the following:</p>
+        <ul>
+          <li>Enter a name for the CA certificate, such as <code>OurInternalCA</code> (the name should be alphanumeric only and cannot contain spaces or special characters).</li>
+          <li>Upload the PEM file using the <b>Upload</b> button or paste the contents of the certificate from your PEM file into the <b>Certificate Content</b> text box starting from (and including) the lines <code>-----BEGIN CERTIFICATE-----</code> to <code>-----END CERTIFICATE-----</code>.</li>
+        </ul>
+        <p>
+          <img class="img-border" src="../Resources/Images/Cloud/ght_cert_pasted_cert.png" alt="Screenshot showing the settings described in the surrounding text."/>
+        </p>
+      </li>
+      <li>
+        <p>(Optional) Select <b>Enable revocation check through OCSP</b> to use OCSP revocation checking and then enter the following information:</p>
+        <ul>
+          <li><b>OCSP Override URL</b> — The URL of the OCSP responder. The URL must be a complete URL including <code>http://</code>. Only HTTP URLs are supported.</li>
+          <li><b>OCSP Timeout (sec)</b> — The timeout to wait for a response from the OCSP responder. </li>
+          <li><b>OCSP Allow non-responder certification</b> — Enable or disable a non-responder certificate to sign an OCSP response.</li>
+        </ul>
+      </li>
+      <li>Click <b>Save</b>.</li>
+    </ol>
+    <p>The certificate appears in the list. </p>
+    <h3><a name="modify-existing-client-certificate"/>Modifying an Existing Client Certificate</h3>
+    <p>You can modify the  OCSP revocation checking parameters for a client CA. You can not change the CA itself, or the name you assigned to it.</p>
+    <ol>
+      <li>In <MadCap:variable name="Product-Names.cluster_mgr" style="font-weight: normal;"/>,click the card of the <MadCap:variable name="Product-Names.broker_cloud_short"/> you want to configure.</li>
+      <li>Select the <b>Manage</b> tab and then click the <b>Certificate Authorities</b> tile.</li>
+      <li>On  the <b>Client Certificates Authorities</b> tab, click <b>Edit</b> <img src="../Resources/Images/Cloud/reusable-icons/cm_edit_grey_icon.png" class="img.img-inline" alt=""/>.
+                </li>
+      <li>In the Edit Client Certificate Authority dialog, update the following settings as required:<ul><li><b>Enable revocation check through OCSP</b> — Enable or disable a non-responder certificate to sign an OCSP response.</li><li><b>Override URL</b> — The URL of the OCSP responder. The URL must be a complete URL including <code>http://</code>. Only HTTP URLs are supported.</li><li><b>Timeout (sec)</b> — The timeout to wait for a response from the OCSP responder. </li></ul></li>
+      <li>Click <b>Save</b>.</li>
+    </ol>
+    <h3><a name="removing-certificate-authoritity-certs"/>Removing CA Certificates</h3>
+    <p>You can remove a certificate from the Client CA or Domain CA trust store.  After you remove a certificate, new client applications or server names using that certificate won't be able to authenticate with the <MadCap:variable name="Product-Names.broker_cloud_short"/>. Existing connections that have been authenticated remain connected. </p>
+    <p>To disconnect the client applications, an administrator  must manually disconnect the client using <MadCap:variable name="Product-Names.pubsubmanager_short"/> via the <b>Clients</b> as shown below.</p>
+    <p>
+      <div class="thumbnail-container">
+        <img src="../Resources/Images/Cloud/ght_cert_forceclient.png" class="solacethumbnail" alt="Screenshot showing the settings described in the surrounding text."/>
+      </div>
+    </p>
+    <p>To remove a CA certificate, perform these steps:</p>
+    <ol>
+      <li>In <MadCap:variable name="Product-Names.cluster_mgr" style="font-weight: normal;"/>, click the card of the <MadCap:variable name="Product-Names.broker_cloud_short"/> you want to configure.</li>
+      <li>Select the <b>Manage</b> tab and then click <b>Certificate Authorities</b>.</li>
+      <li>On either the <b>Client Certificate Authorities</b> or <b>Domain Certificate Authorities</b> tab, click <b>Delete </b><img src="../Resources/Images/Cloud/reusable-icons/eventportal-delete-grey.png" class="img.img-inline" alt=""/> beside the name of the certificate that you want to remove. </li>
+      <li>In the <b>Delete Certificate Authority</b> dialog, click <b>Continue</b> to confirm that you are deleting the certificate; otherwise click <b>Cancel</b>.</li>
+    </ol>
+  </body>
+</html>

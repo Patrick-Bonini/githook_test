@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1><MadCap:concept term="Software;Appliance"/>Performance Monitoring</h1>
+    <p>The event broker can provide metrics on ingress and egress message and byte rates for the following:</p>
+    <ul>
+      <li>Endpoint (Queue or Topic Endpoint)</li>
+      <li>Client</li>
+      <li>VPN aggregated endpoint rates</li>
+      <li>VPN aggregated client rates</li>
+      <li>Global aggregated endpoint rates</li>
+      <li>Global aggregated client rates</li>
+    </ul>
+    <p>The above metrics can all be retrieved using CLI or SEMP. Also, the Client, Endpoint, and Global aggregated client rates can be obtained via SolAdmin. <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">As application teams generally do not have CLI access to the appliance, it may be preferable to create a simple performance monitoring tool using SEMP.  Such an application consists of a single client sending SEMP requests and processing the XML results. It is recommended that such a tool should be centralized one, and managed by the middleware team.</MadCap:conditionalText></p>
+    <p>The Solace  API packages contain samples that demonstrate how to create such SEMP based applications.  Moreover, a read-only administrative user can be used for SolAdmin to allow for viewing of statistical data.  <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">See [SolAdminGuide] – Viewing Real-Time Statistics for details on how to interactively view client statistics.</MadCap:conditionalText></p>
+    <p>For more information on SEMP request/reply formats, and performing SEMP commands over the message bus, refer to <MadCap:xref href="../Admin/SEMP/Using-SEMP.htm">SEMP</MadCap:xref>. <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">“Using SEMP to monitor and manage routers”, in the [SolMsgBusMgt] document.</MadCap:conditionalText></p>
+    <p> In this section we'll take a holistic view of messaging paths, and ensure that it's understood that all points where message loss could occur are correctly monitored and can be reported on.</p>
+    <h2 class="with-rule"><a name="Guarante"/>Guaranteed Messaging Data Path</h2>
+    <p>The Guaranteed Messaging data path can be divided into three distinct phases:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Ingress">Ingress Message Processing</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Message">Message Replication to Mate and Spooling</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Egress">Egress Message Processing</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="Ingress"/>Ingress Message Processing</h3>
+    <p>It's assumed the reason for monitoring message loss, or high latency message flow through the event broker, is to notify you of potential issues so you can take appropriate action to limit impact on your business operations.  Therefore, the tightest feedback is for the event broker to send a negative acknowledgment back to the application in as many failure situations as possible.   To facilitate this, the queue and topic endpoints should be configured with <code>reject-msg-to-sender-on-discard</code> as per <MadCap:xref href="../Messaging/Guaranteed-Msg/Configuring-Queues.htm#Message-Discard-Handling">Configuring Message Discard Handling</MadCap:xref>.  Special care must be taken with this feature when publishing to topics.  If a single topic-endpoint or queue rejects a message, then all other endpoints will also reject the message.</p>
+    <p>The corollary to this recommendation is that all applications process their positive and negative acknowledgments and take appropriate action on message rejection.</p>
+    <p>This single recommendation will give the applications immediate notification for ingress discards in most cases, but not advance warning that discards are imminent.  Also the case where the application will not be notified is where there is no valid destination for the persistent message published to a topic.  To determine this case is happening it's important to poll the command <code>show log no-subscription-match</code> which will give the most recent 1000 topics that have been published to without a valid endpoint or subscribing client.  This command provides the client, client-username, VPN, and actual topic published.</p>
+    <p>It's not recommended to poll for other message-spool ingress discards statistics at a rate higher than once every few minutes, if at all, as although these statistics tell you the condition is happening, it will take significant work to tell you why.  By this time the application will have received a negative acknowledgment indicating cause, and the event.log will have produced a detailed log on why discards are occurring.</p>
+    <p>When the maximum number of ingress flows for a message VPN or the event broker wide limit is reached, no more messages can be published to the event broker. In order to set this value, use the following CLI Command:</p>
+    <p class="Code">solace (config-message-spool)# max-ingress-flows</p>
+    <p>The corresponding set and clear Syslog events generated are as follows:</p>
+    <p>
+      <code>SYSTEM_AD_MAX_INGRESS_FLOWS_EXCEEDED</code>
+    </p>
+    <p>
+      <code>SYSTEM_AD_INGRESS_FLOWS_HIGH</code>
+    </p>
+    <p>
+      <code>SYSTEM_AD_INGRESS_FLOWS_HIGH_CLEAR</code>
+    </p>
+    <h3><a name="Message"/>Message Replication to Mate and Spooling</h3>
+    <p>This phase of the data path can be monitored by configuring the event broker to receive notifications where the event broker is approaching limits that will cause ingress discards or that ingress discards. It's important to set appropriate event thresholds and monitor events.</p>
+    <p>There are a number of events which can be monitored, starting from the lowest level disk health, through general system assured-delivery health to Message VPN health, and finally endpoint health.</p>
+    <p>These settable events monitor total disk utilization:</p>
+    <p class="Code">solace(config-disk-utilization-trap) # thresholds<br/>clear-value  set-value</p>
+    <p>The corresponding set and clear Syslog events generated are as follows:</p>
+    <p>
+      <code>SYSTEM_CHASSIS_DISK_UTILIZATION_HIGH</code>
+    </p>
+    <p>
+      <code>SYSTEM_CHASSIS_DISK_UTILIZATION_HIGH_CLEAR</code>
+    </p>
+    <p>
+      <code>SYSTEM_CHASSIS_DISK_UTILIZATION_MAX</code>
+    </p>
+    <p>These events will be generated if the ADB blade goes down.  Note there is no BLADE_UP on reboot:</p>
+    <p>
+      <code>SYSTEM_CHASSIS_BLADE_DOWN</code>
+    </p>
+    <p>
+      <code>SYSTEM_CHASSIS_BLADE_UP</code>
+    </p>
+    <p>These events indicate that the ADB mate links are down or up and messages are able to replicate to the mate:</p>
+    <p>
+      <code>SYSTEM_LINK_ADB_LINK_DOWN</code>
+    </p>
+    <p>
+      <code>SYSTEM_LINK_ADB_LINK_UP</code>
+    </p>
+    <p>These events indicate that at least one multipath link to the SAN is down or up:</p>
+    <p>SYSTEM_LINK_PATH_TO_DISK_ARRAY_DOWN</p>
+    <p>SYSTEM_LINK_PATH_TO_DISK_ARRAY_UP</p>
+    <h4>Events for monitoring Guaranteed Messaging systems</h4>
+    <p>These settable events monitor disk utilization by Guaranteed Messaging. When exceeded, clients will not be able to send messages to Guaranteed Messaging:</p>
+    <p class="Code">solace(config-hardware-message-spool-event) # disk-usage thresholds<br/>clear-percentage  set-percentage</p>
+    <p>The corresponding set and clear Syslog events generated are as follows:</p>
+    <p>
+      <code>SYSTEM_AD_DISK_USAGE_EXCEEDED</code>
+    </p>
+    <p>
+      <code>SYSTEM_AD_DISK_USAGE_HIGH</code>
+    </p>
+    <p>
+      <code>SYSTEM_AD_DISK_USAGE_HIGH_CLEAR</code>
+    </p>
+    <p>These settable events monitor ingress flows, when exceeded clients will not be able to connect and send messages to Guaranteed Messaging system:</p>
+    <p class="Code">solace(config-hardware-message-spool-event) # ingress-flows thresholds<br/>clear-percentage set-percentage</p>
+    <p>The corresponding set and clear Syslog events generated are as follows:</p>
+    <p>
+      <code>SYSTEM_AD_INGRESS_FLOWS_HIGH</code>
+    </p>
+    <p>
+      <code>SYSTEM_AD_INGRESS_FLOWS_HIGH_CLEAR</code>
+    </p>
+    <p>
+      <code>SYSTEM_AD_MAX_INGRESS_FLOWS_EXCEEDED</code>
+    </p>
+    <p>These settable events monitor the total trackable number of messages on the event broker, and when exceeded, clients will not be able to send messages to Guaranteed Messaging:</p>
+    <p class="Code">solace(config-hardware-message-spool-event) # message-count thresholds<br/>clear-percentage  set-percentage</p>
+    <p>The corresponding set and clear Syslog events generated are as follows:</p>
+    <p>
+      <code>SYSTEM_AD_MSG_COUNT_UTILIZATION_EXCEED</code>
+    </p>
+    <p>
+      <code>SYSTEM_AD_MSG_COUNT_UTILIZATION_HIGH</code>
+    </p>
+    <p>
+      <code>SYSTEM_AD_MSG_COUNT_UTILIZATION_HIGH_CLEAR</code>
+    </p>
+    <p>These settable events monitor the total trackable files in the spool directories on the event broker, and when exceeded, clients will not be able to send messages to Guaranteed Messaging:</p>
+    <p class="Code">solace(config-hardware-message-spool-event) # spool-files thresholds<br/>clear-percentage  set-percentage</p>
+    <p>The corresponding set and clear Syslog events generated are as follows:</p>
+    <p>
+      <code>SYSTEM_AD_SPOOL_FILES_EXCEEDED</code>
+    </p>
+    <p>
+      <code>SYSTEM_AD_SPOOL_FILES_HIGH</code>
+    </p>
+    <p>
+      <code>SYSTEM_AD_SPOOL_FILES_HIGH_CLEAR</code>
+    </p>
+    <p>These settable events monitor the spool against the set quota, and when exceeded, clients will not be able to send messages to Guaranteed Messaging:</p>
+    <p class="Code">solace(config-hardware-message-spool-event) # spool-usage thresholds<br/>clear-percentage    set-percentage</p>
+    <p>The corresponding set and clear Syslog events generated are as follows:</p>
+    <p>
+      <code>SYSTEM_AD_MSG_SPOOL_HIGH</code>
+    </p>
+    <p>
+      <code>SYSTEM_AD_MSG_SPOOL_HIGH_CLEAR</code>
+    </p>
+    <p>
+      <code>SYSTEM_AD_MSG_SPOOL_QUOTA_EXCEED</code>
+    </p>
+    <p>These settable events are ADB3 specific, and when exceeded, messaging performance will drop to ADB2 levels of performance:</p>
+    <p class="Code">solace(config-hardware-message-spool-event) # cache-usage thresholds<br/>clear-percentage    set-percentage</p>
+    <p>The corresponding set and clear Syslog events generated are as follows:</p>
+    <p>
+      <code>SYSTEM_AD_MAX_MSG_CACHE_USAGE_EXCEEDED</code>
+    </p>
+    <p>
+      <code>SYSTEM_AD_MSG_CACHE_USAGE_HIGH</code>
+    </p>
+    <p>
+      <code>SYSTEM_AD_MSG_CACHE_USAGE_HIGH_CLEAR</code>
+    </p>
+    <p>At the VPN level, ingress flow and spool-usage events are configurable as well as the VPN-level spool quota:</p>
+    <p class="Code">solace(config-message-spool-event) #<br/>ingress-flows        spool-usage</p>
+    <p>The corresponding set and clear Syslog events generated are as follows:</p>
+    <p>
+      <code>VPN_AD_INGRESS_FLOWS_HIGH</code>
+    </p>
+    <p>
+      <code>VPN_AD_INGRESS_FLOWS_HIGH_CLEAR</code>
+    </p>
+    <p>
+      <code>VPN_AD_MAX_INGRESS_FLOWS_EXCEEDED</code>
+    </p>
+    <p>
+      <code>VPN_AD_MSG_SPOOL_HIGH</code>
+    </p>
+    <p>
+      <code>VPN_AD_MSG_SPOOL_HIGH_CLEAR</code>
+    </p>
+    <p>
+      <code>VPN_AD_MSG_SPOOL_QUOTA_EXCEED</code>
+    </p>
+    <p>At the individual endpoint level, there is a configurable spool-usage as well as reject-low-priority-msg-limit:</p>
+    <p class="Code">solace(config-message-spool-queue-event) #<br/>reject-low-priority-msg-limit  spool-usage</p>
+    <p>The corresponding set and clear Syslog events generated are as follows:</p>
+    <p>
+      <code>VPN_AD_MSG_SPOOL_HIGH</code>
+    </p>
+    <p>
+      <code>VPN_AD_MSG_SPOOL_HIGH_CLEAR</code>
+    </p>
+    <p>
+      <code>VPN_AD_MSG_SPOOL_QUOTA_EXCEED</code>
+    </p>
+    <p>
+      <code>VPN_AD_MSG_SPOOL_REJECT_LOW_PRIORITY_MSG_LIMIT_EXCEED</code>
+    </p>
+    <p>
+      <code>VPN_AD_MSG_SPOOL_REJECT_LOW_PRIORITY_MSG_LIMIT_HIGH</code>
+    </p>
+    <p>
+      <code>VPN_AD_MSG_SPOOL_REJECT_LOW_PRIORITY_MSG_LIMIT_HIGH_CLEAR</code>
+    </p>
+    <h3><a name="Egress"/>Egress Message Processing</h3>
+    <p>On the egress side there are no failure type discards; however, there are TTL expires if configured and administrative messages are deleted.  There are situations that will prevent endpoints from being created or bound for which corresponding events are generated, as well as global situations that will prevent messages from being delivered.</p>
+    <p>When the system wide total number of messages are delivered, but not acknowledged by the consuming clients, exceed the maximum, then no more messages can be delivered to the clients. This property can be set using the following CLI command:</p>
+    <p class="Code">solace(config-hardware-message-spool-event-delivered-unacked)# thresholds<br/>clear-percentage  set-percentage</p>
+    <p>The corresponding set and clear Syslog events generated are as follows:</p>
+    <p>
+      <code>SYSTEM_AD_DELIVERED_UNACKED_MSGS_EXCEED</code>
+    </p>
+    <p>
+      <code>SYSTEM_AD_DELIVERED_UNACKED_MSGS_HIGH</code>
+    </p>
+    <p>
+      <code>SYSTEM_AD_DELIVERED_UNACKED_MSGS_HIGH_CLEAR</code>
+    </p>
+    <p>When the maximum number of egress flows for a message VPN, or the event broker wide limit has been reached, no clients can bind to queues to receive messages. In order to set this limit for the event broker, use the following CLI command:</p>
+    <p class="Code">solace (config-message-spool)# max-egress-flows</p>
+    <p>The corresponding set and clear Syslog events generated are as follows:</p>
+    <p>
+      <code>SYSTEM_AD_MAX_EGRESS_FLOWS_EXCEEDED</code>
+    </p>
+    <p>
+      <code>SYSTEM_AD_EGRESS_FLOWS_HIGH</code>
+    </p>
+    <p>
+      <code>SYSTEM_AD_EGRESS_FLOWS_HIGH_CLEAR</code>
+    </p>
+    <p>When the maximum number of endpoints for a Message VPN, or the event broker wide limit has been reached, no more endpoints can be created on the event broker for sending or receiving Guaranteed Messages. In order to set this limit for the event broker, use the following CLI command:</p>
+    <p class="Code">solace (config-message-spool)# max-endpoints</p>
+    <p>The corresponding set and clear Syslog events generated are as follows:</p>
+    <p>
+      <code>SYSTEM_AD_MAX_ENDPOINTS_EXCEEDED</code>
+    </p>
+    <p>
+      <code>SYSTEM_AD_ENDPOINTS_HIGH</code>
+    </p>
+    <p>
+      <code>SYSTEM_AD_ENDPOINTS_HIGH_CLEAR</code>
+    </p>
+    <h2 class="with-rule"><a name="Direct"/>Direct Delivery Data Path</h2>
+    <p>For direct messages, there are no positive or negative acknowledgments sent back to the publisher.</p>
+    <p>Setting event thresholds for expected message rates will help identify situations where message patterns are greater than expected.</p>
+    <p>Use the following command to set event thresholds for the ingress message rate on a VPN:</p>
+    <p class="Code">solace(config-egress-msg-rate-trap)# thresholds<br/>clear-value  set-value<br/>solace(config-ingress-msg-rate-trap)# thresholds<br/>clear-value  set-value</p>
+    <p>The corresponding set and clear Syslog events generated are as follows:</p>
+    <p>
+      <code>SYSTEM_CLIENT_EG_MSG_RATE_HIGH</code>
+    </p>
+    <p>
+      <code>SYSTEM_CLIENT_EG_MSG_RATE_HIGH_CLEAR</code>
+    </p>
+    <p>
+      <code>SYSTEM_CLIENT_ING_MSG_RATE_HIGH</code>
+    </p>
+    <p>
+      <code>SYSTEM_CLIENT_ING_MSG_RATE_HIGH_CLEAR</code>
+    </p>
+    <p>Use the following command to set event thresholds for the egress message rate on a VPN:</p>
+    <p class="Code">solace (config-msg-vpn-event)# egress-message-rate thresholds<br/>clear-value  set-value<br/>solace (config-msg-vpn-event)# egress-message-rate thresholds<br/>clear-value  set-value</p>
+    <p>The corresponding set and clear Syslog events generated are as follows:</p>
+    <p>
+      <code>VPN_VPN_EG_MSG_RATE_HIGH</code>
+    </p>
+    <p>
+      <code>VPN_VPN_EG_MSG_RATE_HIGH_CLEAR</code>
+    </p>
+    <p>
+      <code>VPN_VPN_ING_MSG_RATE_HIGH</code>
+    </p>
+    <p>
+      <code>VPN_VPN_ING_MSG_RATE_HIGH_CLEAR</code>
+    </p>
+    <p>Finally, an egress discard of direct messages occurs due to consumers unable to keep up. This results in the following event being written to the Syslog:</p>
+    <p>
+      <code>CLIENT_CLIENT_EGRESS_MSG_DISCARD</code>
+    </p>
+    <p>In order to monitor the size of a client’s NAB egress buffers, use the following command:</p>
+    <p class="Code">show client &lt;name&gt; stats queues</p>
+    <p>Both the size of these buffers, as well as the minimum burst size, can be increased depending on the network throughput and the rate at which the client processes these messages. For more information, refer to <MadCap:xref href="../Messaging/Managing-Event-Delivery-Resources.htm#managing_msg_delivery_resources_2491525118_198860">Data Buffer Management</MadCap:xref>. <MadCap:conditionalText MadCap:conditions="Default.HideFromAllOutput">refer to “Egress Buffer Data Management” in [SolFeatureGuide]</MadCap:conditionalText></p>
+  </body>
+</html>

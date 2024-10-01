@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Reconfiguring Hostname / Routername for Appliances</h1>
+    <p>Follow these steps to reconfigure the hostname / routername for appliances in a replication pair.</p>
+    <ol>
+      <li>Check and record which message VPNs are enabled for replication and shutdown message VPN replication:
+                <pre>primary(configure)# message-vpn &lt;vpn-name&gt;
+primary(configure/message-vpn)# replication shutdown</pre><pre>dr(configure)# message-vpn &lt;vpn-name&gt;
+dr(configure/message-vpn)# replication shutdown</pre></li>
+      <li>Shutdown config-sync:
+            <pre xml:space="preserve">primary(configure)# config-sync shutdown</pre><pre xml:space="preserve">
+dr(configure)# config-sync shutdown</pre></li>
+      <li>Shutdown the msg-backbone service:
+            <pre xml:space="preserve">primary(configure)# service msg-backbone shutdown</pre><pre xml:space="preserve">
+dr(configure)# service msg-backbone shutdown</pre></li>
+      <li>Configure the new hostname; the appliance will automatically reboot after executing this command:
+            <pre>primary(configure)# hostname &lt;new-primary-hostname&gt;
+dr(configure)# hostname &lt;new-standby-hostname&gt;</pre></li>
+      <li>After the appliance restarts, reconfigure the replication mate's <code>virtual-router-name</code>:
+                <pre>primary(configure)# replication
+primary(configure/replication)# mate virtual-router-name v:&lt;new-dr-routername&gt; connect-via &lt;dr-ip&gt;</pre><pre>dr(configure)# replication
+dr(configure/replication)# mate virtual-router-name v:&lt;new-primary-routername&gt; connect-via &lt;primary-ip&gt;</pre></li>
+      <li>Re-enable message-vpn replication:<pre>primary(configure)# message-vpn &lt;name&gt;
+primary(configure/message-vpn)# replication
+primary(configure/message-vpn/replication)# no shutdown</pre><pre>dr(configure)# message-vpn &lt;name&gt;
+dr(configure/message-vpn)# replication
+dr(configure/message-vpn/replication)# no shutdown</pre></li>
+      <li>Re-enable the msg-backbone service:
+            <pre xml:space="preserve">primary(configure)# no service msg-backbone shutdown</pre><pre xml:space="preserve">
+dr(configure)# no service msg-backbone shutdown</pre></li>
+      <li>Re-enable config-sync:<pre>primary(configure)# config-sync
+primary(configure/config-sync)# no shutdown</pre><pre>dr(configure)# config-sync
+dr(configure/config-sync)# no shutdown</pre></li>
+    </ol>
+  </body>
+</html>

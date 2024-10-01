@@ -1,0 +1,377 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Changing  MSG-Backbone IP VRFs for HA Appliances</h1>
+    <p>This section describes how to change the IP address used for the msg-backbone of a  high-availability (HA) redundant pair of <MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/> appliances. This allows the HA pair to be migrated to a different IP/subnet.</p>
+    <h2 class="with-rule"><a name="Assumpti"/>Assumptions</h2>
+    <p> The example assumes the following:</p>
+    <ul>
+      <li><MadCap:variable name="Variables.CompanyName"/><MadCap:variable name="Product-Names.pubsub_brand_only"/> 7.1.1.x or later</li>
+      <li>Active/Active redundancy.</li>
+      <li>Re-using the same message spool with the same LUN.</li>
+      <li>Only one default route is used for the msg-backbone VRF.</li>
+      <li>The hostnames of the appliances are not changed.</li>
+      <li>The IP address/subnet change is done on the same data center and the network administrators can change the network ports to the new subnet.</li>
+    </ul>
+    <p>Although the configuration of your HA pair and your network may differ from that used in the provided example, the general process will be the same.</p>
+    <h2 class="with-rule"><a name="Before"/>Before you begin</h2>
+    <p>Perform the following steps to ensure the system is in the correct state before upgrade:</p>
+    <ol>
+      <li>Verify the <MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/> version used by the appliances you will migrate:
+				<p class="Code">solace-primary&gt; show version</p><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code">solace-primary&gt; show version
+Process         Release              Build date
+--------------- -------------------- ------------------------
+CLI             7.1.1.630            Mar 31 2016 11:17:39 SGT
+DataplaneMgr    7.1.1.630            Mar 31 2016 11:17:39 SGT
+Controlplane    7.1.1.630            Mar 31 2016 11:17:39 SGT
+Managementplane 7.1.1.630            Mar 31 2016 11:17:39 SGT</pre></MadCap:dropDownBody></MadCap:dropDown></p></li>
+      <li>Verify that the internal disks are in a redundant state on both the primary and backup appliance:<p class="Code">solace-primary&gt; show disk</p><p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code">solace-primary&gt; show disk
+Reload required:               No
+ 
+Attribute                                 Disk 1                        Disk 2
+------------------ ----------------------------- -----------------------------
+Device Model                 INTEL SSDSC2BB120G4           INTEL SSDSC2BB120G4
+Capacity (MB)                             114473                        114473
+Admin State                              enabled                       enabled
+Operational State                             up                            up
+
+RAID in fully redundant state: Yes
+. . .
+solace-backup&gt; show disk
+Reload required:               No
+
+Attribute                                 Disk 1                        Disk 2
+------------------ ----------------------------- -----------------------------
+Device Model                 INTEL SSDSA2CW080G3           INTEL SSDSA2CW080G3
+Capacity (MB)                              76319                         76319
+Admin State                              enabled                       enabled
+Operational State                             up                            up
+
+RAID in fully redundant state: Yes</pre></MadCap:dropDownBody></MadCap:dropDown></p><div class="Caution"><p>If the displayed output shows the RAID disk drives to be in a non-­redundant state on either appliance, <a href="../../get-support.htm" class="link-internal">contact Solace</a> and abort this software upgrade procedure immediately to prevent software corruption on the appliance.</p></div><p>Some appliances contain slots for disk 3 and disk 4, however, these slots are not presently used, and the redundancy state for disk 3 and disk 4 should be ignored.</p></li>
+      <li>Have a list of primary, backup and static IPs and gateway IP address ready.</li>
+      <li>Take note of the interfaces that you are going to migrate.<p>For example, this procedure uses 1/1/lag1:1, 1/1/lag1:2, 1/1/lag1:3.</p></li>
+      <li>If required, also have a list of new VRRP-VRIDs and IPs at hand. <p>For example, this procedure uses the following:</p><table class="TableStyle-Table_Num" style="caption-side: top;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 95%;" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Primary Event Broker</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">Backup Event Broker</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><p>Primary: 192.168.40.115/24</p></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1"><p>Primary: 192.168.40.125/24</p></td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><p>Backup: 192.168.40.125/24</p></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1"><p>Backup: 192.168.40.115/24</p></td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1"><p>Static: 192.168.40.116/24</p></td><td class="TableStyle-Table_Num-BodyG-Column1-Body1"><p>Static: 192.168.40.126/24</p></td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyE-Column1-Body1"><p>Gateway: 192.168.40.1</p></td><td class="TableStyle-Table_Num-BodyD-Column1-Body1"><p>Gateway: 192.168.40.1</p></td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1"><p>VRRP-VRID: 15</p></td><td class="TableStyle-Table_Num-BodyA-Column1-Body1"><p>VRRP-VRID: 25</p></td></tr></tbody></table></li>
+      <li>Ensure that the primary appliance is in the correct redundancy state:<p class="Code">solace-primary&gt; show redundancy</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example: Primary Redundancy State</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p>Using Active/Active redundancy mode, the output from show redundancy on the primary appliance should appear as follows:</p><p class="Note">Output may vary by appliance version. </p><pre class="Code" xml:space="preserve">solace-primary&gt; show redundancy
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router
+                               ----------------------  ----------------------
+Activity Status                Local Active            Mate Active
+Routing Interface              1/1/lag1:1              1/1/lag1:2
+VRRP VRID                      11                      12
+Routing Interface Status       Up                      Up
+VRRP Status                    Leader                  Backup
+VRRP Priority                  250                     100
+Message Spool Status           AD-Active               AD-Disabled
+Priority Reported By Mate      Standby                 Active</pre></MadCap:dropDownBody></MadCap:dropDown></li>
+      <li>Ensure that the backup appliance is in the correct redundancy state:<p class="Code">solace-backup&gt; show redundancy</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example: Backup Redundancy State</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p>Using Active/Active redundancy mode, the output from show redundancy on the backup appliance should appear as follows:</p><p class="Note">Output may vary by appliance version. </p><pre class="Code" xml:space="preserve">solace-backup&gt; show redundancy
+
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+                               Primary Virtual Router  Backup Virtual Router
+                               ----------------------  ----------------------
+Activity Status                Local Active            Mate Active
+Routing Interface              1/1/lag1:1              1/1/lag1:2
+VRRP VRID                      12                      11
+Routing Interface Status       Up                      Up
+VRRP Status                    Leader                  Backup
+VRRP Priority                  250                     100
+Message Spool Status           AD-Disabled             AD-Standby
+Priority Reported By Mate      Standby                 Active</pre></MadCap:dropDownBody></MadCap:dropDown></li>
+    </ol>
+    <h2 class="with-rule"><a name="Prepare"/>Prepare for Message Backbone IP VRF Migration</h2>
+    <p>Once you can  confirm that the system is in the correct state, you can begin the process of migrating the message backbone IP VRF.</p>
+    <ol>
+      <li>Make a copy of the current SolOS configuration in the <code>/configs</code> sub-directory on both appliances:
+        <p class="Code">solace-primary&gt; enable<br/>solace-primary# copy current-config /configs/&lt;SolOS-version&gt;_preMigrationConfig</p><p> </p><p class="Code">solace-backup&gt; enable<br/>solace-backup# copy current-config /configs/&lt;SolOS-version&gt;_preMigrationConfig</p><p><u>Where: </u></p><p><code>&lt;SolOS-version&gt; </code>is the version number of current SolOS software as seen in the output of the <code>show version</code> command.</p></li>
+      <li>If routing is enabled, shut it down on both appliances:<p class="Code">solace-primary# configure<br/>solace-primary(configure)# routing<br/>solace-primary(configure/routing)# shutdown<br/>solace-primary(configure/routing)# end</p><p> </p><p class="Code">solace-backup# configure<br/>solace-backup(configure)# routing<br/>solace-backup(configure/routing)# shutdown<br/>solace-backup(configure/routing)# end</p></li>
+      <li>Shut down the message backbone service on both appliances:
+        <p class="Code">solace-primary# configure<br/>solace-primary(configure)# service msg-backbone<br/>solace-primary(configure/service/msg-backbone)# shutdown<br/>All clients will be disconnected.<br/>Do you want to continue (y/n)? y<br/>solace-primary(configure/service/msg-backbone)# end</p><p> </p><p class="Code">solace-backup# configure<br/>solace-backup(configure)# service msg-backbone<br/>solace-backup(configure/service/msg-backbone)# shutdown<br/>All clients will be disconnected.<br/>Do you want to continue (y/n)? y<br/>solace-backup(configure/service/msg-backbone)# end</p></li>
+      <li>Ensure both appliances do not have auto­-revert enabled:
+        <p class="Code">solace-primary# configure<br/>solace-primary(configure)# redundancy<br/>solace-primary(configure/redundancy)# no auto-revert<br/>solace-primary(configure/redundancy)# end</p><p> </p><p class="Code">solace-backup# configure<br/>solace-backup(configure)# redundancy<br/>solace-backup(configure/redundancy)# no auto-revert<br/>solace-backup(configure/redundancy)# end</p></li>
+      <li>If the paired appliances are using transacted sessions, wait until all transacted sessions time out and the count drops to 0 on the primary appliance.				<p>This may take up to three minutes.</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code" xml:space="preserve">solace-primary# show message-spool detail
+
+                           Currently Used   Max Allowed
+                           --------------   -----------
+Transacted Sessions:                    0         16000</pre></MadCap:dropDownBody></MadCap:dropDown></li>
+      <li>Shut down the message spool on primary. Then shut down the message spool on the backup.
+			<p class="Code">solace-primary# configure<br/>solace-primary(configure)# hardware message-spool<br/>solace-primary(configure/hardware/message-spool)# shutdown<br/>All message spooling will be stopped.<br/>Do you want to continue (y/n)? y<br/>solace-primary(configure/hardware/message-spool)# end</p><p> </p><p class="Code">solace-backup# configure<br/>solace-backup(configure)# hardware message-spool<br/>solace-backup(configure/hardware/message-spool)# shutdown<br/>All message spooling will be stopped.<br/>Do you want to continue (y/n)? y<br/>solace-backup(configure/hardware/message-spool)# end</p></li>
+      <li>Shutdown redundancy on both appliances:
+        <p class="Code">solace-primary# configure<br/>solace-primary(configure)# redundancy<br/>solace-primary(configure/redundancy)# shutdown<br/>solace-primary(configure/redundancy)# end</p><p> </p><p class="Code">solace-backup# configure<br/>solace-backup(configure)# redundancy<br/>solace-backup(configure/redundancy)# shutdown<br/>solace-backup(configure/redundancy)# end</p></li>
+    </ol>
+    <h2 class="with-rule"><a name="Migratin"/>Migrating Message Backbone IP VRF</h2>
+    <p>You can now begin migrating the message backbone IP VRF.</p>
+    <p class="Note">For this step, it must be assumed that the network operations team have switched the network to a different subnet.</p>
+    <ol>
+      <li>View the currently configured interfaces, and note what is currently primary, backup and static IP addresses for both the primary and backup appliances:
+				<p class="Code">solace-primary# show ip vrf msg-backbone</p><p>You will replace this with their new IP addresses on the same interfaces.</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code" xml:space="preserve">solace-primary# show ip vrf msg-backbone
+VRF: msg-backbone    
+Number of interfaces: 3
+
+Status Flags:   R=Redundancy,  A=Admin,  P=Physical
+Status Values:  U=Up,  D=Down
+Status
+Interface       V Router  IP Address          R  A  P   #Conn  #Frag
+--------------  --------  ------------------  --------  -----  -----
+1/1/lag1:1      primary   192.168.40.110/24   U  U  U   0      0
+1/1/lag1:2      backup    192.168.40.120/24   D  U  U   0      0
+1/1/lag1:3      static    192.168.40.119/24   U  U  U   0      0
+
+Number of global routes: 1
+
+Destination       Gateway           Network Mask      Interface
+----------------  ----------------  ----------------  ----------
+default           192.168.40.130    0.0.0.0           1/1/lag1:3
+
+Number of per interface default routes: 0
+
+Phy-Interface     Gateway           Interface
+----------------  ----------------  ----------
+
+
+solace-backup# show ip vrf msg-backbone
+VRF: msg-backbone    
+Number of interfaces: 3
+
+Status Flags:   R=Redundancy,  A=Admin,  P=Physical
+Status Values:  U=Up,  D=Down
+Status
+Interface       V Router  IP Address          R  A  P   #Conn  #Frag
+--------------  --------  ------------------  --------  -----  -----
+1/1/lag1:1      primary   192.168.40.120/24   U  U  U   0      0
+1/1/lag1:2      backup    192.168.40.110/24   D  U  U   0      0
+1/1/lag1:3      static    192.168.40.129/24   U  U  U   0      0
+
+Number of global routes: 1
+
+Destination       Gateway           Network Mask      Interface
+----------------  ----------------  ----------------  ----------
+default           192.168.40.130    0.0.0.0           1/1/lag1:3
+
+Number of per interface default routes: 0
+
+Phy-Interface     Gateway           Interface
+----------------  ----------------  ----------</pre></MadCap:dropDownBody></MadCap:dropDown></li>
+      <li>Remove the old default route from the msg-backbone on both appliances:
+        <p class="Code">solace-primary# configure<br/>solace-primary(configure)# ip vrf msg-backbone<br/>solace-primary(configure/ip/vrf)# no route default<br/>solace-primary(configure/ip/vrf)# no route default 1/1/lag1<br/>ERROR:  No route is associated with interface 1/1/lag1<br/>Command Failed<br/>solace-primary# end</p><p> </p><p class="Code">solace-backup# configure<br/>solace-backup(configure)# ip vrf msg-backbone<br/>solace-backup(configure/ip/vrf)# no route default<br/>solace-backup(configure/ip/vrf)# no route default 1/1/lag1<br/>ERROR:  No route is associated with interface 1/1/lag1<br/>Command Failed<br/>solace-backup# end</p><p class="Note">Depending on how the default route is configured, you may get an “ERROR: No route is associated with interface xxxxx.” message on either <b>no route default</b> or the <b>no route default 1/1/lag1</b> command. This is normal</p></li>
+      <li>Shutdown, reconfigure, and enable the currently configured interfaces for the primary.
+        <MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p>This example uses 1/1/lag1—change as necessary:</p><p class="Code">solace-primary# configure<br/>solace-primary(configure)# ip vrf msg-backbone<br/>solace-primary(configure/ip/vrf)# interface 1/1/lag1:1<br/>solace-primary(configure/ip/vrf/interface)# shutdown<br/>solace-primary(configure/ip/vrf/interface)# ip-address 192.168.40.115/24<br/>solace-primary(configure/ip/vrf/interface)# no shutdown<br/>solace-primary(configure/ip/vrf/interface)# exit<br/> <br/>solace-primary(configure/ip/vrf)# interface 1/1/lag1:2<br/>solace-primary(configure/ip/vrf/interface)# shutdown<br/>solace-primary(configure/ip/vrf/interface)# ip-address 192.168.40.125/24<br/>solace-primary(configure/ip/vrf/interface)# no shutdown<br/>solace-primary(configure/ip/vrf/interface)# exit<br/> <br/>solace-primary(configure/ip/vrf)# interface 1/1/lag1:3<br/>solace-primary(configure/ip/vrf/interface)# shutdown<br/>solace-primary(configure/ip/vrf/interface)# ip-address 192.168.40.116/24<br/>solace-primary(configure/ip/vrf/interface)# no shutdown<br/>solace-primary(configure/ip/vrf/interface)# end</p></MadCap:dropDownBody></MadCap:dropDown></li>
+      <li>Shutdown, reconfigure, and enable the currently configured interfaces for the backup.
+        <MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p class="Code">solace-backup# configure<br/>solace-backup(configure)# ip vrf msg-backbone<br/>solace-backup(configure/ip/vrf)# interface 1/1/lag1:1<br/>solace-backup(configure/ip/vrf/interface)# shutdown<br/>solace-backup(configure/ip/vrf/interface)# ip-address 192.168.40.125/24<br/>solace-backup(configure/ip/vrf/interface)# no shutdown<br/>solace-backup(configure/ip/vrf/interface)# exit<br/> <br/>solace-backup(configure/ip/vrf)# interface 1/1/lag1:2<br/>solace-backup(configure/ip/vrf/interface)# shutdown<br/>solace-backup(configure/ip/vrf/interface)# ip-address 192.168.40.115/24<br/>solace-backup(configure/ip/vrf/interface)# no shutdown<br/>solace-backup(configure/ip/vrf/interface)# exit<br/> <br/>solace-backup(configure/ip/vrf)# interface 1/1/lag1:3<br/>solace-backup(configure/ip/vrf/interface)# shutdown<br/>solace-backup(configure/ip/vrf/interface)# ip-address 192.168.40.126/24<br/>solace-backup(configure/ip/vrf/interface)# no shutdown<br/>solace-backup(configure/ip/vrf/interface)# end</p></MadCap:dropDownBody></MadCap:dropDown></li>
+      <li>Configure the default gateway:        <p class="Code">solace-primary# configure<br/>solace-primary(configure)# ip vrf msg-backbone<br/>solace-primary(configure/ip/vrf)# route default  192.168.40.1<br/>solace-primary(configure/ip/vrf)# end</p><p> </p><p class="Code">solace-backup# configure<br/>solace-backup(configure)# ip vrf msg-backbone<br/>solace-backup(configure/ip/vrf)# route default  192.168.40.1<br/>solace-backup(configure/ip/vrf)# end</p></li>
+      <li>Check the interfaces on both appliances to ensure that they are correct:<p class="Code">solace-primary# show ip vrf msg-backbone<br/>solace-backup# show ip vrf msg-backbone</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:
+</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code" xml:space="preserve">solace-primary# show ip vrf msg-backbone
+VRF: msg-backbone
+Number of interfaces: 3
+
+Status Flags:   R=Redundancy,  A=Admin,  P=Physical
+Status Values:  U=Up,  D=Down
+
+Status
+Interface       V Router  IP Address          R  A  P   #Conn  #Frag
+--------------  --------  ------------------  --------  -----  -----
+1/1/lag1:1      primary   192.168.40.115/24   U  U  U   0      0
+1/1/lag1:2      backup    192.168.40.125/24   D  U  U   0      0
+1/1/lag1:3      static    192.168.40.116/24   U  U  U   0      0
+
+Number of global routes: 1
+
+Destination       Gateway           Network Mask      Interface
+----------------  ----------------  ----------------  ----------
+default           192.168.40.1      0.0.0.0           1/1/lag1:3
+
+Number of per interface default routes: 0
+
+Phy-Interface     Gateway           Interface
+----------------  ----------------  ----------
+
+
+solace-backup# show ip vrf msg-backbone
+VRF: msg-backbone    
+Number of interfaces: 3
+
+Status Flags:   R=Redundancy,  A=Admin,  P=Physical
+Status Values:  U=Up,  D=Down
+
+Status
+Interface       V Router  IP Address          R  A  P   #Conn  #Frag
+--------------  --------  ------------------  --------  -----  -----
+1/1/lag1:1      primary   192.168.40.125/24   U  U  U   0      0
+1/1/lag1:2      backup    192.168.40.115/24   D  U  U   0      0
+1/1/lag1:3      static    192.168.40.126/24   U  U  U   0      0
+
+Number of global routes: 1
+
+Destination       Gateway           Network Mask      Interface
+----------------  ----------------  ----------------  ----------
+default           192.168.40.1      0.0.0.0           1/1/lag1:3
+
+Number of per interface default routes: 0
+
+Phy-Interface     Gateway           Interface
+----------------  ----------------  ----------</pre></MadCap:dropDownBody></MadCap:dropDown></li>
+      <li>If you require a change in the VRRP-VRID, change to  new VRRP-VRIDs, but ensure that they are unique in the subnet.
+        <MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p class="Code">solace-primary# configure<br/>solace-primary(configure)# redundancy<br/>solace-primary(configure/redundancy)# vrrp-vrid 15 primary<br/>solace-primary(configure/redundancy)# vrrp-vrid 25 backup<br/>solace-primary(configure/redundancy)# end<br/> <br/>solace-backup# configure<br/>solace-backup(configure)# redundancy<br/>solace-backup(configure/redundancy)# vrrp-vrid 25 primary<br/>solace-backup(configure/redundancy)# vrrp-vrid 15 backup<br/>solace-backup(configure/redundancy)# end</p></MadCap:dropDownBody></MadCap:dropDown></li>
+      <li>Check that both appliances have the correct VRRP VRID set.<p class="Code">solace-primary# show redundancy<br/>solace-backup# show redundancy</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p class="Note">Output may vary by appliance version. </p><pre class="Code" xml:space="preserve">solace-primary# show redundancy
+Mate Router Name         : solace-backup
+
+Primary Virtual Router  Backup Virtual Router
+----------------------  ----------------------
+Activity Status                Local Active            Shutdown
+Routing Interface              1/1/lag1:1              1/1/lag1:2
+VRRP VRID                      15                      25
+
+
+solace-backup# show redundancy
+Mate Router Name         : solace-primary
+
+Primary Virtual Router  Backup Virtual Router
+----------------------  ----------------------
+Activity Status                Local Active            Shutdown
+Routing Interface              1/1/lag1:1              1/1/lag1:2
+VRRP VRID                      25                      15</pre></MadCap:dropDownBody></MadCap:dropDown></li>
+      <li>Because of the IP address change, you must assert disk ownership on the message spool for both appliances:
+        <p class="Code">solace-primary# admin<br/>solace-primary(admin)# system<br/>solace-primary(admin/system)# message-spool<br/>solace-primary(admin/system/message-spool)# assert-disk-ownership<br/>This disk wwn must only be in use by this router and its mate if paired.<br/>Do you want to continue (y/n)? y<br/>solace-primary(admin/system/message-spool)# end</p><p> </p><p class="Code">solace-backup# admin<br/>solace-backup(admin)# system<br/>solace-backup(admin/system)# message-spool<br/>solace-backup(admin/system/message-spool)# assert-disk-ownership<br/>This disk wwn must only be in use by this router and its mate if paired.<br/>Do you want to continue (y/n)? y<br/>solace-backup(admin/system/message-spool)# end</p></li>
+      <li>Enable routing on both appliances: 
+        <p class="Code">solace-primary# configure<br/>solace-primary(configure)# routing<br/>solace-primary(configure/routing)# no shutdown<br/>solace-primary(configure/routing)# end</p><p> </p><p class="Code">solace-backup# configure<br/>solace-backup(configure)# routing<br/>solace-backup(configure/routing)# no shutdown<br/>solace-backup(configure/routing)# end</p></li>
+      <li>Enable redundancy on both appliances:
+        <p class="Code">solace-primary# configure<br/>solace-primary(configure)# redundancy<br/>solace-primary(configure/redundancy)# no shutdown<br/>solace-primary(configure/redundancy)# end</p><p> </p><p class="Code">solace-backup# configure<br/>solace-backup(configure)# redundancy<br/>solace-backup(configure/redundancy)# no shutdown<br/>solace-backup(configure/redundancy)# end</p></li>
+      <li>If required, re-enable auto-revert:
+        <p class="Code">solace-primary# configure<br/>solace-primary(configure)# redundancy<br/>solace-primary(configure/redundancy)# auto-revert<br/>solace-primary(configure/redundancy)# end</p><p> </p><p class="Code">solace-backup# configure<br/>solace-backup(configure)# redundancy<br/>solace-backup(configure/redundancy)# auto-revert<br/>solace-backup(configure/redundancy)# end</p><p class="Note">Solace recommends running redundancy without the use of auto­-revert.</p></li>
+      <li>Confirm that the primary appliance is active for the primary virtual router and the backup appliance is active for the backup virtual router. The Activity Status line should read “Local Active” for the primary virtual router and “Mate Active” for the backup virtual router.<p class="Code">solace-primary# show redundancy</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p class="Note">Output may vary by appliance version. </p><pre class="Code" xml:space="preserve">solace-primary# show redundancy
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Down
+
+Primary Virtual Router  Backup Virtual Router
+----------------------  ----------------------
+Activity Status                Local Active            Mate Active
+Routing Interface              1/1/lag1:1              1/1/lag1:2
+VRRP VRID                      15                      25
+Routing Interface Status       Up                      Up
+VRRP Status                    Leader                  Backup
+VRRP Priority                  250                     100
+Message Spool Status           AD-Disabled             AD-Disabled
+Priority Reported By Mate      None                    Active</pre></MadCap:dropDownBody></MadCap:dropDown></li>
+      <li>Start the message spool that was shut down on the primary, then start the message spool that was shut down on the backup:
+        <p class="Code">solace-primary# configure<br/>solace-primary(configure)# hardware message-spool<br/>solace-primary(configure/hardware/message-spool)# no shutdown primary<br/>solace-primary(configure/hardware/message-spool)# end</p><p> </p><p class="Code">solace-backup# configure<br/>solace-backup(configure)# hardware message-spool<br/>solace-backup(configure/hardware/message-spool)# no shutdown backup<br/>solace-backup(configure/hardware/message-spool)# end</p></li>
+      <li>Resume message backbone service on both appliances:<p class="Code">solace-primary# configure<br/>solace-primary(configure)# service msg-backbone<br/>solace-primary(configure/service/msg-backbone)# no shutdown</p><p> </p><p class="Code">solace-backup# configure<br/>solace-backup(configure)# service msg-backbone<br/>solace-backup(configure/service/msg-backbone)# no shutdown</p></li>
+    </ol>
+    <h2 class="with-rule"><a name="Final"/>Final Checks</h2>
+    <ol>
+      <li>Ensure that the message-spool is <code>AD-Active</code> on the primary appliance, and <code>AD-Standy</code> on the backup appliance.<p class="Code">solace-primary# show message-spool</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code" xml:space="preserve">solace-primary# show message-spool
+
+Config Status:                            Enabled (Primary)
+
+. . .
+							<span style="color: #ff0000;">
+Operational Status:                       AD-Active</span>
+Datapath Status:                          Up
+Synchronization Status:                   Synced
+
+. . .
+							
+ADB         Disk           Total
+Current Persistent Store Usage (MB)        0.0002       0.0000          0.0002
+Number of Messages Currently Spooled            2            0               2
+</pre><pre class="Code" xml:space="preserve">solace-backup# show message-spool
+
+Config Status:                            Enabled (Backup)
+
+. . .
+							
+<span style="color: #ff0000;">Operational Status:                       AD-Standby</span>
+Datapath Status:                          Down
+Synchronization Status:                   Unknown
+
+. . .							
+
+ADB         Disk           Total
+Current Persistent Store Usage (MB)        0.0002       0.0000          0.0002
+Number of Messages Currently Spooled            2            0               2</pre></MadCap:dropDownBody></MadCap:dropDown></li>
+      <li>Ensure that the Redundancy state is correct for both appliances. That is, the Primary Virtual Router should be "Local Active" and the Backup Virtual Router should be “Mate Active”.<p class="Code">solace-primary# show redundancy</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><p class="Note">Output may vary by appliance version. </p><pre class="Code" xml:space="preserve">solace-primary# show redundancy
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-backup
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+Primary Virtual Router  Backup Virtual Router
+----------------------  ----------------------
+Activity Status                Local Active            Mate Active
+Routing Interface              1/1/lag1:1              1/1/lag1:2
+VRRP VRID                      15                      25
+Routing Interface Status       Up                      Up
+VRRP Status                    Leader                  Backup
+VRRP Priority                  250                     100
+Message Spool Status           AD-Active               AD-Disabled
+Priority Reported By Mate      Standby                 Active
+
+
+solace-backup# show redundancy
+Configuration Status     : Enabled
+Redundancy Status        : Up
+Auto Revert              : No
+Redundancy Mode          : Active/Active
+Mate Router Name         : solace-primary
+ADB Link To Mate         : Up
+ADB Hello To Mate        : Up
+
+Primary Virtual Router  Backup Virtual Router
+----------------------  ----------------------
+Activity Status                Local Active            Mate Active
+Routing Interface              1/1/lag1:1              1/1/lag1:2
+VRRP VRID                      25                      15
+Routing Interface Status       Up                      Up
+VRRP Status                    Leader                  Backup
+VRRP Priority                  250                     100
+Message Spool Status           AD-Disabled             AD-Standby
+Priority Reported By Mate      Standby                 Active</pre></MadCap:dropDownBody></MadCap:dropDown></li>
+      <li>Finally, if you are using Config-Sync for your appliances (recommended), check if the Config-Sync database is in sync, and assert leader on the VPNs that are not in sync on the primary appliance:<p class="Code">solace-primary# show config-sync database</p><MadCap:dropDown><MadCap:dropDownHead><MadCap:dropDownHotspot>Example:</MadCap:dropDownHotspot></MadCap:dropDownHead><MadCap:dropDownBody><pre class="Code" xml:space="preserve">solace-primary# show config-sync database
+
+Legend:
+O - Ownership (L=Leader, F=Follower)
+S - Status (I=In-Sync, R=Reconciling, B=Blocked, O=Out-Of-Sync, D=Down,
+U=Unknown)
+
+Type   Name                             O S Time In State
+------ -------------------------------- - - ------------------
+Router site                             L I 3d 23h 47m 34s
+Vpn    default                          L O 0d 0h 0m 37s
+
+
+solace-primary# admin
+solace-primary(admin)# config-sync
+solace-primary(admin/config-sync)# assert-leader message-vpn *
+WARNING: This command can temporarily disconnect clients on the
+AD-inactive appliance. Clients connected to this appliance will not
+be affected.
+Do you want to continue (y/n)? y
+
+Processed 1 config-sync tables.
+solace-primary(admin/config-sync)# end</pre></MadCap:dropDownBody></MadCap:dropDown></li>
+    </ol>
+  </body>
+</html>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><a name="Creating"/>Creating Queues with the Python API</h1>
+    <p>It is possible to provision queues on the <MadCap:variable name="Variables.CompanyName"/> event broker using the Python API and a <code>PersistentMessageReceiverBuilder</code>. These queues can be durable or non-durable (see our blog post <a href="https://solace.com/blog/solace-endpoints-durable-vs-non-durable/" class="link-internal">Understanding Solace Endpoints: Durable vs. Non-Durable</a>), and are not provisioned on the event broker until you call <code>start()</code> on your <code>PersistentMessageReceiver</code>.</p>
+    <h3>
+            Create a Non-Durable Queue </h3>
+    <p>To create a non-durable queue, pass <code>Queue.non_durable_exclusive_queue("queue-name")</code> into the parameters of the <code>build()</code> function when building a <code>PeristentMessageReceiver</code>. The queue is  provisioned on the broker when you call the <code>start()</code> function on your <code>PersistentMessageReceiver</code>. This non-durable queue is deleted after the client application that created the queue disconnects from the event broker. The following example shows how to create a non-durable queue:</p>
+    <pre xml:space="preserve">
+# Define Topic subscriptions 
+topics_sub = [TopicSubscription.of("solace/sample/1")]
+
+# Queue name. This assumes that a persistent queue already exists on the broker with the right topic subscription 
+non_durable_exclusive_queue = Queue.non_durable_exclusive_queue("sample-queue")			
+
+# Create a PersistentMessageReceiver Builder which allows you to create a PersistentMessageReceiver  and start it
+persistent_receiver= messaging_service.create_persistent_message_receiver_builder() \
+           .build(non_durable_exclusive_queue)
+
+# Start starts the configured PersistentMessageReceiver synchronously. Before this function is called, the receiver is considered off-duty
+persistent_receiver.start()	
+			
+# Add any additional subscriptions to your receiver			
+persistent_receiver.add_subscription(topics_sub)	</pre>
+    <p class="Note">If the client disconnects unexpectedly (for example, due to a networking issue), the queue is not deleted until 60 seconds later. This behavior allows auto-reconnect logic to reconnect the client to the queue before it disappears.</p>
+    <h3>
+            Create a Durable Queue </h3>
+    <p>To create a durable queue, call the <code>with_missing_resources_creation_strategy()</code>function when building your <code>PersistentMessageReceiver</code>. <code>MissingResourcesCreationStrategy</code> takes a parameter that has two possible values: </p>
+    <ul>
+      <li>
+        <p><code>MissingResourcesCreationStrategy.DO_NOT_CREATE</code>— The default value, which disables any attempt to create missing resources. </p>
+      </li>
+      <li>
+        <p><code>MissingResourcesCreationStrategy.CREATE_ON_START</code>—  Creates the queue provided in the <code>build()</code> function as long as the client has sufficient permissions (an exception is thrown otherwise).</p>
+      </li>
+    </ul>
+    <p> The queue is provisioned on the broker when you call the <code>start()</code> function on your <code>PersistentMessageReceiver</code>.</p>
+    <p class="Note"> For the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API, durable endpoint provisioning is implemented using the Missing Resource Creation Strategy, which means that you cannot deprovision the endpoints from the API.</p>
+    <p>The following example shows how to create a durable queue using the Missing Resource Creation Strategy: </p>
+    <pre xml:space="preserve">
+# Define Topic subscriptions 
+topics_sub = [TopicSubscription.of("solace/sample/1")]
+
+# Queue name
+durable_exclusive_queue = Queue.durable_exclusive_queue("sample-queue")			
+
+# Create a PersistentMessageReceiver Builder which allows you to create a PersistentMessageReceiver  and start it
+persistent_receiver= messaging_service.create_persistent_message_receiver_builder() \
+           .with_missing_resources_creation_strategy(MissingResourcesCreationStrategy.CREATE_ON_START)\
+           .build(durable_exclusive_queue)
+
+# Start starts the configured PersistentMessageReceiver synchronously. Before this function is called, the receiver is considered off-duty
+persistent_receiver.start()
+						
+# Add any additional subscriptions to your receiver			
+persistent_receiver.add_subscription(topics_sub)			</pre>
+    <p>The <MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker may be configured with queue templates, which allow you to set custom attributes on queues you create with the Python API. When using the Missing Resource Creation Strategy, queue templates will only override the provided queue attributes if the name of the queue you create matches the template <code>name-filter</code>. For information about queue templates and how to configure them, see <MadCap:xref href="../../Messaging/Guaranteed-Msg/Configuring-Endpoint-Templates.htm#Configur">Configuring Queue Templates</MadCap:xref>.</p>
+    <div class="Note">
+      <p>You cannot use the <MadCap:variable name="Product-Names.pubsub_brand_only"/> Python API to deprovision queues created with the Missing Resource Creation Strategy. Use SEMP or the <MadCap:variable name="Variables.CompanyName"/><MadCap:variable name="Product-Names.pubsub_brand_only"/> event broker Command Line Interface (CLI) to deprovision these queues.</p>
+    </div>
+  </body>
+</html>

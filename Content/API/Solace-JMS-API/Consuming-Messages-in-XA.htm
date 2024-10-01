@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Consuming Messages in XA Transactions</h1>
+    <p>To consume messages in XA transaction branches, a client must create a message consumer in the XA Session for the persistent and non‑persistent messages to be received.</p>
+    <p>To create a message consumer in an XA Session, call the <code>XASession.createConsumer(...)</code> method and pass in a queue or topic destination. For more information on creating message consumers and their operation, refer to <MadCap:xref href="Creating-Message-Consume.htm">Creating Message Consumers</MadCap:xref>.</p>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">When a message consumer in an XA Session is bound to a queue (either exclusive or non‑exclusive), message consumers in non-XA Sessions are not permitted to subsequently bind to that queue. In addition, if a message consumer in a non-XA Session is bound to a non‑exclusive queue, message consumers in XA Sessions cannot subsequently bind to that queue. These restrictions prevent delivering out‑of‑order messages to consumers in non-XA Sessions if a transaction rollbacks are performed.</p>
+    <p>Messages received in an XA Session are only assigned to a transaction branch after <code>XAResource.end(...)</code> is called (refer to <MadCap:xref href="Performing-XA-Transactio.htm#using_xa_transactions_1775489719_313834">Ending Transactions</MadCap:xref>). A maximum of 256 messages (combined publisher and/or subscriber messages) can be assigned to a transaction branch. If this limit is exceeded, a rollback occurs and an <code>XAException</code> is thrown.</p>
+    <p>Unlike messages received in a non-transacted Session, messages received in an XA Session are only acknowledged, and subsequently removed from the event broker, when a successful <code>XAResource.commit(...)</code> occurs for the transaction branch. Therefore, calling <code>Message.acknowledge()</code> has no effect on a transaction branch.</p>
+    <p>A message consumer created within a XA Session can only consume messages when a transaction branch in that XA Session is committed, and it cannot consume messages outside of that XA Session.</p>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">If messages in a transaction branch that are to be consumed are removed from the message spool for the following reasons after an XA Prepare call but before an XA Commit, they are still successfully committed:</p>
+    <ul>
+      <li>The messages are removed from the event broker by an XA Prepare action (that is, the messages are deleted from the spool).</li>
+      <li>The messages’ TTL has expired. Note that the commit succeeds whether or not expired messages are moved to a Dead Message Queue (DMQ). For information on DMQs, refer to <MadCap:xref href="Setting-Message-Properties.htm#Dead">Dead Message Queue Eligibility</MadCap:xref>.</li>
+    </ul>
+  </body>
+</html>

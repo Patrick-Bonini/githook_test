@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Failing Back to a Restored Site After an Uncontrolled Failover</h1>
+    <p>After the message VPN replication has become synchronous eligible, you can fail back to the restored site. This may be desirable if the primary site has higher capacity or capabilities than the backup site. However, failing back immediately is not recommended. We recommend waiting to fail back until all the messages that were replicated before the failover have been consumed.</p>
+    <p>The procedure for failing back is the same as for a planned outage (see <MadCap:xref href="Perf-Con-Fail-Over.htm">Performing a Controlled Failover</MadCap:xref>). However, the following considerations apply, especially if you are considering failing back shortly after having switched activity:</p>
+    <ul>
+      <li>
+                Transactions that were in progress when the failover occurred are at risk of
+            
+            loss or duplication.
+            </li>
+      <li>If the message-spool of the restored site could not be recovered, messages replicated before the failure that have not been consumed on the active are lost.</li>
+    </ul>
+    <p>If there is no hardware failure of the ADB or loss of data on the external disk, then the pre-failure state of the message spool can be recovered.  Examples of failure that allow for the recovery of the state include:</p>
+    <ul>
+      <li>network isolation</li>
+      <li>power failure</li>
+      <li>temporary loss of connectivity to external disk </li>
+    </ul>
+    <p>If the pre-failure message-spool can be recovered and the replication queue on the now active site has not filled, then messages that were replicated before the failover are available and full replication behavior is restored. In a long-term failure where the replication queue fills, then only messages and transactions that made it into the replication queue will be available on a fail back.</p>
+    <p>If there is a hardware failure or loss of data on the external disk, then the pre-failure message spool cannot be recovered and will be empty.</p>
+    <p>Transactions that were in progress at the time of the uncontrolled failover will not be automatically synchronized after restoring the standby site. The risks of loss and duplication for synchronous transactions can be eliminated, assuming replication was never disabled, if you repeat the following procedure for every endpoint before failing back to the formerly active site.</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Step">Step 1: Verify if the Endpoint is Configured to Propagate Consumer Acknowledgments to the Replication Standby Site</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Step2">Step 2: Display the Internal IDs of Messages on the Formerly Active Site</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Step3">Step 3: Display the Internal IDs of Messages on the Active Site</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Step4">Step 4: Delete Messages on the Formerly Active Site</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Step"/>Step 1: Verify if the Endpoint is Configured to Propagate Consumer Acknowledgments to the Replication Standby Site</h2>
+    <p>For example: </p>
+    <pre class="Code" xml:space="preserve">NY_EventBroker1# show queue myQueue message-vpn Trading_VPN messages oldest
+...
+Consumer Ack Propagation             : Yes</pre>
+    <p xml:space="preserve">Move on to the next endpoint if <code>Consumer Ack Propagation</code> is not enabled. 
+Deduplication applies only for endpoints with <code>Consumer Ack Propagation</code> enabled.</p>
+    <h2 class="with-rule"><a name="Step2"/>Step 2: Display the Internal IDs of Messages on the Formerly Active Site</h2>
+    <p>For example:</p>
+    <pre class="Code" xml:space="preserve">NY_EventBroker1# show queue myQueue message-vpn Trading_VPN messages oldest
+
+Name: myQueue
+
+Message Id: 2852
+  Date spooled:                 Aug 22 2016 02:12:29 UTC
+  Replicated:                   yes
+  Replicated Mate Message Id:   n/a
+
+Message Id: 2853
+  Date spooled:                 Aug 22 2016 02:12:29 UTC
+  Replicated:                   yes
+  Replicated Mate Message Id:   n/a
+    
+Message Id: 2901
+  Date spooled:                 Aug 22 2016 02:12:39 UTC
+  Replicated:                   yes
+  Replicated Mate Message Id:   n/a
+
+Message Id: 2903
+  Date spooled:                 Aug 22 2016 02:12:39 UTC
+  Replicated:                   yes
+  Replicated Mate Message Id:   n/a
+
+Message Id: 2944
+  Date spooled:                 Aug 22 2016 02:15:30 UTC
+  Replicated:                   yes
+  Replicated Mate Message Id:   2919
+
+Message Id: 2945
+  Date spooled:                 Aug 22 2016 02:15:30 UTC
+  Replicated:                   yes
+  Replicated Mate Message Id:   2921
+...</pre>
+    <h2 class="with-rule"><a name="Step3"/>Step 3: Display the Internal IDs of Messages on the Active Site</h2>
+    <p>For example:</p>
+    <pre class="Code">BOS_EventBroker# show queue myQueue message-vpn Trading_VPN messages oldest
+
+Name: myQueue
+
+Message Id                          Replicated Mate Message Id          Sent
+2840                                2852                                 yes
+2841                                2853                                 yes
+2919                                n/a                                   no
+2921                                n/a                                   no</pre>
+    <h2 class="with-rule"><a name="Step4"/>Step 4: Delete Messages on the Formerly Active Site</h2>
+    <p>Delete messages on the formerly active site (<code>NY_EventBroker1</code> in the example above) that match ALL of the following conditions:</p>
+    <ul>
+      <li>The message must have a <code>Replicated</code> flag set to <code>yes</code>.</li>
+      <li>The message must have a <code>Replicated Mate Message Id</code> of <code>n/a</code>.</li>
+      <li>The message's Id  must not match any <code>Replicated Mate Message Id</code> on the active site (<code>BOS_EventBroker</code> in the example above).</li>
+    </ul>
+    <p>In the example above, messages <code>2901</code> and <code>2903</code> can be deleted.</p>
+    <p>Messages <code>2852</code> and <code>2853</code> cannot be deleted because their Ids exist in the <code>Replicated Mate Message Id</code> field of <code>BOS_EventBroker</code>.</p>
+    <p>Messages <code>2944</code> and <code>2945</code> cannot be deleted because the <code>Replicated Mate Message Id</code> field  is not <code>n/a</code>.</p>
+    <p>Enter the following ADMIN command to delete the messages:</p>
+    <p class="Code">solace(admin/message-spool)# delete-messages queue &lt;queue-name&gt; message &lt;msg-id&gt;</p>
+    <p>For example, to delete message <code>2901</code> and <code>2903</code> in the example above:</p>
+    <pre class="Code" xml:space="preserve">NY_EventBroker1# admin
+NY_EventBroker1(admin)# message-spool message-vpn Trading_VPN
+NY_EventBroker1(admin/message-spool)# delete-messages queue myQueue message 2901
+NY_EventBroker1(admin/message-spool)# delete-messages queue myQueue message 2903</pre>
+  </body>
+</html>

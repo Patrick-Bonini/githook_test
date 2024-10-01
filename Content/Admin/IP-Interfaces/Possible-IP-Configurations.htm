@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Possible IP Interface Configurations</h1>
+    <p>When the initial software configuration procedure described in <MadCap:xref href="../../Appliance/Appliance-Set-Up/Initializing-Appliances.htm">Initializing Appliances</MadCap:xref> is performed, the <code>setup</code> Privileged EXEC command that was run by default configures the physical interfaces on the NAB in a LAG named <code>lag1</code>.</p>
+    <p>However, independent IP interfaces are also supported for the physical interfaces on the NAB. The following procedures provide an example of other configuration possibilities. The configuration presented in each procedure features an eight-port NAB‑0801ET, but the same steps apply in principle with NAB models with a lesser number of ports.</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#cfg_mgmt_and_mbbone_interfaces_ind_all_Ports">Configuring Independent IP Interfaces for all NAB Ports</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#cfg_mgmt_and_mbbone_interfaces_mixture">Configuring a Mixture of Independent and LAG-grouped IP Interfaces</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="cfg_mgmt_and_mbbone_interfaces_ind_all_Ports"/>Configuring Independent IP Interfaces for all NAB Ports</h2>
+    <p>To configure independent IP interfaces for all eight NAB ports on NAB-0801ET:</p>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">For NAB models with a different number of ports, the same steps apply but substitute the proper interface ports: for a NAB-0401ET, substitute interface ports 1/5/1 through 1/5/4; for a NAB-0610EM, substitute interface ports 1/1/1 through <br/>1/1/6; for a NAB-0210EM, substitute interface ports 1/1/1 and 1/1/2.</p>
+    <ol>
+      <li>Decommission all NAB ports from lag1 on a port by port basis:</li>
+      <pre class="Code">solace(configure)# interface 1/1/lag1<br/>solace(configure/interface)# no member 1/1/1<br/>solace(configure/interface)# no member 1/1/2<br/>solace(configure/interface)# no member 1/1/3<br/>solace(configure/interface)# no member 1/1/4<br/>solace(configure/interface)# no member 1/1/5<br/>solace(configure/interface)# no member 1/1/6<br/>solace(configure/interface)# no member 1/1/7<br/>solace(configure/interface)# no member 1/1/8<br/>solace(configure/interface)# exit<br/></pre>
+      <li>Create and configure independent IP interfaces (primary, backup, and static) for all the NAB ports under the Message Backbone VRF:</li>
+      <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">Primary, backup, and static IP interfaces must use valid IP addresses, and the primary, backup and static IP interfaces used by a NAB port should be part of the same IP subnet. This requirement is not enforced by the system.</p>
+      <pre class="Code">solace(configure)# ip vrf msg-backbone
+solace(configure/ip/vrf)# create interface 1/1/1:1 primary
+solace(configure/ip/vrf/interface)# ip-address 192.168.181.110/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/1:2 backup
+solace(configure/ip/vrf/interface)# ip-address 192.168.171.133/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/1:3 static
+solace(configure/ip/vrf/interface)# ip-address 192.168.161.1/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/2:1 primary
+solace(configure/ip/vrf/interface)# ip-address 192.168.182.110/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/2:2 backup
+solace(configure/ip/vrf/interface)# ip-address 192.168.172.133/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/2:3 static
+solace(configure/ip/vrf/interface)# ip-address 192.168.162.1/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/3:1 primary
+solace(configure/ip/vrf/interface)# ip-address 192.168.183.110/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/3:2 backup
+solace(configure/ip/vrf/interface)# ip-address 192.168.173.133/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/3:3 static
+solace(configure/ip/vrf/interface)# ip-address 192.168.163.1/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/4:1 primary
+solace(configure/ip/vrf/interface)# ip-address 192.168.184.110/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/4:2 backup
+solace(configure/ip/vrf/interface)# ip-address 192.168.174.133/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/4:3 static
+solace(configure/ip/vrf/interface)# ip-address 192.168.164.1/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/5:1 primary
+solace(configure/ip/vrf/interface)# ip-address 192.168.185.110/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/5:2 backup
+solace(configure/ip/vrf/interface)# ip-address 192.168.175.133/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/5:3 static
+solace(configure/ip/vrf/interface)# ip-address 192.168.165.1/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/6:1 primary
+solace(configure/ip/vrf/interface)# ip-address 192.168.186.110/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/6:2 backup
+solace(configure/ip/vrf/interface)# ip-address 192.168.176.133/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/6:3 static
+solace(configure/ip/vrf/interface)# ip-address 192.168.166.1/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/7:1 primary
+solace(configure/ip/vrf/interface)# ip-address 192.168.187.110/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/7:2 backup
+solace(configure/ip/vrf/interface)# ip-address 192.168.177.133/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/7:3 static
+solace(configure/ip/vrf/interface)# ip-address 192.168.167.1/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/8:1 primary
+solace(configure/ip/vrf/interface)# ip-address 192.168.188.110/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/8:2 backup
+solace(configure/ip/vrf/interface)# ip-address 192.168.178.133/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/8:3 static
+solace(configure/ip/vrf/interface)# ip-address 192.168.168.1/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit</pre>
+      <li>(Optional) If required for your network, configure the IP route for the Message Backbone VRF:
+        <pre class="Code" xml:space="preserve">solace(configure/ip/vrf)# route 1.1.1.0/24 192.168.160.11
+solace(configure/ip/vrf)# route default 192.168.160.12
+solace(configure/ip/vrf)# route default 192.168.160.13 1/1/4
+solace(configure/ip/vrf)# exit
+solace(configure/ip/vrf)# exit
+solace(configure)# exit
+solace# exit
+solace&gt; show ip route
+ 
+VRF: management
+ 
+Destination     Gateway         Network Mask    Interface
+---------------------------------------------------------
+default         192.168.128.1   0.0.0.0         eth1:1
+ 
+ 
+VRF: msg-backbone
+ 
+Global Route:
+ 
+Destination     Gateway         Network Mask    Interface
+---------------------------------------------------------
+default         192.168.160.12   0.0.0.0        1/1/8:3
+1.1.1.0         192.168.160.11  255.255.255.0   1/1/8:3
+ 
+Per Interface Default Route:
+ 
+Phy-Interface   Gateway         Interface
+-----------------------------------------
+1/1/4           192.168.160.13  1/1/4:3</pre></li>
+    </ol>
+    <h2 class="with-rule"><a name="cfg_mgmt_and_mbbone_interfaces_mixture"/>Configuring a Mixture of Independent &amp; LAG-grouped IP Interfaces</h2>
+    <p>To configure a mixture of independent and LAG grouped IP interfaces, whereby NAB ports 1/1/6 and 1/1/8 are decommissioned from lag1 on NAB-0801ET:</p>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">For NAB models with a different number of ports, the same steps apply but substitute the proper interface ports: for a NAB-0401ET, substitute interface ports 1/5/1 through 1/5/4; for a NAB-0610EM, substitute interface ports 1/1/1 through 1/1/6; for a NAB-0210EM, substitute interface ports 1/1/1 and 1/1/2.</p>
+    <ol>
+      <li>Decommission NAB ports 1/1/6 and 1/1/8 from lag1:
+        <pre class="Code">solace(configure)# interface 1/1/lag1
+solace(configure/interface)# no member 1/1/6
+solace(configure/interface)# no member 1/1/8
+solace(configure/interface)# exit</pre></li>
+      <li>Create and configure independent IP interfaces (primary, backup, and static) for NAB ports 1/1/6 and 1/1/8 under the Message Backbone VRF:</li>
+      <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">Primary, backup, and static IP interfaces must use valid IP addresses and must be part of the same IP subnet. This requirement is not enforced by the system.</p>
+      <pre class="Code">solace(configure)# ip vrf msg-backbone
+solace(configure/ip/vrf)# create interface 1/1/6:1 primary
+solace(configure/ip/vrf/interface)# ip-address 192.168.181.110/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+solace(configure/ip/vrf)# create interface 1/1/6:2 backup
+solace(configure/ip/vrf/interface)# ip-address 192.168.178.133/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+solace(configure/ip/vrf)# create interface 1/1/6:3 static
+solace(configure/ip/vrf/interface)# ip-address 192.168.166.1/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+ 
+solace(configure/ip/vrf)# create interface 1/1/8:1 primary
+solace(configure/ip/vrf/interface)# ip-address 192.168.188.110/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+solace(configure/ip/vrf)# create interface 1/1/8:2 backup
+solace(configure/ip/vrf/interface)# ip-address 192.168.178.133/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit
+solace(configure/ip/vrf)# create interface 1/1/8:3 static
+solace(configure/ip/vrf/interface)# ip-address 192.168.168.1/19
+solace(configure/ip/vrf/interface)# no shutdown
+solace(configure/ip/vrf/interface)# exit</pre>
+      <li>(Optional) If required for your network, configure the IP route for the Message Backbone VRF:
+        <pre class="Code" xml:space="preserve">solace(configure/ip/vrf)# route 1.1.1.0/24 192.168.160.11
+solace(configure/ip/vrf)# route default 192.168.160.12
+solace(configure/ip/vrf)# route default 192.168.160.13 1/1/4
+solace(configure/ip/vrf)# exit
+solace(configure/ip)# exit
+solace(configure)# exit
+solace# exit
+solace&gt; show ip route
+ 
+VRF: management
+ 
+Destination     Gateway         Network Mask    Interface
+---------------------------------------------------------
+default         192.168.128.1   0.0.0.0         eth1:1
+ 
+ 
+VRF: msg-backbone
+ 
+Global Route:
+ 
+Destination     Gateway         Network Mask    Interface
+---------------------------------------------------------
+default         192.168.160.12   0.0.0.0         1/1/lag1:3
+1.1.1.0         192.168.160.11   255.255.255.0   1/1/lag1:3
+ 
+Per Interface Default Route:
+ 
+Phy-Interface    Gateway        Interface
+-----------------------------------------
+1/1/4           192.168.160.13  1/1/4:3</pre></li>
+    </ol>
+    <p>To commission NAB ports 1/1/6 and 1/1/8 back to lag1 on NAB-0801ET after decommissioning them:</p>
+    <ol>
+      <li>Shut down and delete the independent IP interfaces (primary, backup, and static) for NAB ports 1/1/6 and 1/1/8 under the Message Backbone VRF:
+      
+        <pre class="Code">solace(configure)# ip vrf msg-backbone
+ 
+solace(configure/ip/vrf)# interface 1/1/6:1 primary
+solace(configure/ip/vrf/interface)# shutdown
+solace(configure/ip/vrf/interface)# exit
+solace(configure/ip/vrf)# no interface 1/1/6:1 primary
+ 
+solace(configure/ip/vrf)# interface 1/1/6:2 backup
+solace(configure/ip/vrf/interface)# shutdown
+solace(configure/ip/vrf/interface)# exit
+solace(configure/ip/vrf)# no interface 1/1/6:2 backup
+ 
+solace(configure/ip/vrf)# interface 1/1/6:3 static
+solace(configure/ip/vrf/interface)# shutdown
+solace(configure/ip/vrf/interface)# exit
+solace(configure/ip/vrf)# no interface 1/1/6:3 static
+ 
+solace(configure/ip/vrf)# interface 1/1/8:1 primary
+solace(configure/ip/vrf/interface)# shutdown
+solace(configure/ip/vrf/interface)# exit
+solace(configure/ip/vrf)# no interface 1/1/8:1 primary
+ 
+solace(configure/ip/vrf)# interface 1/1/8:2 backup
+solace(configure/ip/vrf/interface)# shutdown
+solace(configure/ip/vrf/interface)# exit
+solace(configure/ip/vrf)# no interface 1/1/8:2 backup
+ 
+solace(configure/ip/vrf)# interface 1/1/8:3 static
+solace(configure/ip/vrf/interface)# shutdown
+solace(configure/ip/vrf/interface)# exit
+solace(configure/ip/vrf)# no interface 1/1/8:3 static</pre></li>
+      <li>Commission NAB ports 1/1/6 and 1/1/8 back to lag1:
+        <pre class="Code">solace(configure)# interface 1/1/lag1
+solace(configure/interface)#  member 1/1/6
+solace(configure/interface)#  member 1/1/8
+solace(configure/interface)# exit</pre></li>
+    </ol>
+  </body>
+</html>

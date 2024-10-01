@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Switching Service Between Sites</h1>
+    <MadCap:snippetBlock src="../../Resources/Snippets/Features/DR-Replication/fail-over-overview.flsnp"/>
+    <h4><a name="data_center_replication_switching_service_router"/>Changing the Replication State</h4>
+    <MadCap:snippetBlock src="../../Resources/Snippets/Features/DR-Replication/changing-replication-state.flsnp"/>
+    <p>For more information, refer to <MadCap:xref href="../../API/API-Developer-Guide/Detecting-Duplicate-Mess.htm">Detecting Duplicate Messages</MadCap:xref>.</p>
+    <p>For instructions for performing replication failovers, refer to <MadCap:xref href="Switching-Replication-Service.htm">Switching Replication Service from Site to Site</MadCap:xref>.</p>
+    <h4><a name="data_center_replication_switching_service_client_config"/>Reconnecting Clients</h4>
+    <p>To automatically connect messaging clients to a newly active replication site, you can use the host list feature of the Solace messaging APIs. The host list provides the IP addresses or hostnames of the event brokers in both the replication sites. Typically, the host list contains the primary site, followed by the backup site. When its connection to the primary site drops or is changed to standby state, the client automatically attempts to connect to the backup site, which is the next host in the host list.</p>
+    <p class="Note">When a Message VPN that has a replication active state is switched to replication standby, all active clients are disconnected.</p>
+    <h2 class="with-rule"><a name="data_center_replication_failover_types"/>Replication Failover Types</h2>
+    <p>There are four types of replication failovers:</p>
+    <ul>
+      <li>Controlled Failover</li>
+      <li>Uncontrolled Failover, Short-Term Outage</li>
+      <li>Uncontrolled Failover, Long-Term Outage</li>
+      <li>Uncontrolled Failover, Complete Failure</li>
+    </ul>
+    <h4><a name="data_center_replication_controlled_fail_over"/>Controlled Failover</h4>
+    <p>This is a failover triggered by an administrator following the documented procedure. In this case, both sites are in service and can communicate with each other.</p>
+    <h4><a name="data_center_replication_uncontrolled_failover"/>Uncontrolled Failover, Short-Term Outage</h4>
+    <p>In this failover type, the active site is out-of-service or isolated from the clients and the standby site for a short duration (minutes, hours). In this case, the standby site can be made active and there is enough capacity in the replication queue (<code>#MSGVPN_REPLICATION_DATA_QUEUE</code>) to store all the replicated messages and transactions (using asynchronous replication) until service or connectivity to the failed site is restored. The recovered site becomes the standby, drains the replication queue (<code>#MSGVPN_REPLICATION_DATA_QUEUE</code>) from the active site, and full replication behavior is restored.</p>
+    <h4><a name="data_center_replication_uncontrolled_failover_longterm"/>Uncontrolled Failover, Long-Term Outage</h4>
+    <p>In this failover type, the active site is out-of-service or isolated for a long duration (days, weeks). In this case, the standby site can be made active, but the replication queue (<code>#MSGVPN_REPLICATION_DATA_QUEUE</code>) may become full. When the replication queue fills up, <code>reject-msg-to-sender-on-discard</code> can be disabled on the replication queue to provide non-replicated service on the newly active site. Once the failed site is restored, the recovered site becomes standby and drains the replication queue from the active site. Messages and transactions that did not fit in the replication queue were not replicated.</p>
+    <h4><a name="data_center_replication_uncontrolled_failover_complete"/>Uncontrolled Failover, Complete Failure</h4>
+    <p>In this failover type, the active site is out of service and cannot be recovered (for example the entire event broker has been replaced with a new one). In this case, the standby site can be made active while waiting for a replacement and replicated messages and transactions are stored in the replication queue. Depending on how long it takes to source the replacement, the short-term or long-term outage behaviors will apply.</p>
+    <h2 class="with-rule"><a name="data_center_replication_failback"/>Failing Back to the Originally Active Site</h2>
+    <p>After a failover and once the failed site has been restored, it may be desirable to fail back to the originally active site. This is especially true if the backup site has a lower capacity or less fault protection than the primary site. There are no special considerations for failing back after a controlled failover. However, after an uncontrolled failover, there is a risk of message loss or duplication which is slightly different depending on the scenario:</p>
+    <ul>
+      <li><b>Uncontrolled Failover, Short-Term Outage</b>—When failing back replicated messages or transactions that were in progress when the failover occurred and have not been consumed are at risk of loss or duplication.</li>
+      <li><b>Uncontrolled Failover, Long-Term Outage</b>—When failing back replicated messages or transactions that were in progress when the failover occurred and have not been consumed are at risk of loss or duplication. In addition, only those messages and transactions that made it into the replication queue will be available.</li>
+      <li><b>Uncontrolled Failover, Complete Failure</b>—Depending on how long it takes to replace the failed replication site, either the short- or long-term failure considerations will apply. In addition, the replacement event broker will have no historical data, so replicated messages from before the failover that have not been consumed would be lost.</li>
+    </ul>
+    <p>In all cases of failing back to the originally active site, the risk of message loss or duplication  can be eliminated if all replicated messages that were published before the failover and that were in-progress during the failover have been consumed on the newly active site. In other words, if you leave the backup replication site active long enough to be certain that all messages published prior to the failover have been consumed, there will be no message loss.</p>
+  </body>
+</html>

@@ -1,0 +1,388 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+    <title/>
+  </head>
+  <body>
+    <h1>SEMP Features</h1>
+    <p>This section provides more details about the SEMP v2 features discussed in <MadCap:xref href="SEMP-API-Archit.htm">SEMP API Architecture</MadCap:xref>:</p>
+    <ul>
+      <li>
+        <p>The <code>select</code> query parameter allows you to <a href="#Select" class="link-internal">specify which data fields</a> to include in or exclude from query results.</p>
+      </li>
+      <li>
+        <p>The <code>where</code> query parameter lets you <a href="#Filtering" class="link-internal">include only results that match certain criteria</a>.</p>
+      </li>
+      <li>
+        <p>You can <a href="#Count" class="link-internal">retrieve the number of objects</a> in certain collections.</p>
+      </li>
+      <li>
+        <p>You can retrieve the <a href="#Retrieving_Msgs_Counts_Queues" class="link-internal">number of messages</a> in a queue, topic endpoint, or replay log.</p>
+      </li>
+      <li>
+        <p>The <MadCap:xref href="#OpaquePassword">Opaque Password</MadCap:xref> provides a mechanism for including write-only attributes in responses.</p>
+      </li>
+      <li>
+        <p><MadCap:xref href="#Paging">Paging</MadCap:xref> is the mechanism by which query results are divided into discrete pages to limit the size of the data returned.</p>
+      </li>
+    </ul>
+    <p>In addition, some operations are not supported:</p>
+    <ul>
+      <li>
+        <p><MadCap:xref href="#Rate">Rate Limiting</MadCap:xref> is not provided with the SEMP API. We recommend managing the frequency of requests you send.</p>
+      </li>
+      <li>
+        <p><MadCap:xref href="#Transactions">Transactions</MadCap:xref> are not supported directly, but individual requests either complete successfully or not at all.</p>
+      </li>
+      <li>
+        <p><MadCap:xref href="#Sorting">Sorting</MadCap:xref> query results is not supported.</p>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Select"/>Returning Selected Data Fields</h2>
+    <p>You can use the  <code>select</code> query parameter to include only the specified attributes of the object in the response, or to exclude the specified attributes of the object from the response. Use this query parameter to limit the size of the returned data for each returned object, return only those fields that are desired, or exclude fields that are not desired. </p>
+    <p>The <code>select</code> query parameter can be used to limit what attributes are returned in a response, but it does not force an attribute to be returned if it otherwise would not have been.</p>
+    <h4>select</h4>
+    <p>The value of <code>select</code> is a comma-separated list of attribute names. Names may include the <code>*</code> wildcard (zero or more characters). Nested attribute names are supported using periods (e.g., <code>parentName.childName</code>). The question mark character, "?", with the typical meaning of matching a single character, is not supported. </p>
+    <p>Attribute names take the following form:</p>
+    <pre xml:space="preserve">
+&lt;attribute-name&gt;  = ["-"] &lt;attribute-string&gt; 0*n( "." &lt;attribute-string&gt; )     ; attribute name, possibly nested, possibly preceded by "-"
+</pre>
+    <p>At most, 256 attribute names or patterns can be provided to the <code>select</code> parameter.</p>
+    <p>If the list contains attribute names that are <b>not</b> prefaced by "<code>-</code>", only those attributes are included in the response. If the list contains attribute names that <b>are</b> prefaced by "<code>-</code>", those attributes are excluded from the response. </p>
+    <p>All attributes that are prefaced by "<code>-</code>" must follow all attributes that are not prefaced by "<code>-</code>". In addition, each attribute name in the list must match at least one attribute in the object.</p>
+    <p>If the list contains both types:</p>
+    <ul>
+      <li>all attributes that are prefaced by "<code>-</code>" must follow all attributes that are not prefaced by "<code>-</code>"</li>
+      <li>the difference of the first set of attributes and the second set of attributes is returned in the response</li>
+    </ul>
+    <p> If the list is empty (<code>select=</code>), all attributes are returned.</p>
+    <p>In addition:</p>
+    <ul>
+      <li>The attributes in question are those in the returned <code>data</code>, <code>collections</code>, and <code>links</code> fields only, not the <code>meta</code> field.</li>
+      <li>Nesting makes the attribute unique. For example, <code>select=-abc</code> does not exclude attribute <code>example.abc</code>.</li>
+      <li>Including or excluding an attribute with nested attributes includes or excludes all the nested attributes. For example, <code>select=example</code> includes both <code>example.abc</code> and <code>example.xyz</code>.</li>
+      <li>Wildcard matching is done within an <code>&lt;attribute-string&gt;</code>, not an <code>&lt;attribute-name&gt;</code>. For example, <code>select=*bc</code> does not include attribute <code>example.abc</code>,  whereas <code>select=example.*bc</code> does.</li>
+      <li>The <code>select</code> parameter is applied after the <code>where</code> parameter.</li>
+    </ul>
+    <p>Some examples are as follows, where <code>%2A</code> is the percent URL-encoding for "<code>*</code>":</p>
+    <pre xml:space="preserve"><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">; List of all MsgVpn names
+/SEMP/v2/config/msgVpns?<b>select=msgVpnName</b> 
+
+; List of all MsgVpns and their attributes except for their names
+/SEMP/v2/config/msgVpns?<b>select=-msgVpnName</b>
+</MadCap:conditionalText>
+; Authentication attributes of MsgVpn "finance"
+/SEMP/v2/config/msgVpns/finance?<b>select=authentication%2A</b>
+
+; All attributes of MsgVpn "finance" except for authentication attributes
+/SEMP/v2/config/msgVpns/finance?select=<b>-authentication%2A</b>
+
+; Access related attributes of Queue "orderQ" of MsgVpn "finance"
+/SEMP/v2/config/msgVpns/finance/queues/orderQ?<b>select=owner,permission</b>
+</pre>
+    <h2 class="with-rule"><a name="Filtering"/>Filtering</h2>
+    <p>You can use the <code>where</code> parameter to specify that a response should include only objects that satisfy certain conditions. When a GET request includes a <code>where</code> query parameter, the event broker returns only objects whose content matches all the given expressions.</p>
+    <p>An application can only filter based on fields that would be returned to it for its given URI. For instance, a GET on the <code>/SEMP/v2/config</code> URI base path cannot  filter queues based on the number of currently bound clients—current client bind count is not a configurable attribute of a queue, and not available in that URI base path. However, it could filter based on the configured max-bind-count of the queue.</p>
+    <h4>where</h4>
+    <p>The value of <code>where</code> is a comma-separated list of expressions. All expressions must be true for the object to be included in the response. Each expression takes the form:</p>
+    <pre xml:space="preserve">&lt;attribute-name&gt; OP &lt;value&gt;</pre>
+    <p>where:</p>
+    <ul>
+      <li>
+        <p><code>attribute-name</code> refers to an attribute in the returned <code>data</code> field only, not the <code>collections</code>, <code>links</code> or <code>meta</code> fields. Wildcards are not allowed in <code>attribute-name</code>. Write-only attributes are not permitted for use with the <code>where</code> parameter, even if they are opaque and the <code>opaquePassword</code> query parameter is used.</p>
+      </li>
+      <li>
+        <p><code>OP</code> is one of "<code>==</code>", "<code>!=</code>", "<code>&lt;"</code>, "<code>&gt;</code>", "<code>&lt;=</code>", or "<code>&gt;=</code>".
+</p>
+      </li>
+      <li>
+        <p><code>value</code> may be a number, string, <code>true</code>, or <code>false</code>, as appropriate for the type of <code>attribute-name</code>. </p>
+      </li>
+    </ul>
+    <p>In addition:</p>
+    <ul>
+      <li>
+        <p>The  "<code>==</code>" and "<code>!=</code>" operators can be used to perform string, numeric, or Boolean (true or false) comparisons.</p>
+      </li>
+      <li>
+        <p>The "<code>&lt;</code>", "<code>&gt;</code>", "<code>&lt;=</code>", and "<code>&gt;=</code>"  operators can be used to perform string or numeric comparisons.</p>
+      </li>
+      <li>
+        <p>Where <code>value</code> is a string:</p>
+        <ul>
+          <li>
+            <p><code>value</code> may include the "<code>*</code>" wildcard which can match zero or more characters. The backslash character ("<code>\</code>") can be used to escape the "<code>*</code>" wildcard or another backslash. The "<code>*</code>" wildcard can only be used with the "<code>==</code>" and "<code>!=</code>" operators. If "<code>*</code>" is used as a literal with other operators, it must be escaped using "<code>\"</code>.</p>
+          </li>
+          <li>
+            <p><code>value</code> is limited to 266 characters.</p>
+          </li>
+          <li>
+            <p>The "<code>&lt;</code>", "<code>&gt;</code>", "<code>&lt;=</code>", and "<code>&gt;=</code>" operators perform a simple byte-for-byte comparison.</p>
+          </li>
+        </ul>
+      </li>
+      <li>
+        <p>Where <code>value</code> is a number, it must not exceed the size of the int64 Swagger format type.</p>
+      </li>
+      <li>
+        <p>A limit of four expressions may be used at a time.</p>
+      </li>
+      <li>
+        <p>The <code>where</code> parameter is applied before the <code>select</code> parameter.</p>
+      </li>
+    </ul>
+    <p>Some examples are as follows, where <code>%3D</code>, <code>%21</code>, <code>%3E</code>, and <code>%2A</code> are the percent URL-encodings for "<code>=</code>", "<code>!</code>", "<code>&gt;</code>", and "<code>*</code>", respectively:</p>
+    <pre xml:space="preserve" MadCap:conditions="SAP.SapHideFromOutput">; Only enabled MsgVpns (enabled==true)
+/SEMP/v2/config/msgVpns?where=enabled%3D%3Dtrue
+
+; Only MsgVpns using basic non-LDAP authentication (authenticationBasicEnabled==true,authenticationBasicType!=ldap)
+/SEMP/v2/config/msgVpns?where=authenticationBasicEnabled%3D%3Dtrue,authenticationBasicType%21%3Dldap
+
+; Only MsgVpns that allow more than 100 client connections (maxConnectionCount&gt;100)
+/SEMP/v2/config/msgVpns?where=maxConnectionCount%3E100
+
+; Only MsgVpns with msgVpnName starting with "B" (msgVpnName==B*)
+/SEMP/v2/config/msgVpns?where=msgVpnName%3D%3DB%2A
+</pre>
+    <pre xml:space="preserve" MadCap:conditions="SAP.SapOnlyOutput">; Only egress enabled queues (enabled==true)
+/SEMP/v2/config/msgVpns/finance/queues?where=egressEnabled%3D%3Dtrue
+
+; Only queues with queueName starting with "B" (queueName==B*)
+/SEMP/v2/config/msgVpns/finance/queues?where=queueName%3D%3DB%2A
+</pre>
+    <h2 class="with-rule"><a name="Count"/>Retrieving the Number of Objects in a Collection</h2>
+    <p>When you issue a GET request for one of the supported collections, the total number of items is returned in the <code>count</code> field in the metadata of the GET response. </p>
+    <p>Counts are supported for the GET method when retrieving the following collections:</p>
+    <ul>
+      <li>
+        <p>
+          <code>/SEMP/v2/monitor/msgVpns/&lt;name&gt;/clients</code>
+        </p>
+        <ul>
+          <li>
+            <p>
+              <code>clients/*/rxFlows</code>
+            </p>
+          </li>
+          <li>
+            <p>
+              <code>clients/*/transactedSessions</code>
+            </p>
+          </li>
+          <li>
+            <p>
+              <code>clients/*/txFlows</code>
+            </p>
+          </li>
+        </ul>
+        <p>For the <code>rxFlows</code>, <code>transactedSessions</code>, and <code>txFlows</code> collections of <code>clients</code>, counts are supported only for <b>all</b> clients (that is, the asterisk is mandatory). In this case, only the metadata section is returned in the response.</p>
+      </li>
+      <li>
+        <p>
+          <code>/SEMP/v2/monitor/msgVpns/&lt;name&gt;/queues</code>
+        </p>
+        <ul>
+          <li>
+            <p>
+              <code>queues/&lt;name&gt;/msgs</code>
+            </p>
+          </li>
+          <li>
+            <p>
+              <code>queues/&lt;name&gt;/txFlows</code>
+            </p>
+          </li>
+        </ul>
+        <p>For the <code>queues</code> collection and sub-collections, the asterisk is not allowed.</p>
+      </li>
+      <li>
+        <p>
+          <code>/SEMP/v2/monitor/msgVpns/&lt;name&gt;/topicEndpoints</code>
+        </p>
+        <ul>
+          <li>
+            <p>
+              <code>topicEndpoints/&lt;name&gt;/msgs</code>
+            </p>
+          </li>
+          <li>
+            <p>
+              <code>topicEndpoints/&lt;name&gt;/txFlows</code>
+            </p>
+          </li>
+        </ul>
+        <p>For the <code>topicEndpoints</code> collection and sub-collections, the asterisk is not allowed.</p>
+      </li>
+      <li>
+        <p>
+          <code>/SEMP/v2/monitor/msgVpns/&lt;name&gt;/transactions</code>
+        </p>
+        <p>For the <code>transactions</code> collection, the asterisk is not allowed.</p>
+      </li>
+    </ul>
+    <p>If the request includes is filtered by the <code>where</code> query parameter, the <code>count</code> field is not included in the response.</p>
+    <p>For example, suppose the <code>finance</code> Message VPN has the following queues:</p>
+    <ul>
+      <li>
+        <p>an exclusive queue</p>
+      </li>
+      <li>
+        <p>a non-exclusive, non-partitioned queue</p>
+      </li>
+      <li>
+        <p>a partitioned queue with four partitions</p>
+      </li>
+    </ul>
+    <p>You could issue the following request: </p>
+    <p class="Code" xml:space="preserve">curl -X GET <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">solace:solace</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">sap:sap</MadCap:conditionalText> 192.0.2.1:8080/SEMP/v2/monitor/msgVpns/finance/queues</p>
+    <p>The response from the broker would contain the number of queues in the <code>count</code> field of the <code>meta</code> section, as shown below. In this case, there are seven total queues (including the partitions) in the Message VPN. </p>
+    <pre class="Code" xml:space="preserve">...    
+{
+
+...
+
+    "meta": {
+        "count": 7,
+        "request": {
+            "method": "GET",
+            "uri": "http://192.0.2.1:8080/SEMP/v2/monitor/msgVpns/finance/queues"
+        },
+        "responseCode": 200
+    }
+}
+</pre>
+    <h2><a name="Retrieving_Msgs_Counts_Queues"/>Retrieving Message Counts from Endpoints or Replay Logs</h2>
+    <p>For supported collections, in addition to the number of objects in the collection,  the number of contained messages is also returned. The following collections support message counts:</p>
+    <ul>
+      <li>
+        <p>
+          <code>/SEMP/v2/monitor/msgVpns/&lt;name&gt;/queues</code>
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>/SEMP/v2/monitor/msgVpns/&lt;name&gt;/topicEndpoints</code>
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>/SEMP/v2/monitor/msgVpns/&lt;name&gt;/replaylogs</code>
+        </p>
+      </li>
+    </ul>
+    <p>Messages are child collections—when you  issue a GET request for one of the supported collections, the number (or count) of messages is included in the <code>collections</code> field of the response. </p>
+    <p>For example, to retrieve the total number of messages in each queue in the "Sales" Message VPN, you could issue the following request: </p>
+    <p class="Code" xml:space="preserve">curl -u "<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">solace:solace</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">sap:sap</MadCap:conditionalText>" "192.0.2.1:8080/SEMP/v2/monitor/msgVpns/Sales/queues?count=100&amp;select=queueName,msgs.count"</p>
+    <p>The <code>collections</code> section of response from the broker  includes a <code>msgs.count</code> field for each queue, showing  the number of messages in that queue. In this case, there are two queues—one queue containing 50 messages and the other containing 75 messages. If there were more queues (up to 100), this response would  capture them as well, because the request increased the page size to 100 (the maximum supported).</p>
+    <pre class="Code">{
+    <b>"collections"</b>:[
+        {
+            "msgs":{
+                <b>"count":50</b>
+            }
+        },
+        {
+            "msgs":{
+                <b>"count":75</b>
+            }
+        }
+    ],
+    "data":[
+        {
+            "queueName":"q1"
+        },
+        {
+            "queueName":"q2"
+        }
+    ],
+    "links":[
+        {},
+        {}
+    ],
+    "meta":{
+        "count":2,
+        "request":{
+            "method":"GET",
+            "uri":"http://192.0.2.1:8080/SEMP/v2/monitor/msgVpns/Sales/queues?count=100&amp;select=queueName,msgs.count"
+        },
+        "responseCode":200
+    }
+}</pre>
+    <p>Since the queue name is returned in the <code>data</code> section and the message count is returned in the <code>collections</code> section, you must use the index of the queue in the <code>data</code> section to determine the corresponding message count in the <code>collections</code> section. In the previous example, you can determine that  <code>q1</code> has 50 messages because <code>q1</code> is the value of the first <code>queueName</code> field in the <code>data</code> section and 50 is the value of the first <code>msgs.count</code> field in the <code>collections</code> section. </p>
+    <p class="Tip">When polling objects (especially queues), it is important to use a <code>select</code> clause to limit the content of your request to only what you  need. For example, if you only want the number of messages in each queue, you should use <code>select=queueName,msgs.count</code>. Doing so can dramatically reduce the amount of time the broker needs to service the request, and reduce the likelihood of interfering with the performance of other broker services.</p>
+    <h2 class="with-rule"><a name="OpaquePassword"/>Opaque Password</h2>
+    <p>Attributes with the opaque property are also write-only and so cannot normally be retrieved in a GET. However, when a password is provided in the <code>opaquePassword</code> query parameter, attributes with the opaque property are retrieved in a GET in opaque form, encrypted with this password. The query parameter can also be used on a POST, PATCH, or PUT to set opaque attributes using opaque attribute values retrieved in a GET, so long as:</p>
+    <ul>
+      <li>the same password that was used to retrieve the opaque attribute values is provided; and</li>
+      <li>the broker to which the request is being sent has the same major and minor SEMP version as the broker that produced the opaque attribute values.</li>
+    </ul>
+    <p>The password provided in the query parameter must be a minimum of 8 characters and a maximum of 128 characters.</p>
+    <p>The query parameter can be used only in the configuration API, by a user with an access-level of <a href="../CLI-User-Access-Levels.htm" class="link-internal" MadCap:conditions="SAP.SapHideFromOutput">global/admin</a><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">global/admin</MadCap:conditionalText>, and only over HTTPS.</p>
+    <p class="Note" MadCap:conditions="SAP.SapOnlyOutput">By default, no user has an access level of global/admin. To grant a user with this access-level <a href="../../get-support.htm" target="_blank" class="link-internal">contact <MadCap:variable name="Variables.CompanyName"/></a>.</p>
+    <h2 class="with-rule"><a name="Paging"/>Paging</h2>
+    <p>Paging is supported for the GET method when retrieving collections. A collection might contain hundreds, thousands, or even millions of items. Therefore, these requests must be paged to be manageable. Paging is controlled by two query parameters whose usage is explained below.</p>
+    <table style="caption-side: top;margin-left: 0;margin-right: auto;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');width: 100%;" class="TableStyle-Table_Num" cellspacing="0">
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 25%;">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1" style="width: 75%;">
+            </col>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Parameter</th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1" style="text-align: left;padding-left: 6pt;padding-right: 6pt;padding-top: 6pt;padding-bottom: 6pt;border-bottom-style: solid;border-bottom-width: 1px;border-bottom-color: #e1e1e1;">Meaning</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <p>count=&lt;number&gt;</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>Include in the response at most this many objects.</p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <p>cursor=&lt;opaque value&gt;</p>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p>Current position in a paged GET request.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h4>count</h4>
+    <p>Limits the number of objects in the response. </p>
+    <p>This can be useful to limit the size of the response for large collections. The minimum value for <code>count</code> is <code>1</code> and the default is <code>10</code>. There is also a per-collection maximum value to limit request handling time.  Each collection’s actual <code>count</code> upper bound MAY differ, and requests for <code>count</code> greater than this upper bound will be capped at the actual upper bound. Because there is no guaranteed way for an application to request all items in a collection in a single GET request, applications should always be written to handle pagination.</p>
+    <p>The maximum page size varies from collection to collection and will change from version to version. Using a large page size may cause your request to take a long time.</p>
+    <p>The <code>count</code> parameter does not guarantee that a minimum number of objects will be returned. A page may contain fewer than <code>count</code> objects or even be empty. Additional objects may nonetheless be available for retrieval on subsequent pages. </p>
+    <p>For example:</p>
+    <pre MadCap:conditions="SAP.SapHideFromOutput">; Up to 25 MsgVpns
+/SEMP/v2/config/msgVpns?count=25
+</pre>
+    <pre MadCap:conditions="SAP.SapOnlyOutput" xml:space="preserve">; Up to 25 Queues
+/SEMP/v2/config/msgVpns/finance/queues?count=25
+</pre>
+    <h4>cursor</h4>
+    <p>The cursor, or position, for the next page of objects. </p>
+    <p>Retrieving further pages is controlled by the <code>cursor</code> query parameter. This parameter provides the event broker with sufficient context to retrieve the next set of objects in the collection. </p>
+    <p>When a request is made for a collection and there may be additional objects available for retrieval that are not included in the initial response, the response includes a <code>paging</code> field with two sub-fields:</p>
+    <ul>
+      <li>The <code>nextPageUri</code> provides the URI equivalent of the just-processed request, but with the <code>cursor</code> and <code>count</code> query parameters filled in to GET the next set of objects from the collection.</li>
+      <li>The <code>cursorQuery</code> string provides only the <code>cursor</code> value  to use in the next request. This is useful for clients built using generated SDK libraries, which do not directly operate on URIs.</li>
+    </ul>
+    <p>Applications must continue to use the <code>cursorQuery</code> if one is provided in order to retrieve the full set of objects associated with the request, even if a page contains fewer than the requested number of objects (see the <code>count</code> query parameter documentation) or is empty.</p>
+    <p>Cursors are opaque data that should not be created or interpreted by SEMP clients, and should only be used as described.</p>
+    <p>The absence of the <code>paging</code> field in a response indicates that either the full collection has been returned or that you have retrieved the last page of a collection.</p>
+    <p class="Note">In SEMP, while retrieving a collection, it is possible to receive a partially-filled or even empty page in the midst of the paged response. This is particularly common when object filtering is used. Applications working with paging should continue to retrieve the next page until the <code>paging</code> field is absent in the response to confirm they have retrieved the full response.</p>
+    <h2 class="with-rule"><a name="Rate"/>Rate Limiting</h2>
+    <p>Currently, SEMP does not enforce a rate limit. It is recommended that users avoid aggressively polling the event broker. In general, the average number of SEMP requests made to an event broker should be less than 10 requests/sec.</p>
+    <h2 class="with-rule"><a name="Transactions"/>Transactions</h2>
+    <p>SEMP does not support transactions because it is not possible to group together multiple SEMP requests and guarantee their success or failure as a complete unit.</p>
+    <p>However, any individual SEMP POST, PUT, or PATCH request will complete successfully or not at all. For example, a PATCH to a queue, changing three attributes, where the change to the third attribute fails will leave the queue without the first two attributes changed; all three changes must succeed, otherwise the object will be left in its original state. However, this support is still not transactional in that an event broker restart midway through the handling of an individual request may result in the request only being partially satisfied. Concurrent modifications of <MadCap:variable name="Variables.CompanyName"/> objects by <MadCap:variable name="Product-Names.solace_cli"/> or legacy SEMP users is another way that a request may fail and leave a request partially satisfied. SEMP v2 users should avoid concurrent modification of objects by <MadCap:variable name="Product-Names.solace_cli"/> or legacy SEMP users.</p>
+    <p>Any individual SEMP GET request which returns multiple objects, is guaranteed to complete successfully or not at all. For instance, when doing a GET of a collection, partial collection results will not be returned if there is a failure while processing the GET. Similarly, a GET of an individual object returns all the state of that object, or none.</p>
+    <h2 class="with-rule"><a name="Sorting"/>Sorting</h2>
+    <p>Sorting of query responses is not supported.</p>
+  </body>
+</html>

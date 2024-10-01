@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:lastBlockDepth="4" MadCap:lastHeight="1461" MadCap:lastWidth="1378">
+  <head/>
+  <body>
+    <h1>Receiving Messages Synchronously or Asynchronously</h1>
+    <p>Message consumers can receive messages from destinations using one of the following modes:</p>
+    <ul>
+      <li><MadCap:xref href="#Synchron">Synchronous</MadCap:xref>—A message consumer must call a receive method to explicitly fetch a message from a destination.</li>
+      <li><MadCap:xref href="#Asynchro">Asynchronous</MadCap:xref>               —A message listener is registered with a message consumer. When messages arrive for the message consumer, they are delivered by calling the listener’s <code>onMessage()</code> method.</li>
+    </ul>
+    <h2 class="with-rule"><a name="Synchron">
+            </a>Synchronous</h2>
+    <p>To receive messages synchronously, call one of the following receive methods from the <code>MessageConsumer</code> class:</p>
+    <ul>
+      <li>
+        <code>receive()</code>
+        <p>Receive the next message; block indefinitely.</p>
+      </li>
+      <li>
+        <code>receive(long timeout)</code>
+        <p>Receive the next message that arrives within a specified timeout interval.</p>
+      </li>
+      <li>
+        <code>receiveNoWait()</code>
+        <p>Receive the next message if one is immediately available, but do not wait when there is no message available. That is, the call immediately times out when no message is available.</p>
+      </li>
+    </ul>
+    <p>The following sample code shows how to receive messages synchronously:</p>
+    <pre class="Code">ConnectionFactory cf = (ConnectionFactory)context.lookup("cf/default");
+Topic topic = (Topic)context.lookup("topic/testDest");
+connection = cf.createConnection();
+ 
+// Create session, non-transacted and auto-acknowledge
+session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+ 
+// Create durable subscriber
+String subscriptionName = new String("subscription");
+subscriber = session.createDurableSubscriber(topic, subscriptionName);
+ 
+connection.start();
+ 
+// Blocking call to receive, timeout 1 second
+Message testMessage = subscriber.receive(1000);
+if(testMessage != null) {
+// process message
+}
+ 
+connection.stop();
+</pre>
+    <h2 class="with-rule"><a name="Asynchro">
+            </a>Asynchronous</h2>
+    <p>To receive messages asynchronously, you can register a <code>MessageListener </code>with a <code>MessageConsumer</code>.</p>
+    <p>The following sample code shows how to receive messages asynchronously:</p>
+    <pre class="Code">ConnectionFactory cf = (ConnectionFactory)context.lookup("cf/default");
+Topic topic = (Topic)context.lookup("topic/testDest");
+connection = cf.createConnection();
+ 
+// Create session, non-transacted and auto-acknowledge
+session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+ 
+// Create durable subscriber
+String subscriptionName = new String("subscription");
+subscriber = session.createDurableSubscriber(topic, subscriptionName);
+jmsMessageListener myListener = new jmsMessageListener();
+subscriber.setMessageListener(myListener)
+ 
+connection.start();
+ 
+// Sleep for 10 seconds
+Thread.sleep(10000);
+ 
+connection.stop();</pre>
+    <pre class="Code">public class jmsMessageListener implements MessageListener {
+public void onMessage(Message message) 
+{
+            // process message
+}
+</pre>
+  </body>
+</html>

@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Services</h1>
+    <p>Clients and management users access the services available on <MadCap:variable name="Product-Names.pubsub_brand_only"/> through TCP service ports on an event broker.</p>
+    <p><MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers support the following services:</p>
+    <ul>
+      <li><u>Solace Message Format (SMF)</u>—This service allows clients to communicate with an event broker on the Message Backbone interface (<MadCap:variable name="Product-Names.broker_appliance_short"/>s) and as data traffic (<MadCap:variable name="Product-Names.broker_sw_short"/>s).</li>
+      <li><u>Solace Element Management Protocol (SEMP)</u>—This service allows management applications to communicate with an event broker on the management  (<MadCap:variable name="Product-Names.broker_appliance_short"/>s) and as data traffic (<MadCap:variable name="Product-Names.broker_sw_short"/>s)..</li>
+      <li><u>Web transport</u>—This service allows Web clients to communicate with an event broker.</li>
+      <li><u>Solace Representational State Transfer (REST)</u>—This service allows REST clients to communicate with an event broker using standard HTTP requests.</li>
+      <li><u>Message Queuing Telemetry Transport (MQTT)</u>—This service allows clients to communicate with an event broker using the MQTT messaging protocol.</li>
+      <li><u>Advanced Message Queuing Protocol (AMQP)</u>—This service allows AMQP clients to communicate with an event broker using the AMQP open standard application layer protocol.</li>
+    </ul>
+    <div class="Note">
+      <p> Config-Sync does not automatically synchronize services. Therefore, if the event broker is being used in a high-availability (HA) redundant deployment or in a replicated site, you must manually configure services on each mate event broker or replicated Message VPN.</p>
+      <p>To determine whether an object/property is synchronized by Config-Sync, look up the command used to configure the object/property in the <MadCap:xref href="../Admin/Solace-CLI/Command-Line-Reference.htm">Command Line Interface Reference</MadCap:xref> or type the command in the Solace CLI, ending the command with "?". The Help will list whether the object or property is synchronized.</p>
+    </div>
+    <h2 class="with-rule"><a name="SMF-Service"/>SMF Service Management</h2>
+    <p>At the system-level, you can configure a listen port for SMF service and enable/disable SMF service on all Message VPNs on the event broker. You can also configure SMF events and event thresholds.</p>
+    <h3><a name="SMF-Port"/>Setting SMF Listen Ports</h3>
+    <p class="Note">You must  shutdown SMF services on the event broker before setting the SMF listen ports, otherwise an error message is received.</p>
+    <p>To configure the TCP port number that SMF clients use when connecting to the event broker, enter the following commands:</p>
+    <pre>solace(configure)# service smf<br/>solace(configure/service/smf)# listen-port &lt;port&gt; {[compressed] [routing-control] [ssl]}</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;port&gt;</code> specifies the TCP port number that SMF clients use when connecting to the event broker. The default value is 55555.</p>
+    <p><code>compressed</code> specifies the port to connect to for exchanging Non-SSL compressed messages.</p>
+    <p><code>routing-control</code> specifies the port to connect to for exchanging inter-node routing control messages. Note that Inter-node routing control messages cannot run over the compressed port. Therefore, you cannot specify compressed along with routing-control.</p>
+    <p><code>ssl</code> specifies the port to connect to for exchanging Transport Layer Security (TLS)/ Secure Sockets Layer (SSL) traffic (with or without compression). </p>
+    <p>The no versions of this command do the following:</p>
+    <ul>
+      <li><code>no listen-port</code> resets the port to the default value of 55555</li>
+      <li><code>no listen-port compressed</code> resets the port to the default value of 55003</li>
+      <li><code>no listen-port routing-control</code> resets the port to the default value of 55556</li>
+      <li><code>no listen-port ssl</code> resets the port to the default value of 55443</li>
+    </ul>
+    <h3><a name="Enable-SMF"/>Enabling System-Level SMF Service</h3>
+    <div class="Caution">
+      <p class="Tbl_Body"> Disabling SMF service at the system-level will disconnect all client and event broker connections to the event broker. Therefore, it is recommended that if you need to stop SMF service on the event broker, you do so when the service disruption will have the least impact. Also, to avoid such a large service interruption, you can optionally disable SMF service only on specific Message VPNs (see <MadCap:xref href="../Features/VPN/Configuring-VPNs.htm#managing_message_vpns_884140110_418337">Configuring SMF Service</MadCap:xref>).</p>
+    </div>
+    <p>By default, SMF services are enabled on both  PubSub+ <MadCap:variable name="Product-Names.broker_appliance_short"/>s and  <MadCap:variable name="Product-Names.pubsub_brand_only"/> <MadCap:variable name="Product-Names.broker_sw_short"/>s.</p>
+    <ul>
+      <li>To enable SMF service on the event broker, enter the following commands:
+			<pre>solace(configure)# service smf<br/>solace(configure/service/smf)# no shutdown</pre></li>
+      <li>To disable SMF services on the event broker, enter the following commands:
+			<pre>solace(configure)# service smf<br/>solace(configure/service/smf)# shutdown</pre></li>
+    </ul>
+    <h3><a name="SMF-Events"/>Configuring SMF Events</h3>
+    <p>You can optionally configure the set and clear thresholds at which system-level events are generated for a number or percentage of simultaneous SMF client connections. For information on how system-level service events can be generated and how to set the event thresholds for them, see <MadCap:xref MadCap:unresolvedLink="import-link:configuring_event_output_and_thresholds_3996511907_24179" href="../Monitoring/Configuring-System-Event-Thresholds.htm">Configuring System Event Thresholds</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="managing-SEMP-service"/>SEMP Service Management</h2>
+    <p>At the system-level, you can do the following:</p>
+    <ul>
+      <li>configure a listen port for SEMP service</li>
+      <li>enable/disable extended timeouts for paged GETs</li>
+      <li>enable/disable SEMP service on an event broker</li>
+      <li>set the timeout values for client user sessions</li>
+      <li>enable or disable Cross-Origin Resource Sharing (CORS) for the SEMP service</li>
+    </ul>
+    <h3><a name="SEMP-Port"/>Setting a SEMP Listen Port</h3>
+    <p class="Note">You must first shutdown SEMP service on the event broker before you can set a SEMP listen port.</p>
+    <p>To configure the TCP port number for SEMP clients to use when connecting to an event broker, enter the following commands:</p>
+    <pre>solace(configure)# service semp<br/>solace(configure/service/semp)# listen-port &lt;port&gt; [ssl]</pre>
+    <p><u>Where</u>:</p>
+    <p><code>port</code> specifies the TCP port number to use for a SEMP connection to the event broker. </p>
+    <p><code>ssl</code> specifies the port number is for TLS/SSL-encrypted connections. </p>
+    <p>The default ports for <code>port</code> and <code>ssl</code> depend on whether it's a <MadCap:variable name="Product-Names.broker_sw_short"/> or <MadCap:variable name="Product-Names.broker_appliance_short"/>. For information about which port to use, see <MadCap:xref href="../Admin/Default-Port-Numbers.htm">Default Port Numbers</MadCap:xref>. </p>
+    <p>The no versions of this command do the following:</p>
+    <ul>
+      <li><code>no listen-port</code> resets the port to the default value  for plain-text connections. </li>
+      <li><code>no listen-port ssl</code> resets the port to the default value for TLS/SSL connections. </li>
+    </ul>
+    <h3><a name="Enable-Extended-Timeouts"/>Enabling Extended SEMP Timeouts for Paged GETs</h3>
+    <p>Wildcarded show commands may return paged data even if paging was not requested, especially if the command takes more than a few seconds to execute.  In addition, when paged data is returned, the number of entries returned may be fewer than the number of entries requested.  In some cases, paged responses may be completely empty (including only a more-cookie).  Clients must be written to accept paged data of any size less than or equal to the requested page size.</p>
+    <p>You can enable or disable extended SEMP timeouts  to assist in keeping your system running while you update your clients to use paging.  When enabled, the  amount of time available for the system to produce a response before paging is forced on a client is increased to 60 seconds. When disabled, the timeout is 5 seconds.  </p>
+    <div class="Caution">
+      <p>Enabling extended timeouts is meant as a temporary solution and should be used only  while SEMP clients are updated so that they can handle short pages. </p>
+    </div>
+    <p>By default, extended SEMP timeouts for paged GETs are disabled.</p>
+    <ul>
+      <li>To enable extended SEMP timeouts for paged GETs on the event broker, enter the following commands:
+			<pre>solace(configure)# service semp<br/>solace(configure/service/semp)# legacy-timeout</pre></li>
+      <li>To disable extended SEMP timeouts for paged GETs, enter the following commands:
+			<pre>solace(configure)# service semp<br/>solace(configure/service/semp)# no legacy-timeout</pre></li>
+    </ul>
+    <h3><a name="Enable-SEMP"/>Enabling System-Level SEMP Service</h3>
+    <div class="Caution">
+      <p class="Tbl_Body">Shutting down SEMP service at the system-level will cause a disruption in management service when run since it disconnects all SEMP and SolAdmin connections from the event broker. Therefore, it is recommended that if you need to stop SEMP service on the event broker, you do so when the service disruption will least impact to clients.</p>
+    </div>
+    <ul>
+      <li>To enable SEMP services on the event broker, enter the following command:
+			<pre>solace(configure/service/semp)# no shutdown</pre></li>
+      <li>To disable SEMP services on the event broker, enter the following command:
+			<pre>solace(configure/service/semp)# shutdown</pre></li>
+    </ul>
+    <h3><a name="manage-SEMP-sessions"/>Managing SEMP Sessions</h3>
+    <p>When a client makes its first SEMPv2 request, it must supply a username and password using basic authentication.</p>
+    <p>If authentication is successful, the event broker returns a cookie containing a session token. The client can omit the username and password from subsequent requests, because the event broker now uses the session cookie for authentication instead. When the session expires or is deleted, the client must provide the username and password again, and the event broker creates a new session.</p>
+    <p>To see how sessions are used with the SEMP v2 API, see <MadCap:xref href="../Admin/SEMP/SEMP-API-Archit.htm#Authenti">Authentication and Security</MadCap:xref>.</p>
+    <p>You can configure two types of timeouts for sessions:</p>
+    <dl>
+      <dt>
+        <code>session-idle-timeout</code>
+      </dt>
+      <dd>The session idle timeout, in minutes. Sessions are invalidated if there is no activity in this period of time. The default value is 15 minutes.</dd>
+      <dt>
+        <code>session-max-lifetime</code>
+      </dt>
+      <dd>The maximum lifetime of a session, in minutes. Sessions are invalidated after this period of time, regardless of activity. The default value is 43200 minutes, which is equivalent to 30 days.</dd>
+    </dl>
+    <p>To set the <code>session-idle-timeout</code> value, enter the following commands in the CLI:</p>
+    <pre xml:space="preserve">solace-1&gt; enable
+solace-1# configure
+solace-1(configure)# service
+solace-1(configure/service)# semp
+solace-1(configure/service/semp)# session-idle-timeout 30</pre>
+    <p>To set the <code>session-max-lifetime</code> value, enter the following commands in the CLI:</p>
+    <pre xml:space="preserve">solace-1&gt; enable
+solace-1# configure
+solace-1(configure)# service
+solace-1(configure/service)# semp
+solace-1(configure/service/semp)# session-max-lifetime 43260
+
+</pre>
+    <p>To show the settings:</p>
+    <pre xml:space="preserve">solace-1&gt; show service semp
+
+Service:                  SEMP
+Config Status:            Enabled
+Oper Status (Plain-text): Up
+Oper Status (SSL):        No Cert
+VRF:                      management
+Port (Plain-text):        8080
+Port (SSL):               1943
+Legacy Timeout:           No
+Session Idle Timeout:     15 minutes
+Session Maximum Lifetime: 43200 minutes
+CORS Allow Any Host:      No
+</pre>
+    <p>To delete a session:</p>
+    <pre>solace-1&gt; enable
+solace-1# admin
+solace-1(admin)# semp-session &lt;username-pattern&gt; [session-id &lt;session-id-value&gt;]
+solace-1(admin/semp-session)# delete
+</pre>
+    <p>Sessions are also used by <MadCap:variable name="Product-Names.pubsubmanager_short"/>. For details, see <MadCap:xref href="../Admin/Broker-Manager/PubSub-Manager-Sessions.htm">[%=Product-Names.pubsubmanager_short%] Sessions</MadCap:xref>.</p>
+    <h3>
+      <a name="manage-CORS"/>
+      <span>Managing Cross-Origin Resource Sharing</span>
+    </h3>
+    <p>You can enable or disable Cross-Origin Resource Sharing  (CORS) for the SEMP service. By default, CORS is disabled for enhanced security.</p>
+    <p>Enabling CORS generates CORS-compliant headers that permit JavaScript loaded from any host to access the SEMPv2 endpoints on the event broker. This is helpful in case you have JavaScript tools or browser-based clients that involve management actions and where there's a low risk of security vulnerabilities.</p>
+    <p>To enable CORS, run the following commands:</p>
+    <pre xml:space="preserve">solace-1&gt; enable
+solace-1# configure
+solace-1(configure)# service
+solace-1(configure/service)# semp
+solace-1(configure/service/semp)# cors
+solace-1(configure/service/semp/cors)# allow-any-host</pre>
+    <h2 class="with-rule"><a name="REST-Service"/>REST Service Management</h2>
+    <p><MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers can support REST clients. At the system-level, you can enable or disable REST incoming and outgoing connections to the event broker. You can also configure REST events and event thresholds.</p>
+    <div class="Caution">
+      <p class="Tbl_Body"> Shutting down REST service at the system-level disconnects all REST clients from the event broker   and new clients will not be able to connect. Therefore, <MadCap:variable name="Variables.CompanyName"/> recommends that if you need to stop the REST service on the event broker that you do so when the service disruption will least impact client applications.</p>
+    </div>
+    <h3><a name="Enable-Incoming-REST"/>Enabling Incoming REST Connections</h3>
+    <p>By default, service for incoming REST service connections is not running on an event broker.</p>
+    <ul>
+      <li>To enable incoming REST service connections on the event broker, enter the following commands:
+			<pre>solace(configure)# service rest<br/>solace(configure/service/rest)# incoming<br/>solace(configure/service/rest/incoming)# no shutdown</pre></li>
+      <li>To disable incoming REST service connections on the event broker, enter the following commands:
+			<pre>solace(configure)# service rest<br/>solace(configure/service/rest)# incoming<br/>solace(configure/service/rest/incoming)# shutdown</pre></li>
+    </ul>
+    <h3><a name="Enable-Outgoing-REST"/>Enabling Outgoing REST Connections</h3>
+    <p>By default, service for outgoing REST service connections is not running on an event broker.</p>
+    <ul>
+      <li>To enable outgoing REST service connections on the event broker, enter the following commands:
+			<pre>solace(configure)# service rest<br/>solace(configure/service/rest)# outgoing<br/>solace(configure/service/rest/outgoing)# no shutdown</pre></li>
+      <li>To disable outgoing REST service connections on the event broker, enter the following commands:
+			<pre>solace(configure)# service rest<br/>solace(configure/service/rest)# outgoing<br/>solace(configure/service/rest/outgoing)# shutdown</pre></li>
+    </ul>
+    <h3><a name="REST-Events"/>Configuring REST Events</h3>
+    <p>For information on configuring REST client event thresholds, see <MadCap:xref href="../Monitoring/Configuring-System-Event-Thresholds.htm#montoring_and_management_1462237600_254995" data-mc-unresolved-link="import-link:configuring_event_output_and_thresholds_3996511907_24179">Configuring REST Outgoing Service Event Thresholds</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Web-Transport-Svc-Mgmt"/>Web Transport Service Management</h2>
+    <p>At the system-level, you can configure a listen port for Web Transport service, specify the Web URL suffixes, and enable/disable Web Transport service on all Message VPNs on an event broker.</p>
+    <h3><a name="Web-Transport-Port"/>Setting Web Transport Listen Ports</h3>
+    <p class="Note">You must first shutdown Web Transport services on the event broker before setting the Web Transport listen ports.</p>
+    <p>To configure the TCP port number for Web clients to use when connecting to the event broker, enter the following commands:</p>
+    <pre>solace(configure)# service web-transport<br/>solace(configure/service/web-transport)# listen-port &lt;port&gt; [ssl]</pre>
+    <p><u>Where</u>:</p>
+    <p><code>port</code> specifies the TCP port number that Web clients use when connecting to the event broker. </p>
+    <p><code>ssl</code> specifies the port to connect to for exchanging TLS/SSL traffic. </p>
+    <p>The default ports for <code>port</code> and <code>ssl</code> depend on whether it's a <MadCap:variable name="Product-Names.broker_sw_short"/> or <MadCap:variable name="Product-Names.broker_appliance_short"/>. For information about which port to use, see <MadCap:xref href="../Admin/Default-Port-Numbers.htm">Default Port Numbers</MadCap:xref>. </p>
+    <p>The no versions of this command do the following:</p>
+    <ul>
+      <li><code>no listen-port</code> resets the port to its default value.</li>
+      <li><code>no listen-port ssl</code> resets the port to its default value.</li>
+    </ul>
+    <h3><a name="Enable-Web-Transport"/>Enabling System-Level Web Transport Service</h3>
+    <div class="Caution">
+      <p class="Tbl_Body"> Shutting down Web transport service at the system-level will disconnect all Web transport clients from the event broker   and new clients will not be able to connect. Therefore, it is recommended that if you need to stop Web transport service on the event broker, you do so when the service disruption will least impact clients. Also, to avoid such a large service interruption, you can optionally disable Web transport service only on specific Message VPNs (see <MadCap:xref href="../Features/VPN/Configuring-VPNs.htm#managing_message_vpns_884140110_410465">Configuring Web Transport Service</MadCap:xref>).</p>
+    </div>
+    <p>By default, Web Transport service is not running on an event broker.</p>
+    <ul>
+      <li>To start Web transport service on the event broker, enter the following commands:
+			<pre>solace(configure)# service web-transport<br/>solace(configure/service/web-transport)# no shutdown</pre></li>
+      <li>To stop Web transport service on the event broker, enter the following commands:
+			<pre>solace(configure)# service web-transport<br/>solace(configure/service/web-transport)# shutdown</pre></li>
+    </ul>
+    <div class="Note">
+      <ul>
+        <li>Web Transport service is locked by default on <MadCap:variable name="Product-Names.pubsub_brand_only"/>  <MadCap:variable name="Product-Names.broker_appliance_short"/>s that are older than the SolOS version 8.4.0. To unlock Web Transport service on those appliances, you must have a valid product key supplied by <MadCap:variable name="Variables.CompanyName"/>. For more information, see <MadCap:xref href="../Admin/Product-Key.htm">Product Key Feature Locking</MadCap:xref>.</li>
+        <li>To enable Web transport clients to connect to the event broker, you must start SMF services on the event broker because Web transport clients are also considered to be SMF clients. For more information, see <MadCap:xref href="#Enable-SMF">Enabling SMF Service</MadCap:xref>.</li>
+      </ul>
+    </div>
+    <h3><a name="Web-Suffixes"/>Specifying Web URL Suffixes</h3>
+    <p>You can set the Web URL suffix that Web clients will receive from the event broker when they login, and then use when communicating with the event broker (for example, for the purpose of load balancing client sessions).</p>
+    <p>To specify a Web URL suffix, you must shutdown Web Transport services on the event broker, and then enter the following commands:</p>
+    <pre>solace(configure)# service web-transport<br/>solace(configure/service/web-transport)# web-url-suffix &lt;suffix&gt; </pre>
+    <p><u>Where</u>:</p>
+    <p><code>suffix</code> specifies the text for a <MadCap:variable name="Manifest-Products-APIs.PubSub-GenericAll-Messaging-API"/>  to append to the Web URL when communicating with the event broker. This text can contain up to 127 alphanumeric characters and should be unique among all created Web URL suffixes.</p>
+    <p>The no version of this command, <code>no web-url-suffix</code>, resets the Web URL suffix to the default value of empty string (that is, " ").</p>
+    <p class="Note">For more information on session load balancing and use of URLs, see <MadCap:xref href="../API/Messaging-APIs/JavaScript-API/Web-Messaging-Concepts/Web-Messaging-Concepts.htm">Web Messaging Concepts</MadCap:xref>.
+        </p>
+    <h2 class="with-rule"><a name="MQTT-Service"/>MQTT Service Management</h2>
+    <p>You can enable or disable MQTT service at the system-level on event brokers.</p>
+    <h3><a name="Enable-MQTT"/>Enabling System-Level MQTT Service</h3>
+    <p> You can globally enable or disable MQTT service for an event broker. By default, MQTT service is not enabled.</p>
+    <ul>
+      <li>To enable MQTT service on the event broker, enter the following commands:
+			<pre>solace(configure)# service mqtt<br/>solace(configure/service/mqtt)# no shutdown</pre></li>
+      <li>To disable MQTT service on the event broker, enter the following commands:
+			<pre>solace(configure)# service mqtt<br/>solace(configure/service/mqtt)# shutdown</pre></li>
+    </ul>
+    <div class="Caution">
+      <p class="Tbl_Body">If you disable the MQTT service at the system level, you will disconnect all clients currently connected to any MQTT service-enabled Message VPNs on the event broker, and new clients will not be able to connect. Therefore, it's recommended that if you need to stop the MQTT service, you should do so when the service disruption will have the least impact. Also, to avoid large service interruptions, you have the option of disabling the MQTT service on individual Message VPNs (see <MadCap:xref href="Managing-MQTT-Messaging.htm#managing_mqtt_messaging_1203392003_440605">Enabling/Disabling MQTT Connections</MadCap:xref>).</p>
+    </div>
+    <h2 class="with-rule"><a name="Managing-AMQP-service"/>AMQP Service Management</h2>
+    <p><MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers can support AMQP clients. At the system-level, you can enable/disable the AMQP service. Clients can connect via a global and/or per-Message VPN listen ports. </p>
+    <p>To provide connecting AMQP clients service from an event broker, you must perform the following system-level configurations:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#system-listen-ports">Set AMQP Listen Ports</MadCap:xref>
+      </li>
+      <li><MadCap:xref href="#Configur">Configure Virtual Hostnames</MadCap:xref>(Not required when using per-Message VPN ports)</li>
+      <li>
+        <MadCap:xref href="#AMQP-Service">Enable System-Level AMQP Service</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="system-listen-ports"/>Setting AMQP Listen Ports</h3>
+    <p>The AMQP service supports both plain-text and encrypted data transport. If you want to transport plain-text and TLS/SSL data, a separate port must be configured for each transport type. To connect AMQP plain-text clients to an event broker, per-Message VPN AMQP plain-text ports must be configured.</p>
+    <p>For AMQP TLS/SSL clients to connect to an event broker, you can configure the following	listen-ports:</p>
+    <ul>
+      <li>A global AMQP TLS/SSL port that is shared between all Message VPNs. This configuration is not required when using only per-Message VPN ports.   </li>
+      <li>per-Message VPN ports that are private to a particular Message VPN.</li>
+    </ul>
+    <h4>AMQP Global Port vs per-Message VPN Port </h4>
+    <p>The event broker, a global AMQP TLS/SSL port can be configured. All AMQP TLS/SSL clients can connect to the global port. As a result, per-Message VPN ports are not required and the configuration is much simpler. This consumes fewer ports (one global vs one per-Message VPN), irrespective of the number of Message VPNs. It also potentially reduces firewall configuration.</p>
+    <p>If you have both the global port and per-Message VPN port configured, the client can connect to either one. For global port connections, virtual hostnames must be configured to map the client-provided hostname to the corresponding Message VPN. Note that clients connecting to the global port must connect via TLS with the hostname set in the Server Name Indication (SNI). For more information about virtual hostnames, see <MadCap:xref href="#Configur">Configure Virtual Hostnames</MadCap:xref>.</p>
+    <p>Also, when connecting to the global port, clients must be able to validate the event broker’s server certificate based on the virtual hostname that they are connecting to. The standard way to ensure this is to add the virtual hostname to the subject alternate name (or wild card that covers the virtual hostname) of the event broker’s server certificate. </p>
+    <h4><a name="Setting"/>Setting Global AMQP Listen Ports</h4>
+    <p>To set a global listen port for AMQP connections, enter the following commands:</p>
+    <pre class="Code" xml:space="preserve">solace(configure)# service amqp
+solace(configure/service/amqp)# listen-port &lt;port&gt; ssl</pre>
+    <p>The no version of this command, <code>no listen-port ssl</code>, removes the currently configured port number.</p>
+    <p><u>Where</u>:</p>
+    <p><code>port</code> is the port number from 1 to 65535.</p>
+    <p><code>ssl</code> specifies that the given port will use a TLS transport. </p>
+    <p class="Note">To change the global listen port, the AMQP service must be shutdown globally. Refer to <MadCap:xref href="#AMQP-Service">Enable or Disable System-Level AMQP Service</MadCap:xref></p>
+    <h4>Setting per-Message VPN AMQP Listen Ports</h4>
+    <p>To set per-Message VPN listen ports for AMQP connections , see <MadCap:xref href="AMQP-on-VPN-Management.htm#set-vpn-listen-ports">Set Message VPN AMQP Listen Ports</MadCap:xref>.</p>
+    <h3><a name="Configur"/>Configuring the Virtual Hostname</h3>
+    <p>A virtual hostname is configured on the event broker to map the client provided hostname to the corresponding Message VPN. This mapping is used only for connections arriving through the global AMQP port. If a client connects through the per-Message VPN port, the virtual hostname (if provided) is ignored. Refer to <MadCap:xref href="#system-listen-ports">Set AMQP Listen Ports</MadCap:xref> for information on global and per-Message VPN listen ports.</p>
+    <p>Clients that connect to a global port and provide a hostname, through the Server Name Indication (SNI), will be directed to its corresponding Message VPN. An exact case-insensitive match is performed on the client-provided hostname against the configured virtual hostnames. This mechanism is supported only for AMQP and only for hostnames provided through the SNI extension of TLS. If a mapping for a hostname does not exist or points to a nonexistent Message VPN, the client login will fail.</p>
+    <p>Note that the virtual-hostname is restricted to contain only ASCII characters. To represent an internationalized domain name by a virtual-hostname on the event broker, you must first convert the non-ASCII characters to the punycode-encoded A-label form. For example, if an application were to use "éxample.com" as a virtual-hostname, it must be configured as the virtual-hostname "xn--xample-9ua.com" on the event broker.</p>
+    <p>To configure a virtual hostname, enter the following commands:</p>
+    <pre class="Code" xml:space="preserve">solace(configure)# service 
+solace(configure/service)# create virtual-hostname &lt;name&gt;</pre>
+    <p>The no version of this command, <code>no virtual-hostname &lt;name&gt;</code>, removes the virtual hostname. It must be disabled to be removed. </p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the virtual hostname. It must be an FQDN (1..253 characters) or an IP address (nnn.nnn.nnn.nnn).</p>
+    <h4>Mapping the Virtual Hostname to a Message VPN</h4>
+    <p>To map the virtual hostname to the corresponding Message VPN, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">
+solace(configure/service/virtual-hostname)# message-vpn &lt;vpn-name&gt;
+</pre>
+    <p>The no version of this command, <code>no message-vpn</code>, removes the Message VPN mapping.</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;vpn-name&gt;</code> is the name of the Message VPN to connect to.</p>
+    <h4>Enabling the Virtual Hostname</h4>
+    <p>The virtual hostname to Message VPN mapping is disabled by default. You can enable it by executing the following command:</p>
+    <pre class="Code" xml:space="preserve">
+solace(configure/service/virtual-hostname)# no shutdown</pre>
+    <p>To disable the virtual hostname to Message VPN mapping, enter the following command:</p>
+    <pre class="Code" xml:space="preserve">
+solace(configure/service/virtual-hostname)# shutdown</pre>
+    <h3><a name="AMQP-Service"/>Enabling System-Level AMQP Service</h3>
+    <p>You can enable or disable the AMQP service at the system-level on the event broker.</p>
+    <ul>
+      <li>To enable the AMQP service for the event broker, enter the following commands: 
+			<pre>solace(configure)# service amqp<br/>solace(configure/service/amqp)# no shutdown</pre></li>
+      <li>To disable the AMQP service for the event broker, enter the following commands: 
+			<pre>solace(configure)# service amqp<br/>solace(configure/service/amqp)#  shutdown</pre></li>
+    </ul>
+    <div class="Caution">
+      <p class="Tbl_Body"> If you disable the AMQP service at the system level, you will disconnect all clients currently connected to any AMQP service-enabled Message VPNs on the event broker. To avoid such a large service interruption, you can disable the AMQP service only on specific Message VPNs (see <MadCap:xref href="AMQP-on-VPN-Management.htm#Enable-Disable-VPN-Service">Enable/Disable AMQP Service for VPNs</MadCap:xref>).</p>
+    </div>
+    <h2 class="with-rule"><a name="Enable-All-Services"/>Enabling All Messaging Services</h2>
+    <p>The Solace event broker Message Backbone is a Virtual Routing and Forwarding (VRF) object that contains all Solace event broker interfaces (physical, LAG, and IP), and transports message and topic subscription traffic between client applications and the virtual routers on the event broker.</p>
+    <p>The message backbone acts as a global switch that enables or disables all messaging services at the global level. Disabling the message backbone disables all messaging services until the message backbone is re-enabled.</p>
+    <p>Services that are disabled using the message backbone switch will retain their individually configured states when the message backbone is re-enabled. For example, if Web transport service is in a disabled state when the message backbone is disabled, the Web transport service will remain disabled when the message backbone is re-enabled.</p>
+    <MadCap:snippetBlock src="../Resources/Snippets/Not-Config-Synced.flsnp"/>
+    <p>To shut down the message backbone to disable all messaging services at a global level, enter the following commands:</p>
+    <pre>solace(configure)# service msg-backbone shutdown<br/>All clients will be disconnected.<br/>Do you want to continue (y/n)? y</pre>
+    <p>The no version of this command, <code>no msg-backbone shutdown</code>, globally enables messaging service. Services that were disabled before the message backbone was shutdown will remain disabled when this command is run.</p>
+    <h2 class="with-rule"><a name="Managing-Event-Thresholds"/>Managing Service Event Thresholds</h2>
+    <p>To configure the thresholds that define when system‑level events are generated for the number of simultaneous client connections to the event broker, enter the following command:</p>
+    <pre>solace(configure)# service event</pre>
+    <p>The CLI is now at a level at which you can configure the set and clear event thresholds at which system-level events are generated for the number of simultaneous client connections. These thresholds are set according to the service type used (for example, SMF, Web Transport, REST). For more information, see <MadCap:xref MadCap:unresolvedLink="import-link:configuring_event_output_and_thresholds_3996511907_24179" href="../Monitoring/Configuring-System-Event-Thresholds.htm">Configuring System Event Thresholds</MadCap:xref>.</p>
+  </body>
+</html>

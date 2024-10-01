@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Collecting Core Dumps from an <MadCap:variable name="Product-Names.broker_cloud_short_title"/> in a Pod in a <MadCap:variable name="Product-Names.customer-controlled_region"/></h1>
+    <p><MadCap:variable name="Product-Names.cloud_product_firstuse_initialcase"/> deploys <MadCap:variable name="Product-Names.broker_cloud_short"/>s to containers within pods in Kubernetes clusters. Because pods are stateless, they lose any information kept within them when Kuberenetes destroys them.</p>
+    <p>Core dumps are operating system (OS) level files that contain information that <MadCap:variable name="Variables.CompanyName"/> can use to analyze why an application isn’t working as it should. The kernel creates these core dump files at the OS level within pods. When Kubernetes destroys the pod, it deletes the core dump files within the pod as well, which is a problem from a troubleshooting standpoint. To prevent the loss of core dump files, you can configure your Kubernetes pods using a DaemonSet to save and download the core dump files before pod destruction.</p>
+    <p>For <MadCap:variable name="Product-Names.customer-controlled_region"/>, the following procedures configure and deploy a DaemonSet to the nodes in your  deployments that save core dump files created in your pods. </p>
+    <p>To use the commands outlined in these procedures, you must have an understanding of the Kubernetes command-line tool (<code>kubectl</code>). You must also have the appropriate permissions to access and perform the operation in your Kubernetes cluster.</p>
+    <p>This document explains:</p>
+    <ul>
+      <li>
+        <p>
+          <MadCap:xref href="#CoreDumpLimits">Limitations to Collecting Core Dump Files</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#ConfigDaemon">Configuring Core Dump Collection Management</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#InstallDaemon">Installing the Core Dump DaemonSet</MadCap:xref>
+        </p>
+      </li>
+      <li>
+        <p>
+          <MadCap:xref href="#GetDumpFiles">Retrieving and Saving Core Dump Files</MadCap:xref>
+        </p>
+      </li>
+    </ul>
+    <h3><a name="CoreDumpLimits"/>Limitations to Collecting Core Dump Files</h3>
+    <p>Collecting core dump files from <MadCap:variable name="Product-Names.broker_cloud_short"/>s using a DaemonSet has the following limitations:</p>
+    <ul>
+      <li>
+        <p>Recreating the node with the core dump files causes loss of the file.</p>
+      </li>
+      <li>
+        <p>Rescheduling the <MadCap:variable name="Product-Names.broker_cloud_short"/> pods to another node does not carryover any existing core dump file.</p>
+      </li>
+      <li>
+        <p>To maintain the node’s local ephemeral storage space, the DaemonSet monitors and cleans the core dump file as required.</p>
+      </li>
+      <li>
+        <p>When a core dump file exceeds the amount of space allocated to it, the DaemonSet deletes it immediately to ensure the node stays operational.</p>
+      </li>
+    </ul>
+    <h3><a name="ConfigDaemon"/>Configuring Core Dump Collection Management</h3>
+    <p>The operating system stores core dump files on the node’s local disk (ephemeral storage). Each file ranges in size from 50 to 200MB. You must consider your node’s storage size when defining the configuration keys so that your nodes do not run out of storage.</p>
+    <p>You can change the following configuration keys to ensure the DaemonSet meets your requirements:</p>
+    <ul>
+      <li>
+        <p><code>CONFIG_CLEAN_UP_MAX_FILE_TO_KEEP</code>—Specifies the maximum number of core dump files to keep in the dumps folder. If exceeded, the DeamonSet deletes files, starting with the oldest.</p>
+      </li>
+      <li>
+        <p><code>CONFIG_CLEAN_UP_SLEEP_SECONDS</code>— Specifies the interval, in seconds, between each scan for core dump files.</p>
+      </li>
+      <li>
+        <p><code>CONFIG_CLEAN_UP_FILE_AGE_DAYS</code>—Specifies the maximum duration, in days, to keep a core dump file. The DaemonSet deletes core dump files that exceed the number.</p>
+      </li>
+    </ul>
+    <p>By default, the DaemonSet deploys to all nodes. You can use <code>affinity</code> or <code>node selectors</code> to make it run in a specific set of nodes.</p>
+    <h3><a name="InstallDaemon"/>Installing the Core Dump DaemonSet</h3>
+    <ol>
+      <li>Using <code>kubectl</code> access to your cluster.</li>
+      <li>Run the following command and manifest to install DaemonSet :<pre xml:space="preserve">
+kubectl apply -f - &lt;&lt;EOF
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: solace-core-dump
+  labels:
+  app: core-dump-config
+
+data:
+  CONFIG_CLEAN_UP_MAX_FILE_TO_KEEP: "10"
+  CONFIG_CLEAN_UP_SLEEP_SECONDS: "3600"
+  CONFIG_CLEAN_UP_FILE_AGE_DAYS: "30"
+
+  core-dump-config.sh: |
+    #!/bin/sh
+    CLEAN_UP_SLEEP_SECONDS=${CLEAN_UP_SLEEP_SECONDS:-3600}
+    CLEAN_UP_FILE_AGE_DAYS=${CLEAN_UP_FILE_AGE_DAYS:-30}
+    CLEAN_UP_MAX_FILE_TO_KEEP=${CLEAN_UP_MAX_FILE_TO_KEEP:-10}
+    set -e
+			
+    cat &gt;/dumps/gen_compress_core.sh &lt;&lt;"EOF1"
+    #!/bin/sh
+    exec /bin/gzip &gt;"$1"
+    EOF1
+			  
+    chmod +x /dumps/gen_compress_core.sh
+
+    nsenter -t 1 -m -- su -c "echo \"|/dumps/gen_compress_core.sh /dumps/core.%p.gz\" &gt; /proc/sys/kernel/core_pattern"
+    ulimit -c unlimited
+    while true; do
+      nsenter -t 1 -m -- su -c "find /dumps -name 'core.*' -mtime +${CLEAN_UP_FILE_AGE_DAYS} -delete"
+      nsenter -t 1 -m -- su -c "ls -1tr /dumps/core.* | head -n -${CLEAN_UP_MAX_FILE_TO_KEEP} | xargs -d '\n' rm -f --"
+      sleep ${CLEAN_UP_SLEEP_SECONDS}
+    done
+---			
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: solace-core-dump
+spec:
+  selector:
+    matchLabels:
+      app: node-configurer-core-dump
+  template:
+    metadata:
+      labels:
+        app: node-configurer-core-dump
+    spec:
+      tolerations:
+        - operator: "Exists"
+      hostPID: true
+      containers:
+        - image: alpine
+          name: node-configurer
+          env:
+            - name: CLEAN_UP_SLEEP_SECONDS
+                valueFrom:
+                  configMapKeyRef:
+                    name: solace-core-dump
+                    key: CONFIG_CLEAN_UP_SLEEP_SECONDS
+            - name: CLEAN_UP_FILE_AGE_DAYS
+                valueFrom:
+                  configMapKeyRef:
+                    name: solace-core-dump
+                    key: CONFIG_CLEAN_UP_FILE_AGE_DAYS
+            - name: CLEAN_UP_MAX_FILE_TO_KEEP
+                valueFrom:
+                  configMapKeyRef:
+                    name: solace-core-dump
+                    key: CONFIG_CLEAN_UP_MAX_FILE_TO_KEEP
+          resources:
+            requests:
+              cpu: 1m
+            limits:
+              cpu: 200m
+          securityContext:
+            privileged: true
+          command: ["/bin/sh"]
+          args:
+            - "-c"
+            - "sh /opt/scripts/core-dump-config.sh"
+          volumeMounts:
+            - mountPath: /opt/scripts
+              name: dumps-scripts
+            - name: dump-volume
+              mountPath: /dumps
+      volumes:
+        - name: dump-volume
+          hostPath:
+            path: /dumps/
+            type: DirectoryOrCreate
+        - configMap:
+            defaultMode: 365
+            name: solace-core-dump
+            items:
+              - key: core-dump-config.sh
+                path: core-dump-config.sh
+          name: dumps-scripts
+EOF
+</pre></li>
+    </ol>
+    <h3><a name="GetDumpFiles"/>Retrieving and Saving Core Dump Files</h3>
+    <ol>
+      <li>Using <code>kubectl</code> access your cluster.</li>
+      <li>Run the following commands to find the DaemonSet pod containing the core dump files and copy them from the cluster to a permanent local storage location:<pre xml:space="preserve">
+# Find the daemon set pod that has the dump file by the node name
+kubectl -n &lt;namespace&gt; get pod -o wide
+# Find the dump file in the pod. Run `cd /dumps` after exec into pods
+kubectl -n &lt;namespace&gt; exec -it &lt;pod-name&gt; sh
+# Copy it to local with the name dump.tar.gz
+kubectl cp &lt;namespace&gt;/&lt;daemon-set-pod-name&gt;:dumps/&lt;filename&gt; dump.tar.gz
+</pre></li>
+    </ol>
+  </body>
+</html>

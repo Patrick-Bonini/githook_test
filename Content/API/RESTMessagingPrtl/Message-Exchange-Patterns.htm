@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Message Exchange Patterns</h1>
+    <p>This section describes success and failure scenarios for common message exchange patterns.</p>
+    <p class="Note" MadCap:autonum="&lt;b&gt;Note:  &lt;/b&gt;">A Solace PubSub+ event broker treats persistent and non-persistent message in the same manner. Therefore, the following diagrams are simplified and only show persistent messages.</p>
+    <h2 class="with-rule"><a name="_Toc426703661"/>REST Producer One-Way POST to Solace</h2>
+    <h3><a name="HTTP"/>HTTP Header Example</h3>
+    <p class="Code">POST /TOPIC/test/news HTTP/1.1 <br/>Host: sol-ny-prod-0001:8080 <br/>Solace-Time-To-Live-In-ms: 20000<br/>Solace-Delivery-Mode: persistent<br/>Solace-DMQ-Eligible: true<br/>Content-Length: 1000</p>
+    <h3><a name="_Toc426703663"/>Success Case Message Exchange</h3>
+    <p>
+      <img src="../../Resources/Images/RESTMessagingPrtl/Message-Exchange-Patterns-201.png" style="visibility: visible;mso-wrap-style: square;max-width: 600px;" MadCap:mediastyle="@media print { max-width: 460px; }" alt=""/>
+    </p>
+    <h2 class="with-rule"><a name="_Ref393980476"/>Solace One-Way POST to REST Consumer</h2>
+    <h3><a name="_Toc426703665"/>HTTP Header Example</h3>
+    <p class="Code">POST /Request/Target HTTP/1.1 <br/>Host: sol-ny-prod-0001:8080 <br/>Content-Length: 1000</p>
+    <h3><a name="_Toc426703666"/>Success Case Message Exchange</h3>
+    <p>
+      <img src="../../Resources/Images/RESTMessagingPrtl/Message-Exchange-Patterns-202.png" style="visibility: visible;mso-wrap-style: square;max-width: 400px;" MadCap:mediastyle="@media print { max-width: 400px; }" alt=""/>
+    </p>
+    <p>A REST consumer must respond with a success status code such as 200 OK if it successfully receives the message. The event broker will retry delivery of messages to the REST consumer for all failure status codes according to its provisioned configuration (one example being the Max Retry setting on the associated Queue).</p>
+    <p>In this example, the event broker discards any payload returned in the body of a 200 OK. Content in the body of a 200 OK is only processed in the request reply scenario as indicated by the presence of a reply-to destination in the Solace SMF message. Refer to <MadCap:xref href="#_Ref393980455">REST Producer Request with Async Reply to Destination</MadCap:xref> for details.</p>
+    <h2 class="with-rule"><a name="_Toc426703667"/>Failure Scenario Message Exchange</h2>
+    <p>
+      <img src="../../Resources/Images/RESTMessagingPrtl/Message-Exchange-Patterns-203.png" style="visibility: visible;mso-wrap-style: square;max-width: 550px;" MadCap:mediastyle="@media print { max-width: 460px; }" alt=""/>
+    </p>
+    <p>In this scenario, message error handling consists of the following:</p>
+    <ul>
+      <li>If there are redelivery attempts that remain based on Queue settings, message redelivery will be attempted.</li>
+      <li>When retries are exhausted, then normal DMQ handling applies. This means that if message is DMQ eligible it will be placed on the DMQ. Otherwise the message will be discarded with a statistic.</li>
+    </ul>
+    <h2 class="with-rule"><a name="_Toc426703668"/>REST Producer Request/Reply</h2>
+    <h3><a name="_Toc426703669"/>HTTP Header Example</h3>
+    <p class="Code">POST /TOPIC/test/news HTTP/1.1 <br/>Host: sol-ny-prod-0001:8080<br/>Solace-Reply-Wait-Time-In-ms: 10000<br/>Content-Length: 1000</p>
+    <h3><a name="_Toc426703670"/>Success Case Message Exchange</h3>
+    <p>
+      <img src="../../Resources/Images/RESTMessagingPrtl/Message-Exchange-Patterns-205.png" style="visibility: visible;mso-wrap-style: square;max-width: 600px;" MadCap:mediastyle="@media print { max-width: 460px; }" alt=""/>
+    </p>
+    <p>A synchronous reply message from the event broker to the REST producer is a Direct message. This means that the reply message is not placed in a persistent queue before delivery regardless of whether the request message was persistent or Direct. It is not necessary to persist the reply message because if a failure occurs in returning the reply (for example, if a Solace PubSub+ event broker activity switch or REST producer reset occurs), then the HTTP connection will fail so there is no way to return the reply to the request.</p>
+    <p>If the consumer wants to provide a processing error in the reply message, it can encode the error message in the reply message body. The REST producer will then receive it as a 200 OK with the error contents as the body of the 200 OK status code. From a transport perspective, the 200 OK indicates that the request and reply were received successfully. The body of the reply indicates to the application whether the consumer correctly handled the request.</p>
+    <h3><a name="_Toc426703671"/>Failure Scenario Message Exchange</h3>
+    <p>The following sequence diagram outlines the interactions that can occur for a request reply scenario.</p>
+    <p>
+      <img src="../../Resources/Images/RESTMessagingPrtl/Message-Exchange-Patterns-206.png" style="visibility: visible;mso-wrap-style: square;max-width: 600px;" MadCap:mediastyle="@media print { max-width: 460px; }" alt=""/>
+    </p>
+    <h2 class="with-rule"><a name="_Ref393980455"/>REST Producer Request with Async Reply to Destination</h2>
+    <h3><a name="_Toc426703673"/>HTTP Header Example</h3>
+    <p class="Code">POST /QUEUE/test/news HTTP/1.1 <br/>Host: sol-ny-prod-0001:8080 <br/>Solace-Time-To-Live-In-ms: 20000<br/>Solace-Delivery-Mode: persistent<br/>Solace-DMQ-Eligible: true<br/>Solace-Reply-To-Destination: /QUEUE/my/reply<br/>Content-Length: 1000</p>
+    <h3><a name="_Toc426703674"/>Success Case Message Exchange</h3>
+    <p>The following diagram shows an application that is acting as both a REST producer and as a REST consumer for asynchronous replies. In this example, a Solace persistent message is used. However, the message exchange pattern also applies to Direct messages.</p>
+    <p>
+      <img src="../../Resources/Images/RESTMessagingPrtl/Message-Exchange-Patterns-207.png" style="visibility: visible;mso-wrap-style: square;max-width: 650px;" MadCap:mediastyle="@media print { max-width: 460px; }" alt=""/>
+    </p>
+    <h3><a name="_Toc426703675"/>Failure Scenario Message Exchange</h3>
+    <p>This message exchange pattern is a combination of REST Producer One-Way POST to Solace and Solace One-Way POST to REST Consumer. Therefore, the failure scenarios are a combination of these two scenarios and are not restated here.</p>
+    <h2 class="with-rule"><a name="_Toc426703676"/>Solace Request/Reply to REST Consumer</h2>
+    <p>This scenario is similar to that described in <MadCap:xref href="#_Ref393980476">Solace One-Way POST to REST Consumer</MadCap:xref>. The REST consumer receives a POST from the event broker, but this POST will contain the Solace-Reply-Wait-Time-In-ms header that indicates that the event broker expects a reply to this message.</p>
+    <p>A REST consumer can encode any reply in the body of the 200 OK POST response that it returns to the event broker. If the originating Solace request message contains a reply-to field, then a Solace reply message is generated with the body containing the contents of the 200 OK POST response. An empty 200 OK POST response generates an empty reply message. The event broker treats any such reply message as a direct message, though it may subsequently promote the direct message to a guaranteed message based on the reply-to queue or topic.</p>
+    <p>Again similar to <MadCap:xref href="#_Ref393980476">Solace One-Way POST to REST Consumer</MadCap:xref>, a REST consumer must respond with a success status code such as 200 OK if the message was successfully received. This is true even if the processing of the message results in an application error condition. Depending on the retry configuration in the CLI, the event broker can retry to deliver messages for all failure status codes. The REST consumer can encode any error details in the body of the 200 OK POST response.</p>
+    <h3><a name="_Toc426703677"/>HTTP Header Example</h3>
+    <p class="Code">POST /Request/Target HTTP/1.1 <br/>Host: sol-ny-prod-0001:8080 <br/>Solace-Reply-Wait-Time-In-ms: 10000<br/>Content-Length: 1000</p>
+  </body>
+</html>

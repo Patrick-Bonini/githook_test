@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <title/>
+  </head>
+  <body>
+    <h1>REST Producers</h1>
+    <p>Sending messages to a Solace PubSub+ event broker  is accomplished with a REST publishing client. A REST publishing client is authenticated when a connection is established. In general, it is recommended that applications use HTTP 1.1 persistent connections to allow for higher performance sending by avoiding the need to establish a connection for each message send action.</p>
+    <h2 class="with-rule"><a name="One-way"/>One-way POST to Solace</h2>
+    <p>When the application sends a message and no reply is expected, producers send an HTTP POST request containing all the relevant message headers, properties, and contents. The Solace PubSub+ event broker converts this message to the internal Solace Message Format (SMF) for routing and sends back an HTTP 200 OK response when the message is successfully accepted by the event broker. For persistent messages, the 200 OK is returned after the message has been successfully stored on the event broker.</p>
+    <p>
+      <img src="../../Resources/Images/REST-Messaging-Concepts/one-way-post-to-solace.png" style="max-width: 355px;" MadCap:mediastyle="@media print { max-width: 355px; }" alt=""/>
+    </p>
+    <p>The format of the REST POST request is outlined in <MadCap:xref href="../RESTMessagingPrtl/Solace-REST-Message-Encoding.htm">Solace REST Message Encoding</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Request"/>Request / Reply to Solace</h2>
+    <p>When an application sends a request and expects a reply, the Solace REST messaging provides two options:</p>
+    <ol>
+      <li>A blocking exchange where the Solace PubSub+ event broker correlates the request and reply together for the application.</li>
+      <li>An asynchronous exchange, and the reply is received later.</li>
+    </ol>
+    <h3><a name="Synchron"/>Synchronous Request / Reply</h3>
+    <p>In the synchronous case, when the Solace PubSub+ event broker receives the HTTP POST request, it delays returning the HTTP response. This allows the event broker to send the request out on the Solace message bus, waiting for a reply to be received before responding to the REST consumer. When a reply is received or the request times out, the event broker responds to the REST producer. This exchange is shown in the following figure.</p>
+    <p>
+      <img src="../../Resources/Images/REST-Messaging-Concepts/Syn-Request-Reply.png" alt="Synchronous Request Reply" MadCap:mediastyle="@media print { max-width: 425px; }" style="max-width: 425px;"/>
+    </p>
+    <p>The body of the HTTP response carries the contents of the response, as outlined in <MadCap:xref href="../RESTMessagingPrtl/Solace-REST-Message-Encoding.htm">Solace REST Message Encoding</MadCap:xref>.</p>
+    <h3><a name="Asynchro"/>Asynchronous Request / Reply</h3>
+    <p>The Solace REST messaging feature also provides publishers the option of specifying a destination for replies. In this way, REST applications can send a message to a Solace PubSub+ event broker and receive a reply later using the specified reply-to destination. This exchange is shown in the following figure.</p>
+    <p>
+      <img src="../../Resources/Images/REST-Messaging-Concepts/REST Producers.png" style="visibility: visible;mso-wrap-style: square;max-width: 400px;" MadCap:mediastyle="@media print { max-width: 400px; }" alt=""/>
+    </p>
+    <p>With asynchronous request/reply, the REST application is both a REST producer and a REST consumer. The request is published to the event broker normally, and the REST producer receives the 200 OK when the event broker accepts the message. When the JMS application sends the reply, the event broker sends the reply to the REST application on a separate HTTP connection as a new HTTP POST request. The REST application responds with a final 200 OK response to acknowledge receipt of the reply.</p>
+    <p>The REST application can specify a correlation ID in the message to correlate the request with the response that is received asynchronously.</p>
+  </body>
+</html>

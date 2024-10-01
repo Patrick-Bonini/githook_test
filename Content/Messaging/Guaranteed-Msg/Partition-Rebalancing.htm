@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud;Appliance;Software"/>Partition Rebalancing</h1>
+    <p>Partition rebalancing  refers to the process whereby the event broker updates the mapping of partitions to flows for a partitioned queue. Rebalancing involves reassigning partition-to-flow mappings such that flows are distributed evenly across all partitions, with each partition assigned to a single flow (but note that a flow can be assigned more than one partition). </p>
+    <p>A partitioned queue is considered balanced if all active consumer flows are assigned to the same number of partitions (plus or minus one).</p>
+    <p>The following changes trigger rebalancing:
+</p>
+    <ul>
+      <li>
+        <p>The queue's operating partition count changes. This happens if the partition count increases or decreases, or if the parent queue access type changes from exclusive to non-exclusive. The broker triggers rebalancing after it has finished the <MadCap:xref href="Partition-Scaling.htm" MadCap:conditions="SAP.SapHideFromOutput">Partition Scaling</MadCap:xref><a href="../../Cloud/Broker-Manager/configuring-partitioned-queues.htm#Adding_and_Removing_Partitions" class="link-internal" MadCap:conditions="SAP.SapOnlyOutput">partition scaling</a> process.</p>
+      </li>
+      <li>
+        <p>A new consumer binds to a partitioned queue that has fewer consumers than partitions. If there are already excess consumers, a new consumer bind does not trigger rebalancing.</p>
+      </li>
+      <li>
+        <p> A consumer unbinds from a partitioned queue that does not have excess consumers. If there are excess consumers, one of them becomes active immediately and takes over the load from the recently unbound consumer.</p>
+        <p>No distinction is made between an unbind signaled by the client application and an unbind resulting from a  disconnect.</p>
+      </li>
+    </ul>
+    <p MadCap:conditions="SAP.SapHideFromOutput">A partitioned queue has the following properties:</p>
+    <ul MadCap:conditions="SAP.SapHideFromOutput">
+      <li><code>partition count</code>—the number of partitions. Partitions are numbered from 0 to N-1, where N is the number of partitions (a queue with four partitions has partitions numbered from 0 to 3).</li>
+      <li><code>rebalance delay</code>—the delay in seconds to allow the number of consumers to stabilize before a rebalance activity is started after being triggered.<p> If the number of consumers returns to its previous state before the delay timer expires, no partition handoffs occur.</p><p>In an auto-scaling scenario, this specifies the maximum delay between the first and last consumer instance change.</p><p>If the partition count changes, the rebalance is started immediately.</p></li>
+      <li><code>rebalance max-handoff-time</code>—the maximum number of seconds the broker waits to allow consumers to acknowledge outstanding messages during <MadCap:xref href="Partition-Handoff.htm">Partition Handoff</MadCap:xref>.</li>
+    </ul>
+    <p>The rebalancing process resolves discrepancies within the following properties of the partitioned queue:</p>
+    <ul>
+      <li>the partition count configured for the queue</li>
+      <li>the current set of partitions</li>
+      <li>the set of active consumer flows, each of which has one or more partitions assigned to it</li>
+    </ul>
+    <p>When rebalancing starts, some mappings might be incomplete:</p>
+    <ul>
+      <li>a partition might not be assigned to a flow (if new partitions have been created due to an increase in partition count)</li>
+      <li>one or more flows might be temporarily mapped to an invalid partition  (if partitions were just deleted due to a decrease in partition count, or if a consumer has just disconnected), or not mapped to a partition  at all (if new consumers were just added)</li>
+    </ul>
+    <p>Rebalancing does not take into account queue depth or any other queue or flow metric. </p>
+    <p>To balance the queue's partitions, the event broker performs the following steps:</p>
+    <ol>
+      <li>
+        <p>Handle any change in the number of partitions (delete or create partitions, as required).</p>
+      </li>
+      <li>
+        <p>Map any new partitions to consumer flows, preferring those flows that have fewest number of partitions mapped already.</p>
+      </li>
+      <li>
+        <p>Send <code>FlowChangeUpdate</code> (remove the <code>ActiveFlow</code> indicator) to flows whose partitions have all been removed (flows remain active if only some of their assigned partitions are removed).</p>
+      </li>
+      <li>
+        <p>Check for balance. Balance has been achieved if all flows have the same number of partitions assigned (plus or minus one).</p>
+      </li>
+      <li>
+        <p>If the partitions are not balanced,  <a href="Partition-Handoff.htm" class="link-internal">hand off</a> one partition from the flow with the greatest number of assigned partitions to the flow with the least.</p>
+      </li>
+      <li>
+        <p>Repeat Step 1 through Step 6 until balance is achieved.</p>
+      </li>
+    </ol>
+    <p>As an example, consider the following diagram. We start with a partitioned queue with seven partitions and three bound flows. </p>
+    <p>
+      <img src="../../Resources/Images/Guaranteed-Msg/Partition-Rebalance-Before.png" alt="Diagram illustrating the concepts discussed in the surrounding text."/>
+    </p>
+    <p>In a balanced state, each consumer flow has either two or three mapped partitions.</p>
+    <p>Suppose another consumer comes online, as shown in the next diagram:</p>
+    <p>
+      <img src="../../Resources/Images/Guaranteed-Msg/Partition-Rebalance-Changes.png" alt="Diagram illustrating the concepts discussed in the surrounding text."/>
+    </p>
+    <p>This queue now has seven partitions and four consumer flows. It is unbalanced, because not all flows have the same number (plus or minus one) of partitions assigned to them. Here, the new flow has no partitions, whereas the other flows have either two or three.</p>
+    <p> After rebalancing, the resulting queue has three flows with two partitions, and one flow with one partition, as illustrated below.</p>
+    <p>
+      <img src="../../Resources/Images/Guaranteed-Msg/Partition-Rebalance-After.png" alt="Diagram illustrating the concepts discussed in the surrounding text."/>
+    </p>
+    <h2 class="with-rule"><a name="partition-rebalancing-status"/>Partition Rebalancing Status</h2>
+    <p>A partitioned queue can have one of the following rebalancing statuses:</p>
+    <ul>
+      <li>Ready—No rebalancing activity has been triggered.
+</li>
+      <li>Holddown—Rebalancing activity will start after the delay specified by the <code>rebalance delay</code> property of the queue.
+</li>
+      <li>Rebalancing—Rebalance logic is underway to adjust partition-to-flow mappings.</li>
+    </ul>
+  </body>
+</html>

@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Cloud"/>Installing <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.cloud_product_titlecase"/></MadCap:conditionalText> in Azure Kubernetes Service (AKS)</h1>
+    <p>Azure Kubernetes Service (AKS) simplifies deploying a managed Kubernetes cluster in Azure by offloading the operational overhead to Azure. As a hosted Kubernetes service, Azure handles critical tasks, like health monitoring and maintenance. For more information about AKS, see the
+                <a href="https://docs.microsoft.com/en-us/azure/aks/" class="link-offsite">Azure Kubernetes Service</a> documentation.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/k8s-environment-specific-intro.flsnp"/>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/solace-k8s-terraforms.flsnp"/>
+    <h2><a name="aks-prerequsites"/>AKS Cluster Prerequisites</h2>
+    <p>The following are the technical prerequisites for an AKS cluster deployment to deploy <MadCap:variable name="Product-Names.broker_cloud_short"/>s:</p>
+    <dl>
+      <dt>Worker Nodes</dt>
+      <dd>Worker nodes that you use for <MadCap:variable name="Product-Names.cloud_product_short"/> components must use ephemeral disks for the OS.  <MadCap:variable name="Variables.CompanyName"/>  recommends that you (the customer) use ephemeral disks  because Azure's premium managed disks don't provide the performance required for Kubernetes unless high-cost disks are utilized. When you use  ephemeral disks for the OS, this permits the virtual machines to utilize a storage solution that is performant and cost-effective. Since worker nodes don't persist critical information on the disk that is used by the OS, there's no requirement to use non-ephemeral disks.</dd>
+      <dt>Permissions</dt>
+      <dd>The following permissions are required by the you to deploy the Terraform module:<ul><li>All the permissions that are required to create and manage the AKS cluster. These permissions can be delegated by the Terraform module you use.</li><li>Permission to create Service Principals and assign the <b>Contributor</b> role over the whole resource group and the <b>Network Contributor</b> over the private subnets. 
+                   <p>These permissions are given to the AKS cluster to create load balancers and configure them. In addition, these permissions allow the CNI to interact with subnets and route tables.</p></li><li>The AKS-managed service (called AzureContainerService) is assigned a permission. Specifically, the AzureContainerService AD Application will get the Network Contributor role assigned to it over the entire resources group.  The Terraform module requires this permission to read the NAT gateways configuration when it creates a cluster, and to configure networking as required by Azure-CNI.</li><li>An Azure account. Permissions to create and manage the following resources are required for the Terraform module you create:
+                         <dl><dt>All Virtual Machine resources</dt><dd>The Terraform modules access to the VM resources to create the service principal, AD application and the AKS cluster. Note that the in the available example, the AKS cluster is created using the <code>data center-name</code> value from the <code>vars.tf</code> file using the convention <code>&lt;data center-name&gt;-aks</code>.</dd><dt>VNet</dt><dd>The Terraform module requires this permission to configure the Virtual Network (VNet).</dd><dt>Standard Load Balancers</dt><dd> The Terraform module requires this permission to create and configure the load balancers.</dd><dt>Premium LRS-managed Disks</dt><dd> The Terraform module requires this permission to access LRS disks.</dd><dt>Subnets</dt><dd> The Terraform module requires this permission to set up the subnets.</dd><dt>Security Groups</dt><dd> The Terraform module requires this permission to set up the necessary security groups.</dd><dt>Routing Tables</dt><dd> The Terraform module requires this permission to create the appropriate gateways.</dd><dt>Public IPs</dt><dd>The Terraform module requires this permission to attach elastic IP addresses (EIPs) to the NAT gateway.</dd><dt MadCap:conditions="Default.HideFromAllOutput">NAT Gateways</dt><dd MadCap:conditions="Default.HideFromAllOutput">The Terraform module requires this permission to create the NAT gateway and attach EIPs to the NAT gateway.</dd></dl></li></ul></dd>
+    </dl>
+    <h2><a name="considerations-aks"/>AKS Cluster Specifications</h2>
+    <p>Before you (the customer) install the <MadCap:variable name="Product-Names.cloud_agent_short"/>, you must configure the AKS cluster with the technical specifications listed in the sections that follow. </p>
+    <h4><a name="aks-node-pool"/>Node Pool Requirements</h4>
+    <p>For high-availability <MadCap:variable name="Product-Names.broker_cloud_short"/>s, the cluster requires 12 node pools for <MadCap:variable name="Product-Names.broker_cloud_short"/>s. These must be split into four sets of three node pools. Each node pool must be locked to a single availability zone. Locking a node pool to an availability zone allows the cluster autoscaler to function properly. <MadCap:variable name="Variables.CompanyName"/> uses pod anti-affinity against the node pools' zone label to ensure that each pod in a high-availability <MadCap:variable name="Product-Names.broker_cloud_short"/> is in a separate availability zone. </p>
+    <p>For high-availability <MadCap:variable name="Product-Names.broker_cloud_short"/>s, the default (system) node pool spans all three availability zones. </p>
+    <p>The node pools must also meet the following requirements:</p>
+    <ul>
+      <li>
+        <p>Configure the node pool settings where the OS disk type must be ephemeral and the OS disk size  must be 48.</p>
+      </li>
+      <li>AKS Worker nodes for monitoring must be a minimum of Standard_DS2s_v3. The following table shows the minimal Worker Node size required based on the largest plan that's supported for your deployment.
+                <p><table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0"><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><col class="TableStyle-Table_Num-Column-Column1"/><thead><tr class="TableStyle-Table_Num-Head-Header1"><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Node Pool Type</th><th class="TableStyle-Table_Num-HeadE-Column1-Header1">Recommended Minimum VM Size</th><th class="TableStyle-Table_Num-HeadD-Column1-Header1">Number of Worker nodes Required</th></tr></thead><tbody><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Monitoring</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Standard_D2s_v3</td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">One for each service (the sum of all services of all types)</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Up to <MadCap:variable name="Product-Names.class_1k"/> (Kilo)</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">    Standard_E2s_v3</td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">Two for each  <MadCap:variable name="Product-Names.class_1k"/> service</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Up to <MadCap:variable name="Product-Names.class_10k"/> (Giga)</td><td class="TableStyle-Table_Num-BodyH-Column1-Body1">Standard_E4s_v3</td><td class="TableStyle-Table_Num-BodyG-Column1-Body1">Two for each  <MadCap:variable name="Product-Names.class_10k"/> service</td></tr><tr class="TableStyle-Table_Num-Body-Body1"><td class="TableStyle-Table_Num-BodyB-Column1-Body1">Up to <MadCap:variable name="Product-Names.class_100k"/>  (Tera 100k)</td><td class="TableStyle-Table_Num-BodyB-Column1-Body1">Standard_E8s_v3</td><td class="TableStyle-Table_Num-BodyA-Column1-Body1">Two  for each <MadCap:variable name="Product-Names.class_100k"/> service</td></tr></tbody></table></p></li>
+      <li>
+        <p>For deployments to <MadCap:variable name="Product-Names.customer-controlled_region"/>s, these are the virtual machine requirements: </p>
+        <table style="width: 100%;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0">
+          <col class="TableStyle-Table_Num-Column-Column1"/>
+          <col class="TableStyle-Table_Num-Column-Column1"/>
+          <col class="TableStyle-Table_Num-Column-Column1"/>
+          <col class="TableStyle-Table_Num-Column-Column1"/>
+          <col class="TableStyle-Table_Num-Column-Column1"/>
+          <col class="TableStyle-Table_Num-Column-Column1"/>
+          <thead>
+            <tr class="TableStyle-Table_Num-Head-Header1">
+              <th class="TableStyle-Table_Num-HeadE-Column1-Header1" rowspan="3">Plans</th>
+              <th class="TableStyle-Table_Num-HeadE-Column1-Header1" rowspan="3">Possible Virtual Machine Types</th>
+              <th class="TableStyle-Table_Num-HeadD-Column1-Header1" colspan="4">Resources</th>
+            </tr>
+            <tr class="TableStyle-Table_Num-Head-Header1">
+              <th class="TableStyle-Table_Num-HeadE-Column1-Header1" colspan="2">CPU</th>
+              <th class="TableStyle-Table_Num-HeadD-Column1-Header1" colspan="2">Memory</th>
+            </tr>
+            <tr class="TableStyle-Table_Num-Head-Header1">
+              <th class="TableStyle-Table_Num-HeadE-Column1-Header1">VM Cores (mCore)</th>
+              <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Allocatable Cores (mCore)</th>
+              <th class="TableStyle-Table_Num-HeadE-Column1-Header1">VM Memory (GiB)</th>
+              <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Allocatable Memory (GiB)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1" rowspan="3">Monitoring Nodes</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Standard_D2s_V3</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">2000</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">1900</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">8</td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">5</td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">E2as_V4</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">2000</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">1900</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">16</td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">12.3</td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">E2s_V3</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">2000</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">1900</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">16</td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">12.3</td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyE-Column1-Body1" rowspan="3">
+                <p>
+                  <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">Developer</MadCap:conditionalText>
+                  <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">Standard</MadCap:conditionalText>
+                </p>
+                <p><MadCap:variable name="Product-Names.class_250"/> (Nano)</p>
+                <p><MadCap:variable name="Product-Names.class_1k"/> (Kilo)</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyE-Column1-Body1">E2as_v4</td>
+              <td class="TableStyle-Table_Num-BodyE-Column1-Body1">2,000</td>
+              <td class="TableStyle-Table_Num-BodyE-Column1-Body1">1900</td>
+              <td class="TableStyle-Table_Num-BodyE-Column1-Body1">16</td>
+              <td class="TableStyle-Table_Num-BodyD-Column1-Body1">12.3</td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">E2s_v3</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">2,000</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">1900</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">16</td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">12.3</td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Standard_D4s_v3</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">4,000</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">3,860</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">16</td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">12.3</td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1" rowspan="3">
+                <p><MadCap:variable name="Product-Names.class_5k"/> (Mega)</p>
+                <p><MadCap:variable name="Product-Names.class_10k"/> (Giga)</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">E4as_v4</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">4,000</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">3,860</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">32</td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">27</td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyE-Column1-Body1">E4s_v3</td>
+              <td class="TableStyle-Table_Num-BodyE-Column1-Body1">4,000</td>
+              <td class="TableStyle-Table_Num-BodyE-Column1-Body1">3,860</td>
+              <td class="TableStyle-Table_Num-BodyE-Column1-Body1">32</td>
+              <td class="TableStyle-Table_Num-BodyD-Column1-Body1">27</td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">Standard_D8s_v3</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">8,000</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">7,820</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">32</td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">27</td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1" rowspan="3">
+                <p><MadCap:variable name="Product-Names.class_50k"/> (Tera 50k)</p>
+                <p><MadCap:variable name="Product-Names.class_100k"/> (Tera 100k)</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">E8as_v4</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">8,000</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">7,820</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">64</td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">56.6</td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">E8s_v3</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">8,000</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">7,820</td>
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">64</td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">56.6</td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyB-Column1-Body1">Standard_D16s_v3</td>
+              <td class="TableStyle-Table_Num-BodyB-Column1-Body1">16,000</td>
+              <td class="TableStyle-Table_Num-BodyB-Column1-Body1">15,740</td>
+              <td class="TableStyle-Table_Num-BodyB-Column1-Body1">64</td>
+              <td class="TableStyle-Table_Num-BodyA-Column1-Body1">56.6</td>
+            </tr>
+          </tbody>
+        </table>
+      </li>
+    </ul>
+    <h4><a name="aks-storage-class"/>Storage Class</h4>
+    <p>For AKS, an autoscaler is included and the deployment script creates a storage class named <code>managed-premium-zoned</code>. The storage class works with <MadCap:variable name="Product-Names.cloud_product_short"/> to provide the following:</p>
+    <ul>
+      <li>Local Redundant Storage (LRS) redundancy. <MadCap:variable name="Variables.CompanyName"/> requires an LRS disk because other types of redundancy are too slow. The <MadCap:variable name="Product-Names.cloud_product_short"/> Enterprise plans use high-availability services that replicate data across two LRS disks.</li>
+      <li><MadCap:variable name="Variables.CompanyName"/>   requires block device-based storage as regular filesystem-based storage won't work with the <MadCap:variable name="Product-Names.broker_cloud_short"/>. As such, <MadCap:variable name="Variables.CompanyName"/> requires <b>managed</b> volumes instead of <b>azurefile</b> volumes.</li>
+      <li>The <MadCap:variable name="Product-Names.broker_cloud_short"/>s are designed to use the XFS file system. The <code>fsType</code> setting must be set to <code>xfs</code> to ensure the <MadCap:variable name="Product-Names.broker_cloud_short"/>s meet their required performance levels.</li>
+      <li>To support scale-up, the <code>StorageClass</code> must contain the <code>allowVolumeExpansion</code> property, and have it set to "<code>true</code>".</li>
+      <li>To deploy <MadCap:variable name="Product-Names.cloud_product_short"/>, a custom <code>StorageClass</code> in AKS is required so that the Persistent Volume Claims (PVC) process creates the volume in the same AZ where the pods are scheduled.  This storage class  uses Managed Premium LRS disks, and has the <code>WaitForFirstConsumer</code> binding mode, which instructs PVC to wait for a pod to be scheduled before deciding which zones the disks are in.<p>This storage class should have properties similar to the following example:
+                    </p><pre xml:space="preserve">
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  labels:
+    addonmanager.kubernetes.io/mode: EnsureExists
+    kubernetes.io/cluster-service: "true"  
+  name: managed-premium-zoned
+parameters:
+  cachingmode: ReadOnly
+  kind: Managed
+  storageaccounttype: Premium_LRS
+  fsType: xfs
+  zoned: "true"
+provisioner: disk.csi.azure.com
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true</pre></li>
+    </ul>
+    <h4 MadCap:conditions="Default.HideFromAllOutput">NAT Gateway</h4>
+    <ul>
+      <li MadCap:conditions="Default.HideFromAllOutput"><MadCap:variable name="Variables.CompanyName"/> recommends that a deployment has  <b>at least two</b> NAT Gateways and <b>two EIPs</b> for redundancy. You can
+                choose to pass one NAT Gateway with one EIP, but keep in mind that all <MadCap:variable name="Product-Names.broker_cloud_short"/>
+                features (e.g., VPN bridges, DMR, DR, RDP) that rely on external connections won't function if
+                the zone of the NAT Gateways fails.</li>
+      <li MadCap:conditions="Default.HideFromAllOutput">The Kubernetes master API is private and only IP addresses that are in the VNet are permitted. Because of this,  external parties cannot communicate with the Kubernetes master API. If access to the Kubernetes API is required, a tunnel must be established through the Bastion host.</li>
+    </ul>
+    <h4><a name="aks-bastion-host"/>Bastion Host</h4>
+    <ul>
+      <li>
+        <p><MadCap:variable name="Variables.CompanyName"/> recommends that you have <b>two Bastion hosts</b> and you disperse them over the three availability zones. This allows remote access to your deployment should a zone fail. If remote access to your deployment during a zone failure is not a requirement, you can choose to use the minimum of one Bastion host instead. The Bastion host is deployed using a minimal VM that runs only an SSH server.</p>
+      </li>
+      <li>
+        <p>To determine the size of the subnet, you must know the number of  <MadCap:variable name="Product-Names.broker_cloud_short"/>s that you plan to run on the AKS cluster. Knowing the number of pods and services helps you to determine how big the subnet must be. Refer to the subnet <a href="https://docs.microsoft.com/en-us/azure/aks/" class="link-offsite" target="_blank">Azure documentation</a> for details.</p>
+      </li>
+    </ul>
+    <h4><a name="aks-load-balancer"/>Load Balancer</h4>
+    <p>When using AKS, <MadCap:variable name="Product-Names.broker_cloud_short"/>s are exposed through a single public network load balancer. The source IP address for outgoing connections to internet hosts are static IP address.  The static IP address that is used as a  front-end public IP is associated with the AKS public Standard Load Balancer.</p>
+    <p>You must use a Standard Load Balancer SKU instead of a Basic load balancer SKU. The Standard Load Balancer is required to act as a NAT solution and avoids the requirement to segregate the AKS cluster into zonal stacks and the requirement for a separate NAT. The Standard Load Balancer also allows you to  deploy the AKS cluster to a single, private subnet using a single route table, and simplifies the deployment and planning of CIDRs when using VNet peering technologies, such as <a href="https://docs.microsoft.com/en-us/azure/architecture/reference-architectures/hybrid-networking/hub-spoke" target="_blank" class="link-offsite">Hub-spoke network topology in Azure</a>.</p>
+    <h4><a name="aks-networking"/>Networking</h4>
+    <ul>
+      <li>
+        <p>To spread an <MadCap:variable name="Product-Names.broker_cloud_short"/>, or rather the <MadCap:variable name="Product-Names.broker_cloud_short"/>s over three different Availability Zones (AZ), an anti-pod affinity can be used. For regions that support Availability Zones (AZ), set the <code>topologyKey </code>to <code>topology.kubernetes.io/zone</code>; otherwize for AKS clusters that do not have AZ, set it to <code>kubernetes.io/hostname</code>.</p>
+      </li>
+      <li>
+        <p>Configure the IP addresses for the pods to be by AKS Kubernetes rather than VNet. Use <code>kubenet</code> (assigned by the cluster) for Kubernetes or <code>azure</code> (assigned from the subnet). When you select <code>azure</code>, each worker node is pre-allocated 30 IP addresses from the VNet. Using <code>kubenet</code> does not assign pre-allocated IP addresses.</p>
+        <pre xml:space="preserve" MadCap:conditions="Default.HideFromAllOutput">variable "network_plugin" 
+type = string
+default = "kubenet"   # Choices are "kubenet" or "azure".
+description = "'kubenet' - pod IPs are k8s own subnet. 'azure' - pod IPs are from VNet"}</pre>
+      </li>
+      <li>
+        <p>Determine the number of outgoing SNAT (outgoing) ports for each VM in the cluster. The number you choose determines the number of worker nodes available; this must be between 0 and 64000. Choosing a lower number gives you more worker nodes, but fewer send connections per node. For more information about SNAT ports, see <a href="https://docs.microsoft.com/en-us/azure/load-balancer/outbound-rules#scenarios-with-outbound-rules" target="_blank" class="link-offsite">Outbound Rules Azure Load Balancer</a> and <a href="https://docs.microsoft.com/en-us/azure/load-balancer/outbound-rules#scenarios-with-outbound-rules" target="_blank" class="link-offsite">Scenarios with outbound rules</a> on the Microsoft website.</p>
+        <pre xml:space="preserve" MadCap:conditions="Default.HideFromAllOutput">variable "outbound_ports_allocated" {
+type = number
+default = 1032
+description = "Number of desired SNAT port for each VM in the clusters load balancer. Must be between 0 and 6400"
+ 64000"
+}</pre>
+      </li>
+      <li>The requirements are one pod per <MadCap:variable name="Product-Names.class_100"/> service and three pods for other <MadCap:variable name="Product-Names.broker_cloud_short"/>s. The  subnets need to be big enough to contain all the IP addresses used for the pods. For more information, see <a href="https://docs.microsoft.com/en-us/azure/aks/configure-azure-cni" target="_parent" class="link-offsite">Configure Azure CNI networking in Azure Kubernetes Service (AKS)</a> on the Microsoft website. 
+                </li>
+    </ul>
+    <p>For information about using Azure Kubernetes Service, see the <a href="https://docs.microsoft.com/en-us/azure/aks/" class="link-offsite" target="_blank">Azure documentation site</a>.</p>
+    <h4><a name="aks-ip-range"/>IP Range</h4>
+    <p MadCap:conditions="Default.HideFromAllOutput"> An AKS cluster requires a single subnet. A minimum CIDR size of <code>/22</code> is recommended to support up to eleven <MadCap:variable name="Product-Names.broker_cloud_short"/>s because each worker node is assigned thirty IP addresses.  If you select a CIDR that is too large, you could have a large number of wasted IP addresses; a CIDR that is too small limits the number of worker nodes and hence <MadCap:variable name="Product-Names.broker_cloud_short"/>s that you can have. Because you require one subnet, the private subnet can be the entire size of the subnet. For more information, see <MadCap:xref href="#considerations-aks">Considerations For Deploying [%=Product-Names.cloud_product_short%] in AKS</MadCap:xref>.</p>
+    <p>There are two networking options in Azure: Kubenet and Azure CNI. For <MadCap:variable name="Product-Names.customer-controlled_region"/>s, <MadCap:variable name="Variables.CompanyName"/> recommends using Kubenet. Kubenet offers the most efficient CIDR requirements for the VNet containing the cluster. </p>
+    <p>CIDR requirements for <MadCap:variable name="Product-Names.dedicated_region"/>s depend on your need to access <MadCap:variable name="Product-Names.broker_cloud_short"/>s privately through peering. If this is necessary, <MadCap:variable name="Variables.CompanyName"/> requires a CIDR that is compatible with your network plan. </p>
+    <p>You should carefully consider future expansion requirements when estimating the CIDR size required for your AKS cluster. Once deployed, you cannot change the CIDR and expanding the size of your VNet is not simple.  For more information, see <MadCap:xref href="#considerations-aks">Considerations For Deploying [%=Product-Names.cloud_product_short%] in AKS</MadCap:xref>. <a name="CIDR_calc"/>You can also use the <MadCap:variable name="Variables.CompanyName"/> provided <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><a href="CIDR_calculator/cloud-CIDR-calculator.xlsx" target="_blank" class="link-offsite">downloadable excel-based CIDR calculator</a></MadCap:conditionalText><a href="CIDR_calculator/cloud-CIDR-calculator-sap.xlsx" target="_blank" class="link-offsite" MadCap:conditions="SAP.SapOnlyOutput">downloadable excel-based CIDR calculator</a> to help calculate your CIDR requirements. </p>
+    <ul MadCap:conditions="Default.HideFromAllOutput">
+      <li><code>vnet_cidr</code> variables, which specifies the CIDR size for the VNet.<pre xml:space="preserve">variable "vnet_cidr" {
+  type = string
+  default = "10.0.0.0 /22"
+}</pre></li>
+      <li>
+        <p>You require the entire size of the CIDR you assigned.</p>
+        <pre xml:space="preserve">variable "private_subnets" {
+  type = list
+  default = ["10.0.0.0/22",]
+}
+</pre>
+      </li>
+    </ul>
+    <h4><a name="deployments-restricted-az"/>Deployments in Regions With No Availability Zones</h4>
+    <p>Some regions do not have availability zones (AZs). You can deploy to these regions, but the IaaS has a reduced fault tolerance without AZs.</p>
+    <p> To deploy to regions that don't have AZs available, in the anti-pod affinity, the <code>topologyKey</code> key should be set to <code>kubernetes.io/hostname</code>, whereas when AZs are available, it is set to  <code>topology.kubernetes.io/zone</code>.</p>
+    <h4><a name="Autoscaling"/>Autoscaling</h4>
+    <MadCap:snippetBlock src="../../Resources/Snippets/CloudDeployment/K8SClusterAutoscaler.flsnp"/>
+    <p>See the <a href="https://docs.microsoft.com/en-us/azure/aks/cluster-autoscaler" class="link-offsite" style="font-style: italic;" target="_blank">Automatically scale a cluster to meet application demands on Azure Kubernetes Service (AKS)</a> documentation on the Microsft Azure Kubernetes Service (AKS) documentation site for information about implementing a Cluster Autoscaler.</p>
+  </body>
+</html>

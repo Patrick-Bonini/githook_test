@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd" MadCap:conditions="Default.HideFromAllOutput">
+  <head/>
+  <body>
+    <h1><a name="publishing"/>Publishing Guaranteed Messages</h1>
+    <p>When clients publish Guaranteed messages, that is, messages with a persistent or non-persistent delivery mode, they can either:</p>
+    <ul>
+      <li>
+        <u>Publish the messages to a topic</u>
+      </li>
+      <ul>
+        <li>Used for publish and subscribe models.</li>
+        <li>A Guaranteed message published to a topic is acknowledged by the Solace message bus to indicate that the system has received the message. A message that is published to a topic can be received by no clients, a single client, or multiple clients. If there is no subscriber for a message, that message is discarded because in this paradigm the producer and subscriber are decoupled.</li>
+      </ul>
+      <li>
+        <u>Publish the messages to a queue</u>
+      </li>
+      <ul>
+        <li>Used for point-to-point models.</li>
+        <li>The Solace message bus also acknowledges a Guaranteed message published to a queue to indicate that the system has received the message. However, messages published to a queue are more tightly coupled than those published to a topic. Therefore, if the queue doesn't exist, or is not able to spool the message (perhaps if it's shutdown or over quota), then the Solace message bus rejects the message, and the publishing client application has this immediate feedback. A message that is published to a queue can be consumed by a single consumer.</li>
+      </ul>
+    </ul>
+    <p>When a client publishes a Guaranteed messages in a session, a publisher flow to the host event broker is automatically established. The published messages have persistence because they are spooled (that is, they are written to persistent storage) to one of the following types of endpoints provisioned on the event broker:</p>
+    <ul>
+      <li>A queue that matches the messages’ queue destination.</li>
+      <li>A topic endpoint that is assigned a topic subscription that matches the message’s topic destination.</li>
+    </ul>
+    <h4>Messages published with a Direct delivery mode</h4>
+    <p> It's also possible for messages published with a Direct delivery mode to be spooled to an endpoint when there is a match between the message’s topic destination and the topic subscription set for the endpoint. In this case, when the message is spooled to the endpoint, it's given a non-persistent delivery mode so that a client can consume the message over its established Guaranteed message Flow. For more information, refer to <MadCap:xref href="Topic-Matching-and-Delivery-Modes.htm">Topic Matching and Message Delivery Modes</MadCap:xref>.</p>
+    <h4>Messages larger than the event broker's maximum message size</h4>
+    <p>All SMF guaranteed messages larger than the event broker's maximum guaranteed message size—30MB  in most cases—will be discarded. The publishing client will be disconnected, and <code><a href="https://docs.solace.com/Solace-PubSub-Event-Reference/event_ref_boiler.html#CLIENT_CLIENT_MESSAGE_TOO_BIG" class="link-internal">CLIENT_CLIENT_MESSAGE_TOO_BIG</a></code> event is raised.</p>
+    <h2><a name="receiving"/>Receiving Guaranteed Messages</h2>
+    <p>To receive published Guaranteed messages, a client must create a consumer flow to bind to a queue endpoint or a topic endpoint provisioned on the event broker with the spooled published messages. Once the consumer is bound to the endpoint, and it has an active consumer flow (that is, a flow through which messages are being delivered), it can consume Guaranteed messages spooled to that endpoint.</p>
+    <ul>
+      <li>
+        <u>Client binds to a queue</u>
+      </li>
+      <p>The client can be an exclusive or non-exclusive consumer of messages spooled to that endpoint. For information on exclusive and non-exclusive consumers, refer to <MadCap:xref href="Endpoints.htm#Queue_Access_Types">Queue Access Types</MadCap:xref>.</p>
+      <li>
+        <u>Client binds to a topic endpoint</u>
+      </li>
+      <p>The client provides the topic subscription that it wants the endpoint to spool messages for. The topic subscription that a topic endpoint will spool messages for is not specified when a topic endpoint is provisioned.</p>
+    </ul>
+    <p>When a consuming client successfully receives a Guaranteed message, a corresponding application acknowledgment is required to indicate to the event broker that the client application received the message, so then the message can be removed from the endpoint.</p>
+  </body>
+</html>

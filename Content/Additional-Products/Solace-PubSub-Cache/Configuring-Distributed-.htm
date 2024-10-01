@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Configuring Distributed Caches</h1>
+    <p>To create a Distributed Cache, enter the following Global CONFIG command:
+                <p class="Code">solace(configure)# create distributed-cache &lt;name&gt; message-vpn &lt;vpn-name&gt; [auto | primary | backup]</p></p>
+    <p>To edit an existing Distributed Cache, enter the following Global CONFIG command:
+                <p class="Code">solace(configure)# distributed-cache &lt;name&gt; message-vpn &lt;vpn-name&gt; [auto | primary | backup]</p></p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the name of the Distributed Cache.</p>
+    <p><code>&lt;vpn-name&gt;</code> is the name of an existing Message VPN to associate the Distributed Cache with.</p>
+    <p><code>auto</code>  associates the Distributed Cache automatically at the time of creation with either the primary or backup virtual router (<code>auto</code>  is the default and recommended value. It should work for all use cases that don't use the active/active redundancy model).</p>
+    <p>The choice between <code>primary</code> and <code>backup</code> is determined by using the <code>active-standby-role</code> if it is configured, or by using <code>primary</code> if it is not. </p>
+    <p class="Note">By default, a Distributed Cache is not enabled after it is created. To enable a Distributed Cache, refer to <MadCap:xref href="#Enable-Dist-Caches">Enabling Distributed Caches</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Config-Heartbeat"/>Configuring Heartbeat Intervals</h2>
+    <p>A heartbeat request is periodically sent by a PubSub+ Cache Instance to the Designated Router to confirm each other’s presence. If three or more heartbeats are lost, then the PubSub+ Cache Instance must reconnect and synchronize its configuration with the Designated Router. When it tries to reconnect, the PubSub+ Cache Instance stays in service (that is, it continues to service cache requests).</p>
+    <p>To configure the time interval at which PubSub+ Cache Instances send heartbeat requests to the Designated Router, enter the following commands:</p>
+    <p class="Code">solace(configure)# distributed-cache &lt;name&gt; message-vpn &lt;vpn-name&gt;<br/>solace(configure/distributed-cache)# heartbeat &lt;seconds&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;seconds&gt;</code> is the time interval in seconds from 3 to 60.</p>
+    <p>The <code>no</code> version of this command, <code>no heartbeat</code>, resets the time interval back to default of 10 seconds. </p>
+    <h2 class="with-rule"><a name="Sched-Message-Deletes"/>Scheduling Message Deletes</h2>
+    <p>You can configure specific days and times on which all cached message content is scheduled to be deleted from the Distributed Cache. To configure a scheduled delete of messages, enter the following Distributed Cache CONFIG command:</p>
+    <p class="Code">solace(configure)# distributed-cache &lt;name&gt; message-vpn &lt;vpn-name&gt;<br/>solace(configure/distributed-cache)# scheduled-delete-message [days &lt;days-of-week&gt;] times &lt;times-of-day&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;days-of-week&gt;</code> is a comma-separated list of days, expressed as either a numbered <span style="letter-spacing: -0.025em;">list of 0 to 7 (where 0 or 7 is Sunday, and 1 through 6 represent Monday through Saturday), or as names of the days (for example, “Sun” or “sunday”). The default value is daily.</span></p>
+    <p><code>&lt;times-of-day&gt;</code> is a comma-separated list of times of day, specified in the form hh:mm, where hh is 0 to 23 and mm is 0 to 59.</p>
+    <p>The <code>no</code> version of this command, <code>no scheduled-delete-message</code>, disables scheduled deletion of messages from the Distributed Cache.</p>
+    <h2 class="with-rule"><a name="Enable-Dist-Caches"/>Enabling Distributed Caches</h2>
+    <p>To disable a Distributed Cache, enter the following Distributed Cache CONFIG command:
+                <p class="Code">solace(configure)# distributed-cache &lt;name&gt; message-vpn &lt;vpn-name&gt;<br/>solace(configure/distributed-cache)# shutdown</p><p>When a Distributed Cache is shut down, all of the Cache Clusters and PubSub+ Cache Instances that belong to the Distributed Cache are taken out of service. For PubSub+ Cache Instances, topic subscriptions are withdrawn, and they cease to cache new data and handle cache requests. However, PubSub+ Cache Instances maintain any existing cached messages during this time (subject to normal message lifetime aging).</p></p>
+    <p>To enable a Distributed Cache, enter the following Distributed Cache CONFIG command: 
+                <p class="Code">solace(configure)# distributed-cache &lt;name&gt; message-vpn &lt;vpn-name&gt;<br/>solace(configure/distributed-cache)# no shutdown</p><p class="Note">When a Distributed Cache is enabled, the Cache Clusters and PubSub+ Cache Instances that belong to the Distributed Cache are not automatically enabled. They must be enabled individually. For example, for a PubSub+ Cache Instance to be in service, it has to be enabled, along with the Cache Cluster and the Distributed Cache that it belongs.</p></p>
+  </body>
+</html>

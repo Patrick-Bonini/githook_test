@@ -1,0 +1,569 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Legacy SEMP</h1>
+    <p>This section provides information on the older version of SEMP, SEMP v1, which uses an XML schema for monitoring and managing event brokers. For information on the current SEMP release, SEMP v2, which is a RESTful API, see <MadCap:xref href="Using-SEMP.htm">SEMP</MadCap:xref>. You should be aware that configuring the same event broker object concurrently with both SEMP v2 and Legacy SEMP/CLI is not supported, and may result in unexpected behavior.</p>
+    <h2 class="with-rule"><a name="Using"/>Using SEMP v1 to Manage and Monitor Event Brokers</h2>
+    <p><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">Solace Element Management Protocol (SEMP v1)</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">SEMP v1</MadCap:conditionalText> is a request/reply protocol that uses an XML schema to identify all managed objects available in an event broker. Any object available through the event broker Command Line Interface (CLI)<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> or SolAdmin</MadCap:conditionalText> is <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">also </MadCap:conditionalText>available through SEMP v1.</p>
+    <p>Applications can use SEMP v1 to manage and monitor an event broker. It uses a simple request/reply paradigm to send XML-encoded requests to the event broker and receive corresponding XML-encoded replies. These requests and replies parallel the commands and replies offered through <MadCap:variable name="Product-Names.solace_cli"/>.</p>
+    <MadCap:snippetBlock src="../../Resources/Snippets/Admin/gather-diagnostics-semp.flsnp"/>
+    <p>SEMP v1 XML-encoded commands and replies are either wrapped in HTTP requests and responses and sent over a TCP connection (SEMP v1 Request over HTTP) to the management interface, or sent over the event broker message bus (SEMP v1 Request Over Message Bus) using one of the <MadCap:variable name="Manifest-Products-APIs.PubSub-GenericAll-Messaging-API"/>s or any messaging protocol that supports the request/reply message exchange pattern.</p>
+    <p>The following figure shows both the SEMP v1 Request over HTTP and SEMP v1 Request Over Message Bus access methods.</p>
+    <p>
+      <img src="../../Resources/Images/Admin/SEMP_Message_Bus.png" style="margin-left: 5.25024px;margin-top: 7.50024px;margin-right: 0.4989357px;margin-bottom: 6.249607px;" alt="A diagram illustrating the access mechanisms described in the surrounding text."/>
+    </p>
+    <h2 class="with-rule"><a name="SEMP_Schema_Files"/>SEMP v1 Request and Reply Schema Files</h2>
+    <p>You can obtain the SEMP v1 schema files by doing one of the following:</p>
+    <ul>
+      <li>
+        <p>To obtain the SEMP v1 Request schema file, perform a GET on  the following URI:</p>
+        <pre>http://&lt;HOST&gt;/SEMP/v1/requestSchema.xsd</pre>
+      </li>
+      <li>
+        <p>To obtain the SEMP v1 Reply schema file, perform a GET on the following URI:</p>
+        <pre>http://&lt;HOST&gt;/SEMP/v1/replySchema.xsd</pre>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="SEMP"/>SEMP v1 Polling Frequency Guidelines</h2>
+    <p>The event broker supports a maximum SEMP v1 polling rate of ten requests per second.</p>
+    <p class="Note">When you are using SEMP v1 paging and a <code>more-cookie</code> is returned, the single page constitute a single request . For information on oversized responses and the <code>more-cookie</code>, see  <MadCap:xref href="#SEMP7">SEMP v1 Request Paging</MadCap:xref>.</p>
+    <p>The following SEMP v1 requests should not be polled more than once every 30 seconds due to the large amount of data that could be returned.</p>
+    <ul>
+      <li>
+        <code>show cache-instance &lt;name&gt; remote status</code>
+      </li>
+      <li>
+        <code>show cache-instance &lt;name&gt; remote topics</code>
+      </li>
+      <li>
+        <code>show queue &lt;name&gt; message-vpn &lt;name&gt; rates</code>
+      </li>
+      <li>
+        <code>show smrp subscriptions</code>
+      </li>
+      <li>
+        <code>show topic-endpoint &lt;name&gt; message-vpn &lt;name&gt; rates</code>
+      </li>
+    </ul>
+    <p class="Note">The time  the responses take to be returned may vary depending on the amount of information on the event broker. For large amounts of data, the poll responses may take more than 30 seconds.</p>
+    <p>The following SEMP v1 requests should not be polled.</p>
+    <ul>
+      <li>
+        <code>show queue &lt;name&gt; message-vpn &lt;name&gt; messages</code>
+      </li>
+      <li>
+        <code>show topic-endpoint &lt;name&gt; message-vpn &lt;name&gt; messages</code>
+      </li>
+      <li>
+        <code>show replay-log &lt;name&gt; message-vpn &lt;name&gt; messages</code>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="Secure"/>Secure Connections</h2>
+    <p>Applications can optionally create secure connections to an event broker to safeguard authentication information and the data that is transmitted. By default, the SEMP v1 data that is exchanged between a management application and an event broker through an established connection is transmitted as plain text. Secure connections use Transport Layer Security (TLS)/ Secure Sockets Layer (SSL) protocols to encrypt the SEMP v1 data that is exchanged so that SEMP v1 data is transported using TLS/SSL over TCP instead of plain text over TCP.</p>
+    <p class="Note"><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.pubsub_brand_only"/> event brokers </MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput"><MadCap:variable name="Product-Names.broker_cloud_short_intitalcap"/>s</MadCap:conditionalText> support TLSv1.0, TLSv1.1, and TLSv1.2 (SSLv1.0, v2.0, and v3.0 are not supported).</p>
+    <p>To create a TLS/SSL-encrypted connection, the event broker must be properly configured for TLS/ SSL service and the appropriate server certificate must be in place. For information on configuring an event broker to allow for secure connections, see  <MadCap:xref MadCap:unresolvedLink="import-link:managing_tls_ssl_service_796577956_15157" href="../../Security/Managing-TLS-SSL-Service.htm" MadCap:conditions="SAP.SapHideFromOutput">Managing TLS/SSL Service</MadCap:xref><a href="https://docs.solace.com/Security/Managing-TLS-SSL-Service.htm" class="link-offsite" MadCap:conditions="SAP.SapOnlyOutput" target="_blank">TLS/SSL Service Configuration</a>.</p>
+    <p>The following configurations are also required on the client-side:</p>
+    <ul>
+      <li>When using SEMP v1 over HTTP, an HTTPs URI scheme and a secure port <MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">(by default, port 443 on an appliance and port 1943 on a software broker) </MadCap:conditionalText>must be specified to create a secure connection.</li>
+      <li>When using SEMP v1 over message bus service, a number of TLS/SSL-specific Session properties must be specified to create a secure Session.
+            <p>For information on these properties, see  <MadCap:xref MadCap:unresolvedLink="import-link:creating_client_sessions_1483641185_80047" href="../../API/API-Developer-Guide/Creating-Secure-Sessions.htm" MadCap:conditions="SAP.SapHideFromOutput">Creating Secure Sessions</MadCap:xref><a href="https://docs.solace.com/API/API-Developer-Guide/Creating-Secure-Sessions.htm" class="link-offsite" MadCap:conditions="SAP.SapOnlyOutput" target="_blank">Creating Secure Sessions</a> for the <MadCap:variable name="Manifest-Products-APIs.PubSub-GenericAll-Messaging-API"/>s and/or <a href="../../API/Solace-JMS-API/Connection-Factories.htm#secure-connections" class="link-internal" MadCap:conditions="SAP.SapHideFromOutput">Secure Connections</a><a href="https://docs.solace.com/API/Solace-JMS-API/Connection-Factories.htm#secure-connections" class="link-offsite" MadCap:conditions="SAP.SapOnlyOutput" target="_blank">Secure Connections</a> for the <MadCap:variable name="Manifest-Products-APIs.api-product-jms-long"/>.</p></li>
+    </ul>
+    <h2 class="with-rule"><a name="SEMP2"/>SEMP v1 Request Over HTTP Service</h2>
+    <p>A management application can use the SEMP v1 interface to communicate with the event broker over HTTP as follows:</p>
+    <ol>
+      <li>A management application opens a TCP connection.<MadCap:snippetBlock src="../../Resources/Snippets/Admin/SEMP/SEMP-host-and-port.flsnp"/><p> For information on how to set the SSL listen port on an event broker, see <MadCap:xref MadCap:unresolvedLink="import-link:managing_services_1132971932_50092" href="../../Services/Managing-Services.htm#Enable-SEMP" MadCap:conditions="SAP.SAPTempHide">Enabling SEMP v1 Service</MadCap:xref><MadCap:xref href="../../Cloud/edit-port-configuration.htm#edit-port-config" MadCap:conditions="SAP.SapOnlyOutput">Editing the Existing Port Configuration for an [%=Product-Names.broker_cloud_short_title%]</MadCap:xref>.</p></li>
+      <li>The management application then sends HTTP POST messages to issue SEMP v1 commands to the event broker. 
+        <p>If a TLS/SSL connection is required, an HTTPs URL scheme must be used.</p><p>The management application must wait for the reply to each command before issuing the next command.</p></li>
+      <li>The event broker sends an HTTP response back for each HTTP POST request, containing the SEMP v1 reply.
+        <p>At this point, the management application can close the connection, or keep the connection open for future HTTP POST requests.</p><p>The event broker supports a maximum of 500 concurrent SEMP v1 requests over HTTP sessions.</p></li>
+    </ol>
+    <h2 class="with-rule"><a name="SEMP3"/>SEMP v1 Request Over Message Bus Service</h2>
+    <p>The SEMP v1 Request Over Message Bus feature is provided as a light-weight alternative to the full administrative access that is supported by the SEMP v1 Request Over HTTP transport service. This feature allows network management and client applications that support request/reply convenience functions and methods to manage an event broker. For example, a client application using a  messaging API can publish a request to a destination that uses a specific command topic, and the event broker returns a reply back to the client application.</p>
+    <p class="Note">MQTT and OpenMAMA clients do not support SEMP v1 Request Over Message Bus functionality.</p>
+    <p>The SEMP v1 Request Over Message Bus, when enabled for a Message VPN, can give a client application access to <b>show</b> User EXEC commands, <b>client</b> Admin EXEC commands, and <b>distributed cache</b> Admin EXEC commands within the Message VPN that the client application is connected to. Unless a Message VPN has been designated as the Management Message VPN, an application may only request data through show commands and run administration commands for the Message VPN to which it is connected. The event broker will reject any requests for information about any managed object not contained in that Message VPN.</p>
+    <p class="Note">By default, the SEMP v1 data that is sent between a client application and an event broker through a connected Session is transmitted as plain text. However, it is also possible to establish a secure Session that uses TLS/SSL protocols to encrypt the SEMP v1 data. For information on specific TLS/SSL Session properties and how to establish a secure Session, see <MadCap:xref MadCap:unresolvedLink="import-link:creating_client_sessions_1483641185_80047" href="../../API/API-Developer-Guide/Creating-Secure-Sessions.htm" MadCap:conditions="SAP.SapHideFromOutput">Creating Secure Sessions</MadCap:xref><a href="https://docs.solace.com/API/API-Developer-Guide/Creating-Secure-Sessions.htm" class="link-offsite" MadCap:conditions="SAP.SapOnlyOutput" target="_blank">Creating Secure Sessions</a> for the <MadCap:variable name="Manifest-Products-APIs.PubSub-GenericAll-Messaging-API"/>s and/or <MadCap:xref href="../../API/Solace-JMS-API/Connection-Factories.htm#establishing_connections_577400906_333806" MadCap:conditions="SAP.SapHideFromOutput">Important Connection Properties</MadCap:xref><a href="https://docs.solace.com/API/Solace-JMS-API/Connection-Factories.htm#establishing_connections_577400906_333806" class="link-offsite" MadCap:conditions="SAP.SapOnlyOutput" target="_blank">Important Connection Properties</a> for the <MadCap:variable name="Manifest-Products-APIs.api-product-jms-long"/>.</p>
+    <p class="Note" MadCap:conditions="SAP.SapHideFromOutput">SEMP v1 on software event brokers does not support TLSv1.0.</p>
+    <h2 class="with-rule"><a name="SEMP4"/>SEMP v1 Formatting</h2>
+    <p>To use the SEMP v1 Request transport service, the following formatting conventions are used:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#HTTP">HTTP Request Format</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#HTTP2">HTTP Response Format</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#SEMP-Flex-Ver">SEMP v1 Schema Version</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#SEMP5">SEMP v1 Command Format</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#SEMP6">SEMP v1 Reply Format</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="HTTP"/>HTTP Request Format</h3>
+    <p>The following is an example of an HTTP POST request from a management application to issue a SEMP v1 command to an event broker:</p>
+    <pre>POST /SEMP HTTP/1.1
+Authorization: Basic &lt;usernameAndPassword&gt;
+Content-Length:&lt;length&gt;
+&lt;SEMP command&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;usernameAndPassword&gt;</code> is the username and password for the user. The username and password must be encoded as described in RFC 2617: Section 2: Basic Authentication Scheme. </p>
+    <p class="Note">OAuth authentication is also supported using one or more OAuth tokens in the HTTP Authorization header as a bearer token. For more information see <MadCap:xref href="SEMP-Security.htm#OAuth">OAuth Authentication</MadCap:xref>.</p>
+    <p><code>&lt;length&gt;</code> indicates the length (in bytes) of the SEMP v1 command that follows the HTTP header.</p>
+    <p><code>&lt;SEMP command&gt;</code> is the contents of the SEMP v1 command being sent (see <MadCap:xref href="#SEMP5">SEMP v1 Command Format</MadCap:xref>). The application can only send one SEMP v1 command for each HTTP POST request.</p>
+    <h3><a name="HTTP2"/>HTTP Response Format</h3>
+    <p>The following is an example of an event broker HTTP response to a management application's SEMP v1 command:</p>
+    <pre>HTTP/1.1 200 OK
+Content-Length: &lt;length&gt;
+&lt;SEMP reply&gt;</pre>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;length&gt;</code> indicates the length (in bytes) of the SEMP v1 reply that follows the HTTP header</p>
+    <p><code>&lt;SEMP reply&gt;</code> is the contents of the SEMP v1 reply that is returned by the event broker (see <MadCap:xref href="#SEMP6">SEMP v1 Reply Format</MadCap:xref>)</p>
+    <p>An HTTP response of "200 OK" is returned if the command was accepted by the event broker (even if it was not successfully executed). If there is an authentication failure, the following response is returned:</p>
+    <pre xml:space="preserve">401 Unauthorized
+Basic Realm="CLI"</pre>
+    <p class="Note">If the SEMP reply indicates a failure with <code>reasonCode="549"</code> and <code>reason="SEMP response buffer allocation failed"</code>, the requested response is large and the event broker cannot allocate enough internal resources to buffer it. Use <MadCap:xref href="#SEMP7">SEMP v1 Paging</MadCap:xref> to avoid excessively large responses that can result in this error.</p>
+    <h3><a name="SEMP-Flex-Ver"/>SEMP Schema Version</h3>
+    <p>SEMP  uses an XML schema to identify all managed objects available in an event broker.</p>
+    <p>The SEMP  command contains an optional SEMP v1 schema version string that specifies which SEMP schema is to be used in the validation of the command by the event broker.</p>
+    <p>When received by an event broker in a command, the SEMP  schema version string is processed in the following manner,</p>
+    <ul>
+      <li>If a version string is provided:</li>
+      <ul>
+        <li>and matches a SEMP  schema installed on the event broker, then the command is validated with the specified schema.</li>
+        <li>and does not match any installed SEMP schema, then the command is validated with the latest installed schema.</li>
+      </ul>
+      <li> If a version string is <b>not</b> provided, the event broker validates the command using the latest installed schema.</li>
+    </ul>
+    <p><MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput">As of PubSub+ software event broker version 8.7+ and PubSub+ appliance version 8.3+, it</MadCap:conditionalText><MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">It</MadCap:conditionalText> is recommended  <u>not</u> to include a SEMP version string in commands, and only include one if  a known deprecated behavior is needed from a particular SEMP schema.</p>
+    <h3><a name="SEMP_Schema_Version_Policy"/>SEMP Schema Version Support Policy</h3>
+    <p>Legacy SEMP schema versions continue to be supported by new event broker releases for six years after the legacy SEMP schema version was introduced.<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> To identify the minimum supported legacy SEMP schema version for a given event broker release, see <MadCap:xref href="../../Release-Compatibility/Release-Compatibility.htm">[%=Product-Names.pubsub_brand_only%] Event Broker - Release Compatibility</MadCap:xref>.</MadCap:conditionalText></p>
+    <p>If a legacy SEMP request is sent with no version specified, the event broker uses its latest supported schema version to validate and process the request. This is <MadCap:variable name="Variables.CompanyName"/>’s recommended approach. One potential limitation  of this approach is that the request may stop working if the latest schema has a non-backwards compatible change. However, <MadCap:variable name="Variables.CompanyName"/> expects such changes to be rare.</p>
+    <p>If a legacy SEMP request includes a schema version and the request is sent to an event broker that:</p>
+    <ul>
+      <li>
+        <p> supports that schema version, the event broker validates and processes the request using the specified schema version.</p>
+      </li>
+      <li>
+        <p> does not support that schema version, the event broker attempts to use its latest supported schema version to validate and process the request.</p>
+      </li>
+    </ul>
+    <h3><a name="SEMP5"/>SEMP v1 Command Format</h3>
+    <p>For both SEMP v1 Request over HTTP and SEMP v1 Request Over Message Bus access methods, the format of SEMP v1 commands within a request is modeled after the <MadCap:variable name="Product-Names.solace_cli"/>. Each SEMP v1 command is the equivalent of a single <MadCap:variable name="Product-Names.solace_cli"/> command.</p>
+    <p>SEMP v1 commands are formatted in XML, following the schema in the <code>semp-rpc-soltr.xsd</code> file provided with the <MadCap:variable name="Variables.CompanyName"/> <MadCap:variable name="Product-Names.pubsub_brand_only"/> software release bundle. White space (including line-end characters) is optional in the SEMP v1 command. The top‑level element is <code>&lt;rpc&gt;</code>, and the next-level element corresponds to the command being issued. Inside the <code>&lt;rpc&gt;</code> element are the keywords and parameters of the command.</p>
+    <p><b>Example</b>:</p>
+    <pre xml:space="preserve">&lt;rpc&gt;
+    &lt;show&gt;
+        &lt;client&gt;
+            &lt;name&gt;*&lt;/name&gt;
+        &lt;/client&gt;
+    &lt;/show&gt;
+&lt;/rpc&gt;</pre>
+    <p>SEMP v1 does not provide a concept of command modes. All commands are issued at the top level of the command mode hierarchy. In particular, the <b>enable</b> and <b>configure</b> commands are not required or supported in SEMP v1. </p>
+    <p>If a known deprecated behavior is needed from a particular SEMP v1 schema, a SEMP v1 version string is specified inside the <code>&lt;rpc&gt;</code> element.<MadCap:conditionalText MadCap:conditions="SAP.SapHideFromOutput"> For example, to specify schema version 10.2.1, use <code>&lt;rpc semp-version="soltr/10_2_1"&gt;</code> (for the appliance) or <code>&lt;rpc semp-version="soltr/10.2.1VMR"</code>&gt; (for the software broker).</MadCap:conditionalText></p>
+    <h3><a name="SEMP6"/>SEMP v1 Reply Format</h3>
+    <p>For both SEMP v1 Request over HTTP and SEMP v1 Request Over Message Bus access methods, the SEMP v1 interface replies indicate the success or failure of a SEMP v1 command, in addition to the reason code for any failure. SEMP v1 replies are formatted in XML, following the schema in the <code>semp-rpc-reply-soltr.xsd</code> file.</p>
+    <p>The following is an example of a successful reply to the command described in <MadCap:xref href="#SEMP5">SEMP v1 Command Format</MadCap:xref> (white space, including line-end characters, is optional in a SEMP v1 reply):</p>
+    <pre xml:space="preserve">&lt;rpc-reply semp-version="soltr/10_3_0"&gt;
+  &lt;rpc&gt;
+    &lt;show&gt;
+      &lt;client&gt;
+        &lt;primary-virtual-router&gt;
+          &lt;client&gt;
+            &lt;client-address&gt;192.168.1.180:58305&lt;/client-address&gt;
+            &lt;name&gt;s0001&lt;/name&gt;
+            &lt;profile&gt;default&lt;/profile&gt;
+            &lt;num-subscriptions&gt;1&lt;/num-subscriptions&gt;
+            &lt;message-vpn&gt;default&lt;/message-vpn&gt;
+            &lt;description&gt;&lt;/description&gt;
+          &lt;/client&gt;
+        &lt;/primary-virtual-router&gt;
+        &lt;internal-virtual-router&gt;
+          &lt;client&gt;
+            &lt;client-address&gt;127.55.55.55:56244&lt;/client-address&gt;
+            &lt;name&gt;#client&lt;/name&gt;
+            &lt;profile&gt;#client-profile&lt;/profile&gt;
+            &lt;num-subscriptions&gt;2&lt;/num-subscriptions&gt;
+            &lt;message-vpn&gt;default&lt;/message-vpn&gt;
+            &lt;description&gt;Internal Message Bus&lt;/description&gt;
+          &lt;/client&gt;
+        &lt;/internal-virtual-router&gt;
+      &lt;/client&gt;
+    &lt;/show&gt;
+   &lt;/rpc&gt;
+&lt;execute-result code="ok"/&gt;
+&lt;/rpc-reply&gt;</pre>
+    <p>As shown in the example above, a successfully parsed SEMP v1 command always generates <code>&lt;rpc-reply&gt;</code> and <code>&lt;execute-result&gt;</code> element tags. Additionally, in the case of SEMP v1 show commands, a number of element tags detailing the command name (without parameters) and output are also generated.</p>
+    <p>The <code>execute-result</code> code has either a value of "ok", or "fail". For a failure, the reason (represented by a string) and reason code (represented by an integer) are also provided.</p>
+    <h2 class="with-rule"><a name="Publishi"/>Publishing an HTTP SEMP v1 Request with cURL</h2>
+    <p>The following simple example shows a simple HTTP SEMP v1 request published to the event broker with cURL (<a href="http://curl.haxx.se/" target="_blank" class="link-offsite">http://curl.haxx.se/</a>).</p>
+    <p>Using the <MadCap:variable name="Product-Names.solace_cli"/>, you can view global event broker stats with the <b>show stats client</b> User EXEC command. The following snippet shows the XML for the equivalent SEMP v1 request:</p>
+    <pre>&lt;rpc&gt;
+  &lt;show&gt;
+    &lt;stats&gt;
+      &lt;client/&gt;
+    &lt;/stats&gt;
+  &lt;/show&gt;
+&lt;/rpc&gt;</pre>
+    <p>If this XML code is put in a file called <code>request.xml</code>, you can use cURL to send it to the HTTP listen port of the event broker management interface.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Product-Names.pubsub_brand_only"/><MadCap:variable name="Product-Names.broker_appliance_short"/> example:</p>
+    <pre xml:space="preserve" MadCap:conditions="SAP.SapHideFromOutput">curl -d @request.xml -u username:password http://192.168.128.12:80/SEMP</pre>
+    <p MadCap:conditions="SAP.SapHideFromOutput">PubSub+ <MadCap:variable name="Product-Names.broker_sw_short"/> example:</p>
+    <pre xml:space="preserve" MadCap:conditions="SAP.SapHideFromOutput">curl -d @request.xml -u username:password http://192.168.128.12:8080/SEMP</pre>
+    <p>The response provides the same client statistics that would be provided through the <MadCap:variable name="Product-Names.solace_cli"/> output, but these statistics that the SEMP v1 provides are provided formatted in XML (see <MadCap:xref href="#SEMP6">SEMP v1 Reply Format</MadCap:xref>).</p>
+    <h2 class="with-rule"><a name="Configur"/>Configuring SEMP v1 Over Message Bus Services</h2>
+    <p>The SEMP v1 Request Over Message Bus service is configured on a per Message VPN basis.</p>
+    <p>To configure SEMP v1 Request Over Message Bus service on a Message VPN through the <MadCap:variable name="Product-Names.solace_cli"/>, enter the following CONFIG commands:</p>
+    <pre>solace(configure)# message-vpn &lt;vpn-name&gt;
+solace(configure/message-vpn)# semp-over-msgbus
+solace(configure/message-vpn/semp-msgbus)# </pre>
+    <p>The <MadCap:variable name="Product-Names.solace_cli"/> is now in the configuration mode for the SEMP v1 Request Over Message Bus service on the specified Message VPN. </p>
+    <p>The example below shows the hierarchical structure of the SEMP v1 Request Over Message Bus service command tree. This shows how you can enable or disable all client access to SEMP v1 Request Over Message Bus service for the Message VPN or limit client access to specific Admin and Show commands for the SEMP v1 Request Over Message Bus service.</p>
+    <p>SEMP v1 Over Message Bus Service Command Hierarchy</p>
+    <pre>SEMP v1 over Message Bus:              Enabled/Disabled
+    Admin commands:                    Enabled/Disabled
+      Client commands:                 Enabled/Disabled
+      Distributed Cache commands:      Enabled/Disabled
+    Show commands:                     Enabled/Disabled
+    Legacy Show Clear commands:        Enabled/Disabled</pre>
+    <p>To enable or disable client access to SEMP v1 Request Over Message Bus service for the Message VPN, see  <MadCap:xref href="#Allowing">Allowing SEMP v1 Over Message Bus Service</MadCap:xref>.</p>
+    <p>When SEMP v1 Request Over Message Bus service is enabled, you can further control client access to the following commands for the SEMP v1 Request Over Message Bus service: </p>
+    <ul>
+      <li>
+        <MadCap:xref href="#Manageme">Enabling SEMP v1 Service for Management Message VPNs</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Allowing">Allowing SEMP v1 Over Message Bus Service</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Allowing2">Allowing Access to Admin Commands</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Allowing3">Allowing Access to Show Commands</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#Allowing4">Allowing Access to Legacy Show Clear Commands</MadCap:xref>
+      </li>
+    </ul>
+    <p>By default, SEMP v1 Request Over Message Bus service is enabled for a Message VPN, but access to each group of admin and show commands is disabled.</p>
+    <h3><a name="Manageme"/>Enabling SEMP v1 Service for Management VPNs</h3>
+    <p>To allow system-wide access to SEMP v1 service over Message Bus, you can enable SEMP v1 service for the Message VPN that is designated as the Management Message VPN (see <MadCap:xref href="../../Features/VPN/Configuring-VPNs.htm#Designate-Mgmt-VPNs" MadCap:conditions="SAP.SapHideFromOutput">Designating Management Message VPNs</MadCap:xref><a href="https://docs.solace.com/Features/VPN/Configuring-VPNs.htm#Designate-Mgmt-VPNs" class="link-offsite" MadCap:conditions="SAP.SapOnlyOutput" target="_blank">Designating Management Message VPNs</a>).</p>
+    <p>A single Message VPN can be designated as the Management Message VPN for an event broker. SEMP v1 requests published by a client application connected to the Management Message VPN may request system-level information, as well as information for any of the Message VPNs configured on the event broker. Clients connected to the Management Message VPN have permission to clear events (at client or Distributed Cache level) and delete messages in Distributed Caches across all Message VPNs.</p>
+    <h3><a name="Allowing"/>Allowing SEMP v1 Over Message Bus Service</h3>
+    <ul>
+      <li>To allow clients to run SEMP v1 commands over the message bus for the given Message VPN, enter the following CONFIG command:
+        <pre>solace(configure/message-vpn/semp-msgbus)# no shutdown</pre><p>By default, SEMP v1 Request Over Message Bus service is enabled for a Message VPN.</p></li>
+    </ul>
+    <ul>
+      <li>To not allow clients to run SEMP v1 commands over the message bus for the given Message VPN, enter the following CONFIG command:
+        <pre>solace(configure/message-vpn/semp-msgbus)# shutdown</pre></li>
+    </ul>
+    <h3><a name="Allowing2"/>Allowing Access to Admin Commands</h3>
+    <p>The Admin EXEC commands contain the Client EXEC Admin commands and the Distributed Cache Admin EXEC commands. To stop clients from running Admin EXEC commands over the message bus denies them access to both the Client EXEC Admin commands and the Distributed Cache Admin EXEC commands.</p>
+    <ul>
+      <li>To allow clients to run Admin EXEC commands over the message bus for the given Message VPN, enter the following CONFIG command:
+        <pre>solace(configure/message-vpn/semp-msgbus)# no admin-cmds shutdown</pre></li>
+      <li>To stop clients from running Admin EXEC commands over the message bus for the given Message VPN, enter the following CONFIG command:
+        <pre>solace(configure/message-vpn/semp-msgbus)# admin-cmds shutdown</pre><p>By default, Admin EXEC SEMP Request over Message Bus commands are not allowed for a Message VPN.</p></li>
+    </ul>
+    <h4>Allowing Access to Client Admin Commands</h4>
+    <p>The Client EXEC Admin commands can be used to clear events.</p>
+    <ul>
+      <li>To allow clients to run Client Admin EXEC commands over the message bus for the given Message VPN, enter the following CONFIG command:
+        <pre>solace(configure/message-vpn/semp-msgbus)# no admin-cmds client-cmds shutdown</pre></li>
+      <li>To stop clients from running Client Admin EXEC commands over the message bus for the given Message VPN, enter the following CONFIG command:
+        <pre>solace(configure/message-vpn/semp-msgbus)# admin-cmds client-cmds shutdown</pre><p>By default, Client Admin EXEC SEMP Request over Message Bus commands are not allowed for a Message VPN.</p></li>
+    </ul>
+    <h4>Allowing Access to Distributed Cache Admin Commands</h4>
+    <p>The Distributed Cache Admin EXEC commands can be used to clear Distributed Cache events and delete messages from the given Distributed Cache.</p>
+    <ul>
+      <li>To allow clients to run Distributed Cache Admin EXEC commands over the message bus for the given Message VPN, enter the following CONFIG command:
+        <pre>solace(configure/message-vpn/semp-msgbus)# no admin-cmds distributed-cache-cmds shutdown</pre></li>
+      <li>To stop clients from running Distributed Cache Admin EXEC commands over the message bus for the given Message VPN, enter the following CONFIG command:
+        <pre>solace(configure/message-vpn/semp-msgbus)# admin-cmds distributed-cache-cmds shutdown</pre><p>By default, Distributed Cache Admin EXEC SEMP Request over Message Bus commands are not allowed for a Message VPN.</p></li>
+    </ul>
+    <h3><a name="Allowing3"/>Allowing Access to Show Commands</h3>
+    <p>The show User EXEC commands include show commands for data and statistics scoped within the Message VPN that the client is connected to.</p>
+    <ul>
+      <li>To allow clients to run <b>show</b> User EXEC commands over the message bus for the given Message VPN, enter the following CONFIG command:
+        <pre>solace(configure/message-vpn/semp-msgbus)# no show-cmds shutdown</pre></li>
+      <li>To stop clients from running <b>show</b> User EXEC commands over the message bus for the given Message VPN, enter the following CONFIG command:
+        <pre>solace(configure/message-vpn/semp-msgbus)# show-cmds shutdown</pre><p>By default, show User EXEC Request over Message Bus commands are not allowed for a Message VPN.</p></li>
+    </ul>
+    <h3><a name="Allowing4"/>Allowing Access to Legacy Show Clear Commands</h3>
+    <p>By default, legacy SEMP v1 access (that is, SEMP v1 show and administration requests published to topic "#P2P/[router name]/#client/SEMP") is enabled on each Message VPN for backwards compatibility. However, as of event broker version 5.4, legacy SEMP v1 access is deprecated, and it is recommended that you publish SEMP show and administration requests published to the current topic "<code>#SEMP/&lt;router name&gt;/&lt;cmd-topic&gt;</code>" (see  <MadCap:xref href="#Publishi2">Publishing SEMP v1 Requests Over the Message Bus</MadCap:xref>) and avoid enabling legacy SEMP access.</p>
+    <ul>
+      <li>To allow clients to run legacy SEMP v1 commands on the event broker SEMP Request Over Message Bus service for the given Message VPN, enter the following CONFIG command:
+        <pre>solace(configure/message-vpn/semp-msgbus)# no legacy-show-clear-cmds shutdown</pre></li>
+      <li>To stop clients from running legacy SEMP v1 commands on the event broker SEMP Request Over Message Bus service for the given Message VPN, enter the following VPN CONFIG command:
+        <pre>solace(configure/message-vpn/semp-msgbus)# legacy-show-clear-cmds shutdown</pre></li>
+    </ul>
+    <h2 class="with-rule"><a name="SEMP7"/>SEMP v1 Paging</h2>
+    <p>If you are retrieving multiple objects (for example, Queues, Message VPNs, or Subscriptions) via SEMP v1, you must use SEMP paging (also called "sequenced get"), and the number of objects you request must never exceed 100.  When using the SEMP v1 Request Over Message Bus service, you must further limit your object count to ensure your response fits within the maximum response size of 89,000 bytes, and when using SEMP v1 over HTTP, your response must fit within the maximum response size of 33,554,432 bytes.</p>
+    <p>If a SEMP v1 show command requires paging, it supports "sequenced get" and also provide a <code>more-cookie</code> to receive the full response through multiple smaller responses.</p>
+    <p>When a SEMP v1 request would result in an oversized response, the event broker responds with a failure with <code>reasonCode="431"</code> and <code>reason="response too big"</code> (or for SEMP over the message bus, the <code>limit-error</code> element contains "<code>response too big: use sequenced get"</code>). When this occurs, refer to the SEMP v1 schema file to create your send request with the "sequenced get" parameters. The sequenced get parameters consist of the <code>count</code> and <code>num-elements</code> XML attributes.</p>
+    <p>If paging is supported for a command, the event broker might include a <code>more-cookie</code> in the response. This <code>more-cookie</code> can be retrieved from the SEMP v1 response with the following XML XPath: <code>//more-cookie</code>. The <code>more-cookie</code> can be sent back to the event broker in another SEMP v1 request to receive the next portion of the response. This is repeated to retrieve all portions of the response from the event broker. The responses from "sequenced get" and <code>more-cookie</code> can be used individually or reassembled into a single SEMP v1 response. Both the <code>more-cookie</code>, individual SEMP v1 responses, and the entire response (when reassembled) adhere to the SEMP v1 response schema.</p>
+    <div class="Caution">
+      <p>Wildcarded show commands may return paged data even if paging was not requested, especially if the command takes more than a few seconds to execute.  In addition, when paged data is returned, the number of entries returned may be fewer than the number of entries requested.  In some cases, paged responses may be completely empty (including only a <code>more-cookie</code>).  Clients must be written to accept paged data of any size less than or equal to the requested page size.</p>
+      <p>If this behavior prevents your  client from functioning, you can use the  <code>configure service semp legacy-timeout</code> command to assist in keeping your system running while you update your clients to use paging.  When enabled, it increases the amount of time available for the system to produce a response before paging is forced on a client.  Note that this  is only intended to be used to keep a system running for a short period of time while  clients are updated to use paging. </p>
+    </div>
+    <p class="Note">When using show commands with a sort parameter (for example, <code>show client * sorted-stats total-client-messages-sent</code>), using a "sequenced get" will return the top elements (up to the specified number of elements), and a <code>more-cookie</code> will not be present (although more elements may be present).</p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Sample  of a SEMP v1 show command: </MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre>&lt;rpc&gt;
+  &lt;show&gt;
+    &lt;client-username&gt;
+      &lt;name&gt;*&lt;/name&gt;
+      &lt;vpn-name&gt;*&lt;/vpn-name&gt;
+      &lt;count/&gt;
+      &lt;num-elements&gt;4&lt;/num-elements&gt;
+   &lt;/client-username&gt;
+  &lt;/show&gt;
+&lt;/rpc&gt;</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Sample output of a SEMP v1 show command with "sequenced get" parameters:</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre>&lt;rpc-reply semp-version="soltr/8_3_0"&gt;
+  &lt;rpc&gt;
+    &lt;show&gt;
+      &lt;client-username&gt;
+        &lt;client-usernames&gt;
+          &lt;client-username&gt;
+            &lt;client-username&gt;user1&lt;/client-username&gt;
+            &lt;message-vpn&gt;exampleVpn&lt;/message-vpn&gt;
+            &lt;enabled&gt;true&lt;/enabled&gt;
+            &lt;num-clients&gt;2&lt;/num-clients&gt;
+          &lt;/client-username&gt;
+          &lt;client-username&gt;
+            &lt;client-username&gt;testUser&lt;/client-username&gt;
+            &lt;message-vpn&gt;exampleVpn&lt;/message-vpn&gt;
+            &lt;enabled&gt;false&lt;/enabled&gt;
+            &lt;num-clients&gt;0&lt;/num-clients&gt;
+          &lt;/client-username&gt;
+          &lt;client-username&gt;
+            &lt;client-username&gt;testCacheUser&lt;/client-username&gt;
+            &lt;message-vpn&gt;exampleVpn&lt;/message-vpn&gt;
+            &lt;enabled&gt;true&lt;/enabled&gt;
+            &lt;num-clients&gt;1&lt;/num-clients&gt;
+          &lt;/client-username&gt;
+          &lt;client-username&gt;
+            &lt;client-username&gt;devUser&lt;/client-username&gt;
+            &lt;message-vpn&gt;devVPn&lt;/message-vpn&gt;
+            &lt;enabled&gt;true&lt;/enabled&gt;
+            &lt;num-clients&gt;15&lt;/num-clients&gt;
+         &lt;/client-username&gt;
+        &lt;/client-usernames&gt;
+      &lt;/client-username&gt;
+    &lt;/show&gt;
+  &lt;/rpc&gt;
+  &lt;more-cookie&gt;
+    &lt;rpc&gt;
+      &lt;show&gt;
+        &lt;client-username&gt;
+          &lt;name&gt;*&lt;/name&gt;
+          &lt;vpn-name&gt;*&lt;/vpn-name&gt;
+          &lt;following-username/&gt;
+          &lt;vpn-id-index-param&gt;5&lt;/vpn-id-index-param&gt;
+          &lt;username-index-param&gt;devUser&lt;/username-index-param&gt;
+          &lt;count/&gt;
+          &lt;num-elements&gt;4&lt;/num-elements&gt;
+        &lt;/client-username&gt;
+      &lt;/show&gt;
+    &lt;/rpc&gt;
+  &lt;/more-cookie&gt;
+ &lt;execute-result code="ok"/&gt;
+&lt;/rpc-reply&gt;</pre>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <h2 class="with-rule"><a name="Availabl"/>Available SEMP v1 Over Message Bus Commands</h2>
+    <p>The following commands can be executed over the message bus:</p>
+    <ul>
+      <li>Show User EXEC commands—These commands enable applications to display configuration and statistical information only for the Message VPN that the client is connected to. For example, the <code>show client *</code> command will display client configuration and status information only for those clients within the Message VPN that the client application is connected to.
+        <p>A client application cannot display information for a Message VPN that it is not connected to, and it cannot display system-level information.</p><p>The only exception to this limitation is if the client application is connected to the event broker’s Management Message VPN. In this case, it can successfully run all show commands (whether they concern System-level information or Message VPN-scoped information).</p><p class="Note">If a client executes system-level show commands, such as <code>show hardware</code> or <code>show version</code>, and it is not connected to the Management Message VPN, a permission error "invalid request: not authorized to run this command" is returned.</p><p>To view all of the possible show commands, enter the following User EXEC command:</p><pre>solace&gt; show ?</pre></li>
+      <li>Client Admin EXEC commands—These commands enable applications to clear and reset the given client’s event notification for a specified one-shot event. The following client admin EXEC command can be executed over the message bus:
+        <ul><li><code>admin client &lt;name&gt; message-vpn &lt;vpn-name&gt; [primary][backup] [static] clear-event &lt;event-name&gt;</code></li></ul></li>
+      <li MadCap:conditions="SAP.SapHideFromOutput">Distributed Cache Admin EXEC commands—These commands enable applications to clear event notifications for the given Distributed Cache or delete messages from the given Distributed Cache. These commands also enable applications to start a single PubSub+ Cache Instance or all PubSub+ Cache Instances in a Cache Cluster that do not have Auto Start Mode enabled. The following distributed cache admin EXEC commands can be executed over the message bus:
+        <ul><li><code>admin distributed-cache &lt;name&gt; message-vpn &lt;vpn-name&gt; clear-event &lt;event-name&gt; [cache-cluster &lt;cluster-name&gt;] [cache-instance &lt;instance-name&gt;]</code></li><li><code>admin distributed-cache &lt;name&gt; message-vpn &lt;vpn-name&gt; delete-messages &lt;topic&gt; [cache-cluster &lt;cluster-name&gt;] [cache-instance &lt;instance-name&gt;]</code></li></ul></li>
+    </ul>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For more information on the <MadCap:variable name="Product-Names.solace_cli"/> equivalent of these commands and details for the parameters, see <MadCap:xref MadCap:unresolvedLink="import-link:configuring_and_managing_solcache_541341864_27661" href="../../Additional-Products/Solace-PubSub-Cache/Performing-PubSub-Cache-Admi.htm">Performing PubSub+ Cache Administrative Tasks</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="Publishi2"/>Publishing SEMP v1 Requests Over the Message Bus</h2>
+    <p>Client applications can use the Java, C, and .NET messaging APIs to make SEMP v1 requests over the message bus. Client applications must publish any SEMP v1 requests over the message bus to the following topic destination:</p>
+    <pre>#SEMP/&lt;router name&gt;/&lt;cmd-topic&gt;</pre>
+    <p>Where:</p>
+    <p><code>router name</code> is the hostname of the event broker to send the request to.</p>
+    <p><code>cmd-topic</code> is a command specific topic destination to publish the SEMP v1 request to. The following command topics can be used:</p>
+    <ul>
+      <li><code>#SEMP/&lt;router name&gt;/SHOW</code>—The command topic destination for <b>show </b>User EXEC commands, which display Message VPN-scoped information such as configuration data, statistics, and client information. 
+        <p>For more information on the <MadCap:variable name="Product-Names.solace_cli"/> equivalent of this command, see <MadCap:xref href="../../Features/VPN/Monitoring-VPN-Stats.htm" MadCap:conditions="SAP.SapHideFromOutput">Monitoring VPN Configurations and Statistics</MadCap:xref><a href="https://docs.solace.com/Features/VPN/Monitoring-VPN-Stats.htm" class="link-offsite" MadCap:conditions="SAP.SapOnlyOutput" target="_blank">Monitoring VPN Configurations and Statistics</a>.</p></li>
+      <li><code>#SEMP/&lt;router name&gt;/ADMIN/CLIENT</code>—The command topic destination for Client Admin EXEC commands, which enable applications to clear and reset the given client’s event notification for a specified one-shot event.</li>
+      <li><code>#SEMP/&lt;router name&gt;/ADMIN/DISTRIBUTED-CACHE</code>—The command topic destination for Distributed Cache Admin EXEC commands, which enable applications to clear event notifications for the given Distributed Cache or delete messages from the given Distributed Cache.
+            </li>
+    </ul>
+    <p>The following are examples of full command topics that SEMP v1 requests could be published to:</p>
+    <ul>
+      <li>
+        <code>#SEMP/SolaceNewYork/SHOW</code>
+      </li>
+      <li>
+        <code>#SEMP/SolaceLondon2/ADMIN/CLIENT</code>
+      </li>
+      <li>
+        <code>#SEMP/SolaceNewJersey/ADMIN/DISTRIBUTED-CACHE</code>
+      </li>
+    </ul>
+    <p>When developing a client application that can publish a SEMP v1 request and handle its response, each SEMP v1 request and each SEMP v1 response must fit within a single message. Multi-part messages are not supported. </p>
+    <p class="Note" MadCap:conditions="SAP.SapHideFromOutput">The event broker allows one Message VPN to be designated as the Management Message VPN. Clients connected to this Management Message VPN may then request both system-level information as well as information pertaining to any of the Message VPNs configured on the event broker. Likewise, clients connected to the Management Message VPN may run administration commands for any Message VPN configured on the event broker. For more information, see <MadCap:xref href="../../Features/VPN/Configuring-VPNs.htm#Designate-Mgmt-VPNs">Designating Management Message VPNs</MadCap:xref>.</p>
+    <h4 MadCap:conditions="SAP.SapHideFromOutput">Related Samples</h4>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For a complete example of how to publish SEMP v1 requests over the message bus, a sample file is provided for the <MadCap:variable name="Manifest-Products-APIs.PubSub-GenericAll-Messaging-API"/>s for JCSMP, C, and .NET. There is a <code>readme</code> file at the top of the example directory that describes how to build and run the example code. </p>
+    <table style="margin-left: 0;margin-right: auto;mc-table-style: url('../../Resources/TableStyles/Table_Num.css');" class="TableStyle-Table_Num" cellspacing="0" MadCap:conditions="SAP.SapHideFromOutput">
+      <col class="TableStyle-Table_Num-Column-Column1">
+            </col>
+      <col class="TableStyle-Table_Num-Column-Column1">
+            </col>
+      <thead>
+        <tr class="TableStyle-Table_Num-Head-Header1">
+          <th class="TableStyle-Table_Num-HeadE-Column1-Header1">API </th>
+          <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Path to SEMP v1 Sample File</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <b>JCSMP</b>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <p>
+              <code>samples/src/com/solacesystems/jcsmp/samples/introsamples/SempGetOverMB.java</code>
+            </p>
+            <p>
+              <code>samples/src/com/solacesystems/jcsmp/samples/introsamples/SempHttpSetRequest.java</code>
+            </p>
+            <p>
+              <code>samples/src/com/solacesystems/jcsmp/samples/introsamples/SempPagingRequests.java</code>
+            </p>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+            <b>C</b>
+          </td>
+          <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+            <code>ex/sempGetOverMb.c</code>
+          </td>
+        </tr>
+        <tr class="TableStyle-Table_Num-Body-Body1">
+          <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+            <b>CCSMP (.NET)</b>
+          </td>
+          <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+            <p style="text-align: left;">
+              <code>ex/SolClientSamples/SempGetOverMB.cs</code>
+            </p>
+            <p style="text-align: left;">
+              <code>ex/SolClientSamples/SempHttpSetRequest.cs</code>
+            </p>
+            <p style="text-align: left;">
+              <code> ex/SolClientSamples/SempPagingRequests.cs</code>
+            </p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><a name="Publishi3"/>Publishing SEMP v1 Requests with the JCSMP</h3>
+    <p>To publish a SEMP v1 request with the JCSMP, perform the following steps:</p>
+    <ol>
+      <li>Create a Session and Producer.</li>
+      <li>Create a message topic to publish the SEMP v1 request to:
+        <pre>Topic topic = JCSMPFactory.onlyInstance().createTopic(String topicString);</pre><p>The topic must be constructed as follows: "<code>#SEMP/&lt;router name&gt;/&lt;cmd-topic&gt;</code>"</p></li>
+      <li>Create a request message:
+        <pre>BytesXMLMessage requestMsg = _producer.createBytesXMLMessage();</pre></li>
+      <li>Set the SEMP v1 request string as the binary attachment:
+        <pre>requestMsg.writeAttachment(byte[] byteInputBuffer);</pre></li>
+      <li>Create a requestor on the session, and send the request.
+        <p>The SEMP v1 response is returned as a BytesXMLMessage:</p><pre>Requestor requestor = _session.createRequestor();
+BytesXMLMessage replyMsg = requestor.request(
+requestMsg,
+long timeoutMillis,
+topic
+);</pre></li>
+      <li>Obtain the binary attachment data from the reply message. The binary attachment contains the SEMP v1 reply for the command topic in the publish request.
+            <pre>replyMsg.readAttachmentBytes(byte[] bytes);</pre></li>
+    </ol>
+    <p class="Note">For API specifications and more details, see the  <MadCap:xref href="../../API-Developer-Online-Ref-Documentation/java/index.html" MadCap:conditions="SAP.SapHideFromOutput"><MadCap:variable name="Manifest-Products-APIs.api-product-jcsmp-long"/> Reference</MadCap:xref><a href="https://docs.solace.com/API-Developer-Online-Ref-Documentation/java/index.html" class="link-offsite" MadCap:conditions="SAP.SapOnlyOutput" target="_blank"><MadCap:variable name="Manifest-Products-APIs.api-product-jcsmp-long"/>Reference</a>.</p>
+    <h3><a name="Publishi4"/>Publishing SEMP v1 Requests with the C API</h3>
+    <p>To publish a SEMP v1 request with the C API, perform the following steps:</p>
+    <ol>
+      <li>Create a Session.</li>
+      <li>Allocate a message for requests.
+        <pre>if ( ( rc = solClient_msg_alloc ( &amp;msg_p ) ) != SOLCLIENT_OK ) {
+        common_handleError ( rc, "solClient_msg_alloc()" );
+        return;
+    }</pre></li>
+      <li>Create a SEMP v1 request message and specify the topic destination to publish the SEMP v1 request to. The topic destination must be constructed as follows: 
+        <pre>solClient_destination_t topic
+topic.dest = topicString;
+topic.destType = SOLCLIENT_TOPIC_DESTINATION;</pre></li>
+      <li>Create a request message and set its Destination to the <code>topic</code> created in Step 3:
+        <pre>solClient_msg_setDestination ( msg_p, &amp;topic );</pre><p>Set the SEMP v1 request string as the binary attachment:</p><pre>solClient_msg_setBinaryAttachmentPtr
+( msg_p, byteInputBuffer, strlen( byteInputBuffer ));</pre></li>
+      <li>Call the <code>solClient_session_sendRequest</code> method:
+        <pre>solClient_opaqueMsg_pt replyMsg_p;
+solClient_returnCode rc;
+rc = solClient_session_sendRequest
+( session_p, msg_p, &amp;replyMsg_p );</pre><p>The SEMP v1 response is returned in the Reply Message.</p></li>
+      <li>Obtain the binary attachment data from the Reply Message:
+        <pre>solClient_msg_getBinaryAttachment
+(reply Msg_p, byteOutputBuffer, sizeof ( byteOutput Buffer );</pre><p>The binary attachment contains the SEMP v1 response for the command topic in the publish request.</p></li>
+    </ol>
+    <p class="Note">For API specifications and more details, see the  <MadCap:xref href="../../API-Developer-Online-Ref-Documentation/c/index.html" MadCap:conditions="SAP.SapHideFromOutput">C API Developer Reference</MadCap:xref><a href="https://docs.solace.com/API-Developer-Online-Ref-Documentation/c/index.html" class="link-offsite" MadCap:conditions="SAP.SapOnlyOutput" target="_blank"><MadCap:variable name="Manifest-Products-APIs.api-product-c-api-long"/>  Reference</a>.</p>
+    <h3><a name="using_semp_to_manage_and_monitor_routers_4217350357_305893"/>Publishing SEMP v1 Requests with the .NET API</h3>
+    <p>To publish a SEMP v1 request with the  .Net Messaging API, perform the following steps:</p>
+    <ol>
+      <li>Create a Session.</li>
+      <li>Create the message topic. 
+        <pre>"#SEMP/&lt;router name&gt;/&lt;cmd-topic&gt;"
+ITopic topic =
+ContextFactory.Instance.CreateTopic(topicString);</pre></li>
+      <li>Create a request message and set its Destination to the <code>topic</code> in Step 2:
+        <pre>IMessage requestMsg = ContextFactory.Instance.CreateMessage();
+requestMsg.Destination = topic;</pre></li>
+      <li>Set the SEMP v1 request string as the binary attachment: 
+        <pre>requestMsg.BinaryAttachment = byteInputBuffer;</pre></li>
+      <li>Call the <code>SendRequest()</code> method on Session.
+        <pre>IMessage replyMsg;
+ReturnCode rc = session.SendRequest(requestMsg, out replyMsg, timeout); </pre><p>The SEMP v1 response is returned in replyMsg.</p></li>
+      <li>Obtain the binary attachment data from the reply message:
+        <pre>replyMsg.BinaryAttachment</pre> <p>The binary attachment contains the SEMP v1 reply for the command topic in the publish request.</p></li>
+    </ol>
+    <p class="Note">For API specifications and more details, see the <MadCap:xref href="../../API-Developer-Online-Ref-Documentation/net/index.html" MadCap:conditions="SAP.SapHideFromOutput">C#/.NET API Reference</MadCap:xref><a href="https://docs.solace.com/API-Developer-Online-Ref-Documentation/net/html/98265723-512a-4f99-96e9-ea0d592bcb99.htm" class="link-offsite" MadCap:conditions="SAP.SapOnlyOutput" target="_blank"><MadCap:variable name="Manifest-Products-APIs.api-product-net-long"/> Reference</a>.</p>
+    <h2 class="with-rule"><a name="using_semp_to_manage_and_monitor_routers_4217350357_328667"/>Receiving SEMP v1 Replies Over the Message Bus</h2>
+    <p>Client applications can handle SEMP v1 replies over the message bus as they would other Direct messages—through a message receive interface (<code>XMLMessageConsumer</code> for the JCSMP), a message receive callback (C API), or a delegate (.NET API) that are set when the Session is created.</p>
+    <p>For information on how to receive messages with the <MadCap:variable name="Manifest-Products-APIs.PubSub-GenericAll-Messaging-API"/>s, see <MadCap:xref href="../../API/API-Developer-Guide/Receiving-Direct-Messages.htm" MadCap:conditions="SAP.SapHideFromOutput">Receiving Direct Messages</MadCap:xref><a href="https://docs.solace.com/API/API-Developer-Guide/Receiving-Direct-Messages.htm" class="link-offsite" MadCap:conditions="SAP.SapOnlyOutput" target="_blank">Receiving Direct Messages</a>.</p>
+    <h2 class="with-rule"><a name="Generati"/>Generating Java SEMP v1 APIs</h2>
+    <p>If you want to integrate SEMP v1 into your Java applications, you can use tools from the Java Architecture for XML Binding (JAXB) project  to generate a Java SEMP v1 API. Using the third-party tool, you can create a set of Java classes from the SEMP v1 XML schema that can be imported into Java applications. With those Java classes, your Java applications can create object-oriented SEMP v1 request commands and decompose SEMP v1 replies into Java objects.</p>
+    <p class="Note">To convert the  SEMP v1 XML request and reply schemas to Java class files, the JAXB binding files for SEMP v1 requests (<code>semp-rpc-soltr-jaxb-bindings.xsd</code>) and SEMP v1 replies (<code>semp-rpc-reply-soltr-jaxb-bindings.xsd</code>) that are provided with the software release bundle must be specified when running the JAXB generation tool.</p>
+    <p>To generate a Java SEMP v1 API, perform the following:</p>
+    <ol>
+      <li>Go to <a href="https://jaxb.java.net/" target="_blank" class="link-offsite">https://jaxb.java.net/</a> and download the latest release of JAXB.</li>
+      <li>Follow the instructions provided by the JAXB project to properly install the toolset.</li>
+      <li>Convert the SEMP v1 command schema.
+
+            <p>In the JAXB conversion tool , enter the following command:</p><pre>xjc -p SolaceSempRequest semp-rpc-soltr.xsd -b semp-rpc-soltr-jaxb-bindings.xsd</pre><p>The tool will create a <code>SolaceSempRequest</code>directory in the current directory. The new directory contains Java class files that represent the SEMP v1 request commands.</p></li>
+      <li>Convert the SEMP v1 reply schema. 
+            <p>In the JAXB conversion tool, enter the following command:</p><pre>xjc -p SolaceSempReply semp-rpc-reply-soltr.xsd -b semp-rpc-reply-soltr-reply-jaxb-bindings.xsd</pre><p>The tool will create a <code>SolaceSempReply</code> directory in the current directory. The new directory will contain Java class files that represent the SEMP v1 reply commands.</p></li>
+    </ol>
+    <p>For more information on how to import and use JAXB-generated APIs, go to <a href="https://jaxb.java.net/" target="_blank" class="link-offsite">https://jaxb.java.net</a>.</p>
+  </body>
+</html>

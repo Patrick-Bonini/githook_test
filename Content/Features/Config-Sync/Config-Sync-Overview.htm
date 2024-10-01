@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head/>
+  <body>
+    <h1>Config-Sync</h1>
+    <p>A Solace PubSub+ event broker maintains two separate types of configuration information:</p>
+    <ul>
+      <li>System-level configuration information</li>
+      <li>Configuration information for each Message VPN</li>
+    </ul>
+    <p>If you are deploying event brokers in high-availability (HA) redundant pairs, or in replicated data centers, the use of Config-Sync will automatically propagate changes in both types of configurations between two event brokers so that they remain in sync.</p>
+    <p>In both kinds of deployments, Config‑Sync relies on Guaranteed Messaging, which must be configured and enabled on each event broker involved.</p>
+    <h4>Automatic propagation of durable endpoint information</h4>
+    <p>For redundant appliances that are handling Guaranteed Messaging, durable endpoint information, such as queue and topic endpoints, topic-to-queue mappings, and queue options, is automatically propagated whether or not Config-Sync is enabled.</p>
+    <h4>Config-Sync doesn't automatically synchronize all configuration properties</h4>
+    <p>Some configuration parameters that are considered unique to an event broker, or related to licensing or security, are not automatically propagated between mates when Config-Sync is enabled. Therefore, they must be manually configured for each event broker. For more information, see <MadCap:xref href="Configuring-Config-Sync.htm#Properti">Properties That Are Not Synchronized</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="HA-Deployments"/>Synchronizing High Availability Deployments</h2>
+    <p>When HA redundancy is used, the configurations of both event brokers in an HA pair must be the same and remain in-sync while the event brokers are running. Config-Sync automatically synchronizes configuration of such pairs .In other words, the ownership model, in this case, is leader-leader.</p>
+    <p>When the configuration of the HA pair is out-of-sync (for example, due to initial deployment or connectivity loss between the HA pair), Config-Sync must be instructed which paired message brokers has the correct configuration for both the system-level configuration and for each Message VPN-level configuration. This is done by asserting the leader configuration over its mate. For each HA pair, the system-level configuration must be asserted, and each Message VPN-level configuration must also be asserted.</p>
+    <h2 class="with-rule"><a name="Replication-Deployments"/>Synchronizing Replication Deployments</h2>
+    <p>Config-Sync must be used in replication deployments to synchronize Message VPN-level configuration parameters between replication mates.</p>
+    <p>When replication is enabled on an event broker, a replication Config-Sync bridge is automatically created to link a replicated event broker with its mate, and Message VPNs are automatically synchronized.</p>
+    <p>For replication deployments, the leader Message VPN is always the one configured as “Replication Active.” Any configuration changes made to the leader Message VPN is automatically pushed to its follower, the corresponding Message VPN configured as “Replication Standby.” Configuration changes are not allowed on the Message VPN configured as“Replication Standby.” The ownership model, in this case, is leader-follower.</p>
+    <p>Notice that if the Message VPN is also in an HA redundant configuration, its changes are also pushed to the redundant mate event brokers.</p>
+    <h2 class="with-rule"><a name="System-Resources"/>System Resources Used by Config-Sync</h2>
+    <p>Config-Sync consumes additional system resources on an event broker; more specifically, it creates and uses:</p>
+    <ul>
+      <li>one Message VPN</li>
+      <li>four clients for itself, and two more for each synchronized Message VPN</li>
+      <li>nine topic subscriptions for itself, and six more for each synchronized Message VPN</li>
+      <li>three queues for itself, and two more for each synchronized Message VPN</li>
+    </ul>
+    <p>It's important to count in the resources listed above as they are limited by system-level limits. See <MadCap:xref href="../../Messaging/Guaranteed-Msg/G-Msg-Queueing-Limits.htm">Guaranteed Message Queuing Limits</MadCap:xref>.</p>
+    <p>All resources created and used by Config-Sync are all named as <code>#config-sync</code>, except for its clients, which are named <code>#config-sync/&lt;router-name&gt;</code>. Any of the resources created and used by Config-Sync cannot be deleted or directly edited.</p>
+  </body>
+</html>

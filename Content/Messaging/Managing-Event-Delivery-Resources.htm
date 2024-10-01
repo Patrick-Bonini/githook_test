@@ -1,0 +1,447 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1>Message Delivery Resources</h1>
+    <p>This section describes the egress per-client priority queues on PubSub+ event brokers and the commands that you can use to configure them.</p>
+    <h2 class="with-rule"><a name="Client"/>Client Egress Queue Structure Overview</h2>
+    <MadCap:snippetBlock src="../Resources/Snippets/client-egress-queue-structure-overview.flsnp"/>
+    <h2 class="with-rule"><a name="managing_msg_delivery_resources_2491525118_198860"/>Data Buffer Management</h2>
+    <p>An event broker protects against a small number of clients consuming too many internal buffers. This protection applies to both ingress and egress traffic between event brokers and clients, and is most typically used on:</p>
+    <ul>
+      <li>Publishing clients that are sending data to the event broker at a rate that is disproportionately consuming memory resources.</li>
+      <li>Slow subscribers. That is, clients that consistently fail to consume their messages at the offered message rate. To determine how slow a subscriber is, the event broker measures the number of seconds in the last minute when it had data to send but could not, typically because the client’s TCP window was closed. An additional penalty is applied to the slowness measurement for TCP problems such as retransmissions and missed TCP Keepalives. Slowness is expressed as a percentage.</li>
+    </ul>
+    <p class="Note_-_bullet" MadCap:conditions="SAP.SapHideFromOutput">To view any slow subscribers on an  event broker, enter the <code>show client * slow-subscriber</code> User EXEC command. </p>
+    <p class="Note_-_bullet" MadCap:conditions="SAP.SapHideFromOutput">To view a subscriber’s blocked percentage, enter the <code>show client &lt;name&gt; connections wide</code> User EXEC command.</p>
+    <h3><a name="managing_msg_delivery_resources_2491525118_199472"/>Ingress Data Buffer Management</h3>
+    <p>Event brokers ensure fair processing of messages from publishing clients. A publishing client cannot consume a disproportionate amount of ingress resources at the expense of other publishing clients. </p>
+    <div class="Note">All SMF messages larger than the event broker's maximum message size—generally 30MB for guaranteed messages or 64MiB for direct messages—will be discarded. The publishing client will be disconnected, and <code><a href="https://docs.solace.com/Solace-PubSub-Event-Reference/event_ref_boiler.html#CLIENT_CLIENT_MESSAGE_TOO_BIG" class="link-internal">CLIENT_CLIENT_MESSAGE_TOO_BIG</a></code> event is raised.</div>
+    <h3><a name="managing_msg_delivery_resources_2491525118_199494"/>Egress Data Buffer Management</h3>
+    <p>An event broker uses an internal gauge to monitor its egress buffer usage called the NAB Buffer Load Factor, whereby egress data buffer usage is registered as a percentage. When this gauge exceeds 100%, slow subscribers can be automatically disconnected to reduce the egress data buffer load.</p>
+    <p>If the egress data buffer usage on the event broker is getting high, a NAB Buffer Load Factor event based on the current percentage value of this gauge is generated before any slow subscribers are disconnected from the event broker.</p>
+    <p>To configure threshold values for the NAB Buffer Load Factor event, refer to <MadCap:xref MadCap:unresolvedLink="import-link:configuring_event_output_and_thresholds_3996511907_80566" href="../Monitoring/Configuring-System-Event-Thresholds.htm#Memory">Configuring System Memory Usage Event Thresholds</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="managing_msg_delivery_resources_2491525118_203210"/>Configuring Egress Per-Client Priority Queues</h2>
+    <div class="Caution">
+      <p>To avoid data loss or service interruption, always <a href="../get-support.htm" class="link-internal">contact Solace</a> for technical support before you attempt to configure client queues.</p>
+    </div>
+    <p>To configure the egress per-client priority queues, enter the following commands:</p>
+    <p class="Code">solace(configure)# client-profile &lt;name&gt; message-vpn &lt;vpn-name&gt;<br/>solace(configure/client-profile)# queue &lt;type&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the name of the client profile. A client profile name can contain up to 32 alphanumeric characters (case-sensitive). The “_” character is also permitted.</p>
+    <p><code>&lt;vpn-name&gt;</code> is the name of the Message VPN the client profile belongs to.</p>
+    <p>&lt;<code>type</code>&gt; is the queue type to be configured, that is, one of the following client priority queue parameters (in order of priority):</p>
+    <ul>
+      <li><code>C-1</code> (Control 1)</li>
+      <li><code>D-3</code> (Direct 3)</li>
+      <li><code>D-2</code> (Direct 2)</li>
+      <li><code>D-1</code> (Direct 1)</li>
+      <li><code>G-1</code> (Guaranteed 1)</li>
+    </ul>
+    <p>You can configure the following egress queue parameters for the given queue:</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#managing_msg_delivery_resources_2491525118_201448">Configuring Max Egress Queue Depths</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#managing_msg_delivery_resources_2491525118_201457">Configuring Egress Queue Minimum Message Bursts</MadCap:xref>
+      </li>
+    </ul>
+    <h3><a name="managing_msg_delivery_resources_2491525118_201448"/>Configuring Max Egress Queue Depths</h3>
+    <p>To configure the maximum depth of the given queue for clients, enter the following command:</p>
+    <p class="Code">solace(configure/client-profile/queue)# max-depth &lt;depth&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;depth&gt;</code> is the integer value representing the number of work units for the client priority queues. The valid range is 2 to 262144 for client priority queues. The default is 20,000 work units for the client priority queues. Changing this value does not affect messages already successfully placed on the queue.</p>
+    <p>The no version of this command, <code>no max-depth</code>, resets the queue depth for the specified queue to the default of 20000.</p>
+    <div class="Note">
+      <ul>
+        <li>For Web Messaging clients using the message eliding feature, <MadCap:variable name="Variables.CompanyName"/> recommends setting a maximum queue depth that is sufficient to hold one message for each unique topic that a client may receive.</li>
+        <li>For all other Web Messaging clients, <MadCap:variable name="Variables.CompanyName"/> recommends setting a maximum queue depth of 100. This recommendation is based on the assumption that the event broker is loaded with concurrent client connections near the maximum permitted value.</li>
+      </ul>
+    </div>
+    <h3><a name="managing_msg_delivery_resources_2491525118_201457"/>Configuring Egress Queue Minimum Message Bursts</h3>
+    <p>To configure the number of messages that are always allowed entry into the specified priority queue, regardless of the <code>max-depth</code> value, enter the following command:</p>
+    <p class="Code">solace(configure/client-profile/queue)# min-msg-burst &lt;depth&gt;</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;depth&gt;</code> is the integer value representing the queue burst depth in messages. The valid range is 0 to 262144. The default value is 4 for queues D1-3 and 255 for the G-1 queue.</p>
+    <div class="Note">
+      <ul>
+        <li>The no version of this command (<b>no min-msg-burst</b>) resets the queue burst depth in messages to the default value.</li>
+        <li>For the G-1 queue, the minimum message burst value should at least equal the consumer flow window size used by client applications and/or Message VPN bridge clients. If the minimum message burst value is too low, Guaranteed messages will be transmitted at a very reduced rate.</li>
+      </ul>
+    </div>
+    <h2 class="with-rule"><a name="managing_msg_delivery_resources_2491525118_222387"/>Monitoring Egress Per-Client Priority Queues</h2>
+    <p>You can use the show commands to validate and monitor an event broker’s message queue configurations and status.</p>
+    <h3><a name="managing_msg_delivery_resources_2491525118_222402"/>Showing Client Profile Detail</h3>
+    <p>To view the message queue configuration for a particular client profile or all client profiles on the event broker, enter the following command:</p>
+    <p class="Code">solace&gt; show client-profile &lt;name&gt; [message-vpn &lt;vpn-name&gt;] [detail]</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the name of the client profile. Entering no name displays all client profiles configured on the event broker.</p>
+    <p><code>&lt;vpn-name&gt;</code>is the full name of the Message VPN that the client profile belongs to, or part of the Message VPN name with the wildcard character ? used to represent one character of the name, or the wildcard character * used to represent zero or more characters of the name, where entering only the wildcard character * for the name displays all Message VPNs.</p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre>solace&gt; show client-profile solprofile detail</pre>
+        <pre>Profile Name : solprofile
+Message VPN: dotnet_vpn
+ 
+  G-Guaranteed, D-Direct, C-Control)
+  Queue Max Depths
+    G-1                                 : 20000 work units
+    D-1                                 : 20000 work units
+    D-2                                 : 20000 work units
+    D-3                                 : 20000 work units
+    C-1                                 : 20000 work units
+  Priority Queue Min Burst
+    G-1                                 : 255   messages
+    D-1                                 : 4     messages
+    D-2                                 : 4     messages
+    D-3                                 : 4     messages
+    C-1                                 : 4     messages
+  Message Spool
+    Guaranteed Message Send             : deny
+    Guaranteed Message Receive          : deny
+    Guaranteed Endpoint Create          : deny
+    Transacted Sessions                 : deny
+    Max Transacted Sessions             : 10
+    Max Endpoints per client-username   : 16000
+    Max Egress Flows                    : 16000
+    Max Ingress Flows                   : 16000
+    Copy-from queue                     :
+    Copy-from Topic Endpoint            :
+  TCP
+    MSS                                 : 1460
+    Initial Window                      : 2
+    Maximum Window                      : 256   KB
+      Keepalive
+          Count                         : 5
+          Idle                          : 3     seconds
+          Interval                      : 1     seconds
+ 
+  Eliding
+    Enabled                             : No
+    Max Topics                          : 256
+    Delay                               : 0     milliseconds
+    Web Transport
+      Inactive Timeout                  : 30   seconds
+      Max Web Payload                   : 1000000 bytes
+Replication
+    Allow Clients When Standby          : No
+  Max # Connections per client-username : 6000
+    Service SMF                         : 9000
+    Web Transport                       : 9000
+ 
+  Max # Subscriptions                   : 5000000
+  Allow Bridge Connections              : No
+ 
+Event Threshold                           Set Value      clear Value
+---------------------------------- ---------------- ----------------
+Subscriptions (#subs)                  80%(4000000)     60%(3000000)
+Connections per client-username           80%(4800)        60%(3600)
+  Service SMF                             80%(7200)        60%(5400)
+  Service WEB                             80%(7200)        60%(5400)
+Provisioned endpt spool usage (%)                80               60
+Transacted sessions (#)                      80%(8)           60%(6)
+Endpoints per client-username (#)        80%(12800)        60%(9600)
+Egress flows (#)                         80%(12800)        60%(9600)
+Ingress flows (#)                        80%(12800)        60%(9600)
+ 
+ 
+ 
+Legend:
+User Type - CU (client-username)
+            UB (unidirectional bridge [remote message-vpn])
+            RB (replication bridge)
+            AG (authorization group)
+ 
+User Name                                                             # Active
+Type                                                                  Client
+---- ---------------------------------------------------------------- --------
+CU   default                                                                 0</pre>
+        <p>The following table explains the displayed egress queue parameters.</p>
+        <table class="TableStyle-Table_Num" style="mc-table-style: url('../Resources/TableStyles/Table_Num.css');margin-left: 0;margin-right: auto;caption-side: top;" cellspacing="0">
+          <caption valign="top" style="padding-bottom: 3pt;">
+            <p class="TblCaption">Egress Queue Parameters</p>
+          </caption>
+          <col style="width: 25%;" class="TableStyle-Table_Num-Column-Column1"/>
+          <col style="width: 75%;" class="TableStyle-Table_Num-Column-Column1"/>
+          <thead>
+            <tr class="TableStyle-Table_Num-Head-Header1">
+              <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Parameter</th>
+              <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p class="Tbl_Body">Queue Max Depths</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p class="Tbl_Body">Each of the egress per-client priority queues has an associated maximum depth. The depths are measured in work units( a work unit represents 2048 bytes of a message). The formula to convert a message size to number of work units is: NumWorkUnits = CEILING(message.length/2048). </p>
+                <p class="Tbl_Body">When a new message is placed on the priority queue, its depth in work units is checked against  the queue's configured maximum depth. Queues can temporarily exceed their configured maximum depths. However, when these queues become full, the older messages currently queued are discarded (oldest first), replaced by the newer incoming messages, and the dataplane statistic for Egress Congestion Discards is incremented.</p>
+                <p class="Tbl_Body">Once a message discard occurs due to the queue being full, the receiving client is notified by a discard indication that is published with the message immediately following the discarded message(s).</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+                <p class="Tbl_Body">Priority Queue Min Burst</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+                <p class="Tbl_Body">The configured minimum burst length tolerance specifies the number of messages per queue that are always allowed entry into the queue, regardless of its current configured maximum depth. It is used to ensure that messages are not lost when bursts of very large messages are received on a egress client priority queue.</p>
+                <p class="Tbl_Body">For example, in a case where there are three messages currently on a queue, and the minimum burst length tolerance of the queue is set to 4, then one more message is allowed to be placed on the queue, regardless of whether the three current messages are large enough to fill the queue past its maximum allowed depth. Thus, the configured minimum burst length tolerance of 4 allows the queue to temporarily exceed its configured maximum depth and absorb a burst of large messages that would otherwise exceed the number of allowed work units.</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <h3><a name="managing_msg_delivery_resources_2491525118_222497"/>Showing Client Stats Queue</h3>
+    <p>To view the message queue statistics for clients, enter the following command:</p>
+    <p class="Code">solace&gt; show client &lt;name&gt; stats queue</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;name&gt;</code> is the full name of the client, or part of the client name with the wildcard character ? used to represent one character of the name, or the wildcard character * used to represent zero or more characters of the name, where entering only the wildcard character * for the name displays all clients.</p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre>solace&gt; show client solace1 stats queue</pre>
+        <pre>Client:                solace1
+Type:                  Primary
+Client Profile:        default
+ACL Profile:           default
+Subscriptions:         2
+Eliding Enabled:       No
+Eliding Topics:
+  Current:             0
+  High Water Mark:     0
+Deliver To One:
+  Local Priority:      1
+  Network Priority:    1
+Client Id:             151
+Message VPN:           v1
+Uptime:                0d 0h 2m 52s
+Slow Subscriber:       No
+Client Username:       cache
+User:                  'whani'  Computer: 'dev184'  Process ID: 11035
+Description:
+Software Version:      5.1.0.223
+Software Date:         Oct 19 2010 11:47:18
+Platform:              Linux26-i386_opt - C SDK
+One Shot Events:
+  Large Message:       not raised
+  Message Too Big:     not raised
+  Parse Error:         not raised
+  Max Eliding Topics:  not raised
+ 
+Listed from lowest to highest priority:  (G-Guaranteed, D-Direct, C-Control)
+*************************** Client Transmit Queues ***************************
+Queue  |  Length |  Length |   HWMark |      Max | Discards |        Delivered
+(Prio) |  (Msgs) |  (Work) |   (Work) |   (Work) |   (Msgs) |           (Msgs)
+-------+---------+---------+----------+----------+----------+-----------------
+G-1    |       0 |       0 |        0 |    20000 |        0 |                0
+D-1    |       0 |       0 |        0 |    20000 |        0 |                0
+D-2    |       0 |       0 |        0 |    20000 |        0 |                0
+D-3    |       0 |       0 |        0 |    20000 |        0 |                0
+C-1    |       0 |       0 |        1 |    20000 |        0 |                3</pre>
+        <p>The following table explains the statistics displayed for the egress queues.</p>
+        <table class="TableStyle-Table_Num" style="mc-table-style: url('../Resources/TableStyles/Table_Num.css');margin-left: 0;margin-right: auto;caption-side: top;" cellspacing="0">
+          <caption valign="top" style="padding-bottom: 3pt;">
+            <p class="TblCaption">Queues Pane Statistics</p>
+          </caption>
+          <col style="width: 25%;" class="TableStyle-Table_Num-Column-Column1"/>
+          <col style="width: 75%;" class="TableStyle-Table_Num-Column-Column1"/>
+          <thead>
+            <tr class="TableStyle-Table_Num-Head-Header1">
+              <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Column Name</th>
+              <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p class="Tbl_Body">Queue (Prio)</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p class="Tbl_Body">For client TCP transmit queues, lists the queue type, and priority (from low to high): G-1 (Guaranteed 1); D-1 (Direct 1); D-2 (Direct 2); D-3 (Direct 3); C-1 (Control 1).</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p class="Tbl_Body">Length (Msgs)</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p class="Tbl_Body">The number of messages currently waiting in the queue.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p class="Tbl_Body">Length (Work)</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p class="Tbl_Body">The number of work units currently in the queue.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+                <p class="Tbl_Body">HWMark (Work)</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+                <p class="Tbl_Body">The maximum depth in work units that the queue has reached since the last time the statistics were cleared.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p class="Tbl_Body">Max (Work)</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p class="Tbl_Body">The number of work units that can be placed in the queue before messages are discarded.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p class="Tbl_Body">Discards (Msgs)</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p class="Tbl_Body">The number of messages that were discarded from the queue.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+                <p class="Tbl_Body">Delivered (Msgs)</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+                <p class="Tbl_Body">The number of messages that were delivered from the queue.</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+    <h3><a name="managing_msg_delivery_resources_2491525118_222590"/>Showing CSPF Neighbor Stats Queues</h3>
+    <p>To view the message queue statistics for neighbors of an event broker, enter the following command:</p>
+    <p class="Code">solace&gt; show cspf neighbor &lt;physical-message broker-name&gt; stats queues</p>
+    <p><u>Where</u>:</p>
+    <p><code>&lt;physical-message broker-name&gt;</code> is the full physical event broker name of the neighbor, or part of the physical event broker name of the neighbor with the wildcard character ? used to represent one character of the name, or the wildcard character * used to represent zero or more characters of the name, where entering only the wildcard character * for the name displays all neighbors.</p>
+    <MadCap:dropDown>
+      <MadCap:dropDownHead>
+        <MadCap:dropDownHotspot>Example</MadCap:dropDownHotspot>
+      </MadCap:dropDownHead>
+      <MadCap:dropDownBody>
+        <pre>solace&gt; show cspf neighbor 1.2.3.4 stats queues </pre>
+        <pre>Neighbor:     1.2.3.4
+Connect Via:  1.2.3.4:55555
+Control Port: unspecified
+ 
+******************* Control Queues - Control Card ******************
+                | Length  | HWMark 
+Queue           | (Msgs)  |  Msg) 
+----------------+---------+---------
+ CSPF   |       0 |        0 |
+ SMRP   |       0 |        0 |
+ 
+Listed from lowest to highest priority:  (G-Guaranteed, D-Direct, C-Control) 
+****************** Data Queues - Network Acceleration Blade ******************
+Queue  |  Length |  Length |   HWMark |      Max | Discards |        Delivered
+(Prio) |  (Msgs) |  (Work) |   (Work) |   (Work) |    Msgs) |           (Msgs)
+-------+---------+---------+----------+----------+----------+-----------------
+Conn-1 
+ G-1   |       0 |       0 |        0 |    20000 |        0 |                0
+ D-1   |       0 |       0 |        0 |    20000 |        0 |                0
+ D-2   |       0 |       0 |        0 |    20000 |        0 |                0
+ D-3   |       0 |       0 |        0 |    20000 |        0 |                0
+Conn-2 
+ G-1   |       0 |       0 |        0 |    20000 |        0 |                0
+ D-1   |       0 |       0 |        0 |    20000 |        0 |                0
+ D-2   |       0 |       0 |        0 |    20000 |        0 |                0
+ D-3   |       0 |       0 |        0 |    20000 |        0 |                0
+Conn-3 
+ G-1   |       0 |       0 |        0 |    20000 |        0 |                0
+ D-1   |       0 |       0 |        0 |    20000 |        0 |                0
+ D-2   |       0 |       0 |        0 |    20000 |        0 |                0
+ D-3   |       0 |       0 |        0 |    20000 |        0 |                0
+Conn-4 
+ G-1   |       0 |       0 |        0 |    20000 |        0 |                0
+ D-1   |       0 |       0 |        0 |    20000 |        0 |                0
+ D-2   |       0 |       0 |        0 |    20000 |        0 |                0
+ D-3   |       0 |       0 |        0 |    20000 |        0 |                0</pre>
+        <p>The following table explains the statistics displayed for the queues.</p>
+        <table class="TableStyle-Table_Num" style="mc-table-style: url('../Resources/TableStyles/Table_Num.css');margin-left: 0;margin-right: auto;caption-side: top;" cellspacing="0">
+          <caption valign="top" style="padding-bottom: 3pt;">
+            <p class="TblCaption">Queues Pane Statistics</p>
+          </caption>
+          <col style="width: 25%;" class="TableStyle-Table_Num-Column-Column1"/>
+          <col style="width: 75%;" class="TableStyle-Table_Num-Column-Column1"/>
+          <thead>
+            <tr class="TableStyle-Table_Num-Head-Header1">
+              <th class="TableStyle-Table_Num-HeadE-Column1-Header1">Column Name</th>
+              <th class="TableStyle-Table_Num-HeadD-Column1-Header1">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p class="Tbl_Body">Queue (Prio)</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p class="Tbl_Body">For the four TCP data connections comprising the neighbor link (Conn-1, Conn-2, Conn-3, Conn-4), lists the queue type, and priority (from low to high): G-1 (Guaranteed 1); D-1 (Direct 1); D-2 (Direct 2); D-3 (Direct 3).</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p class="Tbl_Body">Length (Msgs)</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p class="Tbl_Body">The number of messages currently waiting in the queue.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p class="Tbl_Body">Length (Work)</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p class="Tbl_Body">The number of work units currently in the queue.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyE-Column1-Body1">
+                <p class="Tbl_Body">HWMark (Work)</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyD-Column1-Body1">
+                <p class="Tbl_Body">The maximum depth in work units that the queue has reached since the last time the statistics were cleared.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p class="Tbl_Body">Max (Work)</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p class="Tbl_Body">The number of work units that can be placed in the queue before messages are discarded.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyH-Column1-Body1">
+                <p class="Tbl_Body">Discards (Msgs)</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyG-Column1-Body1">
+                <p class="Tbl_Body">The number of messages that were discarded from the queue.</p>
+              </td>
+            </tr>
+            <tr class="TableStyle-Table_Num-Body-Body1">
+              <td class="TableStyle-Table_Num-BodyB-Column1-Body1">
+                <p class="Tbl_Body">Delivered (Msgs)</p>
+              </td>
+              <td class="TableStyle-Table_Num-BodyA-Column1-Body1">
+                <p class="Tbl_Body">The number of messages that were delivered from the queue.</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </MadCap:dropDownBody>
+    </MadCap:dropDown>
+  </body>
+</html>

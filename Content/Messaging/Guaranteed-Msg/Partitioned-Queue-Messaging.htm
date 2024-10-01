@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    </head>
+  <body>
+    <h1><MadCap:concept term="Cloud;Appliance;Software"/>Message Distribution with Partitioned Queues</h1>
+    <p>The event broker distributes messages to partitioned queues based on a key (the <i>partition key</i>) carried in the message. Client applications set this key at publish time.  The event broker creates a hash of the partition key and uses that hash value to determine which partition a particular set of messages is sent to. All messages with the same key are handled by the same partition. Related events and their publishing sequences are maintained within a partition.</p>
+    <p>The diagram below shows messages being published to a partitioned queue. The different colors of the messages represent their partition key value. Each partition key value is mapped to one partition. However, a partition might be mapped to more than one partition key value. </p>
+    <p>Similarly, each partition is mapped to one consumer flow, but a flow might be mapped to multiple partitions.</p>
+    <p>
+      <div class="thumbnail-container">
+        <img src="../../Resources/Images/Guaranteed-Msg/Partitioned-Queue-Message-Distribution.png" class="solacethumbnail" alt="A diagram illustrating the concepts discussed in the surrounding text."/>
+      </div>
+    </p>
+    <p>Multiple consumers connect to the queue, with each consumer assigned to a different set of partitions. Only a single consumer is allowed to be assigned to and consume from any given partition; however, a single consumer might service multiple partitions. Because message sequence is not guaranteed between partitions, the consumer in this case can receive messages out of sequence (with respect to their publish sequence). Message sequence is guaranteed within a partition.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For the list of messaging APIs that support partitioned queues, see <MadCap:xref href="../../API/API-Developer-Guide/Feature-Support-PubSub-Messaging-APIs.htm">Feature Support in [%=Product-Names.pubsub_brand_only%] Messaging APIs</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="publish-to-pq"/>Publishing to a Partitioned Queue</h2>
+    <p>Producing applications set the partition key for the messages they publish. If a message is attracted to a partitioned queue, the hash of this key determines which partition the message is placed in. Depending on the subscription set and other configuration on the event broker, messages with a partition key could also be fanned out to other queues.</p>
+    <p>If a producing application sets a partition key, that key should have a sufficiently large range to produce an even distribution of hashed values that map to partitions.</p>
+    <p>If no partition key is provided in a message, that message is randomly assigned a partition.</p>
+    <p>The diagram below illustrates a sequence of messages arriving in the event broker, and then being fanned out to some queues, one of which is partitioned. In the partitioned queue, the <i>key-to-partition mapping</i> determines which messages go to which partitions.</p>
+    <p>
+      <div class="thumbnail-container">
+        <img src="../../Resources/Images/Guaranteed-Msg/Partitioned-Queue-Producer-Detail.png" class="solacethumbnail" alt="A diagram illustrating the concepts discussed in the surrounding text."/>
+      </div>
+    </p>
+    <h3>Setting the Partition Key</h3>
+    <p>SMF clients specify the partition key by setting the <code>QUEUE_PARTITION_KEY</code> user property of published messages. The mechanism for setting this property varies between APIs.</p>
+    <p>JMS clients set the  <code>JMSXGroupID</code> property directly to provide the partition key.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">For details and examples that show how SMF and JMS clients set the partition key, see <MadCap:xref href="../../API/API-Developer-Guide/Creating-Messages-1.htm#Partitioned-Queues">Partition Key</MadCap:xref>.</p>
+    <p MadCap:conditions="SAP.SapHideFromOutput">AMQP and MQTT clients can publish to (but not consume from) partitioned queues. For details, see <MadCap:xref href="Queues.htm#pq-feature-interactions">Partitioned Queue Feature Interactions</MadCap:xref>.</p>
+    <h2 class="with-rule"><a name="consume-from-pq"/>Consuming from a Partitioned Queue</h2>
+    <p>From the perspective of the consuming application, receiving messages from a partitioned queue is no different than receiving messages from any other queue. The details of the individual partitions are handled transparently by the event broker and the <MadCap:variable name="Manifest-Products-APIs.PubSub-GenericAll-Messaging-API"/>s. Although the consumer has access to the key provided in the message by the publisher, it has no knowledge of which partition a message was delivered from, and has no means to request messages from any particular partition.</p>
+    <p>The event broker maps one or more partitions to each consumer <MadCap:conditionalText MadCap:conditions="SAP.SapOnlyOutput">flow</MadCap:conditionalText><a href="../../API/Core-Concepts-Solace-API-Concepts.htm#Flows" class="link-internal" MadCap:conditions="SAP.SapHideFromOutput">flow</a>. This <i>partition-to-flow mapping</i> is shown in the diagram below. A consuming application binds to the parent queue, providing its required properties, message receive callbacks, and so on. It has a single flow, but is delivered messages from one or more of the partitions of that queue.</p>
+    <p>
+      <img src="../../Resources/Images/Guaranteed-Msg/Partitioned-Queue-Consumer-Detail.png" class="img-border" alt="A diagram illustrating the concepts discussed in the surrounding text."/>
+    </p>
+    <p>Adding or removing consumers can cause <MadCap:xref href="Partition-Rebalancing.htm">Partition Rebalancing</MadCap:xref>. Partition rebalancing is triggered when:</p>
+    <ul>
+      <li>
+        <p>A new consumer binds to a partitioned queue that has fewer consumers than partitions. If there are already excess consumers, a new consumer bind does not trigger rebalancing.</p>
+      </li>
+      <li>
+        <p>An active consumer unbinds from a partitioned queue. That consumer's partitions are re-assigned to one or more of the other bound consumers after the rebalance timer expires.</p>
+      </li>
+    </ul>
+    <p>Partition rebalancing often includes <MadCap:xref href="Partition-Handoff.htm">Partition Handoff</MadCap:xref> as well, where the event broker moves partitions between consumer flows.</p>
+    <p class="Note">If there are more consumers than there are partitions, excess consumers will not take on any messaging load. However, excess consumers can play a standby role—if an active consumer fails, the flow of one of the excess consumers then becomes active and starts receiving messages.</p>
+    <h3><a name="partittion-status"/>Partition Status</h3>
+    <p>A partition can have one of the following statuses:</p>
+    <ul>
+      <li>Unassigned—The partition is not assigned to a consumer flow.</li>
+      <li>Ready—The partition is operating normally, delivering messages to the flow.</li>
+      <li>Paused—The partition is assigned to a flow, but is paused. New messages are not being sent to the flow.</li>
+      <li>Unbound—The partition is assigned to a flow, but that flow is not bound.</li>
+    </ul>
+    <h3><a name="pq-consumer-failure"/>Outcomes of Consumer Loss</h3>
+    <p>When a consuming client binds to a partitioned queue, the event broker returns the set of assigned partitions to the client in the bind response. Similarly, the API sends the mapping information back to the event broker in subsequent bind requests to try to re-establish the same partition mappings the flow had prior to disconnecting. </p>
+    <p>If a consumer that is assigned to a partition disconnects unexpectedly (for example, due to a temporary connectivity issue or an application crash), there are  several possible outcomes:</p>
+    <ul>
+      <li>
+        <p style="font-weight: bold;">
+				The consumer application API reconnects before the rebalance timer (<code>rebalance delay</code>) expires.</p>
+        <p>In this case, the API of the consumer application  provides the set of mapped partitions (which it still knows), along with the queue name, in the new bind request.
+					The event broker maps the new flow to the same partitions and starts delivering messages to the consumer immediately.
+					In this case, there is no disruption to the flow of messages and the partition-to-flow mapping remains unchanged. The consumer gets the same partitions it had before being disconnected.
+				</p>
+      </li>
+      <li>
+        <p style="font-weight: bold;">The consumer application restarts and reconnects before the rebalance timer expires.
+				</p>
+        <p>If the consumer restarts, the API cannot provide its previously mapped partition set (it has been lost due to the restart) in the bind request. The rebalance timer subsequently expires, and the event broker treats the consumer like a new client with no partition-mapping history.
+				The event broker performs partition rebalancing, and assigns arbitrary partitions to the reconnected consumer.</p>
+      </li>
+      <li>
+        <p style="font-weight: bold;">The consumer application restarts and reconnects after the rebalance timer expires.
+				</p>
+        <p>When the rebalance timer expires, partitions are remapped among the consumer applications that are still connected. When the disconnected application reconnects, a second rebalancing is triggered, which now includes the newly connected flow.
+The second rebalancing is triggered 	 even if the application sends its previous partition mapping (the previous mapping is ignored).</p>
+      </li>
+      <li>
+        <p style="font-weight: bold;">The consumer application never returns. </p>
+        <p>A consumer application could remain disconnected due to a hardware failure or permanent crash.
+				In this case, when rebalance timer expires, the partitions are remapped between the applications that are still connected.</p>
+      </li>
+    </ul>
+    <p>For information about how applications can respond to partition handoffs, see <MadCap:xref href="Partition-Handoff.htm">Partition Handoff</MadCap:xref>.</p>
+  </body>
+</html>

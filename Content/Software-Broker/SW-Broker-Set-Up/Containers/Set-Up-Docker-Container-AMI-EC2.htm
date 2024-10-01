@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:MadCap="http://www.madcapsoftware.com/Schemas/MadCap.xsd">
+  <head>
+    <link href="../../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+    <link href="../../../Resources/TableStyles/Table_Num.css" rel="stylesheet" MadCap:stylesheetType="table"/>
+  </head>
+  <body>
+    <h1><MadCap:concept term="Software"/>Docker with Amazon Linux on AWS</h1>
+    <p>This section walks you through the steps to set up a single PubSub+ <MadCap:variable name="Product-Names.broker_sw_short"/> container with Docker  on an Amazon Linux AMI instance in AWS Elastic Compute Cloud (EC2).</p>
+    <ul>
+      <li>
+        <MadCap:xref href="#before-you-begin">Before You Begin</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#launch-a-host-and-install-docker">Step 1: Launch a Host &amp; Install Docker</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#get-a-pubsub-software-event-broker">Step 2: Get a PubSub+ Software Event Broker</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#set-the-docker-create-options">Step 3: Set the Docker Create Options</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#create-the-container">Step 4: Create the Container</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#manage-the-pubsub-software-event-broker">Step 5: Manage the PubSub+ Software Event Broker</MadCap:xref>
+      </li>
+      <li>
+        <MadCap:xref href="#next-steps">Next Steps</MadCap:xref>
+      </li>
+    </ul>
+    <h2 class="with-rule"><a name="before-you-begin"/>Before You Begin</h2>
+    <p>It's assumed that you have:</p>
+    <ul>
+      <li>An Amazon EC2 account.</li>
+      <li>A stable version of Docker Engine installed.</li>
+    </ul>
+    <h3><a name="system-requirements"/>System Requirements</h3>
+    <MadCap:snippetBlock src="../../../Resources/Snippets/System-Requirements-Container-Images.flsnp"/>
+    <p class="Note">For ARM processors, there is a version of the PubSub+ container that is compatible with AWS Graviton instances.</p>
+    <h2 class="with-rule"><a name="launch-a-host-and-install-docker"/>Step 1: Launch a Host &amp; Install Docker</h2>
+    <p>Use the EC2 Dashboard’s Launch Instance wizard to create an Amazon Machine Image that you can use to run an event broker.</p>
+    <ol>
+      <li>On the main page of the EC2 Dashboard, select the <b>Launch Instance</b> button.
+                <p><div class="thumbnail-container"><img src="../../../Resources/Images/SW-Broker-Setup/Container/Create-AWS-Instance.png" class="solacethumbnail" alt=""/></div></p><p>Follow the setup wizard and accept the recommended default settings except as noted in the following steps.</p></li>
+      <li>In the <b>Choose AMI</b> step, choose an Amazon Machine Image (AMI) from the AWS Marketplace for the host. <br/></li>
+      <li>In the <b>Choose an Instance Type</b> step, select an <b>Instance Type</b> according to the <MadCap:xref href="#system-requirements">System Requirements</MadCap:xref> section above.</li>
+      <li>In the <b>Configure Instance Details</b> step, set <b>Subnet</b> to your availability zone.
+                </li>
+      <li>
+        <p>In the <b>Add Storage</b> step, set the instance’s storage size and volume type.</p>
+        <p>The amount of storage to attach to the instance depends on your application. Both SSD volume types, General Purpose and Provisioned IOPS, are supported.</p>
+        <p>For test deployments, a minimum of 30 GB and Provisioned IOPS SSD are recommended.</p>
+      </li>
+      <li>
+        <p>In the <b>Name and Tags</b> step, assign a name to your instance.</p>
+        <p>You can add as many tags as required by your application.</p>
+      </li>
+      <li>
+        <MadCap:snippetBlock src="../../../Resources/Snippets/container-inbound-rules.flsnp"/>
+      </li>
+      <li>After you have completed the launch wizard steps and logged into your host, install and configure Docker.  Instructions can be found on the AWS <a href="http://docs.aws.amazon.com/AmazonECS/latest/developerguide/docker-basics.html#install_docker" class="link-internal">Docker Basics</a> Web page.</li>
+      <li>If you are using a t2.medium or t4g.medium instance type, you must create a swap file after the host is up. Enter the following commands:<pre xml:space="preserve">
+&gt;sudo mkdir /var/lib/solace
+&gt;sudo dd if=/dev/zero of=/var/lib/solace/swap count=3072 bs=1MiB
+&gt;sudo mkswap -f /var/lib/solace/swap
+&gt;sudo chmod 0600 /var/lib/solace/swap
+&gt;sudo swapon -f /var/lib/solace/swap
+&gt;sudo grep -q 'solace\/swap' /etc/fstab || sudo sh -c 'echo "/var/lib/solace/swap  none swap sw  0  0" &gt;&gt; /etc/fstab'
+</pre></li>
+    </ol>
+    <h2 class="with-rule"><a name="get-a-pubsub-software-event-broker"/>Step 2: Get a PubSub+ Software Event Broker</h2>
+    <MadCap:snippetBlock src="../../../Resources/Snippets/container-get-SW-broker-docker-con-package3.flsnp"/>
+    <p>For example:</p>
+    <pre>&gt;sudo docker load -i /tmp/solace-pubsub-enterprise-&lt;version&gt;-docker.tar.gz</pre>
+    <h2 class="with-rule"><a name="set-the-docker-create-options"/>Step 3: Set the Docker Create Options</h2>
+    <MadCap:snippetBlock src="../../../Resources/Snippets/Set-Docker-Engine-Options.flsnp"/>
+    <h2 class="with-rule"><a name="create-the-container"/>Step 4: Create the Container</h2>
+    <MadCap:snippetBlock src="../../../Resources/Snippets/create-and-run-docker-container.flsnp"/>
+    <h2 class="with-rule"><a name="manage-the-pubsub-software-event-broker"/>Step 5: Manage the PubSub+ Software Event Broker</h2>
+    <MadCap:snippetBlock src="../../../Resources/Snippets/container-manage-broker-docker.flsnp"/>
+    <h2 class="with-rule"><a name="next-steps"/>Next Steps</h2>
+    <MadCap:snippetBlock src="../../../Resources/Snippets/SW-broker-setup-next-steps.flsnp"/>
+  </body>
+</html>
